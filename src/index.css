@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Fraunces", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-paper: #F4F1EA;
+  --color-ink: #1A1A1A;
+  --color-cream: #FAF8F5;
+  --color-charcoal: #2D2D2D;
+}
+
+body {
+  background-color: #F4F1EA;
+  color: #1A1A1A;
+  font-family: var(--font-sans);
+}
+
+/* Print editorial styling hooks */
+.editorial-title {
+  font-family: var(--font-serif);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.editorial-serif {
+  font-family: var(--font-serif);
+}
+
+.editorial-mono {
+  font-family: var(--font-mono);
+}
+
+.editorial-border {
+  border-color: rgba(26, 26, 26, 0.15);
+}
+
+.editorial-shadow {
+  box-shadow: 0 4px 20px -2px rgba(26, 26, 26, 0.05);
+}

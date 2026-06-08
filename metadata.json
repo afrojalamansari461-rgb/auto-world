@@ -1,0 +1,6 @@
+{
+  "name": "Auto World",
+  "description": "A premium vehicle marketplace for buying, selling, and managing listings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
