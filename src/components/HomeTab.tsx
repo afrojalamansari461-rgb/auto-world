@@ -135,10 +135,10 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                       className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
                     >
                       <option>Any Price</option>
-                      <option>Under $10,000</option>
-                      <option>$10,000 - $20,000</option>
-                      <option>$20,000 - $30,000</option>
-                      <option>Over $30,000</option>
+                      <option>Under ₹5 Lakhs</option>
+                      <option>₹5 Lakhs - ₹15 Lakhs</option>
+                      <option>₹15 Lakhs - ₹30 Lakhs</option>
+                      <option>Over ₹30 Lakhs</option>
                     </select>
                   </div>
 
@@ -296,7 +296,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                   <div className="flex items-center justify-between pt-2.5">
                     <div>
                       <span className="text-xs text-stone-400 block uppercase font-light font-sans">Valuation</span>
-                      <span className="text-2xl font-serif font-black text-stone-950">${car.price.toLocaleString()}</span>
+                      <span className="text-2xl font-serif font-black text-stone-950">₹{car.price.toLocaleString("en-IN")}</span>
                     </div>
                     <button
                       onClick={() => onQuickView(car)}

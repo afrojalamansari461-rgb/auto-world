@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2 } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
+import { getDocs, collection } from "firebase/firestore";
+import { db, auth, googleProvider, signInWithPopup } from "../firebase";
+import { User as FirebaseUser } from "firebase/auth";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
 interface BuyTabProps {
   favorites: number[];
@@ -9,9 +13,105 @@ interface BuyTabProps {
   searchFilters: { type: string; priceRange: string; location: string };
   onQuickView: (vehicle: Vehicle) => void;
   subscriptionActive: boolean;
+  showToast: (message: string, type?: "success" | "error" | "info") => void;
+  currentUser: FirebaseUser | null;
 }
 
-export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, subscriptionActive }: BuyTabProps) {
+// Historical price trends in India (in Lakhs INR ex-showroom)
+const popularModelsData = [
+  { year: "2020", Swift: 5.49, Nexon: 6.95, Thar: 11.90, Fortuner: 28.60, "Classic 350": 1.65 },
+  { year: "2021", Swift: 5.85, Nexon: 7.39, Thar: 12.80, Fortuner: 30.30, "Classic 350": 1.80 },
+  { year: "2022", Swift: 6.20, Nexon: 8.15, Thar: 13.90, Fortuner: 32.50, "Classic 350": 1.95 },
+  { year: "2023", Swift: 6.90, Nexon: 8.99, Thar: 14.50, Fortuner: 37.80, "Classic 350": 2.10 },
+  { year: "2024", Swift: 7.30, Nexon: 10.49, Thar: 15.90, Fortuner: 41.20, "Classic 350": 2.22 },
+  { year: "2025", Swift: 7.90, Nexon: 11.20, Thar: 16.80, Fortuner: 45.90, "Classic 350": 2.38 },
+  { year: "2026", Swift: 8.40, Nexon: 12.10, Thar: 17.50, Fortuner: 49.50, "Classic 350": 2.49 },
+];
+
+interface ModelMeta {
+  fullName: string;
+  category: string;
+  brand: string;
+  color: string;
+  text: string;
+  highlightSpecs: string[];
+  growth: string;
+  avgHike: string;
+}
+
+const modelMetadata: Record<string, ModelMeta> = {
+  Swift: {
+    fullName: "Maruti Suzuki Swift",
+    category: "Hatchback",
+    brand: "Maruti Suzuki",
+    color: "#D97706",
+    text: "India's highest selling hatchback series. Over the last six years, Swift prices climbed steadily due to rising raw material inflation, advanced tech inclusions, and standard dual airbags.",
+    highlightSpecs: ["Fuel Economy: 22.3 km/L", "Global NCAP: 3 Stars", "Resale Demand: Outstanding"],
+    growth: "+53.0%",
+    avgHike: "+₹48k/yr"
+  },
+  Nexon: {
+    fullName: "Tata Nexon",
+    category: "Compact SUV",
+    brand: "Tata Motors",
+    color: "#2563EB",
+    text: "Pioneered compact SUV safety with its legendary 5-Star impact scores. Steady feature revisions like touch consoles and ventilated seats pushed original pricing from ~7L up to 12.1L.",
+    highlightSpecs: ["Safest in Segment", "GNCAP Index: 5-Star", "Turbodiesel Optional"],
+    growth: "+73.1%",
+    avgHike: "+₹85k/yr"
+  },
+  Thar: {
+    fullName: "Mahindra Thar",
+    category: "LFS Lifestyle 4x4",
+    brand: "Mahindra & Mahindra",
+    color: "#DC2626",
+    text: "The signature off-road icon. Re-launched in late 2020 with lifestyle features, attracting massive backlogs and waitlists that allowed for confident ex-showroom revisions.",
+    highlightSpecs: ["Engine: 2.2L mHawk / 2.0L mStallion", "Terrain Modes: Mechanical 4WD", "Wading Depth: 650mm"],
+    growth: "+47.1%",
+    avgHike: "+₹93k/yr"
+  },
+  Fortuner: {
+    fullName: "Toyota Fortuner",
+    category: "Full-Size SUV",
+    brand: "Toyota Bharat",
+    color: "#059669",
+    text: "The undisputed emperor of large premium SUVs. Holds legendary depreciation resistance, allowing owners to resell older models near new values, while new buy points scale close to ₹50 Lakhs.",
+    highlightSpecs: ["Engine: 2.8L GD Turbo", "Traction: A-TRC Actuators", "Resale Value: Bulletproof"],
+    growth: "+73.1%",
+    avgHike: "+₹3.48L/yr"
+  },
+  "Classic 350": {
+    fullName: "Royal Enfield Classic 350",
+    category: "Retro Motorcycle",
+    brand: "Royal Enfield",
+    color: "#7C3AED",
+    text: "India's cruiser default. Transitioned to the advanced J-Series engine platform in recent years, boosting reliability and refinement while moving pricing past ₹2.4 Lakhs.",
+    highlightSpecs: ["Engine: J1-Series 349cc", "Fuel Economy: 36.2 km/L", "Build: Signature Metal body"],
+    growth: "+50.9%",
+    avgHike: "+₹14k/yr"
+  }
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-stone-900 text-white p-3 border border-stone-800 text-[11px] font-mono leading-relaxed uppercase shadow-xl rounded-sm">
+        <p className="font-extrabold border-b border-stone-700 pb-1 mb-1.5 tracking-wider text-[#FAF8F5]">Year: {label}</p>
+        <div className="space-y-1">
+          {payload.map((entry: any) => (
+            <p key={entry.name} style={{ color: entry.stroke || entry.fill || entry.color }} className="font-semibold flex justify-between gap-4">
+              <span>{entry.name}:</span>
+              <span className="font-extrabold text-white">₹{entry.value.toFixed(2)} Lakhs</span>
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, subscriptionActive, showToast, currentUser }: BuyTabProps) {
   // Payment states
   const [hasPaidPass, setHasPaidPass] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -33,6 +133,12 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
 
+  // Data Visualization States
+  const [isVizHubExpanded, setIsVizHubExpanded] = useState(true);
+  const [selectedVizModel, setSelectedVizModel] = useState("Swift");
+  const [activeChartTab, setActiveChartTab] = useState<"line" | "bar" | "area">("line");
+  const [selectedCompareModels, setSelectedCompareModels] = useState<string[]>(["Swift", "Nexon", "Thar"]);
+
   // Dynamic lists
   const [inventoryList, setInventoryList] = useState<Vehicle[]>([]);
 
@@ -44,30 +150,38 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       return;
     }
 
-    const checkPass = () => {
-      const lastPayment = localStorage.getItem("autoWorld_lastPayment");
-      if (lastPayment) {
-        const lastDate = new Date(lastPayment);
-        const now = new Date();
-        const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+    if (!currentUser) {
+      setHasPaidPass(false);
+      return;
+    }
 
-        if (diffHours < 24) {
+    const checkPass = async () => {
+      // 1. Check from Firestore
+      try {
+        const { getDoc, doc } = await import("firebase/firestore");
+        const docRef = doc(db, "buyer_passes", currentUser.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().paid) {
           setHasPaidPass(true);
-          const remainingMinutes = Math.floor((24 - diffHours) * 60);
-          updateTimerText(remainingMinutes);
-        } else {
-          setHasPaidPass(false);
-          localStorage.removeItem("autoWorld_lastPayment");
+          return;
         }
+      } catch (err) {
+        console.warn("Firestore pass check failed, falling back to local storage:", err);
+      }
+
+      // 2. Check local fallback
+      const localPass = localStorage.getItem(`autoWorld_buyerPass_${currentUser.uid}`);
+      if (localPass === "true") {
+        setHasPaidPass(true);
       } else {
         setHasPaidPass(false);
       }
     };
 
     checkPass();
-    const interval = setInterval(checkPass, 10000); // Poll lock screen
+    const interval = setInterval(checkPass, 12000); // Poll pass status
     return () => clearInterval(interval);
-  }, [subscriptionActive]);
+  }, [subscriptionActive, currentUser]);
 
   // STEP 2: Timer calculations
   const updateTimerText = (totalMinutes: number) => {
@@ -76,62 +190,82 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     setCountdownText(`${hours}h ${minutes.toString().padStart(2, "0")}m remaining`);
   };
 
-  // STEP 3: Load listings combining both hardcoded assets & localStorage submissions
+  // STEP 3: Load listings combining both hardcoded assets & localStorage & Firestore collections
   useEffect(() => {
     const defaultData = [...DEFAULT_VEHICLES];
     
-    // Parse user created listings
-    let userListings: UserListing[] = [];
-    try {
-      const stored = localStorage.getItem("autoWorld_listings");
-      if (stored) {
-        userListings = JSON.parse(stored);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    const compiledUserVehicles: Vehicle[] = userListings.map((listing, index) => {
-      let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
-      if (listing.type === "car" || listing.type === "suv") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
-      } else if (listing.type === "truck") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
-      } else if (listing.type === "motorcycle") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
-      } else if (listing.type === "bicycle") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
+    const fetchAllListings = async () => {
+      let userListings: UserListing[] = [];
+      
+      // 1. Fetch from Firestore
+      try {
+        const querySnapshot = await getDocs(collection(db, "listings"));
+        querySnapshot.forEach((docSnap) => {
+          userListings.push(docSnap.data() as UserListing);
+        });
+      } catch (err) {
+        console.warn("Firestore fetch listings failed, falling back to local list:", err);
       }
 
-      return {
-        id: 1000 + index, 
-        title: listing.title,
-        price: listing.price,
-        image: image,
-        make: listing.make,
-        model: listing.model,
-        year: parseInt(listing.year) || 2022,
-        mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
-        fuel: listing.fuelType ? (listing.fuelType.charAt(0).toUpperCase() + listing.fuelType.slice(1)) : "Petrol",
-        transmission: listing.transmission ? (listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1)) : "Automatic",
-        badge: listing.featured ? "premium" : listing.urgent ? "hot" : null,
-        description: listing.description,
-        features: listing.features,
-        category: listing.type,
-        isUserListing: true,
-        listingId: listing.id
-      };
-    });
+      // 2. Fetch from local storage
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const localListings: UserListing[] = JSON.parse(stored);
+          localListings.forEach((localItem) => {
+            if (!userListings.some(item => item.id === localItem.id)) {
+              userListings.push(localItem);
+            }
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      }
 
-    setInventoryList([...defaultData, ...compiledUserVehicles]);
+      const compiledUserVehicles: Vehicle[] = userListings.map((listing, index) => {
+        let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
+        if (listing.type === "car" || listing.type === "suv") {
+          image = listing.photos && listing.photos.length > 0 
+            ? listing.photos[0].src 
+            : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
+        } else if (listing.type === "truck") {
+          image = listing.photos && listing.photos.length > 0 
+            ? listing.photos[0].src 
+            : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
+        } else if (listing.type === "motorcycle") {
+          image = listing.photos && listing.photos.length > 0 
+            ? listing.photos[0].src 
+            : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
+        } else if (listing.type === "bicycle") {
+          image = listing.photos && listing.photos.length > 0 
+            ? listing.photos[0].src 
+            : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
+        }
+
+        return {
+          id: 1000 + index, 
+          title: listing.title,
+          price: listing.price,
+          image: image,
+          make: listing.make,
+          model: listing.model,
+          year: parseInt(listing.year) || 2022,
+          mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
+          fuel: listing.fuelType ? (listing.fuelType.charAt(0).toUpperCase() + listing.fuelType.slice(1)) : "Petrol",
+          transmission: listing.transmission ? (listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1)) : "Automatic",
+          badge: listing.featured ? "premium" : listing.urgent ? "hot" : null,
+          description: listing.description,
+          features: listing.features,
+          category: listing.type,
+          isUserListing: true,
+          listingId: listing.id
+        };
+      });
+
+      setInventoryList([...defaultData, ...compiledUserVehicles]);
+    };
+
+    fetchAllListings();
   }, []);
 
   // Sync passed search filters
@@ -154,21 +288,36 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   const handleProceedPayment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreeTerms) {
-      alert("Please agree to the authorization checkbox prior to checkout.");
+      showToast("Please agree to the authorization checkbox prior to checkout.", "error");
       return;
     }
     if (!cardNumber || !expiryDate || !cvv) {
-      alert("Please specify card credentials first.");
+      showToast("Please specify card credentials first.", "error");
+      return;
+    }
+    if (!currentUser) {
+      showToast("Please log in first to purchase the Buyer Pass in your account.", "error");
       return;
     }
 
     setIsPaying(true);
-    setTimeout(() => {
-      localStorage.setItem("autoWorld_lastPayment", new Date().toISOString());
+    setTimeout(async () => {
+      try {
+        const { doc, setDoc } = await import("firebase/firestore");
+        await setDoc(doc(db, "buyer_passes", currentUser.uid), {
+          userId: currentUser.uid,
+          paid: true,
+          date: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Failed to sync buyer pass to Firestore:", err);
+      }
+
+      localStorage.setItem(`autoWorld_buyerPass_${currentUser.uid}`, "true");
       setHasPaidPass(true);
       setIsPaying(false);
       setShowPaymentModal(false);
-      alert("✅ Daily Access Pass Activated!\nYou now hold full listing privileges for 24 hours.");
+      showToast("₹1 Buyer Pass Activated! You now have unrestricted lifetime access to all car listings inside your account.", "success");
     }, 1500);
   };
 
@@ -192,10 +341,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     }
     // Price range selector
     if (selectedPriceRange && selectedPriceRange !== "Any Price") {
-      if (selectedPriceRange === "Under $10,000" && vehicle.price > 10000) return false;
-      if (selectedPriceRange === "$10,000 - $20,000" && (vehicle.price < 10000 || vehicle.price > 20000)) return false;
-      if (selectedPriceRange === "$20,000 - $30,000" && (vehicle.price < 20000 || vehicle.price > 30000)) return false;
-      if ((selectedPriceRange === "Over $30,000" || selectedPriceRange === "Over $30,005") && vehicle.price <= 30000) return false;
+      if (selectedPriceRange === "Under ₹5 Lakhs" && vehicle.price > 500000) return false;
+      if (selectedPriceRange === "₹5 Lakhs - ₹15 Lakhs" && (vehicle.price < 500000 || vehicle.price > 1500000)) return false;
+      if (selectedPriceRange === "₹15 Lakhs - ₹30 Lakhs" && (vehicle.price < 1500000 || vehicle.price > 3000000)) return false;
+      if (selectedPriceRange === "Over ₹30 Lakhs" && vehicle.price <= 3000000) return false;
     }
 
     return true;
@@ -213,6 +362,8 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     return b.year - a.year; // newest year default
   });
 
+  const displayedVehicles = hasPaidPass ? sortedVehicles : sortedVehicles.slice(0, 3);
+
   const handleResetFilters = () => {
     setSelectedMake("");
     setSelectedPriceRange("Any Price");
@@ -222,7 +373,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   };
 
   return (
-    <div className="bg-[#F4F1EA] text-[#1A1A1A] min-h-screen py-12 relative font-sans">
+    <div className="bg-[#F4F1EA] text-[#1A1A1A] min-h-screen py-12 relative font-sans font-sans">
       
       {/* Mini warning header box if not paid */}
       {!hasPaidPass && (
@@ -230,29 +381,29 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           <div className="bg-[#E0DBCF] border border-stone-400 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
-                <Lock className="w-5 h-5" />
+                <Sparkles className="w-5 h-5 text-amber-400" />
               </div>
               <div className="text-center sm:text-left">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-stone-900 font-sans">Full Database Access Locked</h4>
-                <p className="text-xs text-stone-700 leading-snug">Inspecting technical details or direct contacts requires an active daily pass or syndicate membership.</p>
+                <h4 className="text-sm font-serif font-black uppercase tracking-wider text-stone-900 font-sans">1st 3 Listings Free to View</h4>
+                <p className="text-xs text-stone-705 leading-snug">The first 3 cars on our registry are completely free to inspect. To unlock more cars in the catalog, activate your ₹1 premium account pass.</p>
               </div>
             </div>
             <button
               onClick={() => setShowPaymentModal(true)}
               className="px-5 py-3.5 bg-stone-900 text-[#F4F1EA] text-xs uppercase font-bold tracking-widest hover:bg-stone-850 cursor-pointer"
             >
-              Activate Daily Pass
+              Activate Pass (₹1 Only)
             </button>
           </div>
         </div>
       )}
 
       {/* Floating active permit counter if pass is paid */}
-      {hasPaidPass && countdownText && (
+      {hasPaidPass && (
         <div className="max-w-7xl mx-auto px-4 mb-8">
-          <div className="bg-stone-90 w-full p-4 border border-stone-900/10 flex items-center gap-3 text-stone-900 bg-[#FAF8F5]">
-            <Clock className="w-5 h-5 text-stone-600 animate-pulse animate-duration-1000" />
-            <span className="text-xs uppercase tracking-widest font-bold">Verification permit status: {countdownText}</span>
+          <div className="bg-[#FAF8F5] w-full p-4 border border-stone-900/10 flex items-center gap-3 text-stone-900">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span className="text-xs uppercase tracking-widest font-extrabold text-stone-900 font-mono">Premium Account Pass Active — Unrestricted lifetime catalog access is enabled</span>
           </div>
         </div>
       )}
@@ -261,6 +412,243 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         <div className="border-b border-stone-300 pb-6 mb-10">
           <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Index Repository</span>
           <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Verified Vehicle Inventory</h1>
+        </div>
+
+        {/* INDIA VALUATION HISTORICAL CHART HUB */}
+        <div className="mb-12 bg-[#FAF8F5] border border-stone-300 shadow-sm overflow-hidden">
+          <div className="bg-stone-900 text-[#FAF8F5] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-850">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-sans uppercase tracking-[0.2em] font-black text-[#FAF8F5]">India Price Intelligence Hub</h2>
+                <p className="text-[9px] text-stone-400 font-mono tracking-widest uppercase">Historical ex-showroom pricing trends (2020 - 2026)</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsVizHubExpanded(!isVizHubExpanded)}
+              className="text-xs font-mono py-1.5 px-3 bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-300 font-bold uppercase transition select-none cursor-pointer"
+            >
+              {isVizHubExpanded ? "[−] Minimize Insights" : "[+] Reveal Insights"}
+            </button>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {isVizHubExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="p-6 sm:p-8"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* LEFT PANEL: CHOOSE MODEL & METRIC SHOWCASE */}
+                  <div className="space-y-6 lg:border-r lg:border-stone-200 lg:pr-8">
+                    <div>
+                      <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-stone-400 block mb-1">Focused Specimen</span>
+                      <h3 className="text-xs font-sans uppercase tracking-[0.2em] font-black text-stone-900">Select Tracked Vehicle</h3>
+                    </div>
+
+                    {/* Specimen Selection Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.keys(modelMetadata).map((key) => {
+                        const isSelected = selectedVizModel === key;
+                        const data = modelMetadata[key];
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setSelectedVizModel(key)}
+                            style={{ borderLeftColor: isSelected ? data.color : "" }}
+                            className={`p-3 text-left border rounded-sm transition cursor-pointer select-none ${
+                              isSelected
+                                ? "bg-white shadow-sm font-extrabold border-stone-400 border-l-4"
+                                : "bg-[#FAF8F5]/80 hover:bg-white text-stone-605 border-stone-300"
+                            }`}
+                          >
+                            <span className="text-[8px] font-mono uppercase tracking-widest block text-stone-400 leading-none mb-1">{data.brand}</span>
+                            <span className="text-xs font-serif uppercase tracking-tight block max-w-[120px] truncate">{key}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Showcase Card with Details and Trend Metrics */}
+                    <motion.div
+                      key={selectedVizModel}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white p-5 border border-stone-250 shadow-sm space-y-4 rounded-sm"
+                    >
+                      <div className="flex justify-between items-start border-b border-stone-100 pb-3">
+                        <div>
+                          <span className="px-2 py-0.5 bg-stone-100 text-[#1A1A1A] font-mono text-[8px] font-bold block w-fit mb-1 bg-stone-900/5 uppercase tracking-widest">{modelMetadata[selectedVizModel].category}</span>
+                          <h4 className="text-sm font-serif font-black text-stone-950 uppercase">{modelMetadata[selectedVizModel].fullName}</h4>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[8px] font-mono block text-stone-400 uppercase tracking-widest leading-none mb-1">6Yr Growth</span>
+                          <span className="text-xs font-sans font-black text-emerald-650 tracking-tight block">{modelMetadata[selectedVizModel].growth}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                        {modelMetadata[selectedVizModel].text}
+                      </p>
+
+                      <div className="pt-2">
+                        <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 block mb-2">Technical Index Metrics</span>
+                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono tracking-wider font-extrabold uppercase mb-2">
+                          <div className="bg-stone-50 p-2 border.5 border-stone-200">
+                            <span className="text-stone-400 text-[8px] font-light block uppercase leading-none mb-0.5">Average Hike</span>
+                            <span className="text-stone-850">{modelMetadata[selectedVizModel].avgHike}</span>
+                          </div>
+                          <div className="bg-stone-50 p-2 border.5 border-stone-200">
+                            <span className="text-stone-400 text-[8px] font-light block uppercase leading-none mb-0.5">Demand Index</span>
+                            <span className="text-amber-605">Resilient</span>
+                          </div>
+                        </div>
+
+                        <ul className="text-[9.5px] text-stone-600 space-y-1 mt-3 font-semibold uppercase tracking-wider leading-relaxed">
+                          {modelMetadata[selectedVizModel].highlightSpecs.map((spec, i) => (
+                            <li key={i} className="flex items-center gap-1.5 text-stone-500 hover:text-stone-900 transition">
+                              <span className="text-stone-400">•</span> {spec}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* RIGHT PANEL: INTERACTIVE RECHARTS BLOCK */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Switcher & Filters */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-4">
+                      {/* Chart style tabs */}
+                      <div className="flex bg-stone-200/60 p-1 rounded-sm gap-1 self-start">
+                        {[
+                          { id: "line", label: "Unified Line", icon: LucideLineChart },
+                          { id: "bar", label: "Comparative Bar", icon: BarChart3 },
+                          { id: "area", label: "Inflation Depth Area", icon: Scale }
+                        ].map((tab) => {
+                          const Icon = tab.icon;
+                          const isActive = activeChartTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setActiveChartTab(tab.id as any)}
+                              className={`px-3 py-2 text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 transition cursor-pointer select-none leading-none ${
+                                isActive ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:text-stone-900"
+                              }`}
+                            >
+                              <Icon className="w-3.5 h-3.5" />
+                              {tab.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Explicit Series Checklist (Only for Unified Line map to avoid compression) */}
+                      {activeChartTab === "line" && (
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          <span className="text-[8px] font-mono uppercase tracking-widest text-stone-400 font-extrabold block mr-1">Toggles:</span>
+                          {Object.keys(modelMetadata).map((key) => {
+                            const isSelected = selectedCompareModels.includes(key);
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedCompareModels(selectedCompareModels.filter(m => m !== key));
+                                  } else {
+                                    setSelectedCompareModels([...selectedCompareModels, key]);
+                                  }
+                                }}
+                                className={`px-2 py-1 text-[9px] font-mono uppercase tracking-wider border rounded-xs transition cursor-pointer select-none font-bold ${
+                                  isSelected ? "bg-stone-900 text-white border-stone-900 shadow-sm" : "bg-white text-stone-500 border-stone-200 hover:bg-stone-50"
+                                }`}
+                              >
+                                {key}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Chart Container */}
+                    <div className="w-full h-80 bg-white border border-stone-250 p-4 rounded-sm shadow-inner relative flex flex-col justify-end">
+                      <div className="absolute top-2.5 right-4 z-10 text-[9px] font-mono uppercase tracking-widest text-stone-400 font-extrabold bg-white/90 px-1 backdrop-blur-xs">
+                        Metric: ₹ in Lakhs ex-showroom
+                      </div>
+
+                      <div className="w-full h-[90%]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          {activeChartTab === "line" ? (
+                            <LineChart data={popularModelsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#F1EFEA" vertical={false} />
+                              <XAxis dataKey="year" stroke="#78716c" fontSize={10} fontFamily="monospace" tickLine={false} />
+                              <YAxis stroke="#78716c" fontSize={10} fontFamily="monospace" tickLine={false} />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend wrapperStyle={{ fontSize: '9px', textTransform: 'uppercase', fontFamily: "monospace", letterSpacing: '1px', marginTop: '10px' }} />
+                              {Object.keys(modelMetadata).map((key) => {
+                                if (!selectedCompareModels.includes(key)) return null;
+                                return (
+                                  <Line
+                                    key={key}
+                                    type="monotone"
+                                    dataKey={key}
+                                    name={modelMetadata[key].fullName}
+                                    stroke={modelMetadata[key].color}
+                                    strokeWidth={selectedVizModel === key ? 3.5 : 2}
+                                    activeDot={{ r: 6 }}
+                                    dot={{ r: 3 }}
+                                  />
+                                );
+                              })}
+                            </LineChart>
+                          ) : activeChartTab === "bar" ? (
+                            <BarChart data={popularModelsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#F1EFEA" vertical={false} />
+                              <XAxis dataKey="year" stroke="#78716c" fontSize={10} fontFamily="monospace" tickLine={false} />
+                              <YAxis stroke="#78716c" fontSize={10} fontFamily="monospace" tickLine={false} />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend wrapperStyle={{ fontSize: '9px', textTransform: 'uppercase', fontFamily: "monospace", letterSpacing: '1px', marginTop: '10px' }} />
+                              <Bar dataKey={selectedVizModel} name={modelMetadata[selectedVizModel].fullName} fill={modelMetadata[selectedVizModel].color} stroke="#1F2937" strokeWidth={0.5} radius={[2, 2, 0, 0]} />
+                            </BarChart>
+                          ) : (
+                            <AreaChart data={popularModelsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
+                              <defs>
+                                <linearGradient id="colorAreaSelected" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={modelMetadata[selectedVizModel].color} stopOpacity={0.4}/>
+                                  <stop offset="95%" stopColor={modelMetadata[selectedVizModel].color} stopOpacity={0.05}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#F1EFEA" vertical={false} />
+                              <XAxis dataKey="year" stroke="#78716c" fontSize={10} fontFamily="monospace" tickLine={false} />
+                              <YAxis stroke="#78716c" fontSize={10} fontFamily="monospace" tickLine={false} />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend wrapperStyle={{ fontSize: '9px', textTransform: 'uppercase', fontFamily: "monospace", letterSpacing: '1px', marginTop: '10px' }} />
+                              <Area type="monotone" dataKey={selectedVizModel} name={modelMetadata[selectedVizModel].fullName} stroke={modelMetadata[selectedVizModel].color} strokeWidth={2.5} fillOpacity={1} fill="url(#colorAreaSelected)" />
+                            </AreaChart>
+                          )}
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Informative Tip Box */}
+                    <div className="flex gap-2.5 bg-[#E6E1D6] p-4.5 border border-stone-300 text-stone-850 font-sans text-xs font-semibold leading-relaxed">
+                      <Info className="w-4.5 h-4.5 shrink-0 text-stone-900 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold block uppercase tracking-widest text-[8px] mb-1">Interactive Metric Tip:</span>
+                        Click other vehicle blocks in the selector on the left to swapfocused dataset profiles in real-time. In the Unified Line chart, use the checkboxes in the series checklist to focus on specific models and maintain highly readable scales.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
         {/* FILTERS TOOLBAR PANEL */}
@@ -325,10 +713,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
               >
                 <option value="">Any Price</option>
-                <option value="Under $10,000">Under $10,000</option>
-                <option value="$10,000 - $20,000">$10,000 - $20,000</option>
-                <option value="$20,000 - $30,000">$20,000 - $30,000</option>
-                <option value="Over $30,000">Over $30,000</option>
+                <option value="Under ₹5 Lakhs">Under ₹5 Lakhs</option>
+                <option value="₹5 Lakhs - ₹15 Lakhs">₹5 Lakhs - ₹15 Lakhs</option>
+                <option value="₹15 Lakhs - ₹30 Lakhs">₹15 Lakhs - ₹30 Lakhs</option>
+                <option value="Over ₹30 Lakhs">Over ₹30 Lakhs</option>
               </select>
             </div>
           </div>
@@ -366,29 +754,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         {/* LISTINGS DISPLAY GRID ROOM */}
         <div className="relative">
           
-          {/* Access permit block lock overlay if has not paid pass */}
-          {!hasPaidPass && (
-            <div className="absolute inset-0 bg-stone-200/55 backdrop-blur-md z-45 flex flex-col items-center justify-center p-8 text-center min-h-[450px] border border-stone-300">
-              <div className="w-14 h-14 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mb-5 border border-stone-800">
-                <Lock className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-serif font-black text-stone-950 mb-2">Unlocking Verified Spec Sheets Required</h3>
-              <p className="max-w-md text-stone-600 text-xs leading-relaxed mb-6">
-                Active certified permits are charged at $1.00 USD for full 24-hour database queries. Instantly auto-fill standard credentials to bypass listing fences.
-              </p>
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="px-6 py-4 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-xs font-bold uppercase tracking-widest transition cursor-pointer"
-              >
-                Purchase Access Permit ($1.00)
-              </button>
-            </div>
-          )}
-
           {/* List Statistics */}
           <div className="flex justify-between items-center mb-6">
             <span className="text-xs font-bold text-stone-500 font-mono uppercase tracking-widest">
-              {sortedVehicles.length} specimens catalogued matching search parameters
+              {displayedVehicles.length} of {sortedVehicles.length} catalog elements accessible
             </span>
           </div>
 
@@ -399,98 +768,130 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               <p className="text-stone-500 text-xs max-w-sm mx-auto">Try lowering criteria specifications or click reset parameters.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {sortedVehicles.map((car, idx) => {
-                const isFav = favorites.includes(car.id);
-                return (
-                  <motion.div
-                    key={car.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: "spring", stiffness: 80, damping: 14, delay: (idx % 6) * 0.05 }}
-                    whileHover={{ scale: 1.03, y: -6, transition: { duration: 0.15 } }}
-                    whileTap={{ scale: 0.97 }}
-                    className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md"
-                  >
-                    <div className="relative h-56 overflow-hidden bg-stone-150 grayscale-20 group-hover:grayscale-0 transition-all duration-300">
-                      <img
-                        src={car.image}
-                        alt={car.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
-                        }}
-                      />
-                      
-                      {car.badge && (
-                        <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-sans font-bold uppercase tracking-wider border border-[#F4F1EA]/20">
-                          {car.badge}
-                        </span>
-                      )}
-
-                      <button
-                        onClick={() => toggleFavorite(car.id)}
-                        className={`absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition border ${
-                          isFav
-                            ? "bg-stone-950 text-white border-stone-950"
-                            : "bg-white/80 text-stone-700 hover:text-stone-950 hover:bg-white border-stone-200"
-                        }`}
-                      >
-                        <Heart className={`w-4 h-4 ${isFav ? "fill-white" : ""}`} />
-                      </button>
-                    </div>
-
-                    <div className="p-6 flex-1 flex flex-col justify-between">
-                      <div>
-                        <span className="text-[9px] font-mono tracking-widest text-stone-400 block uppercase mb-1">REF #AW0{car.id}</span>
-                        <h3 className="text-xl font-serif font-black text-stone-950 mb-3 cursor-pointer" onClick={() => {
-                          if (hasPaidPass) {
-                            onQuickView(car);
-                          } else {
-                            setShowPaymentModal(true);
-                          }
-                        }}>
-                          {car.title}
-                        </h3>
-                        
-                        <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-stone-200 text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-4">
-                          <div>
-                            <span className="text-stone-400 block text-[9px] uppercase font-light">Mileage</span>
-                            <span className="text-stone-900 font-bold">{car.mileage}</span>
-                          </div>
-                          <div>
-                            <span className="text-stone-400 block text-[9px] uppercase font-light">Displace</span>
-                            <span className="text-stone-900 font-bold">{car.fuel}</span>
-                          </div>
-                          <div>
-                            <span className="text-stone-400 block text-[9px] uppercase font-light">Gearbox</span>
-                            <span className="text-stone-900 font-bold text-[9px] truncate block">{car.transmission}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2.5">
-                        <div>
-                          <span className="text-xs text-stone-400 block uppercase font-light font-sans">Valuation</span>
-                          <span className="text-2xl font-serif font-black text-stone-950">${car.price.toLocaleString()}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            if (hasPaidPass) {
-                              onQuickView(car);
-                            } else {
-                              setShowPaymentModal(true);
-                            }
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {displayedVehicles.map((car, idx) => {
+                  const isFav = favorites.includes(car.id);
+                  return (
+                    <motion.div
+                      key={car.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ type: "spring", stiffness: 80, damping: 14, delay: (idx % 6) * 0.05 }}
+                      whileHover={{ scale: 1.03, y: -6, transition: { duration: 0.15 } }}
+                      whileTap={{ scale: 0.97 }}
+                      className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md"
+                    >
+                      <div className="relative h-56 overflow-hidden bg-stone-150 grayscale-20 group-hover:grayscale-0 transition-all duration-300">
+                        <img
+                          src={car.image}
+                          alt={car.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
                           }}
-                          className="px-4 py-2.5 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-xs font-sans uppercase font-bold tracking-widest border border-stone-950 transition"
+                        />
+                        
+                        {car.badge && (
+                          <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-sans font-bold uppercase tracking-wider border border-[#F4F1EA]/20">
+                            {car.badge}
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => toggleFavorite(car.id)}
+                          className={`absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition border ${
+                            isFav
+                              ? "bg-stone-950 text-white border-stone-950"
+                              : "bg-white/80 text-stone-700 hover:text-stone-950 hover:bg-white border-stone-200"
+                          }`}
                         >
-                          View Dossier
+                          <Heart className={`w-4 h-4 ${isFav ? "fill-white" : ""}`} />
                         </button>
                       </div>
+
+                      <div className="p-6 flex-1 flex flex-col justify-between">
+                        <div>
+                          <span className="text-[9px] font-mono tracking-widest text-[#777777] block uppercase mb-1">REF #AW0{car.id}</span>
+                          <h3 className="text-xl font-serif font-black text-stone-950 mb-3 cursor-pointer" onClick={() => onQuickView(car)}>
+                            {car.title}
+                          </h3>
+                          
+                          <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-stone-200 text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-4">
+                            <div>
+                              <span className="text-stone-400 block text-[9px] uppercase font-light">Mileage</span>
+                              <span className="text-stone-900 font-bold">{car.mileage}</span>
+                            </div>
+                            <div>
+                              <span className="text-stone-400 block text-[9px] uppercase font-light">Displace</span>
+                              <span className="text-stone-900 font-bold">{car.fuel}</span>
+                            </div>
+                            <div>
+                              <span className="text-stone-400 block text-[9px] uppercase font-light">Gearbox</span>
+                              <span className="text-stone-900 font-bold text-[9px] truncate block">{car.transmission}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2.5">
+                          <div>
+                            <span className="text-xs text-stone-400 block uppercase font-light font-sans">Valuation</span>
+                            <span className="text-2xl font-serif font-black text-stone-950">₹{car.price.toLocaleString("en-IN")}</span>
+                          </div>
+                          <button
+                            onClick={() => onQuickView(car)}
+                            className="px-4 py-2.5 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-xs font-sans uppercase font-bold tracking-widest border border-stone-950 transition"
+                          >
+                            View Dossier
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Padlock status module if has not paid pass and database contains hidden elements */}
+              {sortedVehicles.length > 3 && !hasPaidPass && (
+                <div className="mt-12 bg-[#FAF8F5] border border-stone-400 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-4">
+                  <div className="w-12 h-12 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto">
+                    <Lock className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif font-black uppercase text-stone-950 tracking-tight">Plus {sortedVehicles.length - 3} More Specimens Catalogued</h3>
+                    <p className="text-xs text-stone-605 max-w-md mx-auto pt-1 leading-relaxed">
+                      You are viewing the first 3 car listings completely free. Activate our secure ₹1 buyer pass to reveal all remaining catalog entries and direct broker contact registries inside your account.
+                    </p>
+                  </div>
+                  
+                  {currentUser ? (
+                    <button
+                      onClick={() => setShowPaymentModal(true)}
+                      className="px-6 py-3.5 bg-stone-900 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-stone-850 cursor-pointer"
+                    >
+                      Activate ₹1 Account Pass
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await signInWithPopup(auth, googleProvider);
+                            showToast("Logged in successfully with Google!", "success");
+                          } catch (err: any) {
+                            showToast(err.message, "error");
+                          }
+                        }}
+                        className="px-6 py-3.5 bg-stone-905 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-stone-850 cursor-pointer flex items-center gap-2 mx-auto"
+                      >
+                        <User className="w-4 h-4 shrink-0 text-white" />
+                        Login with Google to pay
+                      </button>
+                      <p className="text-[9px] uppercase font-bold text-stone-450 tracking-wider leading-none">Authentication required for registering your pass</p>
                     </div>
-                  </motion.div>
-                );
-              })}
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -509,7 +910,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             
             <div className="text-center pb-6 border-b border-stone-300">
               <Lock className="w-10 h-10 mx-auto mb-3 text-stone-900" />
-              <h2 className="text-2xl font-serif font-black tracking-tight uppercase text-stone-950">Purchase Daily Permit</h2>
+              <h2 className="text-2xl font-serif font-black tracking-tight uppercase text-stone-950">Purchase Premium Pass</h2>
               <p className="text-xs text-stone-600 uppercase tracking-widest mt-1 font-bold">Unlocking verified coordinates & technical specs</p>
             </div>
 
@@ -521,8 +922,8 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                   Pass
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900">Standard Daily Permit</h3>
-                  <div className="text-2xl font-serif font-black text-stone-950 mt-0.5">$1.00 <span className="text-xs text-stone-500 font-light">/ 24 hours pass</span></div>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900">Standard Buyer Pass</h3>
+                  <div className="text-2xl font-serif font-black text-stone-950 mt-0.5">₹1 <span className="text-xs text-stone-500 font-light">/ lifetime pass</span></div>
                   <ul className="text-[10px] text-stone-600 space-y-0.5 mt-2 list-disc list-inside uppercase tracking-wider font-bold">
                     <li>Query complete engine checklists</li>
                     <li>Access direct seller tele-contacts</li>
@@ -604,7 +1005,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                     className="mt-1 w-4 h-4 text-stone-900 accent-stone-900 border-stone-300 focus:ring-0"
                   />
                   <label htmlFor="modal-agree" className="text-[10px] text-stone-700 font-bold uppercase tracking-widest leading-relaxed cursor-pointer select-none">
-                    Unconditionally agree to authorize singular transfer of $1.00 USD.
+                    Unconditionally agree to authorize singular transfer of ₹1.
                   </label>
                 </div>
 
@@ -612,7 +1013,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 <div className="bg-[#E0DBCF] text-stone-8 font-sans p-3 border border-stone-400 text-[10px] font-bold uppercase tracking-wider leading-relaxed flex items-start gap-2">
                   <Info className="w-4 h-4 shrink-0 text-stone-900" />
                   <span>
-                    Auto-Fill Trigger: Double-click Card identification number field to instantly populate standard test coordinates.
+                    Auto-Fill Trigger: Double-click Card identification number field to instantly populate standard test credentials.
                   </span>
                 </div>
 

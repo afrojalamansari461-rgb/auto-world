@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
+import { User } from "firebase/auth";
+import { setDoc, doc, collection } from "firebase/firestore";
+import { db } from "../firebase";
 
 interface SellTabProps {
   setActiveTab: (tab: string) => void;
   subscriptionActive: boolean;
+  showToast: (message: string, type?: "success" | "error" | "info") => void;
+  currentUser: User | null;
 }
 
-export default function SellTab({ setActiveTab, subscriptionActive }: SellTabProps) {
+export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser }: SellTabProps) {
   const [currentStep, setCurrentStep] = useState(1);
 
   // STEP 1: Basic details
@@ -79,14 +84,14 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
     }
 
     const basePrices: Record<string, number> = {
-      car: 15000,
-      suv: 24000,
-      truck: 34000,
-      van: 20000,
-      motorcycle: 5000,
-      bicycle: 500,
-      commercial: 48000,
-      other: 10000
+      car: 900000,
+      suv: 1400000,
+      truck: 1800000,
+      van: 800000,
+      motorcycle: 180000,
+      bicycle: 15000,
+      commercial: 2500000,
+      other: 600000
     };
 
     const initialAmount = basePrices[vehicleType] || 10000;
@@ -126,11 +131,11 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
   const processPhotoFiles = (files: FileList) => {
     Array.from(files).forEach((file) => {
       if (!file.type.match("image.*")) {
-        alert("Please upload valid image formats only.");
+        showToast("Please upload valid image formats only.", "error");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert("Maximum image size is 5MB.");
+        showToast("Maximum image size is 5MB.", "error");
         return;
       }
 
@@ -161,25 +166,32 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (!vehicleType) {
-        alert("Please select the vehicle category type.");
+        showToast("Please select the vehicle category type.", "error");
         return;
       }
       if (!make || !model || !year) {
-        alert("Please specify make, model, and manufacturing year.");
+        showToast("Please specify make, model, and manufacturing year.", "error");
         return;
       }
     }
 
     if (currentStep === 2) {
       if (!description.trim() || description.length < 15) {
-        alert("Please provide an elegant description containing at least 15 characters.");
+        showToast("Please provide an elegant description containing at least 15 characters.", "error");
         return;
       }
     }
 
     if (currentStep === 3) {
       if (photos.length === 0) {
-        alert("Please upload at least one image photo representation of your vehicle.");
+        showToast("Please upload at least one image photo representation of your vehicle.", "error");
+        return;
+      }
+    }
+
+    if (currentStep === 4) {
+      if (!askingPrice || isNaN(parseInt(askingPrice)) || parseInt(askingPrice) <= 0) {
+        showToast("Please specify an appropriate asking price.", "error");
         return;
       }
     }
@@ -192,17 +204,17 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
     e.preventDefault();
 
     if (!askingPrice || isNaN(parseInt(askingPrice)) || parseInt(askingPrice) <= 0) {
-      alert("Please specify an appropriate asking price.");
+      showToast("Please specify an appropriate asking price.", "error");
       return;
     }
     if (!sellerName || !sellerEmail || !sellerPhone || !locationStr) {
-      alert("Please fill in all requested seller contact fields.");
+      showToast("Please fill in all requested seller contact fields.", "error");
       return;
     }
 
     setIsPublishing(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const generatedId = `AW-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const newListing: UserListing = {
         id: generatedId,
@@ -240,6 +252,19 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
         status: "active"
       };
 
+      const listingData = {
+        ...newListing,
+        userId: currentUser ? currentUser.uid : "offline"
+      };
+
+      if (currentUser) {
+        try {
+          await setDoc(doc(db, "listings", generatedId), listingData);
+        } catch (err) {
+          console.error("Firestore listing publish failed: ", err);
+        }
+      }
+
       try {
         const stored = localStorage.getItem("autoWorld_listings");
         const existing: UserListing[] = stored ? JSON.parse(stored) : [];
@@ -252,7 +277,7 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
       setPublishedListingId(generatedId);
       setPublishedTimeStr(new Date().toLocaleString());
       setIsPublishing(false);
-      setCurrentStep(5); // Success step screen
+      setCurrentStep(6); // Success step screen (changed from 5)
       window.scrollTo({ top: 100, behavior: "smooth" });
     }, 1800);
   };
@@ -282,13 +307,13 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
     <div id="sell-form-wrapper" className="max-w-4xl mx-auto px-4 py-12 animate-in fade-in duration-305 bg-[#F4F1EA] text-[#1A1A1A] font-sans">
       
       {/* Top wizard stepper */}
-      {currentStep <= 4 && (
+      {currentStep <= 5 && (
         <div className="mb-10 border-b border-stone-300 pb-8">
           <div className="flex justify-between items-center relative py-2 mb-2">
             <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[1px] bg-stone-300 z-10" />
             
-            {[1, 2, 3, 4].map((stepNum) => {
-              const titles = ["Category", "Specifications", "Media", "Pricing"];
+            {[1, 2, 3, 4, 5].map((stepNum) => {
+              const titles = ["Category", "Specifications", "Media", "Pricing", "Contact"];
               const isActive = currentStep >= stepNum;
               const isCurrent = currentStep === stepNum;
               return (
@@ -618,13 +643,13 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
         </div>
       )}
 
-      {/* STEP 4: Price & Publish */}
+      {/* STEP 4: Price & Valuation */}
       {currentStep === 4 && (
-        <form onSubmit={handlePublishListing} className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
+        <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
-            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Four / Price & Deploy</span>
-            <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Valuation and Contact Registry</h2>
-            <p className="text-stone-500 text-xs mt-1">Compile pricing parameters, confirm negociability tags, and input direct channels details.</p>
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Four / Price & Terms</span>
+            <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Valuation Specifications</h2>
+            <p className="text-stone-500 text-xs mt-1">Compile pricing parameters and confirm negotiability conditions.</p>
           </div>
 
           {/* Pricing Suggestion Card */}
@@ -633,7 +658,7 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
               <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Dynamic Appraisal</span>
               <h3 className="text-sm font-serif font-bold italic text-stone-950 mt-1">Market Valuation Index</h3>
               <div className="text-lg font-serif font-bold text-stone-900 mt-0.5">
-                ${suggestedMin.toLocaleString()} – ${suggestedMax.toLocaleString()} USD
+                ₹{suggestedMin.toLocaleString("en-IN")} – ₹{suggestedMax.toLocaleString("en-IN")} INR
               </div>
               <p className="text-[10px] tracking-wide text-stone-500 uppercase mt-1 leading-normal font-sans">Suggested estimation formulated on production year {year}, brand {make}, model {model}, overall condition score {condition}/5 and historic transaction indexes.</p>
             </div>
@@ -641,15 +666,14 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Target Asking Price (USD)</label>
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Target Asking Price (INR)</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold">₹</span>
                 <input
                   type="number"
-                  placeholder="e.g. 15200"
+                  placeholder="e.g. 1250000"
                   value={askingPrice}
                   onChange={(e) => setAskingPrice(e.target.value)}
-                  required
                   className="w-full pl-7 pr-3 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
                 />
               </div>
@@ -666,54 +690,6 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
                 <option value="no">Asking price is absolutely firm</option>
               </select>
             </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Owner Name</label>
-              <input
-                type="text"
-                placeholder="John Doe"
-                value={sellerName}
-                onChange={(e) => setSellerName(e.target.value)}
-                required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Owner Verified Email</label>
-              <input
-                type="email"
-                placeholder="broker@example.com"
-                value={sellerEmail}
-                onChange={(e) => setSellerEmail(e.target.value)}
-                required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Owner Contact Number</label>
-              <input
-                type="tel"
-                placeholder="+91 99999 88888"
-                value={sellerPhone}
-                onChange={(e) => setSellerPhone(e.target.value)}
-                required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Physical Coordinates / City Location</label>
-              <input
-                type="text"
-                placeholder="e.g. Pune, Maharashtra"
-                value={locationStr}
-                onChange={(e) => setLocationStr(e.target.value)}
-                required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none"
-              />
-            </div>
           </div>
 
           <div className="flex gap-3 pt-5 border-t border-stone-200">
@@ -725,18 +701,96 @@ export default function SellTab({ setActiveTab, subscriptionActive }: SellTabPro
               Back
             </button>
             <button
+              type="button"
+              onClick={handleNextStep}
+              className="flex-2 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center cursor-pointer animate-pulse"
+            >
+              Continue to Contacts
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 5: Contact Details Form */}
+      {currentStep === 5 && (
+        <form onSubmit={handlePublishListing} className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Five / Broker Contact registry</span>
+            <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Contact Information</h2>
+            <p className="text-stone-500 text-xs mt-1">Please provide verified contact information. This will be added directly to the broker/seller details displayed for this vehicle listing.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Owner / Broker Full Name</label>
+              <input
+                type="text"
+                placeholder="John Doe"
+                value={sellerName}
+                onChange={(e) => setSellerName(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Owner Verified Email</label>
+              <input
+                type="email"
+                placeholder="broker@example.com"
+                value={sellerEmail}
+                onChange={(e) => setSellerEmail(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Owner Contact Number</label>
+              <input
+                type="tel"
+                placeholder="+91 99999 88888"
+                value={sellerPhone}
+                onChange={(e) => setSellerPhone(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block font-sans">Physical Coordinates / City Location</label>
+              <input
+                type="text"
+                placeholder="e.g. Pune, Maharashtra"
+                value={locationStr}
+                onChange={(e) => setLocationStr(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-5 border-t border-stone-200">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(4)}
+              className="flex-1 py-3 bg-[#FAF8F5] border border-[#CCCCCC] hover:bg-stone-200 text-stone-905 text-xs font-bold uppercase tracking-widest cursor-pointer"
+            >
+              Back
+            </button>
+            <button
               type="submit"
               disabled={isPublishing}
               className="flex-2 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center cursor-pointer"
             >
-              {isPublishing ? "Deploying Dossier..." : "Deploy Active Listing"}
+              {isPublishing ? "Publishing Listing dossier..." : "Publish & Register Listing"}
             </button>
           </div>
         </form>
       )}
 
-      {/* STEP 5: Successful deploy panel layout page */}
-      {currentStep === 5 && (
+      {/* STEP 6: Successful deploy panel layout page */}
+      {currentStep === 6 && (
         <div className="bg-[#FAF8F5] border-2 border-stone-900 p-8 sm:p-12 text-center space-y-6 animate-in zoom-in-95 duration-200 max-w-2xl mx-auto">
           <div className="w-16 h-16 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto border border-stone-800">
             <CheckCircle2 className="w-8 h-8 text-[#FAF8F5]" />

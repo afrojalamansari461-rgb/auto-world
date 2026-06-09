@@ -8,12 +8,30 @@ import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
 import { Vehicle, UserListing } from "./types";
+import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { auth, db } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("home");
   const [favorites, setFavorites] = useState<number[]>([]);
   const [subscriptionActive, setSubscriptionActive] = useState<boolean>(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Search parameters forwarded from Home quick forms to is Buy tab
   const [searchFilters, setSearchFilters] = useState<{ type: string; priceRange: string; location: string }>({
@@ -22,20 +40,49 @@ export default function App() {
     location: ""
   });
 
+  // Listen for Firebase Auth changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (usr) => {
+      setCurrentUser(usr);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Check custom subscription details from database on checkout startup
   useEffect(() => {
-    const rawSub = localStorage.getItem("autoWorld_subscription");
-    if (rawSub) {
-      try {
-        const parsed = JSON.parse(rawSub);
-        if (parsed && parsed.status === "active") {
-          setSubscriptionActive(true);
+    const syncSubscription = async () => {
+      if (currentUser) {
+        try {
+          const subDoc = await getDoc(doc(db, "subscriptions", currentUser.uid));
+          if (subDoc.exists()) {
+            const data = subDoc.data();
+            setSubscriptionActive(data.status === "active");
+          } else {
+            setSubscriptionActive(false);
+          }
+        } catch (err) {
+          console.error("Error reading Firestore subscription:", err);
+          setSubscriptionActive(false);
         }
-      } catch (e) {
-        console.error("Failed to parse premium subscription", e);
+      } else {
+        const rawSub = localStorage.getItem("autoWorld_subscription");
+        if (rawSub) {
+          try {
+            const parsed = JSON.parse(rawSub);
+            if (parsed && parsed.status === "active") {
+              setSubscriptionActive(true);
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse local subscription:", e);
+          }
+        }
+        setSubscriptionActive(false);
       }
-    }
-  }, []);
+    };
+    syncSubscription();
+  }, [currentUser]);
 
   // Set initial favorite structures
   const toggleFavorite = (id: number) => {
@@ -62,6 +109,18 @@ export default function App() {
   useEffect(() => {
     if (!selectedVehicle) {
       setModalSellerInfo(null);
+      return;
+    }
+
+    // Direct check if the vehicle object already has the seller details attached!
+    if (selectedVehicle.sellerName) {
+      setModalSellerInfo({
+        name: selectedVehicle.sellerName,
+        email: selectedVehicle.sellerEmail || "agent@autoworld.com",
+        phone: selectedVehicle.sellerPhone || "+1800 123 4567",
+        location: selectedVehicle.location || "Pune, Maharashtra",
+        negotiable: selectedVehicle.negotiable || "yes"
+      });
       return;
     }
 
@@ -109,6 +168,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         subscriptionActive={subscriptionActive}
+        currentUser={currentUser}
       />
 
       {/* Primary tab views switcher */}
@@ -130,6 +190,8 @@ export default function App() {
             searchFilters={searchFilters}
             onQuickView={handleQuickView}
             subscriptionActive={subscriptionActive}
+            showToast={showToast}
+            currentUser={currentUser}
           />
         )}
 
@@ -137,6 +199,8 @@ export default function App() {
           <SellTab
             setActiveTab={setActiveTab}
             subscriptionActive={subscriptionActive}
+            showToast={showToast}
+            currentUser={currentUser}
           />
         )}
 
@@ -144,11 +208,13 @@ export default function App() {
           <PremiumTab
             subscriptionActive={subscriptionActive}
             setSubscriptionActive={setSubscriptionActive}
+            showToast={showToast}
+            currentUser={currentUser}
           />
         )}
 
         {activeTab === "contact" && (
-          <ContactTab />
+          <ContactTab showToast={showToast} currentUser={currentUser} />
         )}
       </main>
 
@@ -205,7 +271,7 @@ export default function App() {
                     {selectedVehicle.title}
                   </h2>
                   <div className="text-3xl font-serif font-black text-stone-900 mt-2">
-                    ${selectedVehicle.price.toLocaleString()}
+                    ₹{selectedVehicle.price.toLocaleString("en-IN")}
                   </div>
                 </div>
 
@@ -336,7 +402,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       toggleFavorite(selectedVehicle.id);
-                      alert(favorites.includes(selectedVehicle.id) ? "Removed from dashboard!" : "Successfully saved bookmark!");
+                      showToast(favorites.includes(selectedVehicle.id) ? "Removed from bookmark brief!" : "Saved brand new bookmark briefcase!", "success");
                     }}
                     className={`flex-1 py-3.5 border text-[10px] uppercase font-bold tracking-widest cursor-pointer flex items-center justify-center gap-2 transition ${
                       favorites.includes(selectedVehicle.id)
@@ -349,7 +415,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => {
-                      alert(`Callback request formulated for: ${selectedVehicle.title}.\nOur automated dialer system will contact you at your registered profile phone.`);
+                      showToast(`Inflow dispatch formulated for: ${selectedVehicle.title}. Auto World dialer rep will contact you shortly.`, "success");
                     }}
                     className="flex-1 py-3.5 bg-stone-900 border border-stone-900 hover:bg-stone-850 text-white text-[10px] uppercase font-bold tracking-widest transition cursor-pointer"
                   >
@@ -359,6 +425,27 @@ export default function App() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification element */}
+      {toast && (
+        <div 
+          id="toast-notification"
+          className="fixed bottom-8 right-8 z-[250] flex items-center justify-between gap-4 px-6 py-4 border shadow-xl bg-stone-950 text-[#F4F1EA] border-stone-800 rounded-sm animate-in fade-in slide-in-from-bottom-5 duration-300 max-w-sm"
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-4 h-4 text-emerald-400 font-bold font-mono text-sm shrink-0">✓</span>
+            <p className="text-[10px] font-sans font-extrabold uppercase tracking-widest text-[#F4F1EA]/90 leading-normal">
+              {toast.message}
+            </p>
+          </div>
+          <button 
+            onClick={() => setToast(null)}
+            className="text-[10px] font-mono hover:text-white cursor-pointer opacity-70 hover:opacity-100 transition whitespace-nowrap pl-2"
+          >
+            [close]
+          </button>
         </div>
       )}
 

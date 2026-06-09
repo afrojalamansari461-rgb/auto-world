@@ -1,8 +1,16 @@
 import React, { useState } from "react";
 import { Mail, Phone, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, Send, CheckCircle2, ChevronDown, HelpCircle, Building } from "lucide-react";
 import { Message } from "../types";
+import { User } from "firebase/auth";
+import { collection, addDoc } from "firebase/firestore";
+import { db, handleFirestoreError, OperationType } from "../firebase";
 
-export default function ContactTab() {
+interface ContactTabProps {
+  showToast: (msg: string, type?: "success" | "error" | "info") => void;
+  currentUser: User | null;
+}
+
+export default function ContactTab({ showToast, currentUser }: ContactTabProps) {
   // Form states
   const [fullName, setFullName] = useState("");
   const [emailAddress, setBillingEmail] = useState("");
@@ -17,46 +25,52 @@ export default function ContactTab() {
   // Accordion active helpers
   const [openFAQIndex, setOpenFAQIndex] = useState<number | null>(null);
 
-  const handleMessageSubmit = (e: React.FormEvent) => {
+  const handleMessageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreePrivacy) {
-      alert("Please agree to the Privacy Policy checking terms.");
+      showToast("Please agree to the Privacy Policy checking terms.", "error");
       return;
     }
     if (!fullName || !emailAddress || !subject || !msgBody) {
-      alert("Please define values for all required fields.");
+      showToast("Please define values for all required fields.", "error");
       return;
     }
 
     setIsSending(true);
-    setTimeout(() => {
-      const compiledMsg: Message = {
-        name: fullName,
-        email: emailAddress,
-        subject: subject,
-        message: msgBody,
-        date: new Date().toISOString()
-      };
+    
+    const compiledMsg: Message = {
+      name: fullName,
+      email: emailAddress,
+      subject: subject,
+      message: msgBody,
+      date: new Date().toISOString()
+    };
 
+    // Synchronize to Firestore
+    try {
+      await addDoc(collection(db, "messages"), compiledMsg);
+    } catch (err) {
+      console.warn("Firestore contact save failed, utilizing local storage fallback:", err);
       try {
         const stored = localStorage.getItem("autoWorld_contact_messages");
         const existing: Message[] = stored ? JSON.parse(stored) : [];
         existing.push(compiledMsg);
         localStorage.setItem("autoWorld_contact_messages", JSON.stringify(existing));
-      } catch (err) {
-        console.error(err);
+      } catch (storeErr) {
+        console.error("Local storage fallback also failed: ", storeErr);
       }
+    }
 
-      setIsSending(false);
-      setIsDone(true);
-      
-      // reset forms
-      setFullName("");
-      setBillingEmail("");
-      setPhoneNumber("");
-      setSubject("");
-      setMsgBody("");
-    }, 1500);
+    setIsSending(false);
+    setIsDone(true);
+    showToast("Message sent successfully! Our advisors will responding shortly.", "success");
+    
+    // reset forms
+    setFullName("");
+    setBillingEmail("");
+    setPhoneNumber("");
+    setSubject("");
+    setMsgBody("");
   };
 
   const contactFAQS = [
@@ -67,32 +81,32 @@ export default function ContactTab() {
   ];
 
   return (
-    <div id="contact-view-wrapper" className="animate-in fade-in duration-300 bg-slate-50 py-12">
+    <div id="contact-view-wrapper" className="animate-in fade-in duration-300 bg-[#F4F1EA] py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <center className="mb-14">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-3">Get in Touch</h1>
-          <p className="text-slate-500 text-sm max-w-md">Our certified team handles queries and trade negotiations 24 hours are day.</p>
+          <h1 className="text-3xl sm:text-4xl font-serif font-black text-stone-900 tracking-tight mb-3 uppercase">Get in Touch</h1>
+          <p className="text-stone-500 text-sm max-w-md uppercase tracking-wider font-bold">Our certified team handles queries and trade negotiations 24 hours a day.</p>
         </center>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
           {/* Left Panel: Contact information metrics */}
           <div className="space-y-8">
             <div className="space-y-4">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Contact Information</h2>
-              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed font-semibold">
+              <h2 className="text-2xl font-serif font-black text-[#1A1A1A] tracking-tight uppercase">Contact Information</h2>
+              <p className="text-stone-605 text-xs sm:text-sm leading-relaxed font-semibold">
                 Direct phone channels, location indices, and social media hubs are accessible to broker candidates and individual buyers alike.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Box: Visit Address */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <MapPin className="w-5 h-5 text-blue-600" />
+              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-slate-900 leading-none">Visit Office</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Visit Office</h3>
+                  <p className="text-xs text-stone-500 leading-relaxed font-semibold">
                     123 Auto Avenue, Corporate Square<br />
                     Mumbai, Maharashtra 400001
                   </p>
@@ -100,13 +114,13 @@ export default function ContactTab() {
               </div>
 
               {/* Box: Phone numbers */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Phone className="w-5 h-5 text-blue-600" />
+              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-slate-900 leading-none">Call support</h3>
-                  <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Call support</h3>
+                  <p className="text-xs text-stone-500 font-semibold leading-relaxed font-mono">
                     Toll-Free: +91 1805 123 4567<br />
                     Desk sales: +91 1805 765 4321
                   </p>
@@ -114,13 +128,13 @@ export default function ContactTab() {
               </div>
 
               {/* Box: Emails */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-605 flex items-center justify-center shrink-0">
-                  <Mail className="w-5 h-5 text-blue-600" />
+              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+                  <Mail className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-slate-900 leading-none">Email coordinates</h3>
-                  <p className="text-xs text-slate-505 font-mono">
+                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Email coordinates</h3>
+                  <p className="text-xs text-stone-505 font-mono">
                     info@autoworld.com<br />
                     support@autoworld.com
                   </p>
@@ -128,13 +142,13 @@ export default function ContactTab() {
               </div>
 
               {/* Box: Hour rates */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-205 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5 text-blue-600" />
+              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-slate-900 leading-none">Working Hours</h3>
-                  <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Working Hours</h3>
+                  <p className="text-xs text-stone-500 font-semibold leading-relaxed">
                     Mon - Fri: 9:00 AM - 8:00 PM<br />
                     Sat - Sun: 10:00 AM - 6:00 PM
                   </p>
@@ -143,20 +157,20 @@ export default function ContactTab() {
             </div>
 
             {/* Social media card */}
-            <div className="p-5.5 bg-slate-900 text-white rounded-3xl space-y-3.5">
-              <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider">Social Community Networks</h4>
-              <p className="text-xs text-slate-350 leading-relaxed max-w-sm">Join our newsletter campaigns and follow official profiles to unlock seasonal rewards.</p>
+            <div className="p-5.5 bg-stone-900 text-[#F4F1EA] rounded-none space-y-3.5">
+              <h4 className="text-xs font-bold uppercase text-stone-300 tracking-widest font-mono">Social Community Networks</h4>
+              <p className="text-xs text-stone-400 leading-relaxed max-w-sm">Join our newsletter campaigns and follow official profiles to unlock seasonal rewards.</p>
               <div className="flex gap-3">
-                <a href="#" className="w-9 h-9 bg-slate-800 hover:bg-blue-600 hover:scale-110 transition rounded-xl flex items-center justify-center text-white">
+                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white">
                   <Facebook className="w-4.5 h-4.5" />
                 </a>
-                <a href="#" className="w-9 h-9 bg-slate-800 hover:bg-blue-600 hover:scale-110 transition rounded-xl flex items-center justify-center text-white">
+                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white">
                   <Twitter className="w-4.5 h-4.5" />
                 </a>
-                <a href="#" className="w-9 h-9 bg-slate-800 hover:bg-blue-600 hover:scale-110 transition rounded-xl flex items-center justify-center text-white">
+                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white">
                   <Instagram className="w-4.5 h-4.5" />
                 </a>
-                <a href="#" className="w-9 h-9 bg-slate-800 hover:bg-blue-600 hover:scale-110 transition rounded-xl flex items-center justify-center text-white">
+                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-amber-500 transition flex items-center justify-center text-white">
                   <Linkedin className="w-4.5 h-4.5" />
                 </a>
               </div>
@@ -164,20 +178,20 @@ export default function ContactTab() {
           </div>
 
           {/* Right Panel: Interactive Send us a message form */}
-          <div className="bg-white rounded-3xl p-6.5 md:p-8 shadow-sm border border-slate-200">
+          <div className="bg-[#FAF8F5] p-6.5 md:p-8 border border-stone-300">
             {isDone ? (
               <div className="text-center py-12 space-y-6">
-                <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-md">
-                  <CheckCircle2 className="w-9 h-9 text-emerald-600" />
+                <div className="w-16 h-16 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center mx-auto shadow-md">
+                  <CheckCircle2 className="w-9 h-9" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Message Sent Successfully</h3>
-                <p className="text-slate-500 text-xs sm:text-sm max-w-sm mx-auto leading-relaxed">
+                <h3 className="text-xl font-serif font-black text-stone-900 uppercase tracking-tight">Message Sent</h3>
+                <p className="text-stone-600 text-xs sm:text-sm max-w-sm mx-auto leading-relaxed font-semibold">
                   Thank you for submitting your inquiry. A certified Auto World client success team member will email your address inside 24 hours.
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsDone(false)}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                  className="px-6 py-2.5 bg-stone-950 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest cursor-pointer"
                 >
                   Send another message
                 </button>
@@ -185,53 +199,53 @@ export default function ContactTab() {
             ) : (
               <form onSubmit={handleMessageSubmit} className="space-y-4.5">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Submit are safe inquiry</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Vetted contacts strictly monitored</p>
+                  <h3 className="text-lg font-serif font-black text-stone-900 uppercase tracking-tight leading-none">Submit an inquiry</h3>
+                  <p className="text-[9px] text-[#777777] font-bold uppercase tracking-widest block mt-1.5 font-mono">Vetted contacts strictly monitored</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Full Name *</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase block tracking-widest">Full Name *</label>
                     <input
                       type="text"
                       required
                       placeholder="John Doe"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-medium"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Email Address *</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase block tracking-widest">Email Address *</label>
                     <input
                       type="email"
                       required
                       placeholder="john@example.com"
                       value={emailAddress}
                       onChange={(e) => setBillingEmail(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-medium"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Phone (Optional)</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase block tracking-widest">Phone (Optional)</label>
                     <input
                       type="tel"
                       placeholder="+91 98765 43210"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 font-semibold"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-semibold"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-505 uppercase block">Subject *</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase block tracking-widest">Subject *</label>
                     <select
                       required
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-bold"
                     >
                       <option value="">Select Topic</option>
                       <option value="General Inquiry">General Inquiry</option>
@@ -244,49 +258,46 @@ export default function ContactTab() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block">Body Message *</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase block tracking-widest">Body Message *</label>
                   <textarea
                     rows={4}
                     required
                     placeholder="Describe your inquiry details..."
                     value={msgBody}
                     onChange={(e) => setMsgBody(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-205 rounded-xl text-sm focus:outline-none focus:border-blue-505 font-mono"
+                    className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-955 font-mono font-medium"
                   />
                 </div>
 
                 <div className="space-y-3 pt-1">
-                  <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 font-semibold">
+                  <label className="flex items-start gap-2 cursor-pointer text-xs text-stone-705 font-bold uppercase tracking-wider leading-relaxed">
                     <input
                       type="checkbox"
                       checked={newsletters}
                       onChange={(e) => setNewsletters(e.target.checked)}
-                      className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
+                      className="mt-0.5 w-4 h-4 text-stone-900 accent-stone-900 border-stone-300 rounded focus:ring-0"
                     />
-                    Subscribe to newsletter broadcasts for seasonal sales notifications.
+                    <span>Subscribe to newsletter broadcasts for seasonal sales notifications.</span>
                   </label>
-                  <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 font-semibold select-none">
+                  <label className="flex items-start gap-2 cursor-pointer text-xs text-stone-705 font-bold uppercase tracking-wider leading-relaxed select-none">
                     <input
                       type="checkbox"
                       checked={agreePrivacy}
                       onChange={(e) => setAgreeTerms(e.target.checked)}
                       required
-                      className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
+                      className="mt-0.5 w-4 h-4 text-stone-900 accent-stone-900 border-stone-300 rounded focus:ring-0"
                     />
-                    I agree to the Privacy terms and understand data is securely monitored and processed. *
+                    <span>I agree to Privacy terms. *</span>
                   </label>
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSending}
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/10 cursor-pointer"
+                  className="w-full py-3.5 bg-stone-950 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   {isSending ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin shrink-0" />
-                      Posting message...
-                    </>
+                    <>Posting message...</>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
@@ -300,10 +311,10 @@ export default function ContactTab() {
         </div>
 
         {/* MAP EM-BED EMBED WIDGET SECTION */}
-        <section className="bg-white rounded-3xl overflow-hidden border border-slate-205 shadow-sm mb-16">
-          <div className="p-4 bg-slate-50 border-b border-slate-105 flex items-center gap-2">
-            <Building className="w-5 h-5 text-blue-605" />
-            <span className="text-xs font-black text-slate-700 uppercase tracking-wider">Corporate square headquarters Map</span>
+        <section className="bg-[#FAF8F5] border border-stone-300 shadow-sm mb-16 overflow-hidden">
+          <div className="p-4 bg-stone-100 border-b border-stone-300 flex items-center gap-2">
+            <Building className="w-5 h-5 text-stone-900" />
+            <span className="text-xs font-bold text-stone-700 uppercase tracking-widest font-mono">Corporate square headquarters Map</span>
           </div>
           <div className="h-96 relative">
             <iframe
@@ -317,24 +328,24 @@ export default function ContactTab() {
 
         {/* STANDALONE GENERAL TRADE FAQS ACCORDIONS */}
         <section className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-extrabold text-slate-900 text-center tracking-tight mb-8">Frequently Asked Questions</h2>
+          <h2 className="text-2xl font-serif font-black text-stone-900 text-center tracking-tight mb-8">Frequently Asked Questions</h2>
           <div className="space-y-4">
             {contactFAQS.map((faq, idx) => {
               const isOpen = openFAQIndex === idx;
               return (
-                <div key={idx} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div key={idx} className="bg-[#FAF8F5] border border-stone-300 overflow-hidden shadow-sm">
                   <button
                     onClick={() => setOpenFAQIndex(isOpen ? null : idx)}
-                    className="w-full p-5 text-left font-bold text-slate-850 flex items-center justify-between transition hover:bg-slate-50 cursor-pointer"
+                    className="w-full p-5 text-left font-bold text-stone-850 flex items-center justify-between transition hover:bg-stone-100 cursor-pointer"
                   >
-                    <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-750 flex items-center gap-2">
-                      <HelpCircle className="w-5 h-5 text-blue-500 shrink-0" />
+                    <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-stone-750 flex items-center gap-2 font-mono">
+                      <HelpCircle className="w-5 h-5 text-stone-900 shrink-0" />
                       {faq.q}
                     </span>
-                    <ChevronDown className={`w-4.5 h-4.5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`w-4.5 h-4.5 text-stone-500 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                   </button>
                   {isOpen && (
-                    <div className="p-5 border-t border-slate-100 bg-slate-50 text-xs sm:text-sm text-slate-550 leading-relaxed font-semibold">
+                    <div className="p-5 border-t border-stone-300 bg-stone-100 text-xs sm:text-sm text-stone-600 leading-relaxed font-semibold">
                       {faq.a}
                     </div>
                   )}

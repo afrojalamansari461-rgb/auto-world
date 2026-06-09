@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net (default-deny catch-all)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reuseable global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Listings RULES
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create: if isSignedIn() 
+        && isValidId(listingId)
+        && incoming().userId == request.auth.uid
+        && isValidListing(incoming());
+      allow update: if isSignedIn()
+        && incoming().userId == request.auth.uid
+        && existing().userId == request.auth.uid
+        && incoming().userId == existing().userId
+        && incoming().id == existing().id
+        && isValidListing(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'price', 'condition', 'mileage', 'fuelType', 'description', 
+          'negotiable', 'status', 'features', 'transmission', 'engineSize', 
+          'photos', 'featured', 'urgent', 'doors', 'seats', 'bikeType', 
+          'bikeEngine', 'bikeGears', 'bikeMileage', 'bicycleType', 'frameSize', 'gears'
+        ]);
+      allow delete: if isSignedIn()
+         && existing().userId == request.auth.uid;
+    }
+
+    function isValidListing(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.type is string && data.type.size() <= 50
+        && data.make is string && data.make.size() <= 50
+        && data.model is string && data.model.size() <= 50
+        && data.year is string && data.year.size() <= 10
+        && data.price is int && data.price >= 0
+        && data.condition is int && data.condition >= 1 && data.condition <= 5
+        && data.description is string && data.description.size() >= 15 && data.description.size() <= 5000
+        && data.sellerName is string && data.sellerName.size() <= 200
+        && data.sellerEmail is string && data.sellerEmail.size() <= 200
+        && data.location is string && data.location.size() <= 200
+        && data.status is string && (data.status == 'active' || data.status == 'sold')
+        && data.userId is string && data.userId.size() <= 128;
+    }
+
+    // CONTACT MESSAGES RULES
+    match /messages/{messageId} {
+      allow create: if isValidId(messageId) && isValidMessage(incoming());
+      // Client cannot read, list or delete tickets
+      allow read, update, delete: if false;
+    }
+
+    function isValidMessage(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 150
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 150
+        && data.subject is string && data.subject.size() > 0 && data.subject.size() <= 150
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 5000
+        && data.date is string && data.date.size() <= 50;
+    }
+
+    // SUBSCRIPTIONS RULES
+    match /subscriptions/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() 
+        && request.auth.uid == userId
+        && isValidId(userId)
+        && isValidSubscription(incoming());
+      allow delete: if false;
+    }
+
+    function isValidSubscription(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.plan is string && data.plan.size() <= 50
+        && data.price is int && data.price >= 0
+        && data.period is string && (data.period == 'monthly' || data.period == 'yearly')
+        && data.startDate is string && data.startDate.size() <= 50
+        && data.status is string && (data.status == 'active' || data.status == 'expired');
+    }
+
+    // BUYER PASSES RULES
+    match /buyer_passes/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() 
+        && request.auth.uid == userId
+        && isValidId(userId)
+        && isValidBuyerPass(incoming());
+      allow delete: if false;
+    }
+
+    function isValidBuyerPass(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.paid is bool && data.paid == true
+        && data.date is string && data.date.size() <= 50;
+    }
+  }
+}

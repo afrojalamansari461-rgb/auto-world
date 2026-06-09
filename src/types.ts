@@ -15,6 +15,11 @@ export interface Vehicle {
   isUserListing?: boolean;
   listingId?: string;
   category?: string;
+  sellerName?: string;
+  sellerEmail?: string;
+  sellerPhone?: string;
+  location?: string;
+  negotiable?: string;
 }
 
 export interface UserListing {
@@ -73,7 +78,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
   {
     id: 1,
     title: "Mahindra Thar 4x4 LX 2023",
-    price: 18900,
+    price: 1450000,
     image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&auto=format&fit=crop&q=80",
     make: "Mahindra",
     model: "Thar",
@@ -89,7 +94,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
   {
     id: 2,
     title: "Tata Nexon EV Max 2023",
-    price: 19500,
+    price: 1580000,
     image: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=800&auto=format&fit=crop&q=80",
     make: "Tata",
     model: "Nexon",
@@ -105,7 +110,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
   {
     id: 3,
     title: "Royal Enfield Classic 350 2022",
-    price: 3499,
+    price: 185000,
     image: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&auto=format&fit=crop&q=80",
     make: "Royal Enfield",
     model: "Classic 350",
@@ -120,51 +125,51 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
   },
   {
     id: 4,
-    title: "Toyota Camry 2022",
-    price: 24999,
+    title: "Toyota Fortuner 2.8L 4x4 2022",
+    price: 3450000,
     image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80",
     make: "Toyota",
-    model: "Camry",
+    model: "Fortuner",
     year: 2022,
-    mileage: "18,500 mi",
-    fuel: "Petrol",
+    mileage: "28,500 km",
+    fuel: "Diesel",
     transmission: "Automatic",
     badge: "verified",
-    category: "car",
-    description: "One owner, immaculate condition. Includes lane departure warnings, Adaptive Cruise Control, premium leather seat trim, and dynamic steering support.",
-    features: ["Air Conditioning", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Lane Assist"]
+    category: "suv",
+    description: "Unmatched road presence. Pre-owned premium Toyota Fortuner equipped with heavy duty 2.8L diesel engine, standard 4WD selectable terrains, active cruise safety mechanics, and pristine plush interiors.",
+    features: ["Air Conditioning", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Electric Tailgate", "Differential Lock"]
   },
   {
     id: 5,
-    title: "Honda Civic 2023",
-    price: 28500,
-    image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&auto=format&fit=crop&q=80",
-    make: "Honda",
-    model: "Civic",
-    year: 2023,
-    mileage: "8,200 mi",
-    fuel: "Hybrid",
-    transmission: "Automatic",
-    badge: "premium",
+    title: "Maruti Suzuki Swift ZXi 2022",
+    price: 680000,
+    image: "https://images.unsplash.com/photo-494976388531-d1058494cdd8?w=800&auto=format&fit=crop&q=80",
+    make: "Maruti Suzuki",
+    model: "Swift",
+    year: 2022,
+    mileage: "12,200 km",
+    fuel: "Petrol",
+    transmission: "Manual",
+    badge: "verified",
     category: "car",
-    description: "Highly fuel-efficient hybrid with cutting edge styling. Honda Sensing suite, dual-zone climate control, power moonroof, and wireless smartphone charger.",
-    features: ["Air Conditioning", "Power Windows", "ABS", "Airbags", "Sunroof/Moonroof", "Bluetooth", "Navigation System"]
+    description: "Pristine Maruti Suzuki Swift hatch under single owner registry. Highly efficient K-series petrol engine, automatic climate setups, touch Smartplay infotainment, and perfect mechanical compliance.",
+    features: ["Air Conditioning", "Power Windows", "ABS", "Airbags", "Bluetooth", "Climate Control"]
   },
   {
     id: 6,
-    title: "Ford Mustang 2021",
-    price: 32750,
-    image: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&auto=format&fit=crop&q=80",
-    make: "Ford",
-    model: "Mustang",
+    title: "BMW 3-Series Luxury Line 2021",
+    price: 4250000,
+    image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80",
+    make: "BMW",
+    model: "3 Series",
     year: 2021,
-    mileage: "24,100 mi",
+    mileage: "19,100 km",
     fuel: "Petrol",
-    transmission: "Manual",
-    badge: null,
+    transmission: "Automatic",
+    badge: "premium",
     category: "car",
-    description: "Aggressive performance and pure driving enjoyment. 2.3L EcoBoost engine, active exhaust modes, performance steering settings, and dynamic drive options.",
-    features: ["Power Steering", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Toggle Sports Modes"]
+    description: "Elite performance and comfort parameters. Custom imported Luxury Line featuring high-grade leather upholstery, ambient glass cockpit panels, active dynamic drive profiles, and verified service record archives.",
+    features: ["Power Steering", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Toggle Sports Modes", "Sunroof/Moonroof"]
   }
 ];
 

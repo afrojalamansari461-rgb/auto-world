@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "UserListing": {
+      "title": "UserListing",
+      "description": "A vehicle listing posted by an authenticated user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "string" },
+        "price": { "type": "integer" },
+        "condition": { "type": "integer" },
+        "mileage": { "type": "string" },
+        "fuelType": { "type": "string" },
+        "description": { "type": "string" },
+        "negotiable": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerEmail": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "location": { "type": "string" },
+        "features": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "transmission": { "type": "string" },
+        "engineSize": { "type": "string" },
+        "featured": { "type": "boolean" },
+        "urgent": { "type": "boolean" },
+        "photos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "src": { "type": "string" },
+              "alt": { "type": "string" }
+            }
+          }
+        },
+        "datePosted": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "sold"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "make", "model", "year", "price", "sellerName", "sellerEmail", "sellerPhone", "location", "status", "userId"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A contact submission message",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["name", "email", "subject", "message", "date"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "User premium tier subscription state",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "plan": { "type": "string" },
+        "price": { "type": "integer" },
+        "period": { "type": "string", "enum": ["monthly", "yearly"] },
+        "startDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "expired"] }
+      },
+      "required": ["userId", "plan", "price", "period", "startDate", "status"]
+    },
+    "BuyerPass": {
+      "title": "BuyerPass",
+      "description": "Indicates that a signed-in buyer has paid the 1rs activation fee to unlock full listings access",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "paid": { "type": "boolean" },
+        "date": { "type": "string" }
+      },
+      "required": ["userId", "paid", "date"]
+    }
+  },
+  "firestore": {
+    "listings": {
+      "schema": "UserListing",
+      "description": "A global collection containing all pre-owned vehicle listing briefs posted by verified users"
+    },
+    "messages": {
+      "schema": "Message",
+      "description": "Contact form help and support tickets submitted by visitors"
+    },
+    "subscriptions": {
+      "schema": "Subscription",
+      "description": "User subscriptions maps by userId key to restrict access to pro features and dashboards"
+    },
+    "buyer_passes": {
+      "schema": "BuyerPass",
+      "description": "Locks or unlocks complete vehicle spec sheets matching structural paywalls"
+    }
+  }
+}
