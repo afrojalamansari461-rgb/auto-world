@@ -3,7 +3,7 @@ import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star,
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { User } from "firebase/auth";
 import { setDoc, doc, collection } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, handleFirestoreError, OperationType } from "../firebase";
 
 interface SellTabProps {
   setActiveTab: (tab: string) => void;
@@ -260,8 +260,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       if (currentUser) {
         try {
           await setDoc(doc(db, "listings", generatedId), listingData);
-        } catch (err) {
-          console.error("Firestore listing publish failed: ", err);
+        } catch (err: any) {
+          handleFirestoreError(err, OperationType.WRITE, `listings/${generatedId}`);
+          throw err;
         }
       }
 

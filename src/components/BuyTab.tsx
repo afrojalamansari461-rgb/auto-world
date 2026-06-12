@@ -3,7 +3,7 @@ import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, F
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
-import { db, auth, googleProvider, signInWithPopup } from "../firebase";
+import { db, auth, googleProvider, signInWithPopup, handleFirestoreError, OperationType } from "../firebase";
 import { User as FirebaseUser } from "firebase/auth";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
@@ -160,10 +160,30 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       try {
         const { getDoc, doc } = await import("firebase/firestore");
         const docRef = doc(db, "buyer_passes", currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().paid) {
-          setHasPaidPass(true);
+        let docSnap;
+        try {
+          docSnap = await getDoc(docRef);
+        } catch (dbErr: any) {
+          handleFirestoreError(dbErr, OperationType.GET, `buyer_passes/${currentUser.uid}`);
           return;
+        }
+        if (docSnap && docSnap.exists() && docSnap.data().paid) {
+          const passDateStr = docSnap.data().date;
+          if (passDateStr) {
+            const passDate = new Date(passDateStr);
+            const now = new Date();
+            const diffHours = (now.getTime() - passDate.getTime()) / (1000 * 60 * 60);
+
+            if (diffHours < 24) {
+              setHasPaidPass(true);
+              const remainingMinutes = Math.floor((24 - diffHours) * 60);
+              updateTimerText(remainingMinutes);
+              return;
+            } else {
+              setHasPaidPass(false);
+              return;
+            }
+          }
         }
       } catch (err) {
         console.warn("Firestore pass check failed, falling back to local storage:", err);
@@ -171,8 +191,21 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
       // 2. Check local fallback
       const localPass = localStorage.getItem(`autoWorld_buyerPass_${currentUser.uid}`);
-      if (localPass === "true") {
-        setHasPaidPass(true);
+      const localPassDate = localStorage.getItem(`autoWorld_buyerPassDate_${currentUser.uid}`);
+      if (localPass === "true" && localPassDate) {
+        const passDate = new Date(localPassDate);
+        const now = new Date();
+        const diffHours = (now.getTime() - passDate.getTime()) / (1000 * 60 * 60);
+
+        if (diffHours < 24) {
+          setHasPaidPass(true);
+          const remainingMinutes = Math.floor((24 - diffHours) * 60);
+          updateTimerText(remainingMinutes);
+        } else {
+          setHasPaidPass(false);
+          localStorage.removeItem(`autoWorld_buyerPass_${currentUser.uid}`);
+          localStorage.removeItem(`autoWorld_buyerPassDate_${currentUser.uid}`);
+        }
       } else {
         setHasPaidPass(false);
       }
@@ -199,7 +232,13 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       
       // 1. Fetch from Firestore
       try {
-        const querySnapshot = await getDocs(collection(db, "listings"));
+        let querySnapshot;
+        try {
+          querySnapshot = await getDocs(collection(db, "listings"));
+        } catch (dbErr: any) {
+          handleFirestoreError(dbErr, OperationType.LIST, "listings");
+          throw dbErr;
+        }
         querySnapshot.forEach((docSnap) => {
           userListings.push(docSnap.data() as UserListing);
         });
@@ -304,20 +343,26 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     setTimeout(async () => {
       try {
         const { doc, setDoc } = await import("firebase/firestore");
-        await setDoc(doc(db, "buyer_passes", currentUser.uid), {
-          userId: currentUser.uid,
-          paid: true,
-          date: new Date().toISOString()
-        });
+        try {
+          await setDoc(doc(db, "buyer_passes", currentUser.uid), {
+            userId: currentUser.uid,
+            paid: true,
+            date: new Date().toISOString()
+          });
+        } catch (dbErr: any) {
+          handleFirestoreError(dbErr, OperationType.WRITE, `buyer_passes/${currentUser.uid}`);
+          throw dbErr;
+        }
       } catch (err) {
         console.error("Failed to sync buyer pass to Firestore:", err);
       }
 
       localStorage.setItem(`autoWorld_buyerPass_${currentUser.uid}`, "true");
+      localStorage.setItem(`autoWorld_buyerPassDate_${currentUser.uid}`, new Date().toISOString());
       setHasPaidPass(true);
       setIsPaying(false);
       setShowPaymentModal(false);
-      showToast("₹1 Buyer Pass Activated! You now have unrestricted lifetime access to all car listings inside your account.", "success");
+      showToast("₹1 Buyer Pass Activated! You now have unrestricted 24-hour premium access to all luxury vehicle listings.", "success");
     }, 1500);
   };
 
@@ -401,9 +446,17 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       {/* Floating active permit counter if pass is paid */}
       {hasPaidPass && (
         <div className="max-w-7xl mx-auto px-4 mb-8">
-          <div className="bg-[#FAF8F5] w-full p-4 border border-stone-900/10 flex items-center gap-3 text-stone-900">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span className="text-xs uppercase tracking-widest font-extrabold text-stone-900 font-mono">Premium Account Pass Active — Unrestricted lifetime catalog access is enabled</span>
+          <div className="bg-[#FAF8F5] w-full p-4 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-stone-900 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span className="text-xs uppercase tracking-widest font-extrabold text-stone-900 font-mono">Premium Account Pass Active — Unrestricted 24-hour catalog access is enabled</span>
+            </div>
+            {countdownText && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-amber-200 shrink-0 self-start sm:self-auto">
+                <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse shrink-0" />
+                <span>Expires in: {countdownText}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -778,7 +831,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ type: "spring", stiffness: 80, damping: 14, delay: (idx % 6) * 0.05 }}
-                      whileHover={{ scale: 1.03, y: -6, transition: { duration: 0.15 } }}
+                      whileHover={{ scale: 1.025, y: -4, transition: { type: "spring", stiffness: 350, damping: 25 } }}
                       whileTap={{ scale: 0.97 }}
                       className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md"
                     >
@@ -899,8 +952,8 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
       {/* DETAILED DAILY PERMIT INLET MODAL */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-          <div className="bg-[#F4F1EA] border-2 border-stone-900 w-full max-w-lg shadow-2xl relative max-h-[95vh] overflow-y-auto animate-in zoom-in-95 duration-200 p-6 sm:p-8">
+        <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in-0 duration-300">
+          <div className="bg-[#F4F1EA] border-2 border-stone-900 w-full max-w-lg shadow-2xl relative max-h-[95vh] overflow-y-auto animate-in fade-in-0 slide-in-from-bottom-12 zoom-in-95 duration-300 ease-out p-6 sm:p-8">
             <button
               onClick={() => setShowPaymentModal(false)}
               className="absolute top-4 right-4 text-stone-900 hover:text-stone-605 font-mono text-lg cursor-pointer"
@@ -923,7 +976,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 </div>
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900">Standard Buyer Pass</h3>
-                  <div className="text-2xl font-serif font-black text-stone-950 mt-0.5">₹1 <span className="text-xs text-stone-500 font-light">/ lifetime pass</span></div>
+                  <div className="text-2xl font-serif font-black text-stone-950 mt-0.5">₹1 <span className="text-xs text-stone-500 font-light">/ 24-hours access pass</span></div>
                   <ul className="text-[10px] text-stone-600 space-y-0.5 mt-2 list-disc list-inside uppercase tracking-wider font-bold">
                     <li>Query complete engine checklists</li>
                     <li>Access direct seller tele-contacts</li>

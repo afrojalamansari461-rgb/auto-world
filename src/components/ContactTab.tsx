@@ -48,7 +48,12 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
 
     // Synchronize to Firestore
     try {
-      await addDoc(collection(db, "messages"), compiledMsg);
+      try {
+        await addDoc(collection(db, "messages"), compiledMsg);
+      } catch (dbErr: any) {
+        handleFirestoreError(dbErr, OperationType.WRITE, "messages");
+        throw dbErr;
+      }
     } catch (err) {
       console.warn("Firestore contact save failed, utilizing local storage fallback:", err);
       try {

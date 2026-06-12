@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronRight, Gauge, AlertCircle, Compass } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronRight, Gauge, AlertCircle, Compass, Share2 } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -7,10 +7,10 @@ import BuyTab from "./components/BuyTab";
 import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
-import { Vehicle, UserListing } from "./types";
+import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { auth, db } from "./firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { auth, db, handleFirestoreError, OperationType } from "./firebase";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -40,6 +40,103 @@ export default function App() {
     location: ""
   });
 
+  // Handle URL deep-linking on initial load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const vehicleIdStr = params.get("vehicle");
+    if (vehicleIdStr) {
+      const vehicleId = parseInt(vehicleIdStr, 10);
+      if (!isNaN(vehicleId)) {
+        // 1. Try finding in DEFAULT_VEHICLES
+        const foundDefault = DEFAULT_VEHICLES.find(v => v.id === vehicleId);
+        if (foundDefault) {
+          setSelectedVehicle(foundDefault);
+          return;
+        }
+
+        // 2. Try finding in localStorage & Firestore
+        const loadDeepLinkVehicle = async () => {
+          let userListings: UserListing[] = [];
+          
+          // Try local storage first
+          try {
+            const stored = localStorage.getItem("autoWorld_listings");
+            if (stored) {
+              userListings = JSON.parse(stored);
+            }
+          } catch (e) {
+            console.error("Local storage lookup failed", e);
+          }
+
+          // Try Firestore
+          try {
+            let querySnapshot = await getDocs(collection(db, "listings"));
+            querySnapshot.forEach((docSnap) => {
+              const data = docSnap.data() as UserListing;
+              if (!userListings.some(item => item.id === data.id)) {
+                userListings.push(data);
+              }
+            });
+          } catch (e) {
+            console.warn("Firestore fetch for deep link failed, using available local data:", e);
+          }
+
+          // Find match
+          const matchingIndex = userListings.findIndex((_, index) => (1000 + index) === vehicleId);
+          if (matchingIndex !== -1) {
+            const listing = userListings[matchingIndex];
+            let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
+            if (listing.type === "car" || listing.type === "suv") {
+              image = listing.photos && listing.photos.length > 0 
+                ? listing.photos[0].src 
+                : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
+            } else if (listing.type === "truck") {
+              image = listing.photos && listing.photos.length > 0 
+                ? listing.photos[0].src 
+                : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
+            } else if (listing.type === "motorcycle") {
+              image = listing.photos && listing.photos.length > 0 
+                ? listing.photos[0].src 
+                : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
+            } else if (listing.type === "bicycle") {
+              image = listing.photos && listing.photos.length > 0 
+                ? listing.photos[0].src 
+                : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
+            }
+
+            const mappedVehicle: Vehicle = {
+              id: 1000 + matchingIndex, 
+              title: listing.title,
+              price: listing.price,
+              image: image,
+              make: listing.make,
+              model: listing.model,
+              year: parseInt(listing.year) || 2022,
+              mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
+              fuel: listing.fuelType ? (listing.fuelType.charAt(0).toUpperCase() + listing.fuelType.slice(1)) : "Petrol",
+              transmission: listing.transmission ? (listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1)) : "Automatic",
+              badge: listing.featured ? "premium" : listing.urgent ? "hot" : null,
+              description: listing.description,
+              features: listing.features,
+              category: listing.type,
+              isUserListing: true,
+              listingId: listing.id,
+              sellerName: listing.sellerName,
+              sellerEmail: listing.sellerEmail,
+              sellerPhone: listing.sellerPhone,
+              location: listing.location,
+              negotiable: listing.negotiable
+            };
+
+            setSelectedVehicle(mappedVehicle);
+          }
+        };
+
+        loadDeepLinkVehicle();
+      }
+    }
+  }, []);
+
   // Listen for Firebase Auth changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (usr) => {
@@ -54,7 +151,13 @@ export default function App() {
     const syncSubscription = async () => {
       if (currentUser) {
         try {
-          const subDoc = await getDoc(doc(db, "subscriptions", currentUser.uid));
+          let subDoc;
+          try {
+            subDoc = await getDoc(doc(db, "subscriptions", currentUser.uid));
+          } catch (dbErr: any) {
+            handleFirestoreError(dbErr, OperationType.GET, `subscriptions/${currentUser.uid}`);
+            throw dbErr;
+          }
           if (subDoc.exists()) {
             const data = subDoc.data();
             setSubscriptionActive(data.status === "active");
@@ -220,8 +323,8 @@ export default function App() {
 
       {/* Global Interactive detailed vehicle model overlay sheets */}
       {selectedVehicle && (
-        <div className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-          <div className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] overflow-y-auto border border-stone-300 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in-0 duration-300">
+          <div className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] overflow-y-auto border border-stone-300 animate-in fade-in-0 slide-in-from-bottom-12 zoom-in-95 duration-300 ease-out">
             {/* Close trigger */}
             <button
               onClick={() => setSelectedVehicle(null)}
@@ -398,7 +501,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4.5 pt-2 font-sans">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 font-sans">
                   <button
                     onClick={() => {
                       toggleFavorite(selectedVehicle.id);
@@ -412,6 +515,21 @@ export default function App() {
                   >
                     <Heart className={`w-4 h-4 ${favorites.includes(selectedVehicle.id) ? "fill-current" : ""}`} />
                     {favorites.includes(selectedVehicle.id) ? "Saved bookmark" : "Add to Favorites"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}${window.location.pathname}?vehicle=${selectedVehicle.id}`;
+                      navigator.clipboard.writeText(shareUrl).then(() => {
+                        showToast("Link Copied — Deep-linked listing URL ready to share!", "success");
+                      }).catch((e) => {
+                        console.error("Clipboard copy failed", e);
+                        showToast("Failed to copy link.", "error");
+                      });
+                    }}
+                    className="flex-1 py-3.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-[10px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 cursor-pointer transition"
+                  >
+                    <Share2 className="w-4 h-4 text-stone-900 shrink-0" />
+                    Share Listing
                   </button>
                   <button
                     onClick={() => {
