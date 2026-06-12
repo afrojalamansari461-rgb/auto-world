@@ -121,8 +121,8 @@ export default function Footer({ setActiveTab }: FooterProps) {
         </div>
 
         {/* Bottom copyright */}
-        <div className="pt-8 border-t border-stone-900 text-center text-[10px] text-stone-605 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans uppercase tracking-widest">
-          <p>© {new Date().getFullYear()} Auto World. All rights reserved.</p>
+        <div className="pt-8 border-t border-stone-900 text-center text-[10px] text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans uppercase tracking-widest">
+          <p>© {new Date().getFullYear()} Auto World. All rights reserved. Crafted by <span className="text-[#F4F1EA] font-semibold transition-colors duration-200">Afroj</span>.</p>
           <p className="italic text-stone-500 font-serif">
             Precision • Quality • Verity
           </p>
