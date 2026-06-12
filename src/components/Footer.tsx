@@ -129,11 +129,11 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#F4F1EA] shrink-0" />
-                <span>+91 1800 123 4567</span>
+                <span>+91 7666232753</span>
               </li>
               <li className="flex items-center gap-2.5 mb-2">
                 <Mail className="w-4 h-4 text-[#F4F1EA] shrink-0" />
-                <span className="font-mono">support@autoworld.com</span>
+                <span className="font-mono font-semibold text-stone-300">afrojalamansari461@gmail.com</span>
               </li>
             </ul>
           </div>
