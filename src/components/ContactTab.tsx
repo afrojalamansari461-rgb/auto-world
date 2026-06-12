@@ -126,8 +126,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Call support</h3>
                   <p className="text-xs text-stone-500 font-semibold leading-relaxed font-mono">
-                    Toll-Free: +91 1805 123 4567<br />
-                    Desk sales: +91 1805 765 4321
+                    Direct: +91 7666232753<br />
+                    Toll-Free: +91 1805 123 4567
                   </p>
                 </div>
               </div>
@@ -140,7 +140,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Email coordinates</h3>
                   <p className="text-xs text-stone-505 font-mono">
-                    info@autoworld.com<br />
+                    afrojalamansari461@gmail.com<br />
                     support@autoworld.com
                   </p>
                 </div>

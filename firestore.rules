@@ -111,5 +111,19 @@ service cloud.firestore {
         && data.paid is bool && data.paid == true
         && data.date is string && data.date.size() <= 50;
     }
+
+    // USER FAVORITES RULES
+    match /user_favorites/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() 
+        && request.auth.uid == userId
+        && isValidUserFavorites(incoming());
+      allow delete: if false;
+    }
+
+    function isValidUserFavorites(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.favoriteIds is list && data.favoriteIds.size() <= 100;
+    }
   }
 }

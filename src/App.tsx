@@ -7,20 +7,52 @@ import BuyTab from "./components/BuyTab";
 import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
+import SignInModal from "./components/SignInModal";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, setDoc } from "firebase/firestore";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("home");
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState<boolean>(false);
   const [subscriptionActive, setSubscriptionActive] = useState<boolean>(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState<boolean>(false);
+  const [openLegalDoc, setOpenLegalDoc] = useState<"privacy" | "terms" | "fraud" | "support" | null>(null);
   
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+
+  // Global high-contrast theme state
+  const [theme, setTheme] = useState<string>(() => {
+    try {
+      const storedTheme = localStorage.getItem("autoWorld_theme");
+      if (storedTheme === "dark" || storedTheme === "light") {
+        return storedTheme;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return "light";
+  });
+
+  // Keep dark class on root html synchronized with the state
+  useEffect(() => {
+    try {
+      const root = document.documentElement;
+      if (theme === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+      localStorage.setItem("autoWorld_theme", theme);
+    } catch (err) {
+      console.error("Theme set error", err);
+    }
+  }, [theme]);
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToast({ message, type });
@@ -187,8 +219,109 @@ export default function App() {
     syncSubscription();
   }, [currentUser]);
 
+  // load saved favorites on auth state change
+  useEffect(() => {
+    const loadFavorites = async () => {
+      setFavoritesLoaded(false);
+      if (currentUser) {
+        try {
+          const favRef = doc(db, "user_favorites", currentUser.uid);
+          let favSnap;
+          try {
+            favSnap = await getDoc(favRef);
+          } catch (dbErr: any) {
+            handleFirestoreError(dbErr, OperationType.GET, `user_favorites/${currentUser.uid}`);
+            throw dbErr;
+          }
+          if (favSnap.exists()) {
+            const data = favSnap.data();
+            if (data && Array.isArray(data.favoriteIds)) {
+              setFavorites(data.favoriteIds);
+            } else {
+              setFavorites([]);
+            }
+          } else {
+            // Check if there are some local favorites first before setting to empty
+            const localStored = localStorage.getItem("autoWorld_favorites");
+            if (localStored) {
+              try {
+                const parsed = JSON.parse(localStored);
+                if (Array.isArray(parsed)) {
+                  setFavorites(parsed);
+                  // Sync local data up to user_favorites in Firestore
+                  await setDoc(favRef, {
+                    userId: currentUser.uid,
+                    favoriteIds: parsed,
+                    lastUpdated: new Date().toISOString()
+                  });
+                } else {
+                  setFavorites([]);
+                }
+              } catch (e) {
+                setFavorites([]);
+              }
+            } else {
+              setFavorites([]);
+            }
+          }
+          setFavoritesLoaded(true);
+        } catch (err) {
+          console.error("Error reading Firestore user_favorites:", err);
+          // Keep favoritesLoaded to false to prevent a transient read error from overwriting remote data
+        }
+      } else {
+        // Logged out / offline fallback
+        const localStored = localStorage.getItem("autoWorld_favorites");
+        if (localStored) {
+          try {
+            const parsed = JSON.parse(localStored);
+            if (Array.isArray(parsed)) {
+              setFavorites(parsed);
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          setFavorites([]);
+        }
+        setFavoritesLoaded(true);
+      }
+    };
+    loadFavorites();
+  }, [currentUser]);
+
+  // Save favorites locally and sync with Firestore when modified by the user
+  useEffect(() => {
+    if (!favoritesLoaded) return;
+
+    const saveFavorites = async () => {
+      // 1. Always save locally
+      try {
+        localStorage.setItem("autoWorld_favorites", JSON.stringify(favorites));
+      } catch (e) {
+        console.error("Local storage favorites save failed", e);
+      }
+
+      // 2. Save to Firestore if logged in
+      if (currentUser) {
+        try {
+          const favRef = doc(db, "user_favorites", currentUser.uid);
+          await setDoc(favRef, {
+            userId: currentUser.uid,
+            favoriteIds: favorites,
+            lastUpdated: new Date().toISOString()
+          });
+        } catch (err: any) {
+          console.error("Failed to sync favorites with Firestore:", err);
+        }
+      }
+    };
+    saveFavorites();
+  }, [favorites, currentUser, favoritesLoaded]);
+
   // Set initial favorite structures
   const toggleFavorite = (id: number) => {
+    if (!favoritesLoaded) return;
     if (favorites.includes(id)) {
       setFavorites(favorites.filter((favId) => favId !== id));
     } else {
@@ -272,6 +405,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         subscriptionActive={subscriptionActive}
         currentUser={currentUser}
+        onSignInClick={() => setIsSignInModalOpen(true)}
       />
 
       {/* Primary tab views switcher */}
@@ -295,6 +429,7 @@ export default function App() {
             subscriptionActive={subscriptionActive}
             showToast={showToast}
             currentUser={currentUser}
+            onSignInClick={() => setIsSignInModalOpen(true)}
           />
         )}
 
@@ -567,8 +702,180 @@ export default function App() {
         </div>
       )}
 
+      {/* Central Login Modal overlaid with Netlify optimization options */}
+      <SignInModal
+        isOpen={isSignInModalOpen}
+        onClose={() => setIsSignInModalOpen(false)}
+        showToast={showToast}
+      />
+
       {/* Global Footer */}
-      <Footer setActiveTab={setActiveTab} />
+      <Footer setActiveTab={setActiveTab} onOpenLegal={setOpenLegalDoc} />
+
+      {/* Global Legal & Advisor Support Modal */}
+      {openLegalDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#FAF8F5] text-stone-900 border border-stone-800 w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative font-sans">
+            {/* Header / Newspaper Column Header banner */}
+            <div className="border-b-4 border-stone-950 p-6 flex items-start justify-between bg-[#F4F1EA]">
+              <div>
+                <span className="text-[9px] font-mono font-black uppercase tracking-[0.25em] text-[#B45309] block mb-1">
+                  OFFICIAL AUTO WORLD GAZETTE
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black tracking-tight text-stone-950 uppercase">
+                  {openLegalDoc === "privacy" && "Privacy & Personal Data Protocol"}
+                  {openLegalDoc === "terms" && "Consolidated Terms of Service"}
+                  {openLegalDoc === "fraud" && "Shield & Anti-Fraud Guidelines"}
+                  {openLegalDoc === "support" && "Advisor Desk & VIP Support"}
+                </h2>
+                <p className="text-[10px] text-stone-500 font-serif italic mt-1 uppercase tracking-wider">
+                  Effective Date: June 12, 2026 • Certified Broker Network
+                </p>
+              </div>
+              <button 
+                onClick={() => setOpenLegalDoc(null)}
+                className="text-xs font-mono font-bold uppercase tracking-wider text-stone-500 hover:text-stone-950 px-3 py-1.5 border border-stone-300 hover:border-stone-900 bg-white transition cursor-pointer"
+              >
+                [ CLOSE ]
+              </button>
+            </div>
+
+            {/* Scrollable Document Body */}
+            <div className="p-6 sm:p-8 overflow-y-auto text-sm leading-relaxed text-stone-850 space-y-6 max-h-[60vh] font-sans">
+              
+              {openLegalDoc === "privacy" && (
+                <>
+                  <div className="p-4 bg-stone-100 border-l-4 border-stone-950 text-xs font-serif italic mb-6">
+                    "At Auto World, we maintain pristine records. This registry is designed to verify real car listings without compromising client contacts, keeping personal identifiers shielded from automated crawlers."
+                  </div>
+                  
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">1. Scope of Private Registers</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      We collect user email addresses, account verification states, and listing details submitted voluntarily via the Sell portal. All transactions, private notes, and coordinates are handled over secure encrypted connections.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">2. Firestore Data Persistence</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      User listing assets, favorite bookmarks, and transaction logs are synchronized selectively to cloud storage (Firestore). We protect these records strictly under authenticated permission rules, preventing non-owner modifications. Anonymous visitors can query public archives but never view backoffice communication.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">3. Regional Regulation & VIN Scans</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Auto World cross-references vehicle chassis indices and vehicle registration plates against national transport archives to prevent duplication and trace listing authenticity.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">4. Cookie Configuration & Tracking</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      We use minor persistence tokens (localStorage) to memorize theme toggles and session states. No third-party behavioral profiling or telemetry cookies are ever distributed on this site.
+                    </p>
+                  </section>
+                </>
+              )}
+
+              {openLegalDoc === "terms" && (
+                <>
+                  <div className="p-4 bg-stone-100 border-l-4 border-stone-950 text-xs font-serif italic mb-6">
+                    "Please read these conditions carefully before publishing details. By utilizing the platform, you acknowledge that Auto World acts exclusively as an independent aggregator and digital matching hub."
+                  </div>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">1. Marketplace Intermediation</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Auto World provides listing space and advisor tools for registered vehicles. We are NOT party to the physical transfers, title handovers, registration signoffs, or cash transfers, which remain the sole liability of the buyer and seller.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">2. Seller Responsibilities</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      As a seller, you warrant that all specifications (mileage, engine status, fuel categories, and photo reports) represent the honest condition of the vehicle. Intentionally posting mismatched mock data, false mileage declarations, or third-party vehicle VINs will result in listing deletion and credential ban.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">3. Premium Passes & Subscriptions</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Subscription fees ($1 Pass index tier or recurring Pro listings) are billed securely. These digital privileges unlock contact metrics, live advisor reports, and high-visibility search listings instantly. Premium payments are non-refundable.
+                    </p>
+                  </section>
+                </>
+              )}
+
+              {openLegalDoc === "fraud" && (
+                <>
+                  <div className="p-4 bg-stone-105 border-l-4 border-stone-950 text-xs font-serif italic mb-6">
+                    "Protecting our global subscriber network from broker deception is our primary concern. Read these safety rules before initiating bank transfers."
+                  </div>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-[#DC2626] tracking-tight pb-1">1. The Verified Handover Principle</h3>
+                    <p className="text-xs text-red-700 font-bold leading-normal">
+                      NEVER send upfront reservation tokens, token deposits, or shipping margins without physically inspecting the vehicle, reviewing the logbook, and checking the matching chassis number yourself.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">2. Common Red Flags to Avoid</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Be highly suspicious of listings priced significantly below market averages, sellers who refuse personal inspections, or brokers who request swift digital cash wire transfers instantly.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">3. Reporting Deceptive Listings</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      If you notice any suspicious photos, invalid telephone coordinates, or fraudulent listings while searching our Buy catalog, click the "Report Deceptive Listing" button immediately or submit a Contact Ticket. Verified reports are reviewed inside 4 hours.
+                    </p>
+                  </section>
+                </>
+              )}
+
+              {openLegalDoc === "support" && (
+                <>
+                  <div className="p-4 bg-stone-100 border-l-4 border-stone-950 text-xs font-serif italic mb-6">
+                    "Our verified trading advisors are available 24 hours a day to facilitate negotiations and review mechanic report details."
+                  </div>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">1. Standard Response Times</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Our support desk processes ticket queues chronologically. All standard user inquiries are answered inside 12 to 24 hours.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">2. Premium VIP Hotline</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Pro Subscribers and $1 Daily Pass holders receive prioritised ticket handling. VIP routing routes your questions to our senior listing mechanics instantly for live advice on paint depth, engine safety, or registration transfers.
+                    </p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">3. Escalation Desk</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      For serious broker disputes, listing claims, or technical firestore account sync bottlenecks, please submit an inquiry form or contact our customer success email layout directly.
+                    </p>
+                  </section>
+                </>
+              )}
+
+            </div>
+
+            {/* Footer / Decorative stamp */}
+            <div className="p-4 border-t border-stone-250 bg-stone-100 flex items-center justify-between text-[10px] font-mono text-stone-500">
+              <span>SECURITY CERTIFIED BY AUTO WORLD</span>
+              <span className="font-black">© 2026 AFROJ ALAM ANSARI</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

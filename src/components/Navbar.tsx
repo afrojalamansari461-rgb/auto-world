@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Car, Menu, X, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon } from "lucide-react";
 import { User } from "firebase/auth";
-import { signInWithPopup, auth, googleProvider, signOut } from "../firebase";
+import { auth, signOut } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 
 interface NavbarProps {
@@ -9,19 +9,12 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
   subscriptionActive: boolean;
   currentUser: User | null;
+  onSignInClick: () => void;
 }
 
-export default function Navbar({ activeTab, setActiveTab, subscriptionActive, currentUser }: NavbarProps) {
+export default function Navbar({ activeTab, setActiveTab, subscriptionActive, currentUser, onSignInClick }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  const handleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      console.error("Auth sign-in failed: ", err);
-    }
-  };
 
   const handleSignOut = async () => {
     try {
@@ -136,7 +129,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleSignIn}
+                onClick={onSignInClick}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-[0.1em] transition-all cursor-pointer font-bold bg-[#FAF8F5] shadow-sm"
               >
                 <LogIn className="w-3.5 h-3.5" />
@@ -214,6 +207,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 </button>
               );
             })}
+
             <hr className="border-stone-900/10 my-1" />
             <div className="flex flex-col gap-2">
               {currentUser ? (
@@ -238,7 +232,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 </div>
               ) : (
                 <button
-                  onClick={handleSignIn}
+                  onClick={onSignInClick}
                   className="w-full flex items-center justify-center gap-2 p-2.5 bg-stone-900 text-white text-xs font-sans uppercase tracking-widest transition-all font-bold"
                 >
                   <LogIn className="w-4 h-4" />

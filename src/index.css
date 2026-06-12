@@ -1,21 +1,151 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import "tailwindcss";
 
-@theme {
+:root {
   --font-serif: "Fraunces", Georgia, serif;
   --font-sans: "Plus Jakarta Sans", "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+
+  --paper: #F4F1EA;
+  --ink: #1A1A1A;
+  --cream: #FAF8F5;
+  --charcoal: #2D2D2D;
+  --editorial-border: rgba(26, 26, 26, 0.15);
+  --shadow-color: rgba(26, 26, 26, 0.05);
+}
+
+/* High contrast dark theme values when dark class is active */
+.dark, :root.dark, html.dark {
+  --paper: #0C0C0B;
+  --cream: #141413;
+  --ink: #FAF9F6;
+  --charcoal: #D8D5CC;
+  --editorial-border: rgba(244, 241, 234, 0.22);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+}
+
+@theme {
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
   
-  --color-paper: #F4F1EA;
-  --color-ink: #1A1A1A;
-  --color-cream: #FAF8F5;
-  --color-charcoal: #2D2D2D;
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-cream: var(--cream);
+  --color-charcoal: var(--charcoal);
 }
 
 body {
-  background-color: #F4F1EA;
-  color: #1A1A1A;
+  background-color: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Selector overrides for any hardcoded backgrounds and texts when dark mode is enabled */
+.dark body {
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+.dark [class*="bg-[#F4F1EA]"],
+.dark .bg-\[\#F4F1EA\],
+.dark .bg-stone-100 {
+  background-color: var(--paper) !important;
+}
+
+.dark [class*="bg-[#FAF8F5]"],
+.dark .bg-\[\#FAF8F5\],
+.dark .bg-white,
+.dark .bg-stone-50,
+.dark .bg-slate-50 {
+  background-color: var(--cream) !important;
+}
+
+.dark [class*="text-[#1A1A1A]"],
+.dark .text-\[\#1A1A1A\] {
+  color: var(--ink) !important;
+}
+
+.dark .text-stone-900,
+.dark .text-stone-950,
+.dark .text-stone-850,
+.dark .text-stone-800,
+.dark .text-stone-750,
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: var(--ink) !important;
+}
+
+.dark .text-stone-605,
+.dark .text-stone-705,
+.dark .text-stone-700,
+.dark .text-stone-600,
+.dark .text-stone-500,
+.dark .text-stone-400,
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: var(--charcoal) !important;
+}
+
+.dark .border-stone-300,
+.dark .border-stone-250,
+.dark .border-stone-200,
+.dark .border-stone-350,
+.dark .border-stone-400,
+.dark .border-stone-800,
+.dark .editorial-border {
+  border-color: var(--editorial-border) !important;
+}
+
+.dark [class*="border-stone-900/15"],
+.dark .border-stone-900\/15,
+.dark [class*="border-stone-900/10"],
+.dark .border-stone-900\/10 {
+  border-color: var(--editorial-border) !important;
+}
+
+.dark .bg-stone-950,
+.dark .bg-stone-900,
+.dark .bg-stone-905 {
+  background-color: var(--ink) !important;
+  color: var(--paper) !important;
+}
+
+.dark .bg-stone-900 .text-white,
+.dark .bg-stone-900 .text-\[\#F4F1EA\] {
+  color: var(--paper) !important;
+}
+
+.dark .bg-stone-200,
+.dark .bg-stone-150 {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--ink) !important;
+}
+
+.dark .hover\:bg-stone-200:hover,
+.dark .hover\:bg-stone-300:hover,
+.dark .hover\:bg-\[\#F4F1EA\]:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: var(--ink) !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--cream) !important;
+  color: var(--ink) !important;
+  border-color: var(--editorial-border) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--charcoal) !important;
+  opacity: 0.65;
+}
+
+.dark .shadow-sm {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Print editorial styling hooks */
@@ -35,9 +165,9 @@ body {
 }
 
 .editorial-border {
-  border-color: rgba(26, 26, 26, 0.15);
+  border-color: var(--editorial-border);
 }
 
 .editorial-shadow {
-  box-shadow: 0 4px 20px -2px rgba(26, 26, 26, 0.05);
+  box-shadow: 0 4px 20px -2px var(--shadow-color);
 }

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, updateProfile } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
@@ -9,7 +9,7 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // Standard login / logout functions
-export { signInWithPopup, signOut };
+export { signInWithPopup, signOut, signInAnonymously, updateProfile };
 
 // Connectivity check constraint
 async function testConnection() {

@@ -20,6 +20,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
+  const [customMake, setCustomMake] = useState("");
+  const [customModel, setCustomModel] = useState("");
 
   // STEP 2: Details
   const [condition, setCondition] = useState(3); // 1-5 rating
@@ -169,7 +171,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         showToast("Please select the vehicle category type.", "error");
         return;
       }
-      if (!make || !model || !year) {
+      const actualMake = make === "Other" ? customMake : make;
+      const actualModel = model === "Other" ? customModel : model;
+      if (!actualMake || !actualModel || !year) {
         showToast("Please specify make, model, and manufacturing year.", "error");
         return;
       }
@@ -215,13 +219,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setIsPublishing(true);
 
     setTimeout(async () => {
+      const actualMake = make === "Other" ? customMake : make;
+      const actualModel = model === "Other" ? customModel : model;
       const generatedId = `AW-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const newListing: UserListing = {
         id: generatedId,
-        title: `${year} ${make} ${model}`,
+        title: `${year} ${actualMake} ${actualModel}`,
         type: vehicleType,
-        make: make,
-        model: model,
+        make: actualMake,
+        model: actualModel,
         year: year,
         price: parseInt(askingPrice),
         condition: condition,
@@ -288,6 +294,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setMake("");
     setModel("");
     setYear("");
+    setCustomMake("");
+    setCustomModel("");
     setCondition(3);
     setMileage("");
     setFuelType("");
@@ -380,6 +388,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 ))}
                 {vehicleType && <option value="Other">Other / Custom</option>}
               </select>
+              {make === "Other" && (
+                <input
+                  type="text"
+                  placeholder="Enter the car brand (e.g. Tesla, Pagani, etc.)"
+                  value={customMake}
+                  onChange={(e) => setCustomMake(e.target.value)}
+                  className="w-full mt-1.5 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -396,6 +413,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 ))}
                 {make && <option value="Other">Other Model</option>}
               </select>
+              {(model === "Other" || make === "Other") && (
+                <input
+                  type="text"
+                  placeholder="Enter the model name (e.g. Model Y, Huayra, etc.)"
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                  className="w-full mt-1.5 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">

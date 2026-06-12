@@ -82,6 +82,20 @@
         "date": { "type": "string" }
       },
       "required": ["userId", "paid", "date"]
+    },
+    "UserFavorites": {
+      "title": "UserFavorites",
+      "description": "User saved/favorited list of vehicle and listing IDs",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "favoriteIds": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "lastUpdated": { "type": "string" }
+      },
+      "required": ["userId", "favoriteIds"]
     }
   },
   "firestore": {
@@ -100,6 +114,10 @@
     "buyer_passes": {
       "schema": "BuyerPass",
       "description": "Locks or unlocks complete vehicle spec sheets matching structural paywalls"
+    },
+    "user_favorites": {
+      "schema": "UserFavorites",
+      "description": "Store list of saved/bookmarked vehicle IDs synchronized to user accounts"
     }
   }
 }

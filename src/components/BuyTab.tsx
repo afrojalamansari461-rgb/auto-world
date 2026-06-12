@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2 } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
@@ -15,6 +15,7 @@ interface BuyTabProps {
   subscriptionActive: boolean;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   currentUser: FirebaseUser | null;
+  onSignInClick: () => void;
 }
 
 // Historical price trends in India (in Lakhs INR ex-showroom)
@@ -111,7 +112,30 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, subscriptionActive, showToast, currentUser }: BuyTabProps) {
+export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, subscriptionActive, showToast, currentUser, onSignInClick }: BuyTabProps) {
+  // Scroll to top state & effect
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
   // Payment states
   const [hasPaidPass, setHasPaidPass] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -132,6 +156,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   const [locationValue, setLocationValue] = useState(searchFilters.location || "");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+
+  // Recent Searches state
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   // Data Visualization States
   const [isVizHubExpanded, setIsVizHubExpanded] = useState(true);
@@ -306,6 +333,49 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
     fetchAllListings();
   }, []);
+
+  // Synchronise recent search queries on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_recentSearches");
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Failed to load recent searches", e);
+    }
+  }, []);
+
+  // Debounced storage effect for search queries
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || trimmed.length < 3) return;
+
+    const timer = setTimeout(() => {
+      try {
+        const stored = localStorage.getItem("autoWorld_recentSearches");
+        let list: string[] = stored ? JSON.parse(stored) : [];
+        list = list.filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
+        list.unshift(trimmed);
+        list = list.slice(0, 3);
+        localStorage.setItem("autoWorld_recentSearches", JSON.stringify(list));
+        setRecentSearches(list);
+      } catch (err) {
+        console.error("Failed to save recent search", err);
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const clearRecentSearches = () => {
+    try {
+      localStorage.removeItem("autoWorld_recentSearches");
+      setRecentSearches([]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Sync passed search filters
   useEffect(() => {
@@ -719,6 +789,31 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                   className="w-full pl-10 pr-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
                 />
               </div>
+              
+              {/* Recent searches history tags container */}
+              {recentSearches.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 text-[10px] animate-in fade-in-0 duration-200">
+                  <span className="text-stone-500 font-bold uppercase tracking-wider text-[9px] flex items-center gap-0.5">
+                    <Clock className="w-2.5 h-2.5 shrink-0" /> Recent:
+                  </span>
+                  {recentSearches.map((sq, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSearchQuery(sq)}
+                      title={`Re-apply search query: ${sq}`}
+                      className="px-2 py-0.5 bg-stone-200 hover:bg-stone-300 text-stone-850 rounded-sm font-sans text-[10px] font-medium transition cursor-pointer flex items-center gap-0.5"
+                    >
+                      {sq}
+                    </button>
+                  ))}
+                  <button
+                    onClick={clearRecentSearches}
+                    className="ml-auto text-stone-400 hover:text-stone-700 transition text-[9px] uppercase tracking-wider font-bold cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -927,20 +1022,13 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                   ) : (
                     <div className="space-y-3">
                       <button
-                        onClick={async () => {
-                          try {
-                            await signInWithPopup(auth, googleProvider);
-                            showToast("Logged in successfully with Google!", "success");
-                          } catch (err: any) {
-                            showToast(err.message, "error");
-                          }
-                        }}
-                        className="px-6 py-3.5 bg-stone-905 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-stone-850 cursor-pointer flex items-center gap-2 mx-auto"
+                        onClick={onSignInClick}
+                        className="px-6 py-3.5 bg-stone-900 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-stone-850 cursor-pointer flex items-center gap-2 mx-auto transition"
                       >
-                        <User className="w-4 h-4 shrink-0 text-white" />
-                        Login with Google to pay
+                        <User className="w-4 h-4 shrink-0 text-[#F4F1EA]" />
+                        Sign In to Unlock All Specs
                       </button>
-                      <p className="text-[9px] uppercase font-bold text-stone-450 tracking-wider leading-none">Authentication required for registering your pass</p>
+                      <p className="text-[9px] uppercase font-bold text-stone-500 tracking-wider leading-none">Authentication required for registering your pass</p>
                     </div>
                   )}
                 </div>
@@ -1095,6 +1183,31 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           </div>
         </div>
       )}
+
+      {/* Floating Scroll to Top */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            key="scroll-to-top"
+            initial={{ opacity: 0, y: 50, scale: 0.85, rotate: -3 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+            exit={{ opacity: 0, y: 35, scale: 0.9, transition: { duration: 0.15 } }}
+            transition={{ type: "spring", stiffness: 350, damping: 24 }}
+            whileHover={{ 
+              scale: 1.05,
+              y: -4,
+            }}
+            whileTap={{ scale: 0.96 }}
+            onClick={scrollToTop}
+            id="scroll-to-top-btn"
+            className="fixed bottom-8 right-8 z-50 flex items-center justify-center gap-2 px-4 py-3 bg-[#FAF8F5] text-stone-900 border border-stone-300 shadow-xl font-sans font-extrabold uppercase tracking-widest text-[9px] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all duration-200"
+            title="Scroll to Top"
+          >
+            <ArrowUp className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 shrink-0" />
+            <span className="hidden sm:inline">Back to Top</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
