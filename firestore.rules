@@ -14,13 +14,12 @@ service cloud.firestore {
 
     function isRegisteredUser() {
       return isSignedIn() && 
-             request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+             request.auth.token.get('email', null) != null;
     }
 
     function isAdmin() {
       return isSignedIn() && 
-             request.auth.token != null && 
-             request.auth.token.get('email', '') == 'afrojalamansari461@gmail.com';
+             request.auth.token.get('email', null) == 'afrojalamansari461@gmail.com';
     }
 
     function incoming() {
@@ -37,7 +36,7 @@ service cloud.firestore {
 
     // Listings RULES
     match /listings/{listingId} {
-      allow get, list: if true;
+      allow read: if true;
       allow create: if isRegisteredUser() 
         && isValidId(listingId)
         && incoming().userId == request.auth.uid
