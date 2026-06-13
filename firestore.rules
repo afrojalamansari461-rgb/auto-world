@@ -15,7 +15,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && 
              request.auth.token != null && 
-             request.auth.token.keys().hasAll(['email']) && 
+             'email' in request.auth.token && 
              request.auth.token.email == 'afrojalamansari461@gmail.com';
     }
 
@@ -91,10 +91,10 @@ service cloud.firestore {
     }
 
     // SUBSCRIPTIONS RULES
-    match /subscriptions/{userId} {
-      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+    match /subscriptions/{subId} {
+      allow read: if (isSignedIn() && request.auth.uid == subId) || isAdmin();
       allow create, update: if isSignedIn() 
-        && request.auth.uid == userId
+        && request.auth.uid == subId
         && isValidSubscription(incoming());
       allow delete: if false;
     }
@@ -109,10 +109,10 @@ service cloud.firestore {
     }
 
     // BUYER PASSES RULES
-    match /buyer_passes/{userId} {
-      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+    match /buyer_passes/{buyerId} {
+      allow read: if (isSignedIn() && request.auth.uid == buyerId) || isAdmin();
       allow create, update: if isSignedIn() 
-        && request.auth.uid == userId
+        && request.auth.uid == buyerId
         && isValidBuyerPass(incoming());
       allow delete: if false;
     }
@@ -124,10 +124,10 @@ service cloud.firestore {
     }
 
     // USER FAVORITES RULES
-    match /user_favorites/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
+    match /user_favorites/{favId} {
+      allow read: if isSignedIn() && request.auth.uid == favId;
       allow create, update: if isSignedIn() 
-        && request.auth.uid == userId
+        && request.auth.uid == favId
         && isValidUserFavorites(incoming());
       allow delete: if false;
     }
