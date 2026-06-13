@@ -255,7 +255,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         urgent: urgentListing,
         photos: photos,
         datePosted: new Date().toISOString(),
-        status: "active"
+        status: "pending"
       };
 
       const listingData = {
@@ -834,7 +834,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           <div className="bg-[#F4F1EA] border border-stone-300 p-5 text-left max-w-sm mx-auto text-xs space-y-1 text-stone-800 font-mono">
             <div><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Receipt Blueprint ID</span> {publishedListingId}</div>
             <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Time Catalogued</span> {publishedTimeStr}</div>
-            <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Status Inflow</span> Vetted / Active</div>
+            <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Status Inflow</span> Pending Admin Approval</div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 max-w-sm mx-auto">

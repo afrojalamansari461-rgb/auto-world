@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, Menu, X, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon } from "lucide-react";
+import { Car, Menu, X, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert } from "lucide-react";
 import { User } from "firebase/auth";
 import { auth, signOut } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
@@ -32,6 +32,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const isUserAdmin = currentUser?.email === "afrojalamansari461@gmail.com";
+
   const navItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "buy", label: "Buy", icon: Search },
@@ -39,6 +41,10 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     { id: "premium", label: "Premium", icon: Crown },
     { id: "contact", label: "Contact", icon: Mail },
   ];
+
+  if (isUserAdmin) {
+    navItems.push({ id: "admin", label: "Admin Panel", icon: ShieldAlert });
+  }
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId);

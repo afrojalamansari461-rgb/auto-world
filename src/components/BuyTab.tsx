@@ -252,7 +252,18 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // STEP 3: Load listings combining both hardcoded assets & localStorage & Firestore collections
   useEffect(() => {
-    const defaultData = [...DEFAULT_VEHICLES];
+    let defaultData = [...DEFAULT_VEHICLES];
+    try {
+      const hiddenStr = localStorage.getItem("autoWorld_hidden_defaults");
+      if (hiddenStr) {
+        const hiddenIds = JSON.parse(hiddenStr);
+        if (Array.isArray(hiddenIds)) {
+          defaultData = defaultData.filter(v => !hiddenIds.includes(v.id));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse hidden default vehicles:", e);
+    }
     
     const fetchAllListings = async () => {
       let userListings: UserListing[] = [];
@@ -267,7 +278,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           throw dbErr;
         }
         querySnapshot.forEach((docSnap) => {
-          userListings.push(docSnap.data() as UserListing);
+          const lData = docSnap.data() as UserListing;
+          if (lData.status === "active" || lData.status === undefined) {
+            userListings.push(lData);
+          }
         });
       } catch (err) {
         console.warn("Firestore fetch listings failed, falling back to local list:", err);
@@ -280,7 +294,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           const localListings: UserListing[] = JSON.parse(stored);
           localListings.forEach((localItem) => {
             if (!userListings.some(item => item.id === localItem.id)) {
-              userListings.push(localItem);
+              if (localItem.status === "active" || localItem.status === undefined) {
+                userListings.push(localItem);
+              }
             }
           });
         }

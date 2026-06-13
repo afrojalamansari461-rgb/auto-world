@@ -12,6 +12,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return isSignedIn() && 
+             request.auth.token != null && 
+             request.auth.token.keys().hasAll(['email']) && 
+             (request.auth.token.email == 'afrojalamansari461@gmail.com' || 
+              request.auth.token.email.matches('(?i)^afrojalamansari461@gmail\\.com$'));
+    }
+
     function incoming() {
       return request.resource.data;
     }
@@ -31,7 +39,8 @@ service cloud.firestore {
         && isValidId(listingId)
         && incoming().userId == request.auth.uid
         && isValidListing(incoming());
-      allow update: if isSignedIn()
+      allow update: if isAdmin() || (
+        isSignedIn()
         && incoming().userId == request.auth.uid
         && existing().userId == request.auth.uid
         && incoming().userId == existing().userId
@@ -42,9 +51,11 @@ service cloud.firestore {
           'negotiable', 'status', 'features', 'transmission', 'engineSize', 
           'photos', 'featured', 'urgent', 'doors', 'seats', 'bikeType', 
           'bikeEngine', 'bikeGears', 'bikeMileage', 'bicycleType', 'frameSize', 'gears'
-        ]);
-      allow delete: if isSignedIn()
-         && existing().userId == request.auth.uid;
+        ])
+      );
+      allow delete: if isAdmin() || (
+         isSignedIn() && existing().userId == request.auth.uid
+      );
     }
 
     function isValidListing(data) {
@@ -60,15 +71,16 @@ service cloud.firestore {
         && data.sellerName is string && data.sellerName.size() <= 200
         && data.sellerEmail is string && data.sellerEmail.size() <= 200
         && data.location is string && data.location.size() <= 200
-        && data.status is string && (data.status == 'active' || data.status == 'sold')
+        && data.status is string && (data.status == 'active' || data.status == 'sold' || data.status == 'pending')
         && data.userId is string && data.userId.size() <= 128;
     }
 
     // CONTACT MESSAGES RULES
     match /messages/{messageId} {
       allow create: if isValidId(messageId) && isValidMessage(incoming());
-      // Client cannot read, list or delete tickets
-      allow read, update, delete: if false;
+      // Client cannot read, list or delete tickets unless they are the Admin
+      allow read, delete: if isAdmin();
+      allow update: if false;
     }
 
     function isValidMessage(data) {
@@ -81,7 +93,7 @@ service cloud.firestore {
 
     // SUBSCRIPTIONS RULES
     match /subscriptions/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       allow create, update: if isSignedIn() 
         && request.auth.uid == userId
         && isValidSubscription(incoming());
@@ -99,7 +111,7 @@ service cloud.firestore {
 
     // BUYER PASSES RULES
     match /buyer_passes/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       allow create, update: if isSignedIn() 
         && request.auth.uid == userId
         && isValidBuyerPass(incoming());

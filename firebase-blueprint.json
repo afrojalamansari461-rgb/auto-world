@@ -40,7 +40,7 @@
           }
         },
         "datePosted": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "sold"] },
+        "status": { "type": "string", "enum": ["active", "sold", "pending"] },
         "userId": { "type": "string" }
       },
       "required": ["id", "title", "type", "make", "model", "year", "price", "sellerName", "sellerEmail", "sellerPhone", "location", "status", "userId"]

@@ -20,6 +20,7 @@ export interface Vehicle {
   sellerPhone?: string;
   location?: string;
   negotiable?: string;
+  status?: "pending" | "active" | "sold";
 }
 
 export interface UserListing {
@@ -55,7 +56,7 @@ export interface UserListing {
   urgent?: boolean;
   photos: { src: string; alt: string }[];
   datePosted: string;
-  status: "active" | "sold";
+  status: "pending" | "active" | "sold";
 }
 
 export interface Subscription {

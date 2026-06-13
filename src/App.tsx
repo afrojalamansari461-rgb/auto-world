@@ -7,6 +7,7 @@ import BuyTab from "./components/BuyTab";
 import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
+import AdminPanel from "./components/AdminPanel";
 import SignInModal from "./components/SignInModal";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
@@ -453,6 +454,15 @@ export default function App() {
 
         {activeTab === "contact" && (
           <ContactTab showToast={showToast} currentUser={currentUser} />
+        )}
+
+        {activeTab === "admin" && (
+          <AdminPanel 
+            showToast={showToast} 
+            currentUser={currentUser} 
+            onQuickView={handleQuickView}
+            setActiveTab={setActiveTab}
+          />
         )}
       </main>
 
