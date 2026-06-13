@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown } from "lucide-react";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { User } from "firebase/auth";
-import { setDoc, doc, collection } from "firebase/firestore";
+import { setDoc, doc, collection, query, where, getDocs } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 
 interface SellTabProps {
@@ -10,10 +10,44 @@ interface SellTabProps {
   subscriptionActive: boolean;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   currentUser: User | null;
+  onSignInClick?: () => void;
 }
 
-export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser }: SellTabProps) {
+export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser, onSignInClick }: SellTabProps) {
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Free Tier Listing Limiting
+  const [existingListingsCount, setExistingListingsCount] = useState(0);
+  const [checkingCount, setCheckingCount] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.isAnonymous) {
+      setExistingListingsCount(0);
+      return;
+    }
+
+    const checkListingsLimit = async () => {
+      setCheckingCount(true);
+      try {
+        const q = query(collection(db, "listings"), where("userId", "==", currentUser.uid));
+        const snap = await getDocs(q);
+        setExistingListingsCount(snap.size);
+      } catch (e) {
+        console.warn("Failed to check listings count in Firestore:", e);
+        try {
+          const stored = localStorage.getItem("autoWorld_listings");
+          const localListings = stored ? JSON.parse(stored) : [];
+          setExistingListingsCount(localListings.length);
+        } catch (localErr) {
+          console.error(localErr);
+        }
+      } finally {
+        setCheckingCount(false);
+      }
+    };
+
+    checkListingsLimit();
+  }, [currentUser]);
 
   // STEP 1: Basic details
   const [vehicleType, setVehicleType] = useState("");
@@ -207,6 +241,17 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const handlePublishListing = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!currentUser || currentUser.isAnonymous) {
+      showToast("Authentication required to catalogue listing. Please sign in or create an account to publish.", "info");
+      onSignInClick();
+      return;
+    }
+
+    if (existingListingsCount >= 2 && !subscriptionActive) {
+      showToast("Free tier limit reached. Please upgrade to a Premium plan to list more than 2 vehicles.", "error");
+      return;
+    }
+
     if (!askingPrice || isNaN(parseInt(askingPrice)) || parseInt(askingPrice) <= 0) {
       showToast("Please specify an appropriate asking price.", "error");
       return;
@@ -255,12 +300,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         urgent: urgentListing,
         photos: photos,
         datePosted: new Date().toISOString(),
-        status: "pending"
+        status: "active"
       };
 
       const listingData = {
         ...newListing,
-        userId: currentUser ? currentUser.uid : "offline"
+        userId: currentUser.uid
       };
 
       if (currentUser) {
@@ -281,9 +326,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         console.error("Local storage error:", err);
       }
 
+      setExistingListingsCount(prev => prev + 1);
       setPublishedListingId(generatedId);
       setPublishedTimeStr(new Date().toLocaleString());
       setIsPublishing(false);
+      showToast("Successfully Listed your vehicle!", "success");
       setCurrentStep(6); // Success step screen (changed from 5)
       window.scrollTo({ top: 100, behavior: "smooth" });
     }, 1800);
@@ -315,6 +362,27 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   return (
     <div id="sell-form-wrapper" className="max-w-4xl mx-auto px-4 py-12 animate-in fade-in duration-305 bg-[#F4F1EA] text-[#1A1A1A] font-sans">
       
+      {existingListingsCount >= 2 && !subscriptionActive && (
+        <div className="mb-6 bg-amber-50 border border-amber-300 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-[#9A3412]">Free Tier Limit Reached ({existingListingsCount}/2 Listings)</h4>
+              <p className="text-[11px] text-stone-605 mt-1 leading-relaxed font-semibold">
+                You have reached your free account limit of 2 listings. To publish additional vehicles, please upgrade to a Premium setup or delete previous listings.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("premium")}
+            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-sans font-bold uppercase tracking-widest transition whitespace-nowrap"
+          >
+            Go Premium
+          </button>
+        </div>
+      )}
+
       {/* Top wizard stepper */}
       {currentStep <= 5 && (
         <div className="mb-10 border-b border-stone-300 pb-8">
@@ -834,7 +902,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           <div className="bg-[#F4F1EA] border border-stone-300 p-5 text-left max-w-sm mx-auto text-xs space-y-1 text-stone-800 font-mono">
             <div><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Receipt Blueprint ID</span> {publishedListingId}</div>
             <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Time Catalogued</span> {publishedTimeStr}</div>
-            <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Status Inflow</span> Pending Admin Approval</div>
+            <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Status Inflow</span> Active &amp; Visible</div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 max-w-sm mx-auto">

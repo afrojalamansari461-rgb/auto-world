@@ -200,7 +200,7 @@ export default function App() {
   useEffect(() => {
     let ignore = false;
     const syncSubscription = async () => {
-      if (currentUser) {
+      if (currentUser && !currentUser.isAnonymous) {
         try {
           let subDoc;
           try {
@@ -258,7 +258,7 @@ export default function App() {
     const loadFavorites = async () => {
       if (ignore) return;
       setFavoritesLoaded(false);
-      if (currentUser) {
+      if (currentUser && !currentUser.isAnonymous) {
         try {
           const favRef = doc(db, "user_favorites", currentUser.uid);
           let favSnap;
@@ -355,7 +355,7 @@ export default function App() {
       }
 
       // 2. Save to Firestore if logged in
-      if (currentUser) {
+      if (currentUser && !currentUser.isAnonymous) {
         try {
           const favRef = doc(db, "user_favorites", currentUser.uid);
           await setDoc(favRef, {
@@ -527,6 +527,7 @@ export default function App() {
             subscriptionActive={subscriptionActive}
             showToast={showToast}
             currentUser={currentUser}
+            onSignInClick={() => setIsSignInModalOpen(true)}
           />
         )}
 

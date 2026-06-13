@@ -171,13 +171,19 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // STEP 1: Check Payment Access Status
   useEffect(() => {
+    // If the user is the certified owner, bypass completely!
+    if (currentUser?.email === "afrojalamansari461@gmail.com") {
+      setHasPaidPass(true);
+      return;
+    }
+
     // If the user has a premium plan, they automatically bypass the daily pass wall!
     if (subscriptionActive) {
       setHasPaidPass(true);
       return;
     }
 
-    if (!currentUser) {
+    if (!currentUser || currentUser.isAnonymous) {
       setHasPaidPass(false);
       return;
     }
@@ -420,8 +426,8 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       showToast("Please specify card credentials first.", "error");
       return;
     }
-    if (!currentUser) {
-      showToast("Please log in first to purchase the Buyer Pass in your account.", "error");
+    if (!currentUser || currentUser.isAnonymous) {
+      showToast("Registered account required. Please sign in with Google or Email first to purchase a Buyer Pass.", "error");
       return;
     }
 
@@ -535,13 +541,24 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           <div className="bg-[#FAF8F5] w-full p-4 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-stone-900 shadow-sm">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span className="text-xs uppercase tracking-widest font-extrabold text-stone-900 font-mono">Premium Account Pass Active — Unrestricted 24-hour catalog access is enabled</span>
+              <span className="text-xs uppercase tracking-widest font-extrabold text-stone-900 font-mono">
+                {currentUser?.email === "afrojalamansari461@gmail.com"
+                  ? "SYSTEM OWNER ACCESS: UNRESTRICTED GLOBAL CATALOG ACCESS IS PERMANENTLY ENABLED"
+                  : "Premium Account Pass Active — Unrestricted 24-hour catalog access is enabled"}
+              </span>
             </div>
-            {countdownText && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-amber-200 shrink-0 self-start sm:self-auto">
-                <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse shrink-0" />
-                <span>Expires in: {countdownText}</span>
+            {currentUser?.email === "afrojalamansari461@gmail.com" ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-emerald-200 shrink-0 self-start sm:self-auto animate-pulse">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span>Infinity Access</span>
               </div>
+            ) : (
+              countdownText && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-amber-200 shrink-0 self-start sm:self-auto">
+                  <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse shrink-0" />
+                  <span>Expires in: {countdownText}</span>
+                </div>
+              )
             )}
           </div>
         </div>
@@ -934,18 +951,27 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           ) : (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {displayedVehicles.map((car, idx) => {
-                  const isFav = favorites.includes(car.id);
-                  return (
-                    <motion.div
-                      key={car.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ type: "spring", stiffness: 80, damping: 14, delay: (idx % 6) * 0.05 }}
-                      whileHover={{ scale: 1.025, y: -4, transition: { type: "spring", stiffness: 350, damping: 25 } }}
-                      whileTap={{ scale: 0.97 }}
-                      className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md"
-                    >
+                <AnimatePresence mode="popLayout">
+                  {displayedVehicles.map((car, idx) => {
+                    const isFav = favorites.includes(car.id);
+                    return (
+                      <motion.div
+                        key={car.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 90,
+                          damping: 15,
+                          delay: (idx % 3) * 0.06,
+                          layout: { type: "spring", stiffness: 180, damping: 25 }
+                        }}
+                        whileHover={{ scale: 1.025, y: -4, transition: { type: "spring", stiffness: 350, damping: 25 } }}
+                        whileTap={{ scale: 0.97 }}
+                        className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md"
+                      >
                       <div className="relative h-56 overflow-hidden bg-stone-150 grayscale-20 group-hover:grayscale-0 transition-all duration-300">
                         <img
                           src={car.image}
@@ -1013,6 +1039,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                     </motion.div>
                   );
                 })}
+                </AnimatePresence>
               </div>
 
               {/* Padlock status module if has not paid pass and database contains hidden elements */}
@@ -1028,7 +1055,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                     </p>
                   </div>
                   
-                  {currentUser ? (
+                  {currentUser && !currentUser.isAnonymous ? (
                     <button
                       onClick={() => setShowPaymentModal(true)}
                       className="px-6 py-3.5 bg-stone-900 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-stone-850 cursor-pointer"

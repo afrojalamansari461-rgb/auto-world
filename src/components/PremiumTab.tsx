@@ -13,6 +13,7 @@ interface PremiumTabProps {
 }
 
 export default function PremiumTab({ subscriptionActive, setSubscriptionActive, showToast, currentUser }: PremiumTabProps) {
+  const isOwner = currentUser?.email === "afrojalamansari461@gmail.com";
   const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"pro" | "business" | "">("");
@@ -189,137 +190,184 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
       <div className="space-y-16">
         {/* SECTION 1: Plans & Packages */}
         <section id="plans-section" className="scroll-mt-12 space-y-12">
-          {/* Pricing switcher */}
-          <div className="flex justify-center items-center gap-3.5 mb-12">
-            <button
-              onClick={() => setPeriod("monthly")}
-              className={`px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
-                period === "monthly" ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" : "bg-[#FAF8F5] text-stone-605 hover:bg-stone-200 border border-stone-300"
-              }`}
-            >
-              Monthly Billings
-            </button>
-            <button
-              onClick={() => setPeriod("yearly")}
-              className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
-                period === "yearly" ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" : "bg-[#FAF8F5] text-stone-605 hover:bg-stone-200 border border-stone-300"
-              }`}
-            >
-              Yearly Billings
-              <span className="px-2 py-0.5 bg-emerald-250 text-emerald-950 font-black uppercase tracking-wider text-[9px]">Save 20%</span>
-            </button>
-          </div>
-
-          {/* Plan Cards */}
-          <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Card: Basic */}
-            <div className="bg-[#FAF8F2] p-6.5 border border-stone-300 flex flex-col justify-between hover:shadow-md transition duration-300">
-              <div className="space-y-4">
-                <span className="text-[10px] font-bold font-mono tracking-widest text-stone-500 block uppercase">Free tier</span>
-                <h3 className="text-xl font-serif font-black text-stone-900 leading-none">Basic Free</h3>
-                <div className="pt-2">
-                  <span className="text-3xl font-serif font-black text-stone-900">₹0</span>
-                  <span className="text-xs text-stone-500 font-bold uppercase tracking-wider block mt-1">Free lifetime</span>
+          {isOwner ? (
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="bg-[#FAF8F2] border-4 border-stone-905 p-8 sm:p-12 shadow-2xl relative overflow-hidden text-center">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-stone-900/10 rounded-full translate-x-12 -translate-y-12 border border-stone-300" />
+                <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-stone-900/5 rounded-full border border-stone-300/50" />
+                
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-900 text-[#F4F1EA] mb-6 rounded-full border border-amber-400 shadow-lg relative">
+                  <Crown className="w-8 h-8 fill-amber-405 text-amber-400 animate-bounce" />
                 </div>
-                <p className="text-xs text-stone-600 leading-relaxed font-semibold">
-                  Designed for individual casual brokers posting single listed items for basic localized visibility queries.
-                </p>
-                <hr className="border-stone-200" />
-                <ul className="text-xs text-stone-700 space-y-3 font-semibold">
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 1 Active Listing</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 30 Days expiration</li>
-                  <li className="flex items-center gap-1.5 text-stone-400"><X className="w-4 h-4 text-stone-400 shrink-0" /> No Featured Listings</li>
-                  <li className="flex items-center gap-1.5 text-stone-400"><X className="w-4 h-4 text-stone-400 shrink-0" /> Standard support ranks</li>
-                </ul>
-              </div>
-              <button
-                className="w-full mt-6 py-3 border border-stone-200 text-xs font-bold uppercase tracking-widest text-[#1A1A1A]/40 bg-stone-100 cursor-not-allowed"
-                disabled
-              >
-                {subscriptionActive ? "Basic Inactive" : "Active Default plan"}
-              </button>
-            </div>
-
-            {/* Card: Pro */}
-            <div className="bg-[#FAF8F2] p-6.5 border-2 border-stone-950 flex flex-col justify-between relative shadow-sm hover:shadow-xl transition duration-300">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-stone-950 text-[#F4F1EA] px-4 py-1 text-[9px] font-bold uppercase tracking-widest font-mono">
-                Most Popular
-              </div>
-              <div className="space-y-4 pt-1">
-                <span className="text-[10px] font-bold font-mono tracking-widest text-stone-605 block uppercase">Expert Broker</span>
-                <h3 className="text-xl font-serif font-black text-stone-900 leading-none">Professional Pro</h3>
-                <div className="pt-2">
-                  <span className="text-3xl font-serif font-black text-stone-905">₹{proPrice.toLocaleString("en-IN")}</span>
-                  <span className="text-xs text-stone-500 font-bold uppercase tracking-wider block mt-1">/ Month {period === "yearly" ? "billed yearly" : ""}</span>
+                
+                <h3 className="text-3xl font-serif font-black uppercase text-stone-950 tracking-tight mb-2">
+                  Owner Not Need This
+                </h3>
+                <span className="inline-block text-[10px] font-mono tracking-widest uppercase bg-stone-900 text-amber-400 px-3.5 py-1 font-bold mb-6">
+                  Certified Administrator: afrojalamansari461@gmail.com
+                </span>
+                
+                <div className="max-w-xl mx-auto space-y-4 text-xs sm:text-sm font-semibold uppercase tracking-wider text-stone-605">
+                  <p className="leading-relaxed">
+                    Auto World billing protocols are bypassed. Your verified owner sign-in profile holds absolute sovereign access, unlocking premium lists, direct broker routes, and custom dashboard indices globally.
+                  </p>
+                  
+                  <div className="border-y border-stone-300 py-4 my-6 grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Unlimited</span>
+                      <span className="text-[9px] text-stone-400 block font-mono">Listings Allowed</span>
+                    </div>
+                    <div className="border-x border-stone-200">
+                      <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Infinity</span>
+                      <span className="text-[9px] text-stone-400 block font-mono">Validity Period</span>
+                    </div>
+                    <div>
+                      <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">VIP Gold</span>
+                      <span className="text-[9px] text-stone-400 block font-mono">Access Permit</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-[10px] font-mono font-bold text-stone-400 normal-case leading-snug">
+                    "With administrative ownership comes absolute system-wide command. Thank you for maintaining the pristine registry records of Auto World."
+                  </p>
                 </div>
-                <p className="text-xs text-stone-600 leading-relaxed font-semibold">
-                  Best suited for active individual dealer agents seeking top visibility and verified organic lead check tags.
-                </p>
-                <hr className="border-stone-200" />
-                <ul className="text-xs text-stone-700 space-y-3 font-semibold">
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 10 Active Listings</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 60 Days validation</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 2 Featured spots / mo</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 24/7 Priority Helpline</li>
-                </ul>
               </div>
-              
-              {subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("pro") ? (
-                <button
-                  onClick={handleCancelSubscription}
-                  className="w-full mt-6 py-3 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold uppercase tracking-widest transition border border-red-300 cursor-pointer"
-                >
-                  {confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"}
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleOpenCheckout("pro", proPrice)}
-                  className="w-full mt-6 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-extrabold uppercase tracking-widest transition shadow-sm cursor-pointer block text-center"
-                >
-                  Upgrade to Pro
-                </button>
-              )}
             </div>
+          ) : (
+            <>
+              {/* Pricing switcher */}
+              <div className="flex justify-center items-center gap-3.5 mb-12">
+                <button
+                  onClick={() => setPeriod("monthly")}
+                  className={`px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
+                    period === "monthly" ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" : "bg-[#FAF8F5] text-stone-605 hover:bg-stone-200 border border-stone-300"
+                  }`}
+                >
+                  Monthly Billings
+                </button>
+                <button
+                  onClick={() => setPeriod("yearly")}
+                  className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
+                    period === "yearly" ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" : "bg-[#FAF8F5] text-stone-605 hover:bg-stone-200 border border-stone-300"
+                  }`}
+                >
+                  Yearly Billings
+                  <span className="px-2 py-0.5 bg-emerald-250 text-emerald-950 font-black uppercase tracking-wider text-[9px]">Save 20%</span>
+                </button>
+              </div>
 
-            {/* Card: Business */}
-            <div className="bg-[#FAF8F2] p-6.5 border border-stone-300 flex flex-col justify-between hover:shadow-md transition duration-300">
-              <div className="space-y-4">
-                <span className="text-[10px] font-bold font-mono tracking-widest text-[#1A1A1A]/60 block uppercase">Dealership fleet</span>
-                <h3 className="text-xl font-serif font-black text-stone-900 leading-none">Dealership Business</h3>
-                <div className="pt-2">
-                  <span className="text-3xl font-serif font-black text-stone-900">₹{businessPrice.toLocaleString("en-IN")}</span>
-                  <span className="text-xs text-stone-500 font-bold uppercase tracking-wider block mt-1">/ Month {period === "yearly" ? "billed yearly" : ""}</span>
+              {/* Plan Cards */}
+              <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Card: Basic */}
+                <div className="bg-[#FAF8F2] p-6.5 border border-stone-300 flex flex-col justify-between hover:shadow-md transition duration-300">
+                  <div className="space-y-4">
+                    <span className="text-[10px] font-bold font-mono tracking-widest text-stone-500 block uppercase">Free tier</span>
+                    <h3 className="text-xl font-serif font-black text-stone-900 leading-none">Basic Free</h3>
+                    <div className="pt-2">
+                      <span className="text-3xl font-serif font-black text-stone-900">₹0</span>
+                      <span className="text-xs text-stone-500 font-bold uppercase tracking-wider block mt-1">Free lifetime</span>
+                    </div>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Designed for individual casual brokers posting single listed items for basic localized visibility queries.
+                    </p>
+                    <hr className="border-stone-200" />
+                    <ul className="text-xs text-stone-700 space-y-3 font-semibold">
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 1 Active Listing</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 30 Days expiration</li>
+                      <li className="flex items-center gap-1.5 text-stone-400"><X className="w-4 h-4 text-stone-400 shrink-0" /> No Featured Listings</li>
+                      <li className="flex items-center gap-1.5 text-stone-400"><X className="w-4 h-4 text-stone-400 shrink-0" /> Standard support ranks</li>
+                    </ul>
+                  </div>
+                  <button
+                    className="w-full mt-6 py-3 border border-stone-200 text-xs font-bold uppercase tracking-widest text-[#1A1A1A]/40 bg-stone-100 cursor-not-allowed"
+                    disabled
+                  >
+                    {subscriptionActive ? "Basic Inactive" : "Active Default plan"}
+                  </button>
                 </div>
-                <p className="text-xs text-stone-605 leading-relaxed font-semibold">
-                  Unlimited list volume, bulk import scripts, and absolute VIP dedicated support panels safeguarding inventories.
-                </p>
-                <hr className="border-stone-200" />
-                <ul className="text-xs text-stone-700 space-y-3 font-semibold">
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Unlimited active listings</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 90 Days visibility list</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Unlimited Featured slots</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Dedicated Account Broker</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Custom API XML listings feed</li>
-                </ul>
-              </div>
 
-              {subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("business") ? (
-                <button
-                  onClick={handleCancelSubscription}
-                  className="w-full mt-6 py-3 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold uppercase tracking-widest transition border border-red-300 cursor-pointer"
-                >
-                  {confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"}
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleOpenCheckout("business", businessPrice)}
-                  className="w-full mt-6 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest transition cursor-pointer block border border-stone-900 text-center"
-                >
-                  Upgrade to Business
-                </button>
-              )}
-            </div>
-          </div>
+                {/* Card: Pro */}
+                <div className="bg-[#FAF8F2] p-6.5 border-2 border-stone-950 flex flex-col justify-between relative shadow-sm hover:shadow-xl transition duration-300">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-stone-950 text-[#F4F1EA] px-4 py-1 text-[9px] font-bold uppercase tracking-widest font-mono">
+                    Most Popular
+                  </div>
+                  <div className="space-y-4 pt-1">
+                    <span className="text-[10px] font-bold font-mono tracking-widest text-stone-605 block uppercase">Expert Broker</span>
+                    <h3 className="text-xl font-serif font-black text-stone-900 leading-none">Professional Pro</h3>
+                    <div className="pt-2">
+                      <span className="text-3xl font-serif font-black text-stone-905">₹{proPrice.toLocaleString("en-IN")}</span>
+                      <span className="text-xs text-stone-500 font-bold uppercase tracking-wider block mt-1">/ Month {period === "yearly" ? "billed yearly" : ""}</span>
+                    </div>
+                    <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      Best suited for active individual dealer agents seeking top visibility and verified organic lead check tags.
+                    </p>
+                    <hr className="border-stone-200" />
+                    <ul className="text-xs text-stone-700 space-y-3 font-semibold">
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 10 Active Listings</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 60 Days validation</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 2 Featured spots / mo</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 24/7 Priority Helpline</li>
+                    </ul>
+                  </div>
+                  
+                  {subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("pro") ? (
+                    <button
+                      onClick={handleCancelSubscription}
+                      className="w-full mt-6 py-3 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold uppercase tracking-widest transition border border-red-300 cursor-pointer"
+                    >
+                      {confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenCheckout("pro", proPrice)}
+                      className="w-full mt-6 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-extrabold uppercase tracking-widest transition shadow-sm cursor-pointer block text-center"
+                    >
+                      Upgrade to Pro
+                    </button>
+                  )}
+                </div>
+
+                {/* Card: Business */}
+                <div className="bg-[#FAF8F2] p-6.5 border border-stone-300 flex flex-col justify-between hover:shadow-md transition duration-300">
+                  <div className="space-y-4">
+                    <span className="text-[10px] font-bold font-mono tracking-widest text-[#1A1A1A]/60 block uppercase">Dealership fleet</span>
+                    <h3 className="text-xl font-serif font-black text-stone-900 leading-none">Dealership Business</h3>
+                    <div className="pt-2">
+                      <span className="text-3xl font-serif font-black text-stone-900">₹{businessPrice.toLocaleString("en-IN")}</span>
+                      <span className="text-xs text-stone-500 font-bold uppercase tracking-wider block mt-1">/ Month {period === "yearly" ? "billed yearly" : ""}</span>
+                    </div>
+                    <p className="text-xs text-stone-605 leading-relaxed font-semibold">
+                      Unlimited list volume, bulk import scripts, and absolute VIP dedicated support panels safeguarding inventories.
+                    </p>
+                    <hr className="border-stone-200" />
+                    <ul className="text-xs text-stone-700 space-y-3 font-semibold">
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Unlimited active listings</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> 90 Days visibility list</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Unlimited Featured slots</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Dedicated Account Broker</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-4 h-4 text-emerald-600 shrink-0" /> Custom API XML listings feed</li>
+                    </ul>
+                  </div>
+
+                  {subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("business") ? (
+                    <button
+                      onClick={handleCancelSubscription}
+                      className="w-full mt-6 py-3 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold uppercase tracking-widest transition border border-red-300 cursor-pointer"
+                    >
+                      {confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenCheckout("business", businessPrice)}
+                      className="w-full mt-6 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest transition cursor-pointer block border border-stone-900 text-center"
+                    >
+                      Upgrade to Business
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </section>
 
         {/* SECTION 2: Granular Comparison Grid */}
