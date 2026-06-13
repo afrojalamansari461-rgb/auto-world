@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { X, LogIn, Sparkles, User, AlertTriangle, ShieldCheck, Mail, Lock } from "lucide-react";
+import { X, LogIn, Sparkles, User, AlertTriangle, ShieldCheck, Mail, Lock, ChevronDown, ChevronUp, ExternalLink, Settings, Database, Key } from "lucide-react";
+import firebaseConfig from "../../firebase-applet-config.json";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
@@ -37,11 +38,16 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSigningInEmail, setIsSigningInEmail] = useState(false);
 
+  // Connection & Setup diagnostics
+  const [firebaseError, setFirebaseError] = useState<{ code: string; message: string; type: "auth" | "firestore" } | null>(null);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+
   if (!isOpen) return null;
 
   const handleGoogleSignIn = async () => {
     setIsSigningInGoogle(true);
     setUnauthorizedDomainError(false);
+    setFirebaseError(null);
     try {
       await signInWithPopup(auth, googleProvider);
       
@@ -53,8 +59,17 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
       }
       onClose();
     } catch (err: any) {
-      console.error("Google auth failed:", err);
+      const errCode = err.code || "auth/unknown";
+      const isExpectedAuthIssue = ["auth/unauthorized-domain", "auth/popup-blocked", "auth/popup-closed-by-user", "auth/user-cancelled"].includes(errCode);
+      if (isExpectedAuthIssue) {
+        console.warn("Google auth configuration warning:", err);
+      } else {
+        console.error("Google auth failed:", err);
+      }
       const errMsg = err.message || "";
+      setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
+      setShowTroubleshoot(true);
+      
       if (err.code === "auth/unauthorized-domain") {
         setUnauthorizedDomainError(true);
         showToast("Domain unauthorized by Firebase. Please use Email/Password option instead.", "error");
@@ -76,6 +91,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
     e.preventDefault();
     setIsSigningInGuest(true);
     setUnauthorizedDomainError(false);
+    setFirebaseError(null);
     const displayName = guestName.trim() || "Guest Member";
     try {
       await signInAnonymously(auth);
@@ -90,6 +106,10 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
       onClose();
     } catch (err: any) {
       console.error("Guest session failed:", err);
+      const errMsg = err.message || "";
+      const errCode = err.code || "auth/unknown";
+      setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
+      setShowTroubleshoot(true);
       showToast(err.message || "An error occurred creating guest session.", "error");
     } finally {
       setIsSigningInGuest(false);
@@ -99,6 +119,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   // Handles standard secure Email and Password Registration / Authentication
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFirebaseError(null);
     if (!email || !password) {
       showToast("Please enter values for email and password fields.", "error");
       return;
@@ -137,6 +158,11 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
       onClose();
     } catch (err: any) {
       console.error("Email auth failed:", err);
+      const errMsg = err.message || "";
+      const errCode = err.code || "auth/unknown";
+      setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
+      setShowTroubleshoot(true);
+      
       let errorMsg = err.message;
       if (err.code === "auth/wrong-password") {
         errorMsg = "Incorrect password. Please verify and retry.";
@@ -250,17 +276,89 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
                 </div>
               )}
 
-              {/* Error Banner for Netlify deploys */}
+              {/* Error Banner for Authorized Domains */}
               {unauthorizedDomainError && (
-                <div className="p-4 bg-amber-50 border-l-4 border-amber-600 text-amber-950 text-xs leading-relaxed font-sans space-y-2">
-                  <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-wider text-amber-800">
-                    <AlertTriangle className="w-5 h-5 shrink-0 text-amber-605" />
-                    Netlify Host Domain Error
+                <div className="p-4 bg-red-50 border-2 border-red-800 rounded-sm text-stone-900 text-xs leading-relaxed font-sans space-y-3 shadow-md text-left">
+                  <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-wider text-red-800 border-b pb-1.5 border-red-200">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
+                    Domain Unauthorized in Firebase
                   </div>
-                  <p>
-                    Firebase OAuth restricts third-party redirects. But do not worry:
+                  <p className="text-[11px] text-stone-700">
+                    Firebase Authentication has rejected this Google Sign-In request because this host domain is not in your Firebase Project's authorized domains list.
                   </p>
-                  <p className="font-bold">Use our dedicated "Email Pass Auth" or "Guest Session" options above! They bypass redirect issues perfectly.</p>
+                  <div className="bg-white p-2.5 border border-stone-300 font-sans space-y-2 text-[10.5px]">
+                    <p className="font-bold text-stone-950">How to authorize this domain:</p>
+                    <ol className="list-decimal pl-4.5 space-y-1 text-stone-605 font-medium text-[10px] sm:text-[10.5px]">
+                      <li>
+                        Go to your{" "}
+                        <a 
+                          href={`https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/providers`}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-amber-800 hover:underline font-bold inline-flex items-center gap-0.5"
+                        >
+                          Firebase Console Auth settings <ExternalLink className="w-3 h-3 inline-block" />
+                        </a>.
+                      </li>
+                      <li>Click the <strong className="text-stone-850">Settings</strong> tab.</li>
+                      <li>Select <strong className="text-stone-850">Authorized domains</strong> from the left list.</li>
+                      <li>Click <strong className="text-stone-850">Add domain</strong> and enter:</li>
+                    </ol>
+                    <div className="space-y-2 mt-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] uppercase tracking-wider font-bold text-stone-500">Development Iframe Host:</span>
+                        <div className="flex items-center gap-1.5">
+                          <input 
+                            type="text" 
+                            readOnly 
+                            value={typeof window !== 'undefined' ? window.location.hostname : 'No location state'} 
+                            className="font-mono text-[10px] bg-stone-100 text-stone-850 px-2.5 py-1.5 select-all border border-stone-300 flex-1 rounded font-bold"
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                navigator.clipboard.writeText(window.location.hostname);
+                                showToast("Copied development domain!", "success");
+                              }
+                            }}
+                            className="px-2 py-1.5 bg-stone-900 text-white font-mono text-[9px] font-bold uppercase tracking-wider hover:bg-stone-800 rounded shrink-0 cursor-pointer"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+
+                      {typeof window !== 'undefined' && window.location.hostname.includes("-dev-") && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] uppercase tracking-wider font-bold text-stone-500">Shared Preview Host:</span>
+                          <div className="flex items-center gap-1.5">
+                            <input 
+                              type="text" 
+                              readOnly 
+                              value={window.location.hostname.replace("-dev-", "-pre-")} 
+                              className="font-mono text-[10px] bg-stone-100 text-stone-850 px-2.5 py-1.5 select-all border border-stone-300 flex-1 rounded font-bold"
+                              onClick={(e) => (e.target as HTMLInputElement).select()}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(window.location.hostname.replace("-dev-", "-pre-"));
+                                showToast("Copied shared preview domain!", "success");
+                              }}
+                              className="px-2 py-1.5 bg-stone-900 text-white font-mono text-[9px] font-bold uppercase tracking-wider hover:bg-stone-800 rounded shrink-0 cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <p className="font-bold text-stone-800 text-[10.5px]">
+                    Alternative: You can use the "Email Pass Auth" or "Guest Session" options above instantly without any Firebase configuration!
+                  </p>
                 </div>
               )}
 
@@ -394,6 +492,142 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
 
           /* Passcode panel logic removed under production-grade security architecture. */
         </AnimatePresence>
+
+        {/* Diagnostic console toggler and panel */}
+        <div className="mt-5 space-y-3 font-sans">
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setShowTroubleshoot(!showTroubleshoot)}
+              className="text-[9.5px] font-mono text-stone-600 hover:text-stone-950 font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+            >
+              <Settings className="w-3.5 h-3.5 shrink-0 text-stone-500" />
+              {showTroubleshoot ? "Hide Troubleshooter Console" : "Troubleshoot Firebase Configuration"}
+              {showTroubleshoot ? <ChevronUp className="w-3 h-3 text-stone-900" /> : <ChevronDown className="w-3 h-3 text-stone-900" />}
+            </button>
+          </div>
+
+          {(firebaseError || showTroubleshoot) && (
+            <div className="p-4 bg-[#FAF8F5] border-2 border-amber-600 rounded-sm font-sans space-y-3 shadow-md text-stone-900 text-xs text-left">
+              <div className="flex items-center justify-between border-b pb-2 border-stone-200">
+                <div className="flex items-center gap-1.5 font-bold uppercase text-[9px] tracking-wider text-amber-800">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  Firebase Setup Diagnostic Console
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFirebaseError(null);
+                    setShowTroubleshoot(false);
+                  }}
+                  className="text-[9px] font-mono hover:text-stone-950 font-bold animate-pulse"
+                >
+                  [Dismiss]
+                </button>
+              </div>
+
+              {firebaseError && (
+                <div className="p-2.5 bg-red-50 border border-red-200 text-xs text-red-955 font-medium space-y-1 rounded-sm">
+                  <p className="font-bold flex items-center gap-1.5 text-red-800">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-650 shrink-0" />
+                    Detected Code: {firebaseError.code}
+                  </p>
+                  <p className="text-[10px] leading-relaxed font-mono tracking-tight bg-stone-50/50 p-1 block break-all">{firebaseError.message}</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <p className="font-sans leading-relaxed text-[11px] text-stone-700">
+                  Your website targets Firebase Project ID: <strong className="font-mono text-amber-900 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 font-bold">{firebaseConfig.projectId}</strong>. 
+                  Please verify these 4 services are enabled inside your Firebase Dashboard project console:
+                </p>
+
+                <div className="space-y-3 pl-1">
+                  {/* Step 1: Email Auth */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-4.5 h-4.5 rounded-full bg-stone-900 text-[#F4F1EA] text-[9px] font-black font-mono flex items-center justify-center shrink-0 mt-0.5">1</div>
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-stone-950 text-[11.5px] flex items-center gap-1.5">
+                        Email & Password Sign-in
+                        {firebaseError?.code === "auth/operation-not-allowed" && (
+                          <span className="px-1.5 py-0.5 bg-red-100 text-red-900 text-[8px] font-bold uppercase tracking-wider rounded">Detected Failure</span>
+                        )}
+                      </p>
+                      <p className="text-[10px] text-stone-600 leading-normal font-medium font-semibold">
+                        Go to <strong className="text-stone-850">Build &gt; Authentication &gt; Sign-in method</strong>, add new provider <strong>Email/Password</strong>, set status to enabled, and save.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Anonymous Guest */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-4.5 h-4.5 rounded-full bg-stone-900 text-[#F4F1EA] text-[9px] font-black font-mono flex items-center justify-center shrink-0 mt-0.5">2</div>
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-stone-950 text-[11.5px] flex items-center gap-1.5">
+                        Anonymous Guest Sessions
+                        {firebaseError?.code === "auth/admin-restricted-operation" && (
+                          <span className="px-1.5 py-0.5 bg-red-100 text-red-900 text-[8px] font-bold uppercase tracking-wider rounded">Detected Failure</span>
+                        )}
+                      </p>
+                      <p className="text-[10px] text-stone-600 leading-normal font-medium font-semibold">
+                        In <strong className="text-stone-850">Authentication &gt; Sign-in method</strong>, click <strong>Anonymous</strong>, enable and click save.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 3: Google auth provider */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-4.5 h-4.5 rounded-full bg-stone-900 text-[#F4F1EA] text-[9px] font-black font-mono flex items-center justify-center shrink-0 mt-0.5">3</div>
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-stone-950 text-[11.5px] flex items-center gap-1.5">
+                        Google Provider Configuration
+                        {firebaseError?.code === "auth/configuration-not-found" && (
+                          <span className="px-1.5 py-0.5 bg-red-100 text-red-900 text-[8px] font-bold uppercase tracking-wider rounded">Detected Failure</span>
+                        )}
+                      </p>
+                      <p className="text-[10px] text-stone-600 leading-normal font-medium font-semibold">
+                        In <strong className="text-stone-850">Authentication &gt; Sign-in method</strong>, add <strong>Google</strong>, specify support email addresses, and save.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 4: Firestore database */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-4.5 h-4.5 rounded-full bg-stone-900 text-[#F4F1EA] text-[9px] font-black font-mono flex items-center justify-center shrink-0 mt-0.5">4</div>
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-stone-950 text-[11.5px] flex items-center gap-1.5">
+                        Cloud Firestore Instance
+                      </p>
+                      <p className="text-[10px] text-stone-600 leading-normal font-medium font-semibold">
+                        Navigate to <strong className="text-stone-850">Build &gt; Firestore Database</strong>, click <strong>Create database</strong>, specify region, start in test/production rules and complete database start.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct buttons */}
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <a
+                    href={`https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/providers`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[9.5px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5"
+                  >
+                    Configure Auth <ExternalLink className="w-3.5 h-3.5 text-white" />
+                  </a>
+                  <a
+                    href={`https://console.firebase.google.com/project/${firebaseConfig.projectId}/firestore`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-2.5 bg-white border border-stone-300 text-stone-900 hover:bg-stone-50 text-[9.5px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5"
+                  >
+                    Start Firestore <ExternalLink className="w-3.5 h-3.5 text-stone-900" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Bottom Notice */}
         <div className="mt-6 pt-4 border-t border-stone-900/10 text-center">

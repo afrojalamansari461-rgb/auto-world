@@ -16,8 +16,7 @@ service cloud.firestore {
       return isSignedIn() && 
              request.auth.token != null && 
              request.auth.token.keys().hasAll(['email']) && 
-             (request.auth.token.email == 'afrojalamansari461@gmail.com' || 
-              request.auth.token.email.matches('(?i)^afrojalamansari461@gmail\\.com$'));
+             request.auth.token.email == 'afrojalamansari461@gmail.com';
     }
 
     function incoming() {
@@ -39,7 +38,7 @@ service cloud.firestore {
         && isValidId(listingId)
         && incoming().userId == request.auth.uid
         && isValidListing(incoming());
-      allow update: if isAdmin() || (
+      allow update: if (
         isSignedIn()
         && incoming().userId == request.auth.uid
         && existing().userId == request.auth.uid
@@ -52,10 +51,10 @@ service cloud.firestore {
           'photos', 'featured', 'urgent', 'doors', 'seats', 'bikeType', 
           'bikeEngine', 'bikeGears', 'bikeMileage', 'bicycleType', 'frameSize', 'gears'
         ])
-      );
-      allow delete: if isAdmin() || (
+      ) || isAdmin();
+      allow delete: if (
          isSignedIn() && existing().userId == request.auth.uid
-      );
+      ) || isAdmin();
     }
 
     function isValidListing(data) {
@@ -93,7 +92,7 @@ service cloud.firestore {
 
     // SUBSCRIPTIONS RULES
     match /subscriptions/{userId} {
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
       allow create, update: if isSignedIn() 
         && request.auth.uid == userId
         && isValidSubscription(incoming());
@@ -111,7 +110,7 @@ service cloud.firestore {
 
     // BUYER PASSES RULES
     match /buyer_passes/{userId} {
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
       allow create, update: if isSignedIn() 
         && request.auth.uid == userId
         && isValidBuyerPass(incoming());

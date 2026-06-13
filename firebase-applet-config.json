@@ -1,10 +1,10 @@
 {
-  "projectId": "sonic-quartet-wr6mz",
-  "appId": "1:351803794081:web:d62193133bb5ccd11f46e0",
-  "apiKey": "AIzaSyB2tyVuifc4vEalcRmkm0bEvh1fSkLOGSI",
-  "authDomain": "sonic-quartet-wr6mz.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-2b5334f6-dad6-437f-958a-0686a9abb326",
-  "storageBucket": "sonic-quartet-wr6mz.firebasestorage.app",
-  "messagingSenderId": "351803794081",
-  "measurementId": ""
+  "apiKey": "AIzaSyDDXQDJ3RGDPWkBbS90oXwrN5sC3ZenGpg",
+  "authDomain": "auto-worldd.firebaseapp.com",
+  "projectId": "auto-worldd",
+  "storageBucket": "auto-worldd.firebasestorage.app",
+  "messagingSenderId": "534691190568",
+  "appId": "1:534691190568:web:da0586eb3f5065943ce21d",
+  "measurementId": "G-G0W3BKXPQM",
+  "firestoreDatabaseId": "(default)"
 }

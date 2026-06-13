@@ -12,7 +12,8 @@ import SignInModal from "./components/SignInModal";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
-import { doc, getDoc, collection, getDocs, setDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer } from "firebase/firestore";
+import firebaseConfig from "../firebase-applet-config.json";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -26,6 +27,22 @@ export default function App() {
   
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [firebaseConfigError, setFirebaseConfigError] = useState<boolean>(false);
+
+  // Check Firebase Database reachability on startup
+  useEffect(() => {
+    const testReachability = async () => {
+      try {
+        await getDocFromServer(doc(db, "test", "connection"));
+      } catch (err: any) {
+        console.warn("Startup connection probe:", err);
+        if (err && (err.message?.includes("offline") || err.code === "unavailable" || err.message?.includes("failed to get document"))) {
+          setFirebaseConfigError(true);
+        }
+      }
+    };
+    testReachability();
+  }, []);
 
   // Global high-contrast theme state
   const [theme, setTheme] = useState<string>(() => {
@@ -181,6 +198,7 @@ export default function App() {
 
   // Check custom subscription details from database on checkout startup
   useEffect(() => {
+    let ignore = false;
     const syncSubscription = async () => {
       if (currentUser) {
         try {
@@ -188,17 +206,26 @@ export default function App() {
           try {
             subDoc = await getDoc(doc(db, "subscriptions", currentUser.uid));
           } catch (dbErr: any) {
+            if (ignore) return;
             handleFirestoreError(dbErr, OperationType.GET, `subscriptions/${currentUser.uid}`);
             throw dbErr;
           }
+          if (ignore) return;
           if (subDoc.exists()) {
             const data = subDoc.data();
             setSubscriptionActive(data.status === "active");
           } else {
             setSubscriptionActive(false);
           }
-        } catch (err) {
-          console.error("Error reading Firestore subscription:", err);
+        } catch (err: any) {
+          if (ignore) return;
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const isOffline = errMsg.toLowerCase().includes("offline") || errMsg.toLowerCase().includes("unavailable") || errMsg.toLowerCase().includes("could not reach");
+          if (isOffline) {
+            console.warn("Firestore subscription connection currently offline:", errMsg);
+          } else {
+            console.error("Error reading Firestore subscription:", err);
+          }
           setSubscriptionActive(false);
         }
       } else {
@@ -207,6 +234,7 @@ export default function App() {
           try {
             const parsed = JSON.parse(rawSub);
             if (parsed && parsed.status === "active") {
+              if (ignore) return;
               setSubscriptionActive(true);
               return;
             }
@@ -214,15 +242,21 @@ export default function App() {
             console.error("Failed to parse local subscription:", e);
           }
         }
+        if (ignore) return;
         setSubscriptionActive(false);
       }
     };
     syncSubscription();
+    return () => {
+      ignore = true;
+    };
   }, [currentUser]);
 
   // load saved favorites on auth state change
   useEffect(() => {
+    let ignore = false;
     const loadFavorites = async () => {
+      if (ignore) return;
       setFavoritesLoaded(false);
       if (currentUser) {
         try {
@@ -231,9 +265,11 @@ export default function App() {
           try {
             favSnap = await getDoc(favRef);
           } catch (dbErr: any) {
+            if (ignore) return;
             handleFirestoreError(dbErr, OperationType.GET, `user_favorites/${currentUser.uid}`);
             throw dbErr;
           }
+          if (ignore) return;
           if (favSnap.exists()) {
             const data = favSnap.data();
             if (data && Array.isArray(data.favoriteIds)) {
@@ -249,6 +285,7 @@ export default function App() {
                 const parsed = JSON.parse(localStored);
                 if (Array.isArray(parsed)) {
                   setFavorites(parsed);
+                  if (ignore) return;
                   // Sync local data up to user_favorites in Firestore
                   await setDoc(favRef, {
                     userId: currentUser.uid,
@@ -265,9 +302,17 @@ export default function App() {
               setFavorites([]);
             }
           }
+          if (ignore) return;
           setFavoritesLoaded(true);
-        } catch (err) {
-          console.error("Error reading Firestore user_favorites:", err);
+        } catch (err: any) {
+          if (ignore) return;
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const isOffline = errMsg.toLowerCase().includes("offline") || errMsg.toLowerCase().includes("unavailable") || errMsg.toLowerCase().includes("could not reach");
+          if (isOffline) {
+            console.warn("Firestore user_favorites connection currently offline:", errMsg);
+          } else {
+            console.error("Error reading Firestore user_favorites:", err);
+          }
           // Keep favoritesLoaded to false to prevent a transient read error from overwriting remote data
         }
       } else {
@@ -277,18 +322,24 @@ export default function App() {
           try {
             const parsed = JSON.parse(localStored);
             if (Array.isArray(parsed)) {
+              if (ignore) return;
               setFavorites(parsed);
             }
           } catch (e) {
             console.error(e);
           }
         } else {
+          if (ignore) return;
           setFavorites([]);
         }
+        if (ignore) return;
         setFavoritesLoaded(true);
       }
     };
     loadFavorites();
+    return () => {
+      ignore = true;
+    };
   }, [currentUser]);
 
   // Save favorites locally and sync with Firestore when modified by the user
@@ -313,7 +364,13 @@ export default function App() {
             lastUpdated: new Date().toISOString()
           });
         } catch (err: any) {
-          console.error("Failed to sync favorites with Firestore:", err);
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const isOffline = errMsg.toLowerCase().includes("offline") || errMsg.toLowerCase().includes("unavailable") || errMsg.toLowerCase().includes("could not reach");
+          if (isOffline) {
+            console.warn("Firestore user_favorites sync currently offline:", errMsg);
+          } else {
+            console.error("Failed to sync favorites with Firestore:", err);
+          }
         }
       }
     };
@@ -408,6 +465,36 @@ export default function App() {
         currentUser={currentUser}
         onSignInClick={() => setIsSignInModalOpen(true)}
       />
+
+      {/* Dynamic Firebase Connectivity Check Alert noticed at the top */}
+      {firebaseConfigError && (
+        <div id="firebase-conn-alert" className="border-y-2 border-amber-605 bg-[#FAF8F5] text-stone-900 px-4 py-3 text-xs font-sans">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-semibold">
+            <div className="flex items-start md:items-center gap-2.5">
+              <span className="p-1 bg-amber-605 text-[#FAF8F5] inline-flex items-center justify-center shrink-0 rounded font-bold text-[9px]">⚠️</span>
+              <p className="leading-relaxed text-left text-[11px] sm:text-xs">
+                <strong className="text-amber-800 uppercase tracking-wide text-[10px]">Connection Warning:</strong> Could not establish a pipeline to Firestore. This web-ledger points to your custom Firebase Project (<code className="bg-amber-100 px-1 font-mono font-bold text-amber-905 rounded">{firebaseConfig.projectId}</code>). Please ensure your database is active and authentication providers are configured.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+              <button 
+                onClick={() => {
+                  setIsSignInModalOpen(true);
+                }}
+                className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] font-mono text-[9px] font-bold uppercase tracking-wider shadow-sm cursor-pointer whitespace-nowrap"
+              >
+                View Setup Controls
+              </button>
+              <button 
+                onClick={() => setFirebaseConfigError(false)}
+                className="px-2.5 py-1.5 border border-stone-300 hover:bg-stone-100 text-stone-700 font-mono text-[9px] font-bold uppercase cursor-pointer shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Primary tab views switcher */}
       <main className="flex-grow">

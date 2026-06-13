@@ -4,7 +4,9 @@ import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)")
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -17,7 +19,7 @@ async function testConnection() {
     await getDocFromServer(doc(db, "test", "connection"));
   } catch (error) {
     if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.error("Please check your Firebase configuration.");
+      console.warn("[Firebase Check] Local Firestore client is currently working offline. Please check your Firestore Console setup if this is unexpected.");
     }
   }
 }
@@ -50,8 +52,9 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMessage = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMessage,
     authInfo: {
       userId: auth.currentUser?.uid || null,
       email: auth.currentUser?.email || null,
@@ -66,6 +69,16 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
+
+  const isConnectivityIssue = errMessage.toLowerCase().includes("offline") || 
+                              errMessage.toLowerCase().includes("unavailable") || 
+                              errMessage.toLowerCase().includes("could not reach") ||
+                              errMessage.toLowerCase().includes("network");
+
+  if (isConnectivityIssue) {
+    console.warn("Firestore Connectivity/Offline Notice: ", JSON.stringify(errInfo));
+  } else {
+    console.error("Firestore Error: ", JSON.stringify(errInfo));
+  }
   throw new Error(JSON.stringify(errInfo));
 }

@@ -65,8 +65,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       // Under the firebase integration skill instructions, we MUST call handleFirestoreError
       try {
         handleFirestoreError(err, OperationType.GET, "listings");
-      } catch (e) {
-        console.error("SDK handoff exception caught for listings collection:", e);
+      } catch (e: any) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        if (errMsg.toLowerCase().includes("offline") || errMsg.toLowerCase().includes("unavailable")) {
+          console.warn("Offline database status noticed during listings load:", errMsg);
+        } else {
+          console.error("SDK handoff exception caught for listings collection:", e);
+        }
       }
       showToast("Could not load vehicle listings database index.", "error");
     }
@@ -92,8 +97,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       console.warn("Failed to load messages:", err);
       try {
         handleFirestoreError(err, OperationType.GET, "messages");
-      } catch (e) {
-        console.error("SDK handoff exception caught for messages collection:", e);
+      } catch (e: any) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        if (errMsg.toLowerCase().includes("offline") || errMsg.toLowerCase().includes("unavailable")) {
+          console.warn("Offline database status noticed during messages load:", errMsg);
+        } else {
+          console.error("SDK handoff exception caught for messages collection:", e);
+        }
       }
       showToast("Access restrictions on Buyer Inquiries collection.", "info");
     }
@@ -116,8 +126,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       console.warn("Failed to load buyer passes:", err);
       try {
         handleFirestoreError(err, OperationType.GET, "buyer_passes");
-      } catch (e) {
-        console.error("SDK handoff exception caught for buyer_passes collection:", e);
+      } catch (e: any) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        if (errMsg.toLowerCase().includes("offline") || errMsg.toLowerCase().includes("unavailable")) {
+          console.warn("Offline database status noticed during buyer_passes load:", errMsg);
+        } else {
+          console.error("SDK handoff exception caught for buyer_passes collection:", e);
+        }
       }
       showToast("Access restrictions on Pass Purchases collection.", "info");
     }
