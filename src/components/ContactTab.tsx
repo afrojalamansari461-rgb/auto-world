@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Mail, Phone, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, Send, CheckCircle2, ChevronDown, HelpCircle, Building } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Mail, Phone, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, Send, CheckCircle2, ChevronDown, HelpCircle, Building, RefreshCw, CheckCircle, ArrowRight } from "lucide-react";
 import { Message } from "../types";
 import { User } from "firebase/auth";
 import { collection, addDoc } from "firebase/firestore";
@@ -24,6 +24,51 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
 
   // Accordion active helpers
   const [openFAQIndex, setOpenFAQIndex] = useState<number | null>(null);
+
+  // Real-time grammar & spellcheck states
+  const [corrections, setCorrections] = useState<any[]>([]);
+  const [isSpellchecking, setIsSpellchecking] = useState(false);
+
+  useEffect(() => {
+    if (!msgBody || msgBody.trim().length < 10) {
+      setCorrections([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSpellchecking(true);
+      try {
+        const response = await fetch("/api/spellcheck", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: msgBody })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCorrections(data.corrections || []);
+        }
+      } catch (err) {
+        console.warn("Contact spellcheck failed", err);
+      } finally {
+        setIsSpellchecking(false);
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [msgBody]);
+
+  const handleApplyCorrection = (original: string, suggestion: string) => {
+    try {
+      const regex = new RegExp(`\\b${original}\\b`, "g");
+      const updated = msgBody.replace(regex, suggestion);
+      setMsgBody(updated);
+    } catch {
+      const updated = msgBody.replace(original, suggestion);
+      setMsgBody(updated);
+    }
+    setCorrections(prev => prev.filter(c => c.original !== original));
+    showToast(`Correction applied: "${suggestion}"`, "success");
+  };
 
   const handleMessageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,6 +317,36 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                     onChange={(e) => setMsgBody(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-955 font-mono font-medium"
                   />
+                  {/* Inline spellcheck alerts */}
+                  {isSpellchecking && (
+                    <div className="flex items-center gap-1.5 text-[9px] text-[#D97706] font-bold uppercase tracking-widest pt-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" /> Checking writing style...
+                    </div>
+                  )}
+                  {corrections.length > 0 && (
+                    <div className="mt-2 space-y-1.5 p-3 bg-stone-50 border border-stone-300">
+                      <div className="text-[9px] text-amber-700 font-bold uppercase tracking-widest">Writing suggestions:</div>
+                      <div className="space-y-1 max-h-36 overflow-y-auto">
+                        {corrections.map((corr, i) => (
+                          <div key={i} className="flex items-center justify-between gap-2 text-xs border-b border-stone-200 pb-1 last:border-b-0">
+                            <div>
+                              <span className="line-through text-red-650 font-semibold">{corr.original}</span>
+                              <ArrowRight className="w-3.5 h-3.5 inline-block mx-1 text-stone-400 align-middle" />
+                              <span className="text-emerald-750 font-bold bg-emerald-50 px-1">{corr.suggestion}</span>
+                              <p className="text-[10px] text-stone-500 pt-0.5">{corr.reason}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyCorrection(corr.original, corr.suggestion)}
+                              className="px-2 py-1 bg-stone-900 text-[#F4F1EA] hover:bg-stone-850 text-[9px] font-bold uppercase tracking-widest cursor-pointer"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3 pt-1">

@@ -4,6 +4,7 @@ import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { User } from "firebase/auth";
 import { setDoc, doc, collection, query, where, getDocs } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import ListingAIAssistant from "./ListingAIAssistant";
 
 interface SellTabProps {
   setActiveTab: (tab: string) => void;
@@ -647,6 +648,17 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             />
             <span className="text-[9px] text-[#777777] block uppercase tracking-wider">Provide at least 15 characters of descriptive print words.</span>
           </div>
+
+          <ListingAIAssistant
+            title={`${year} ${make} ${model}`}
+            description={description}
+            vehicleType={vehicleType}
+            make={make}
+            model={model}
+            onUpdateTitle={() => {}}
+            onUpdateDescription={(newDesc) => setDescription(newDesc)}
+            showToast={showToast}
+          />
 
           <div className="flex justify-between pt-5 border-t border-stone-200">
             <button

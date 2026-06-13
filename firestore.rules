@@ -13,13 +13,12 @@ service cloud.firestore {
     }
 
     function isRegisteredUser() {
-      return isSignedIn() && 
-             request.auth.token.get('email', null) != null;
+      return isSignedIn();
     }
 
     function isAdmin() {
       return isSignedIn() && 
-             request.auth.token.get('email', null) == 'afrojalamansari461@gmail.com';
+             request.auth.token.email == 'afrojalamansari461@gmail.com';
     }
 
     function incoming() {
