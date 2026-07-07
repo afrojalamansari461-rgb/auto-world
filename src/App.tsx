@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronRight, Gauge, AlertCircle, Compass, Share2 } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -9,6 +9,7 @@ import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
 import AdminPanel from "./components/AdminPanel";
 import SignInModal from "./components/SignInModal";
+import FeedbackWidget from "./components/FeedbackWidget";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
@@ -387,6 +388,25 @@ export default function App() {
     }
   };
 
+  const triggerSmsLeadAlert = async (sellerPhone: string, vehicleTitle: string, listingId: string | number, actionType: "whatsapp" | "inspection") => {
+    try {
+      await fetch("/api/send-sms-alert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sellerPhone,
+          vehicleTitle,
+          listingId,
+          buyerName: currentUser?.displayName || "A vetted buyer",
+          actionType
+        })
+      });
+      console.log(`Lead SMS alert triggered successfully.`);
+    } catch (err) {
+      console.error("Failed to trigger Lead SMS alert asynchronously:", err);
+    }
+  };
+
   const handleQuickView = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
   };
@@ -657,6 +677,31 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Auto World Verified Shield Section */}
+                <div className="p-4 bg-amber-50/45 border-2 border-dashed border-amber-500/40 font-sans space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4.5 h-4.5 text-amber-650 fill-amber-100 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest leading-none">Auto World Secure Shield</h4>
+                      <span className="text-[9px] text-amber-800 block font-bold uppercase tracking-widest mt-1">150-Point Certificate Inspection & RC Transfer Guarantee</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-stone-600 leading-relaxed font-semibold">
+                    Protect your purchase! For a professional inspection booking fee of <strong className="text-stone-900 font-extrabold">₹1,999</strong>, our certified technician will physically verify this vehicle and secure all ownership paperwork transfers.
+                  </p>
+                  <button
+                    onClick={() => {
+                      const phone = modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556';
+                      triggerSmsLeadAlert(phone, selectedVehicle.title, selectedVehicle.id, "inspection");
+                      showToast("Secured Shield booking request logged! An inspector will be assigned to AW-" + selectedVehicle.id + " upon seller feedback.", "success");
+                    }}
+                    className="w-full py-2 bg-stone-950 hover:bg-stone-850 text-[#FAF8F5] text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950"
+                  >
+                    <Award className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0 animate-pulse" />
+                    Secure Inspection Shield (₹1,999)
+                  </button>
+                </div>
+
                 {/* Seller direct contact info module */}
                 <div className="p-4 bg-[#FAF8F5] border border-stone-300 font-sans space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-stone-200">
@@ -723,12 +768,24 @@ export default function App() {
                       Direct Email
                     </a>
                     <a
-                      href={`https://wa.me/${(modalSellerInfo ? modalSellerInfo.phone : '+91 1800 123 4567').replace(/[^0-9+]/g, '')}`}
+                      href={`https://wa.me/${(modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
+                        `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
+                        `🚗 *${selectedVehicle.title}*\n` +
+                        `• Ref Code: AW-${selectedVehicle.id}\n` +
+                        `• Valuation: ₹${selectedVehicle.price.toLocaleString("en-IN")}\n` +
+                        `• Mileage: ${selectedVehicle.mileage}\n` +
+                        `• Fuel: ${selectedVehicle.fuel}\n\n` +
+                        `Is this vehicle still available for a physical inspection or negotiation?`
+                      )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer transition"
+                      onClick={() => {
+                        const phone = modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556';
+                        triggerSmsLeadAlert(phone, selectedVehicle.title, selectedVehicle.id, "whatsapp");
+                      }}
+                      className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 hover:border-emerald-700 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
                     >
-                      <Phone className="w-4 h-4 shrink-0 text-stone-900" />
+                      <MessageCircle className="w-4 h-4 shrink-0 text-white" />
                       WhatsApp Chat
                     </a>
                   </div>
@@ -974,6 +1031,11 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Global Slide-Over User Feedback Widget */}
+      <FeedbackWidget 
+        showToast={showToast} 
+        currentUser={currentUser} 
+      />
     </div>
   );
 }

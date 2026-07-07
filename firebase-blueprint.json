@@ -96,6 +96,21 @@
         "lastUpdated": { "type": "string" }
       },
       "required": ["userId", "favoriteIds"]
+    },
+    "UserFeedback": {
+      "title": "UserFeedback",
+      "description": "User submitted feedback about WCAG compliance, bugs, or general recommendations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "category": { "type": "string", "enum": ["bug_report", "suggestion", "question", "praise"] },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "archived", "resolved"] }
+      },
+      "required": ["id", "text", "category", "timestamp", "status"]
     }
   },
   "firestore": {
@@ -118,6 +133,10 @@
     "user_favorites": {
       "schema": "UserFavorites",
       "description": "Store list of saved/bookmarked vehicle IDs synchronized to user accounts"
+    },
+    "feedbacks": {
+      "schema": "UserFeedback",
+      "description": "Collection tracking user feedback submissions"
     }
   }
 }

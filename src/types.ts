@@ -90,7 +90,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "premium",
     category: "suv",
     description: "Muscular and iconic Mahindra Thar 4x4 LX. Pure adventure machinery with heavy key diesel torque, modern hardtop cabin design, Apple CarPlay integration, dual airbags, and high-clearance offroad specs.",
-    features: ["ABS", "Airbags", "Bluetooth", "Backup Camera", "4WD Terrain Control", "Climate Control"]
+    features: ["ABS", "Airbags", "Bluetooth", "Backup Camera", "4WD Terrain Control", "Climate Control"],
+    sellerName: "Rajesh Kumar (Elite Motors)",
+    sellerPhone: "+91 98230 44556",
+    sellerEmail: "rajesh@elitemotors.co.in",
+    location: "Mumbai, Maharashtra",
+    negotiable: "yes"
   },
   {
     id: 2,
@@ -106,7 +111,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "verified",
     category: "suv",
     description: "India's highest-selling premium electric SUV. Instant traction with high-voltage Ziptron tech, long-range battery supporting DC fast hubs, elegant dual-tone roof, and advanced active regeneration modes.",
-    features: ["Air Conditioning", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Sunroof/Moonroof", "Ventilated Seats"]
+    features: ["Air Conditioning", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Sunroof/Moonroof", "Ventilated Seats"],
+    sellerName: "Anjali Sharma (EcoDrive Pune)",
+    sellerPhone: "+91 95521 88990",
+    sellerEmail: "pune@ecodrives.in",
+    location: "Pune, Maharashtra",
+    negotiable: "yes"
   },
   {
     id: 3,
@@ -122,7 +132,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "hot",
     category: "motorcycle",
     description: "Timeless classic mechanical engineering. Butter-smooth 349cc J-series cruiser engine, pristine signature chrome-black detailing, dual-channel responsive ABS, and single-owner vintage aesthetics.",
-    features: ["ABS", "Fuel Injection", "Retro Spoke Wheels", "Vintage Styling"]
+    features: ["ABS", "Fuel Injection", "Retro Spoke Wheels", "Vintage Styling"],
+    sellerName: "Vikram Singh",
+    sellerPhone: "+91 70144 33221",
+    sellerEmail: "vikram.singh@gmail.com",
+    location: "Jaipur, Rajasthan",
+    negotiable: "yes"
   },
   {
     id: 4,
@@ -138,7 +153,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "verified",
     category: "suv",
     description: "Unmatched road presence. Pre-owned premium Toyota Fortuner equipped with heavy duty 2.8L diesel engine, standard 4WD selectable terrains, active cruise safety mechanics, and pristine plush interiors.",
-    features: ["Air Conditioning", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Electric Tailgate", "Differential Lock"]
+    features: ["Air Conditioning", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Electric Tailgate", "Differential Lock"],
+    sellerName: "Sanjay Gupta (Premium Wheels NCR)",
+    sellerPhone: "+91 98101 22334",
+    sellerEmail: "sales@premiumwheelsncr.com",
+    location: "Gurugram, Haryana",
+    negotiable: "no"
   },
   {
     id: 5,
@@ -154,7 +174,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "verified",
     category: "car",
     description: "Pristine Maruti Suzuki Swift hatch under single owner registry. Highly efficient K-series petrol engine, automatic climate setups, touch Smartplay infotainment, and perfect mechanical compliance.",
-    features: ["Air Conditioning", "Power Windows", "ABS", "Airbags", "Bluetooth", "Climate Control"]
+    features: ["Air Conditioning", "Power Windows", "ABS", "Airbags", "Bluetooth", "Climate Control"],
+    sellerName: "Preeti Desai",
+    sellerPhone: "+91 88880 11223",
+    sellerEmail: "preeti.desai92@yahoo.co.in",
+    location: "Bengaluru, Karnataka",
+    negotiable: "yes"
   },
   {
     id: 6,
@@ -170,7 +195,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "premium",
     category: "car",
     description: "Elite performance and comfort parameters. Custom imported Luxury Line featuring high-grade leather upholstery, ambient glass cockpit panels, active dynamic drive profiles, and verified service record archives.",
-    features: ["Power Steering", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Toggle Sports Modes", "Sunroof/Moonroof"]
+    features: ["Power Steering", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Toggle Sports Modes", "Sunroof/Moonroof"],
+    sellerName: "Amitabh Shah (Shah Luxury Imports)",
+    sellerPhone: "+91 99201 55667",
+    sellerEmail: "amitabh@shahimports.in",
+    location: "Mumbai, Maharashtra",
+    negotiable: "no"
   }
 ];
 

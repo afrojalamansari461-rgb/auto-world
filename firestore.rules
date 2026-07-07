@@ -138,5 +138,21 @@ service cloud.firestore {
       return data.userId is string && data.userId == request.auth.uid
         && data.favoriteIds is list && data.favoriteIds.size() <= 100;
     }
+
+    // USER FEEDBACK RULES
+    match /feedbacks/{feedbackId} {
+      allow create: if isValidId(feedbackId) && isValidFeedback(incoming());
+      allow read, update, delete: if isAdmin();
+    }
+
+    function isValidFeedback(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 5000
+        && data.category is string && (data.category == 'bug_report' || data.category == 'suggestion' || data.category == 'question' || data.category == 'praise')
+        && (!('name' in data) || (data.name is string && data.name.size() <= 150))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 150))
+        && data.timestamp is string && data.timestamp.size() <= 50
+        && data.status is string && (data.status == 'active' || data.status == 'archived' || data.status == 'resolved');
+    }
   }
 }

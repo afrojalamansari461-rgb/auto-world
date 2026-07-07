@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
@@ -346,7 +346,12 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           features: listing.features,
           category: listing.type,
           isUserListing: true,
-          listingId: listing.id
+          listingId: listing.id,
+          sellerName: listing.sellerName,
+          sellerEmail: listing.sellerEmail,
+          sellerPhone: listing.sellerPhone,
+          location: listing.location,
+          negotiable: listing.negotiable
         };
       });
 
@@ -489,6 +494,13 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // Sorting logic
   const sortedVehicles = [...filteredVehicles].sort((a, b) => {
+    // Pin Premium/Featured listings to the top of the feed
+    const aPremium = a.badge === "premium" ? 1 : 0;
+    const bPremium = b.badge === "premium" ? 1 : 0;
+    if (aPremium !== bPremium) {
+      return bPremium - aPremium; // 1 (Premium) goes before 0
+    }
+
     if (sortBy === "price-low") return a.price - b.price;
     if (sortBy === "price-high") return b.price - a.price;
     if (sortBy === "mileage") {
@@ -970,7 +982,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                         }}
                         whileHover={{ scale: 1.025, y: -4, transition: { type: "spring", stiffness: 350, damping: 25 } }}
                         whileTap={{ scale: 0.97 }}
-                        className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md"
+                        className={`bg-[#FAF8F5] border overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md ${
+                          car.badge === "premium" ? "border-amber-500/60 ring-1 ring-amber-500/20" : "border-stone-900/15"
+                        }`}
                       >
                       <div className="relative h-56 overflow-hidden bg-stone-150 grayscale-20 group-hover:grayscale-0 transition-all duration-300">
                         <img
@@ -982,7 +996,21 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                           }}
                         />
                         
-                        {car.badge && (
+                        {car.badge === "premium" && (
+                          <span className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-stone-900 text-[#FAF8F5] text-[9px] font-sans font-black uppercase tracking-widest border border-amber-400 flex items-center gap-1.5 shadow-sm">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                            Premium Featured
+                          </span>
+                        )}
+
+                        {car.badge === "hot" && (
+                          <span className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-red-705 bg-stone-900 text-[#FAF8F5] text-[9px] font-sans font-black uppercase tracking-widest border border-red-500 flex items-center gap-1.5 shadow-sm">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                            Hot Urgent
+                          </span>
+                        )}
+
+                        {car.badge && car.badge !== "premium" && car.badge !== "hot" && (
                           <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-sans font-bold uppercase tracking-wider border border-[#F4F1EA]/20">
                             {car.badge}
                           </span>
@@ -1023,17 +1051,50 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2.5">
+                        <div className="flex items-center justify-between pt-2.5 gap-2">
                           <div>
                             <span className="text-xs text-stone-400 block uppercase font-light font-sans">Valuation</span>
-                            <span className="text-2xl font-serif font-black text-stone-950">₹{car.price.toLocaleString("en-IN")}</span>
+                            <span className="text-lg sm:text-xl font-serif font-black text-stone-950 block leading-tight">₹{car.price.toLocaleString("en-IN")}</span>
                           </div>
-                          <button
-                            onClick={() => onQuickView(car)}
-                            className="px-4 py-2.5 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-xs font-sans uppercase font-bold tracking-widest border border-stone-950 transition"
-                          >
-                            View Dossier
-                          </button>
+                          <div className="flex gap-1.5 shrink-0">
+                            <button
+                              onClick={() => onQuickView(car)}
+                              className="px-3 py-2 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-[10px] font-sans uppercase font-bold tracking-widest border border-stone-950 transition-all cursor-pointer"
+                              title="View dossier & specifications"
+                            >
+                              Dossier
+                            </button>
+                            <a
+                              href={`https://wa.me/${(car.sellerPhone || '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
+                                `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
+                                `🚗 *${car.title}*\n` +
+                                `• Price: ₹${car.price.toLocaleString("en-IN")}\n` +
+                                `• Mileage: ${car.mileage}\n` +
+                                `• Ref Code: AW-${car.id}\n\n` +
+                                `Is this still available for direct inspection or purchase discussion?`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => {
+                                fetch("/api/send-sms-alert", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    sellerPhone: car.sellerPhone || '+91 98230 44556',
+                                    vehicleTitle: car.title,
+                                    listingId: car.id,
+                                    buyerName: "A vetted buyer",
+                                    actionType: "whatsapp"
+                                  })
+                                }).catch(err => console.error(err));
+                              }}
+                              className="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-emerald-600 hover:border-emerald-700 cursor-pointer shadow-sm"
+                              title="Contact seller instantly via WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 shrink-0 text-white" />
+                              WhatsApp
+                            </a>
+                          </div>
                         </div>
                       </div>
                     </motion.div>

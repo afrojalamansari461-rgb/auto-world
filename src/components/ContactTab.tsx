@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Mail, Phone, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, Send, CheckCircle2, ChevronDown, HelpCircle, Building, RefreshCw, CheckCircle, ArrowRight } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, Send, CheckCircle2, ChevronDown, HelpCircle, Building, RefreshCw, CheckCircle, ArrowRight, MessageCircle } from "lucide-react";
 import { Message } from "../types";
 import { User } from "firebase/auth";
 import { collection, addDoc } from "firebase/firestore";
@@ -168,12 +168,23 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
                   <Phone className="w-5 h-5" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 w-full">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Call support</h3>
                   <p className="text-xs text-stone-500 font-semibold leading-relaxed font-mono">
                     Direct: +91 7666232753<br />
                     Toll-Free: +91 1805 123 4567
                   </p>
+                  <div className="pt-2">
+                    <a
+                      href="https://wa.me/917666232753?text=Hi%20AutoWorld%20Support,%20I%20have%20an%20inquiry%20regarding%20vehicle%20trading."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-[#FAF8F5] text-[10px] font-sans font-bold uppercase tracking-wider transition-all shadow-sm rounded-none border border-emerald-600 hover:border-emerald-700"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 shrink-0 text-white" />
+                      Chat on WhatsApp
+                    </a>
+                  </div>
                 </div>
               </div>
 

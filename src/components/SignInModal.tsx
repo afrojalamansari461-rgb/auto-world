@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, LogIn, Sparkles, User, AlertTriangle, ShieldCheck, Mail, Lock, ChevronDown, ChevronUp, ExternalLink, Settings, Database, Key } from "lucide-react";
+import { X, LogIn, Sparkles, User, AlertTriangle, ShieldCheck, Mail, Lock, ChevronDown, ChevronUp, ExternalLink, Settings, Database, Key, Phone, Check } from "lucide-react";
 import firebaseConfig from "../../firebase-applet-config.json";
 import { 
   signInWithEmailAndPassword, 
@@ -37,6 +37,15 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSigningInEmail, setIsSigningInEmail] = useState(false);
+
+  // Mobile Verification OTP States
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isOtpSending, setIsOtpSending] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [isOtpVerifying, setIsOtpVerifying] = useState(false);
+  const [simulatedCode, setSimulatedCode] = useState<string | null>(null);
 
   // Connection & Setup diagnostics
   const [firebaseError, setFirebaseError] = useState<{ code: string; message: string; type: "auth" | "firestore" } | null>(null);
@@ -116,6 +125,66 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
     }
   };
 
+  const handleSendOtp = async () => {
+    if (!phoneNumber) {
+      showToast("Please enter a valid phone number.", "error");
+      return;
+    }
+    setIsOtpSending(true);
+    setSimulatedCode(null);
+    try {
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setIsOtpSent(true);
+        if (data.code) {
+          setSimulatedCode(data.code);
+          showToast(`OTP Code Sent! [SANDBOX DEMO CODE: ${data.code}]`, "success");
+        } else {
+          showToast("OTP Code Sent to your mobile number via active SMS gateway!", "success");
+        }
+      } else {
+        showToast(data.error || "Failed to send verification code.", "error");
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast("Connection failed to OTP verification services.", "error");
+    } finally {
+      setIsOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode) {
+      showToast("Please enter the verification code.", "error");
+      return;
+    }
+    setIsOtpVerifying(true);
+    try {
+      const response = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber, code: otpCode })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setIsOtpVerified(true);
+        showToast("Mobile phone number verified successfully!", "success");
+      } else {
+        showToast(data.error || "Incorrect code. Please retry.", "error");
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast("Failed to complete OTP validation request.", "error");
+    } finally {
+      setIsOtpVerifying(false);
+    }
+  };
+
   // Handles standard secure Email and Password Registration / Authentication
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +195,11 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
     }
     if (password.length < 6) {
       showToast("Password must include at least 6 characters.", "error");
+      return;
+    }
+
+    if (isRegistering && !isOtpVerified) {
+      showToast("Fraud Prevention: Please verify your mobile number via OTP first.", "error");
       return;
     }
 
@@ -461,6 +535,83 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
                       />
                     </div>
                   </div>
+
+                  {isRegistering && (
+                    <div className="pt-3 border-t border-stone-200 space-y-3">
+                      <span className="text-[9px] font-bold text-amber-800 uppercase tracking-widest block">🛡️ Broker Prevention & Fraud Shield</span>
+                      
+                      {/* Mobile Phone Input */}
+                      <div className="space-y-1">
+                        <label className="block text-[8.5px] uppercase font-bold tracking-wider text-stone-605">
+                          Mobile Phone Number
+                        </label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1 flex items-center">
+                            <Phone className="absolute left-3.5 w-4 h-4 text-stone-400" />
+                            <input
+                              type="tel"
+                              value={phoneNumber}
+                              onChange={(e) => setPhoneNumber(e.target.value)}
+                              placeholder="e.g. +91 98765 43210"
+                              disabled={isOtpVerified}
+                              className="w-full pl-9 pr-4 py-2 bg-[#FAF8F5] border-2 border-stone-300 focus:border-stone-900 text-stone-900 text-xs font-sans font-semibold outline-none"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={isOtpSending || isOtpVerified || !phoneNumber}
+                            className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold uppercase tracking-widest transition disabled:opacity-50 shrink-0 cursor-pointer"
+                          >
+                            {isOtpSending ? "Sending..." : isOtpSent ? "Resend" : "Send OTP"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* OTP Input */}
+                      {isOtpSent && !isOtpVerified && (
+                        <div className="space-y-1 animate-in fade-in duration-200">
+                          <label className="block text-[8.5px] uppercase font-bold tracking-wider text-stone-605">
+                            Enter 6-Digit OTP Code
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={otpCode}
+                              onChange={(e) => setOtpCode(e.target.value)}
+                              placeholder="123456"
+                              className="flex-1 px-3 py-2 bg-[#FAF8F5] border-2 border-stone-300 focus:border-stone-900 text-stone-900 text-xs font-sans font-semibold tracking-widest outline-none text-center"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleVerifyOtp}
+                              disabled={isOtpVerifying || !otpCode}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-widest transition cursor-pointer"
+                            >
+                              {isOtpVerifying ? "Verifying..." : "Verify Code"}
+                            </button>
+                          </div>
+                          
+                          {simulatedCode && (
+                            <div className="mt-1 text-center bg-amber-50 border border-amber-200 p-1.5">
+                              <p className="text-[10px] text-amber-800 font-bold">
+                                Sandbox Mode Code: <span className="font-mono text-xs select-all bg-white px-1.5 py-0.5 border border-amber-300 rounded font-semibold">{simulatedCode}</span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Verified Badge */}
+                      {isOtpVerified && (
+                        <div className="flex items-center gap-1.5 text-emerald-850 bg-emerald-50/55 border border-emerald-300 p-2 text-[10px] font-bold uppercase tracking-wide">
+                          <Check className="w-4 h-4 shrink-0 text-emerald-600 stroke-[3]" />
+                          Mobile Authenticated! Registration Safe.
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="text-right">
                     <button

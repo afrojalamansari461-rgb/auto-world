@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Car, Menu, X, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert } from "lucide-react";
 import { User } from "firebase/auth";
 import { auth, signOut } from "../firebase";
@@ -52,9 +52,17 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, tabId: string) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleTabClick(tabId);
+    }
+  };
+
   return (
     <nav
       id="main-navbar"
+      aria-label="Primary website navigation"
       className={`sticky top-0 z-[100] transition-all duration-300 ${
         isScrolled
           ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-sm py-3 border-b border-stone-900/15"
@@ -66,8 +74,9 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
           {/* Logo */}
           <button
             id="nav-logo"
+            aria-label="AutoWorld homepage"
             onClick={() => handleTabClick("home")}
-            className="flex items-center gap-3 group cursor-pointer focus:outline-none"
+            className="flex items-center gap-3 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
           >
             <motion.div 
               whileHover={{ scale: 1.1, rotate: 3 }}
@@ -77,12 +86,12 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               <Car className="w-5 h-5 text-[#F4F1EA]" />
             </motion.div>
             <span className="text-xl font-bold tracking-tighter uppercase font-serif text-stone-900">
-              Auto<span className="font-light italic text-stone-500">World</span>
+              Auto<span className="font-light italic text-stone-600">World</span>
             </span>
           </button>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1 lg:gap-2">
+          <div className="hidden md:flex items-center gap-1 lg:gap-1.5" role="tablist" aria-label="Main navigation tabs">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -90,11 +99,16 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 <button
                   key={item.id}
                   id={`nav-link-${item.id}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`tabpanel-${item.id}`}
+                  tabIndex={0}
                   onClick={() => handleTabClick(item.id)}
-                  className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-sans uppercase tracking-[0.12em] transition-colors duration-200 cursor-pointer ${
+                  onKeyDown={(e) => handleKeyDown(e, item.id)}
+                  className={`relative flex items-center gap-1.5 px-2.5 py-2 text-[11px] font-sans uppercase tracking-[0.1em] transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-stone-900 ${
                     isActive
-                      ? "text-stone-900 font-extrabold"
-                      : "text-stone-600 hover:text-stone-950 font-medium"
+                      ? "text-stone-900 font-black"
+                      : "text-stone-700 hover:text-stone-950 font-bold"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -128,7 +142,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 )}
                 <div className="flex flex-col items-start leading-[1.1]">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[80px]">{currentUser.displayName || "User"}</span>
-                  <button onClick={handleSignOut} className="text-[8px] uppercase tracking-widest font-bold text-red-600 hover:underline">Sign Out</button>
+                  <button onClick={handleSignOut} aria-label="Sign out of AutoWorld account" className="text-[8px] uppercase tracking-widest font-bold text-red-650 hover:underline cursor-pointer">Sign Out</button>
                 </div>
               </motion.div>
             ) : (
@@ -136,7 +150,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onSignInClick}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-[0.1em] transition-all cursor-pointer font-bold bg-[#FAF8F5] shadow-sm"
+                aria-label="Sign in to your account"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-[0.1em] transition-all cursor-pointer font-bold bg-[#FAF8F5] shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 Sign In
@@ -156,9 +171,10 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleTabClick("premium")}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-widest transition-all cursor-pointer bg-[#FAF8F5]/50"
+                aria-label="Upgrade to AutoWorld Premium Plan"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-widest transition-all cursor-pointer bg-[#FAF8F5]/50 focus:outline-none focus:ring-2 focus:ring-stone-900 font-bold"
               >
-                <Crown className="w-3.5 h-3.5 text-amber-605 fill-amber-350" />
+                <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-350" />
                 Go Premium
               </motion.button>
             )}
@@ -166,7 +182,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               whileHover={{ scale: 1.05, y: -1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => handleTabClick("sell")}
-              className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white font-serif italic text-xs uppercase tracking-widest transition-all cursor-pointer border border-stone-900 shadow-sm"
+              aria-label="List your vehicle for sale free"
+              className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white font-serif italic text-xs uppercase tracking-widest transition-all cursor-pointer border border-stone-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900 font-bold"
             >
               List Car Free
             </motion.button>
@@ -175,9 +192,11 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
           {/* Mobile Menu Toggle Button */}
           <motion.button
             id="mobile-menu-toggle"
+            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMobileMenuOpen}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 hover:bg-stone-200/50 text-stone-900 transition"
+            className="md:hidden p-2 hover:bg-stone-200/50 text-stone-900 transition focus:outline-none focus:ring-2 focus:ring-stone-900"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </motion.button>
@@ -193,6 +212,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="md:hidden border-t border-stone-900/10 bg-[#FAF8F5] shadow-lg absolute top-full left-0 right-0 overflow-hidden py-4 px-4 flex flex-col gap-2.5"
+            role="tablist"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -201,11 +221,13 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 <button
                   key={item.id}
                   id={`mobile-nav-link-${item.id}`}
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => handleTabClick(item.id)}
                   className={`flex items-center gap-3 px-4 py-2.5 text-xs font-sans uppercase tracking-widest transition ${
                     isActive
                       ? "bg-stone-900 text-white font-extrabold"
-                      : "text-stone-700 hover:bg-stone-100 font-medium"
+                      : "text-stone-700 hover:bg-stone-100 font-bold"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -230,7 +252,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                   </div>
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-red-50 hover:bg-red-100 text-red-650 text-[10px] uppercase font-bold tracking-wider rounded-sm transition"
+                    aria-label="Sign out of AutoWorld account"
+                    className="flex items-center gap-1.5 px-3 py-1 bg-red-50 hover:bg-red-100 text-red-650 text-[10px] uppercase font-bold tracking-wider rounded-sm transition cursor-pointer"
                   >
                     <LogIn className="w-3 h-3" />
                     Sign Out
@@ -239,7 +262,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               ) : (
                 <button
                   onClick={onSignInClick}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 bg-stone-900 text-white text-xs font-sans uppercase tracking-widest transition-all font-bold"
+                  aria-label="Sign in with Google account"
+                  className="w-full flex items-center justify-center gap-2 p-2.5 bg-stone-900 text-white text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
                   Sign In with Google
@@ -254,7 +278,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               ) : (
                 <button
                   onClick={() => handleTabClick("premium")}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-widest transition-all font-bold"
+                  aria-label="Upgrade to AutoWorld Premium Plan"
+                  className="w-full flex items-center justify-center gap-2 p-2.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
                 >
                   <Crown className="w-4 h-4 text-amber-600" />
                   Go Premium Plan
@@ -262,7 +287,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               )}
               <button
                 onClick={() => handleTabClick("sell")}
-                className="w-full text-center p-2.5 bg-stone-900 text-white font-serif italic text-xs tracking-widest uppercase font-bold"
+                aria-label="List your car free"
+                className="w-full text-center p-2.5 bg-stone-900 text-white font-serif italic text-xs tracking-widest uppercase font-bold cursor-pointer"
               >
                 List Car Free
               </button>

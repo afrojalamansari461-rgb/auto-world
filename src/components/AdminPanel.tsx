@@ -33,12 +33,23 @@ interface FirestoreBuyerPass {
   date: string;
 }
 
+interface FirestoreFeedback {
+  id: string;
+  text: string;
+  category: "bug_report" | "suggestion" | "question" | "praise";
+  name?: string;
+  email?: string;
+  timestamp: string;
+  status: "active" | "archived" | "resolved";
+}
+
 export default function AdminPanel({ showToast, currentUser, onQuickView, setActiveTab }: AdminPanelProps) {
   const [listings, setListings] = useState<UserListing[]>([]);
   const [messages, setMessages] = useState<FirestoreMessage[]>([]);
   const [passes, setPasses] = useState<FirestoreBuyerPass[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FirestoreFeedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments">("inventory");
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback">("inventory");
   
   // States for hidden default vehicles stored in localStorage to customize catalogs
   const [hiddenDefaultIds, setHiddenDefaultIds] = useState<number[]>([]);
@@ -135,6 +146,37 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         }
       }
       showToast("Access restrictions on Pass Purchases collection.", "info");
+    }
+
+    // 4. Load User Feedbacks
+    try {
+      const feedbacksSnapshot = await getDocs(collection(db, "feedbacks"));
+      const loadedFeedbacks: FirestoreFeedback[] = [];
+      feedbacksSnapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        loadedFeedbacks.push({
+          id: docSnap.id,
+          text: d.text || "",
+          category: d.category || "suggestion",
+          name: d.name || "",
+          email: d.email || "",
+          timestamp: d.timestamp || new Date().toISOString(),
+          status: d.status || "active"
+        });
+      });
+      loadedFeedbacks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setFeedbacks(loadedFeedbacks);
+    } catch (err: any) {
+      console.warn("Failed to load feedbacks:", err);
+      // Try to read from localStorage if offline/denied
+      try {
+        const stored = localStorage.getItem("autoWorld_feedbacks");
+        if (stored) {
+          setFeedbacks(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     setIsLoading(false);
@@ -258,6 +300,46 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       showToast("Inquiry lead removed from active ledger.", "success");
     } catch (err: any) {
       handleFirestoreError(err, OperationType.DELETE, `messages/${messageId}`);
+    }
+  };
+
+  // Delete User Feedback from Firestore
+  const handleDeleteFeedback = async (id: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this user feedback post?")) return;
+
+    try {
+      await deleteDoc(doc(db, "feedbacks", id));
+      setFeedbacks(prev => prev.filter(fb => fb.id !== id));
+      
+      // Also update localized storage if mirrored there
+      try {
+        const stored = localStorage.getItem("autoWorld_feedbacks");
+        if (stored) {
+          const arr: FirestoreFeedback[] = JSON.parse(stored);
+          const updated = arr.filter(fb => fb.id !== id);
+          localStorage.setItem("autoWorld_feedbacks", JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      showToast("Feedback record deleted permanently.", "success");
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.DELETE, `feedbacks/${id}`);
+      showToast("Could not delete feedback: rules constraint.", "error");
+    }
+  };
+
+  // Toggle Feedback resolution status
+  const handleToggleFeedbackStatus = async (item: FirestoreFeedback) => {
+    const nextStatus = item.status === "active" ? "resolved" : "active";
+    try {
+      await updateDoc(doc(db, "feedbacks", item.id), { status: nextStatus });
+      setFeedbacks(prev => prev.map(fb => fb.id === item.id ? { ...fb, status: nextStatus } : fb));
+      showToast(`Feedback status updated to ${nextStatus}!`, "success");
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.UPDATE, `feedbacks/${item.id}`);
+      showToast("Failed to update feedback status: insufficient rules.", "error");
     }
   };
 
@@ -418,10 +500,10 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         </div>
 
         {/* SECTION CONTROL SWITCHER */}
-        <div className="border border-stone-300 bg-[#FAF8F5] mb-8 p-1 flex">
+        <div className="border border-stone-300 bg-[#FAF8F5] mb-8 p-1 flex flex-wrap sm:flex-nowrap">
           <button
             onClick={() => setActiveSubSection("inventory")}
-            className={`flex-1 py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
               activeSubSection === "inventory"
                 ? "bg-stone-900 text-white"
                 : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
@@ -433,7 +515,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           
           <button
             onClick={() => setActiveSubSection("leads")}
-            className={`flex-1 py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
               activeSubSection === "leads"
                 ? "bg-stone-900 text-white"
                 : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
@@ -445,7 +527,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
           <button
             onClick={() => setActiveSubSection("payments")}
-            className={`flex-1 py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
               activeSubSection === "payments"
                 ? "bg-stone-900 text-white"
                 : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
@@ -453,6 +535,18 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           >
             <Crown className="w-4 h-4 shrink-0" />
             Pass Purchases ({passes.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("feedback")}
+            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              activeSubSection === "feedback"
+                ? "bg-stone-900 text-white"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+          >
+            <MessageSquare className="w-4 h-4 shrink-0 text-emerald-600" />
+            User Feedback ({feedbacks.length})
           </button>
         </div>
 
@@ -765,6 +859,130 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SUBSECTION 4: USER FEEDBACK & WCAG COMPLIANCE REPORTS */}
+            {activeSubSection === "feedback" && (
+              <div className="space-y-6">
+                <div className="bg-[#FAF8F5] border border-stone-300 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xs uppercase font-extrabold text-stone-500 tracking-wider font-mono">
+                      Continuous Quality & Compliance Feedback Desk:
+                    </h2>
+                    <p className="text-[10px] text-stone-400 font-mono mt-0.5">
+                      Submissions stored securely in Google Cloud Firestore collections
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-1 bg-stone-900 text-white uppercase font-mono font-extrabold tracking-widest shrink-0">
+                    Active Submissions: {feedbacks.length}
+                  </span>
+                </div>
+
+                {feedbacks.length === 0 ? (
+                  <div className="bg-[#FAF8F5] border border-stone-300 py-20 text-center">
+                    <MessageSquare className="w-12 h-12 text-stone-300 mx-auto mb-3 animate-bounce" />
+                    <h3 className="text-md uppercase font-bold tracking-widest text-stone-600">
+                      No user feedback posts logged yet.
+                    </h3>
+                    <p className="text-stone-400 text-xs mt-1 uppercase font-mono">
+                      Feedback widget submissions populate this real-time desk instantly
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6">
+                    {feedbacks.map((fb) => {
+                      const dateObj = new Date(fb.timestamp);
+                      const displayDate = isNaN(dateObj.getTime()) 
+                        ? "Date Unspecified" 
+                        : dateObj.toLocaleDateString("en-IN") + " " + dateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+
+                      let badgeText = "Suggestion";
+                      let badgeColor = "bg-emerald-100 text-emerald-950 border-emerald-305";
+                      if (fb.category === "bug_report") {
+                        badgeText = "Bug Report";
+                        badgeColor = "bg-red-100 text-red-950 border-red-305";
+                      } else if (fb.category === "question") {
+                        badgeText = "Question";
+                        badgeColor = "bg-sky-100 text-sky-950 border-sky-305";
+                      } else if (fb.category === "praise") {
+                        badgeText = "Praise";
+                        badgeColor = "bg-rose-100 text-rose-950 border-rose-305";
+                      }
+
+                      return (
+                        <div 
+                          key={fb.id} 
+                          className={`bg-[#FAF8F5] border-2 p-6 shadow-sm space-y-4 relative transition duration-300 ${
+                            fb.status === "resolved" 
+                              ? "border-emerald-300 opacity-75 bg-emerald-50/10" 
+                              : "border-stone-300 hover:border-stone-400"
+                          }`}
+                        >
+                          {/* Close / Archive Action */}
+                          <button
+                            onClick={() => handleDeleteFeedback(fb.id)}
+                            className="absolute top-6 right-6 p-2 text-stone-450 hover:text-red-650 transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-stone-900"
+                            title="Delete user feedback entry"
+                          >
+                            <Trash2 className="w-4.5 h-4.5" />
+                          </button>
+
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 border uppercase font-mono tracking-widest ${badgeColor}`}>
+                              {badgeText}
+                            </span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 uppercase font-mono tracking-wider ${
+                              fb.status === "resolved" ? "bg-emerald-600 text-white" : "bg-stone-200 text-stone-800"
+                            }`}>
+                              {fb.status === "resolved" ? "Resolved" : "Active"}
+                            </span>
+                            <span className="text-[10px] text-stone-450 font-bold font-mono uppercase">
+                              Submitted: {displayDate}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <h3 className="text-xs font-bold font-mono text-stone-550">
+                              Author Name: <span className="font-semibold text-stone-800">{fb.name || "Anonymous"}</span>
+                            </h3>
+                            {fb.email && (
+                              <div className="flex items-center gap-1.5 text-xs font-mono text-stone-500">
+                                <span className="flex items-center gap-1 font-bold">
+                                  <Mail className="w-3.5 h-3.5 text-stone-400" />
+                                  {fb.email}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="p-4 bg-stone-100 border border-stone-205 rounded-none font-mono text-xs text-stone-800 whitespace-pre-wrap leading-relaxed">
+                            {fb.text}
+                          </div>
+
+                          <div className="pt-2 flex flex-wrap gap-2.5">
+                            {fb.email && (
+                              <a
+                                href={`mailto:${fb.email}?subject=Regarding%20your%20AutoWorld%20feedback&body=Hi%20${fb.name || "there"},%0D%0A%0D%0AThank%20you%20for%20your%20feedback:%20"${encodeURIComponent(fb.text)}"%0D%0A%0D%0AWe%20wanted%20to%20follow%20up...`}
+                                className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 transition cursor-pointer"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-emerald-500" />
+                                Send Email Follow-up
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleToggleFeedbackStatus(fb)}
+                              className="px-4 py-2 bg-stone-50 border border-stone-300 hover:bg-stone-100 text-stone-700 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 font-mono cursor-pointer"
+                            >
+                              <CheckCircle className={`w-3.5 h-3.5 ${fb.status === "resolved" ? "text-emerald-600" : "text-stone-450"}`} />
+                              {fb.status === "resolved" ? "Mark Active" : "Mark Resolved"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

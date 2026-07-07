@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown } from "lucide-react";
+import { Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES } from "../types";
 import { motion } from "motion/react";
 
@@ -45,7 +45,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
             className="lg:col-span-7 p-8 sm:p-12 md:p-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#1A1A1A]/10"
           >
             <div>
-              <span className="text-[10px] font-sans uppercase tracking-[0.25em] text-stone-500 mb-6 block font-bold">
+              <span className="text-[10px] font-sans uppercase tracking-[0.25em] text-stone-700 mb-6 block font-extrabold">
                 Volume IV • Issue 12 • Established MMXXVI
               </span>
               <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-black tracking-tight leading-[0.95] text-stone-900 mb-8 select-none">
