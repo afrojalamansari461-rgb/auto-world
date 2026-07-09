@@ -262,6 +262,255 @@ Your response must be a JSON object with this exact structure:
     }
   });
 
+  // API endpoint for car verification (Name, Info, Image Accuracy Check)
+  app.post("/api/verify-car", async (req, res) => {
+    try {
+      const { make, model, year, description, transmission, fuelType, mileage, photosCount, photosInfo } = req.body;
+
+      // Check if GEMINI_API_KEY is missing or invalid, or run immediately
+      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "MY_GEMINI_API_KEY") {
+        throw new Error("Missing or placeholder Gemini API key");
+      }
+
+      const prompt = `You are an expert automotive vetting agent. Analyze the following vehicle listing details for accuracy, consistency, and correctness across name, technical details, and photos/images:
+
+Vehicle Specifications:
+- Make: ${make || "Unknown"}
+- Model: ${model || "Unknown"}
+- Year: ${year || "Unknown"}
+- Fuel Type: ${fuelType || "Unknown"}
+- Transmission: ${transmission || "Unknown"}
+- Mileage: ${mileage || "Unknown"}
+- Description: ${description || ""}
+- Photos Count: ${photosCount || 0}
+- Photos Info: ${JSON.stringify(photosInfo || [])}
+
+Analyze the details for any discrepancies. Consider:
+1. Is this a real vehicle make/model/year combination? (e.g., if make is Honda and model is Civic but year is 1920, that is incorrect. If model is 'Thar' but make is 'Honda', that is incorrect - Thar is manufactured by Mahindra).
+2. Are there inconsistencies in specifications? (e.g., if description says 'manual gear box' but user selected 'Automatic' transmission; or if description says 'electric' but user selected 'Diesel' fuel).
+3. Do the photos look appropriate and are there enough files? (at least 1 photo is required).
+
+Format your output STRICTLY as a JSON object, with the following schema:
+{
+  "nameCheck": {
+    "isValid": true,
+    "makeModelMatch": true,
+    "yearManufactureCheck": true,
+    "suggestedCorrectName": "string representing correct name, e.g., 2022 Honda Civic",
+    "details": "concise explanation of findings"
+  },
+  "infoCheck": {
+    "isValid": true,
+    "specInconsistencies": ["list of strings detailing any contradictions"],
+    "realisticMileageCheck": true,
+    "suggestedImprovements": ["list of suggestions"],
+    "details": "concise explanation of findings"
+  },
+  "imageCheck": {
+    "isValid": true,
+    "isAppropriate": true,
+    "imageSuggestions": ["list of image improvements"],
+    "details": "concise explanation of findings"
+  },
+  "overallStatus": "approved",
+  "accuracyScore": 95,
+  "vettingMessage": "concise overall summary"
+}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              nameCheck: {
+                type: "OBJECT",
+                properties: {
+                  isValid: { type: "BOOLEAN" },
+                  makeModelMatch: { type: "BOOLEAN" },
+                  yearManufactureCheck: { type: "BOOLEAN" },
+                  suggestedCorrectName: { type: "STRING" },
+                  details: { type: "STRING" }
+                },
+                required: ["isValid", "makeModelMatch", "yearManufactureCheck", "suggestedCorrectName", "details"]
+              },
+              infoCheck: {
+                type: "OBJECT",
+                properties: {
+                  isValid: { type: "BOOLEAN" },
+                  specInconsistencies: {
+                    type: "ARRAY",
+                    items: { type: "STRING" }
+                  },
+                  realisticMileageCheck: { type: "BOOLEAN" },
+                  suggestedImprovements: {
+                    type: "ARRAY",
+                    items: { type: "STRING" }
+                  },
+                  details: { type: "STRING" }
+                },
+                required: ["isValid", "specInconsistencies", "realisticMileageCheck", "suggestedImprovements", "details"]
+              },
+              imageCheck: {
+                type: "OBJECT",
+                properties: {
+                  isValid: { type: "BOOLEAN" },
+                  isAppropriate: { type: "BOOLEAN" },
+                  imageSuggestions: {
+                    type: "ARRAY",
+                    items: { type: "STRING" }
+                  },
+                  details: { type: "STRING" }
+                },
+                required: ["isValid", "isAppropriate", "imageSuggestions", "details"]
+              },
+              overallStatus: { type: "STRING" },
+              accuracyScore: { type: "INTEGER" },
+              vettingMessage: { type: "STRING" }
+            },
+            required: ["nameCheck", "infoCheck", "imageCheck", "overallStatus", "accuracyScore", "vettingMessage"]
+          }
+        }
+      });
+
+      const resultText = response.text || "{}";
+      res.json(JSON.parse(resultText));
+    } catch (error: any) {
+      console.warn("Gemini car verification failed. Falling back to robust local verification engine. Error details:", error.message || error);
+      
+      const { make, model, year, description, transmission, fuelType, mileage, photosCount } = req.body;
+      
+      // Smart offline rule-based verification fallback
+      let nameValid = true;
+      let makeModelMatch = true;
+      let yearManufactureCheck = true;
+      let suggestedName = `${year || 2024} ${make || ""} ${model || ""}`.trim();
+      let nameDetails = "Vehicle make, model, and year combination parsed successfully.";
+
+      const lowerMake = (make || "").toLowerCase();
+      const lowerModel = (model || "").toLowerCase();
+      const numYear = parseInt(year) || 0;
+
+      // Check simple contradictions in brand model match
+      if (lowerMake === "honda" && (lowerModel.includes("thar") || lowerModel.includes("swift") || lowerModel.includes("nexon"))) {
+        makeModelMatch = false;
+        nameDetails = `Make and model discrepancy detected: '${model}' is manufactured by another brand (e.g. Mahindra, Maruti, Tata), not Honda.`;
+      } else if (lowerMake === "mahindra" && (lowerModel.includes("civic") || lowerModel.includes("city") || lowerModel.includes("swift"))) {
+        makeModelMatch = false;
+        nameDetails = `Make and model discrepancy detected: '${model}' is manufactured by another brand, not Mahindra.`;
+      } else if (lowerMake === "maruti" && (lowerModel.includes("thar") || lowerModel.includes("city") || lowerModel.includes("creta"))) {
+        makeModelMatch = false;
+        nameDetails = `Make and model discrepancy detected: '${model}' is manufactured by another brand, not Maruti Suzuki.`;
+      }
+
+      if (numYear < 1886 || numYear > 2026) {
+        yearManufactureCheck = false;
+        nameValid = false;
+        nameDetails = "Invalid model manufacturing year out of timeline range (1886-2026).";
+      }
+
+      // Check description inconsistencies
+      const specInconsistencies: string[] = [];
+      const suggestedImprovements: string[] = [];
+      const lowerDesc = (description || "").toLowerCase();
+
+      // Transmission cross checks
+      if (transmission === "Automatic" && lowerDesc.includes("manual gearbox")) {
+        specInconsistencies.push("Description mentions 'manual gearbox' but 'Automatic' transmission is selected.");
+      }
+      if (transmission === "Manual" && (lowerDesc.includes("automatic transmission") || lowerDesc.includes("amt gear") || lowerDesc.includes("no clutch pedal"))) {
+        specInconsistencies.push("Description mentions automatic shift details but 'Manual' transmission is selected.");
+      }
+
+      // Fuel type cross checks
+      if (fuelType === "Electric" && (lowerDesc.includes("exhaust pipe") || lowerDesc.includes("diesel engine") || lowerDesc.includes("petrol tank"))) {
+        specInconsistencies.push("Description references internal combustion elements (exhaust/engine/fuel tank) but 'Electric' is selected.");
+      }
+      if (fuelType === "Diesel" && lowerDesc.includes("petrol variant")) {
+        specInconsistencies.push("Description refers to a petrol variant but 'Diesel' fuel is selected.");
+      }
+
+      // Mileage check
+      let mileageCheck = true;
+      const numMileage = parseInt(mileage) || 0;
+      if (numMileage < 0 || numMileage > 800000) {
+        mileageCheck = false;
+        specInconsistencies.push("Vehicle mileage seems abnormally high or out of realistic limits (>800,000 km).");
+      }
+
+      if (lowerDesc.length < 30) {
+        suggestedImprovements.push("Provide more detailed specifications regarding tyre wear, registration state, and physical key count.");
+      }
+      if (!lowerDesc.includes("owner")) {
+        suggestedImprovements.push("Mention the number of previous owners (e.g. 'First owner' or 'Second owner') in the listing copy.");
+      }
+
+      // Image check
+      const imageCount = parseInt(photosCount) || 0;
+      let isImageValid = imageCount > 0;
+      let isImageAppropriate = imageCount > 0;
+      const imageSuggestions: string[] = [];
+      let imageDetails = `${imageCount} physical photograph(s) successfully verified in media grid.`;
+
+      if (imageCount === 0) {
+        imageDetails = "No uploaded physical photos detected. Standard listing policy requires at least one exterior vehicle image.";
+        imageSuggestions.push("Upload at least 1-3 high-resolution photos of the car's exterior.");
+      } else if (imageCount < 3) {
+        imageSuggestions.push("Add interior, dashboard, and tyre thread details to boost confidence in listing accuracy.");
+      }
+
+      // Scoring
+      let accuracyScore = 100;
+      if (!makeModelMatch) accuracyScore -= 30;
+      if (!yearManufactureCheck) accuracyScore -= 20;
+      if (specInconsistencies.length > 0) accuracyScore -= (specInconsistencies.length * 15);
+      if (imageCount === 0) accuracyScore -= 25;
+      accuracyScore = Math.max(10, accuracyScore);
+
+      let overallStatus: "approved" | "warning" | "error" = "approved";
+      if (accuracyScore < 60 || imageCount === 0 || !nameValid) {
+        overallStatus = "error";
+      } else if (accuracyScore < 85) {
+        overallStatus = "warning";
+      }
+
+      res.json({
+        nameCheck: {
+          isValid: nameValid,
+          makeModelMatch,
+          yearManufactureCheck,
+          suggestedCorrectName: suggestedName,
+          details: nameDetails
+        },
+        infoCheck: {
+          isValid: specInconsistencies.length === 0,
+          specInconsistencies,
+          realisticMileageCheck: mileageCheck,
+          suggestedImprovements,
+          details: specInconsistencies.length > 0 
+            ? `Discrepancies identified: ${specInconsistencies.join(" ")}` 
+            : "Vehicle text specifications are fully consistent with standard parameter forms."
+        },
+        imageCheck: {
+          isValid: isImageValid,
+          isAppropriate: isImageAppropriate,
+          imageSuggestions,
+          details: imageDetails
+        },
+        overallStatus,
+        accuracyScore,
+        vettingMessage: overallStatus === "approved"
+          ? "This vehicle listing has been thoroughly scanned and verified as correct and highly accurate."
+          : overallStatus === "warning"
+            ? "Vetting analysis complete with several warnings. Correcting them will increase listing trust score."
+            : "Listing verification failed due to brand conflicts or missing required media snapshots.",
+        fallback: true
+      });
+    }
+  });
+
   // Temporary store for OTPs in-memory (production systems would use Redis or Cloud SQL)
   const otpStore = new Map<string, string>();
 

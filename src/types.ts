@@ -21,6 +21,7 @@ export interface Vehicle {
   location?: string;
   negotiable?: string;
   status?: "pending" | "active" | "sold";
+  photos?: { src: string; alt: string }[];
 }
 
 export interface UserListing {

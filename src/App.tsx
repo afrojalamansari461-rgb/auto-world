@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -16,12 +16,50 @@ import { auth, db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
+const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
+  if (vehicle.photos && vehicle.photos.length > 0) {
+    return vehicle.photos;
+  }
+  
+  const baseImg = vehicle.image;
+  const title = vehicle.title;
+  const category = (vehicle.category || "").toLowerCase();
+  const lowerMake = (vehicle.make || "").toLowerCase();
+  
+  if (category === "motorcycle" || lowerMake.includes("royal enfield")) {
+    return [
+      { src: baseImg, alt: `${title} - Front Profile` },
+      { src: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&auto=format&fit=crop&q=80", alt: `${title} - Cockpit Detail` },
+      { src: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&auto=format&fit=crop&q=80", alt: `${title} - Engine & Exhaust` },
+    ];
+  } else if (category === "bicycle" || lowerMake.includes("hero cycles") || lowerMake.includes("firefox")) {
+    return [
+      { src: baseImg, alt: `${title} - Side Profile` },
+      { src: "https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&auto=format&fit=crop&q=80", alt: `${title} - Gears & Chain` },
+      { src: "https://images.unsplash.com/photo-1502744688674-c619d388682d?w=800&auto=format&fit=crop&q=80", alt: `${title} - Front Handlebars` },
+    ];
+  } else if (category === "suv" || lowerMake.includes("mahindra") || lowerMake.includes("tata") || lowerMake.includes("toyota")) {
+    return [
+      { src: baseImg, alt: `${title} - Exterior Front 3/4 View` },
+      { src: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=800&auto=format&fit=crop&q=80", alt: `${title} - Cockpit & Dashboard` },
+      { src: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=800&auto=format&fit=crop&q=80", alt: `${title} - Rear View / Cargo` },
+    ];
+  } else {
+    return [
+      { src: baseImg, alt: `${title} - Exterior Profile` },
+      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: `${title} - Premium Steering Wheel` },
+      { src: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&auto=format&fit=crop&q=80", alt: `${title} - Alloy Wheel Detail` },
+    ];
+  }
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("home");
   const [favorites, setFavorites] = useState<number[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState<boolean>(false);
   const [subscriptionActive, setSubscriptionActive] = useState<boolean>(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState<boolean>(false);
   const [openLegalDoc, setOpenLegalDoc] = useState<"privacy" | "terms" | "fraud" | "support" | null>(null);
@@ -176,7 +214,8 @@ export default function App() {
               sellerEmail: listing.sellerEmail,
               sellerPhone: listing.sellerPhone,
               location: listing.location,
-              negotiable: listing.negotiable
+              negotiable: listing.negotiable,
+              photos: listing.photos
             };
 
             setSelectedVehicle(mappedVehicle);
@@ -426,6 +465,8 @@ export default function App() {
       return;
     }
 
+    setCurrentImageIndex(0);
+
     // Direct check if the vehicle object already has the seller details attached!
     if (selectedVehicle.sellerName) {
       setModalSellerInfo({
@@ -592,21 +633,100 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-8">
               {/* Media images panel */}
               <div className="space-y-4 font-sans">
-                <div className="relative aspect-video border border-stone-300 overflow-hidden bg-stone-150">
-                  <img
-                    src={selectedVehicle.image}
-                    alt={selectedVehicle.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
-                    }}
-                  />
-                  {selectedVehicle.badge && (
-                    <span className="absolute top-4 left-4 px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-widest border border-stone-700">
-                      {selectedVehicle.badge}
-                    </span>
-                  )}
-                </div>
+                {(() => {
+                  const images = getCarouselImages(selectedVehicle);
+                  const hasMultiple = images.length > 1;
+                  
+                  const handlePrev = () => {
+                    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+                  };
+                  
+                  const handleNext = () => {
+                    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+                  };
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Main slide frame */}
+                      <div className="relative aspect-video border border-stone-300 overflow-hidden bg-stone-900 group">
+                        <img
+                          src={images[currentImageIndex]?.src || selectedVehicle.image}
+                          alt={images[currentImageIndex]?.alt || selectedVehicle.title}
+                          className="w-full h-full object-cover select-none transition-all duration-300"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
+                          }}
+                        />
+                        
+                        {/* Overlay badge info */}
+                        {selectedVehicle.badge && (
+                          <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-widest border border-stone-700">
+                            {selectedVehicle.badge}
+                          </span>
+                        )}
+
+                        {/* Slide counter */}
+                        {hasMultiple && (
+                          <span className="absolute bottom-4 right-4 z-10 px-2 py-1 bg-stone-900/80 backdrop-blur-sm text-stone-100 font-mono text-[10px] font-bold border border-stone-700 select-none">
+                            {currentImageIndex + 1} / {images.length}
+                          </span>
+                        )}
+
+                        {/* Left arrow navigation */}
+                        {hasMultiple && (
+                          <button
+                            onClick={handlePrev}
+                            aria-label="Previous photo"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white border border-stone-700 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 cursor-pointer"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                        )}
+
+                        {/* Right arrow navigation */}
+                        {hasMultiple && (
+                          <button
+                            onClick={handleNext}
+                            aria-label="Next photo"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white border border-stone-700 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 cursor-pointer"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Thumbnails strip */}
+                      {hasMultiple && (
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-stone-200">
+                          {images.map((img, idx) => {
+                            const isActive = idx === currentImageIndex;
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => setCurrentImageIndex(idx)}
+                                className={`relative w-20 aspect-video shrink-0 border transition-all cursor-pointer ${
+                                  isActive 
+                                    ? "border-stone-950 ring-2 ring-stone-950/20" 
+                                    : "border-stone-300 opacity-60 hover:opacity-100"
+                                }`}
+                                aria-label={`View photo ${idx + 1}`}
+                              >
+                                <img
+                                  src={img.src}
+                                  alt={`Thumbnail ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
+                                  }}
+                                />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 
                 <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-start gap-2.5">
                   <Info className="w-5 h-5 text-stone-900 shrink-0 mt-0.5" />

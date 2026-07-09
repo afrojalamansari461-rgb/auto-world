@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, CheckCircle, AlertTriangle, RefreshCw, BarChart2, Check, ArrowRight, X } from "lucide-react";
+import { Sparkles, CheckCircle, AlertTriangle, RefreshCw, BarChart2, Check, ArrowRight, X, ShieldCheck, AlertCircle, ThumbsUp } from "lucide-react";
 
 interface Correction {
   original: string;
@@ -27,6 +27,11 @@ interface ListingAIAssistantProps {
   vehicleType: string;
   make: string;
   model: string;
+  year?: string;
+  fuelType?: string;
+  transmission?: string;
+  mileage?: string;
+  photos?: { src: string; alt: string }[];
   onUpdateTitle: (newTitle: string) => void;
   onUpdateDescription: (newDesc: string) => void;
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -38,6 +43,11 @@ export default function ListingAIAssistant({
   vehicleType,
   make,
   model,
+  year,
+  fuelType,
+  transmission,
+  mileage,
+  photos,
   onUpdateTitle,
   onUpdateDescription,
   showToast
@@ -52,8 +62,12 @@ export default function ListingAIAssistant({
   const [targetKeywords, setTargetKeywords] = useState("");
   const [isAnalyzingSEO, setIsAnalyzingSEO] = useState(false);
 
-  // Active assistant panel tab ("spell" | "seo")
-  const [activeSubTab, setActiveSubTab] = useState<"spell" | "seo">("spell");
+  // Accuracy Verification states
+  const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // Active assistant panel tab ("spell" | "seo" | "verify")
+  const [activeSubTab, setActiveSubTab] = useState<"spell" | "seo" | "verify">("spell");
 
   // Real-time spellcheck debouncer
   useEffect(() => {
@@ -127,6 +141,48 @@ export default function ListingAIAssistant({
     }
   };
 
+  // Run Vetting & Accuracy Verification Audit
+  const handleRunVerification = async () => {
+    setIsVerifying(true);
+    try {
+      const response = await fetch("/api/verify-car", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          make,
+          model,
+          year,
+          description,
+          transmission,
+          fuelType,
+          mileage,
+          photosCount: photos ? photos.length : 0,
+          photosInfo: photos ? photos.map(p => ({ alt: p.alt })) : []
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Verification query failed");
+      }
+
+      const data = await response.json();
+      setVerificationResult(data);
+      showToast("Verification scan completed!", "success");
+    } catch (err: any) {
+      console.error(err);
+      showToast("Could not calculate verification parameters. Please try again.", "error");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Run verification when switching tab if result not loaded
+  useEffect(() => {
+    if (activeSubTab === "verify") {
+      handleRunVerification();
+    }
+  }, [activeSubTab, make, model, year, description, transmission, fuelType, mileage, photos?.length]);
+
   // Apply spelling correction
   const handleApplyCorrection = (original: string, suggestion: string) => {
     // Escape special characters for regex matching
@@ -169,7 +225,7 @@ export default function ListingAIAssistant({
           <Sparkles className="w-4 h-4 text-amber-600 animate-pulse" />
           <h3 className="text-xs uppercase tracking-widest font-black text-stone-900">AI Writing & SEO Coach</h3>
         </div>
-        <div className="flex gap-1" role="tablist">
+        <div className="flex flex-wrap gap-1" role="tablist">
           <button
             type="button"
             role="tab"
@@ -178,7 +234,7 @@ export default function ListingAIAssistant({
             id="tab-spell"
             onClick={() => setActiveSubTab("spell")}
             onKeyDown={(e) => handleKeyDown(e, () => setActiveSubTab("spell"))}
-            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border ${
+            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border focus:outline-none focus-visible:ring-1 focus-visible:ring-stone-900 ${
               activeSubTab === "spell"
                 ? "bg-stone-900 text-[#F4F1EA] border-stone-900"
                 : "bg-[#F4F1EA] text-stone-600 hover:bg-stone-200 border-stone-300"
@@ -194,13 +250,30 @@ export default function ListingAIAssistant({
             id="tab-seo"
             onClick={() => setActiveSubTab("seo")}
             onKeyDown={(e) => handleKeyDown(e, () => setActiveSubTab("seo"))}
-            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border ${
+            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border focus:outline-none focus-visible:ring-1 focus-visible:ring-stone-900 ${
               activeSubTab === "seo"
                 ? "bg-stone-900 text-[#F4F1EA] border-stone-900"
                 : "bg-[#F4F1EA] text-stone-600 hover:bg-stone-200 border-stone-300"
             }`}
           >
             SEO Optimizer
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSubTab === "verify"}
+            aria-controls="verify-panel"
+            id="tab-verify"
+            onClick={() => setActiveSubTab("verify")}
+            onKeyDown={(e) => handleKeyDown(e, () => setActiveSubTab("verify"))}
+            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border flex items-center gap-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-stone-900 ${
+              activeSubTab === "verify"
+                ? "bg-stone-900 text-[#F4F1EA] border-stone-900"
+                : "bg-[#F4F1EA] text-stone-600 hover:bg-stone-200 border-stone-300"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+            Accuracy Verifier
           </button>
         </div>
       </div>
@@ -399,6 +472,183 @@ export default function ListingAIAssistant({
           ) : (
             <div className="bg-stone-100/50 p-4 border border-stone-200 text-center">
               <p className="text-[11px] text-stone-550 uppercase tracking-widest font-bold">Initiate an SEO audit above to receive keyword scoring recommendations!</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Accuracy Verification View */}
+      {activeSubTab === "verify" && (
+        <div 
+          id="verify-panel" 
+          role="tabpanel" 
+          aria-labelledby="tab-verify"
+          className="space-y-4"
+        >
+          {isVerifying ? (
+            <div className="bg-stone-150 p-6 border border-stone-200 text-center flex flex-col items-center justify-center space-y-2">
+              <RefreshCw className="w-6 h-6 animate-spin text-amber-600" />
+              <p className="text-[11px] text-stone-700 uppercase tracking-widest font-black">AI Automotive Vetting Audit in Progress...</p>
+              <p className="text-[10px] text-stone-500 font-mono">Cross-referencing brand chronological timelines, specification matching templates, and upload configurations.</p>
+            </div>
+          ) : verificationResult ? (
+            <div className="space-y-4 border-t border-stone-200 pt-4">
+              {/* Overall Score Badge */}
+              <div className={`p-4 border flex flex-col md:flex-row items-center justify-between gap-4 ${
+                verificationResult.overallStatus === "approved"
+                  ? "bg-emerald-50/70 border-emerald-200"
+                  : verificationResult.overallStatus === "warning"
+                    ? "bg-amber-50/70 border-amber-200"
+                    : "bg-red-50/70 border-red-200"
+              }`}>
+                <div className="space-y-1 text-center md:text-left">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                    <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white ${
+                      verificationResult.overallStatus === "approved"
+                        ? "bg-emerald-650"
+                        : verificationResult.overallStatus === "warning"
+                          ? "bg-amber-600"
+                          : "bg-red-600"
+                    }`}>
+                      {verificationResult.overallStatus === "approved"
+                        ? "Verified Accuracy Approved"
+                        : verificationResult.overallStatus === "warning"
+                          ? "Discrepancy Warnings Flagged"
+                          : "Vetting Check Incomplete"}
+                    </span>
+                    {verificationResult.fallback && (
+                      <span className="bg-stone-250 text-stone-700 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest font-mono">
+                        Rule Engine
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-black text-stone-900 uppercase tracking-wide mt-1">
+                    {verificationResult.vettingMessage}
+                  </h4>
+                </div>
+                <div className="flex flex-col items-center justify-center bg-white border border-stone-300 p-3 w-28 shrink-0 shadow-sm">
+                  <span className="text-[9px] text-stone-500 uppercase tracking-widest font-bold">Accuracy Score</span>
+                  <span className={`text-2xl font-black font-mono leading-none mt-1 ${
+                    verificationResult.overallStatus === "approved"
+                      ? "text-emerald-700"
+                      : verificationResult.overallStatus === "warning"
+                        ? "text-amber-600"
+                        : "text-red-650"
+                  }`}>
+                    {verificationResult.accuracyScore}%
+                  </span>
+                </div>
+              </div>
+
+              {/* 1. Name and Production Year Check */}
+              <div className="bg-white border border-stone-200 p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  {verificationResult.nameCheck.isValid && verificationResult.nameCheck.makeModelMatch ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-1">
+                    <h5 className="text-[11px] font-black uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
+                      Name & Chronology Verification
+                    </h5>
+                    <p className="text-[11px] text-stone-600 leading-relaxed font-medium">
+                      {verificationResult.nameCheck.details}
+                    </p>
+                    {verificationResult.nameCheck.suggestedCorrectName && (
+                      <div className="text-[10px] text-stone-500 font-mono mt-1">
+                        Suggested Name: <strong className="text-stone-800">{verificationResult.nameCheck.suggestedCorrectName}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Specs Consistency Checklist */}
+              <div className="bg-white border border-stone-200 p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  {verificationResult.infoCheck.isValid ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-1 w-full">
+                    <h5 className="text-[11px] font-black uppercase tracking-wider text-stone-900">
+                      Specification & Information Integrity
+                    </h5>
+                    <p className="text-[11px] text-stone-600 leading-relaxed font-medium">
+                      {verificationResult.infoCheck.details}
+                    </p>
+
+                    {/* Contradictions list if present */}
+                    {verificationResult.infoCheck.specInconsistencies && verificationResult.infoCheck.specInconsistencies.length > 0 && (
+                      <div className="mt-2 space-y-1 bg-red-50/50 border border-red-105 p-2.5">
+                        <span className="text-[9px] font-black text-red-700 uppercase tracking-widest block mb-1">Contradiction Alerts:</span>
+                        {verificationResult.infoCheck.specInconsistencies.map((item: string, i: number) => (
+                          <div key={i} className="text-[10px] text-red-800 font-semibold flex items-center gap-1">
+                            <span className="text-red-500">•</span> {item}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Improvements suggestions list */}
+                    {verificationResult.infoCheck.suggestedImprovements && verificationResult.infoCheck.suggestedImprovements.length > 0 && (
+                      <div className="mt-2 space-y-1 bg-blue-50/50 border border-blue-105 p-2.5">
+                        <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest block mb-1">Suggested Additions to text:</span>
+                        {verificationResult.infoCheck.suggestedImprovements.map((item: string, i: number) => (
+                          <div key={i} className="text-[10px] text-blue-800 font-medium flex items-center gap-1">
+                            <span className="text-blue-500">+</span> {item}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Image Appropriateness Audit */}
+              <div className="bg-white border border-stone-200 p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  {verificationResult.imageCheck.isValid && verificationResult.imageCheck.isAppropriate ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-1">
+                    <h5 className="text-[11px] font-black uppercase tracking-wider text-stone-900">
+                      Asset Photography & Snapshot Verification
+                    </h5>
+                    <p className="text-[11px] text-stone-600 leading-relaxed font-medium">
+                      {verificationResult.imageCheck.details}
+                    </p>
+                    {verificationResult.imageCheck.imageSuggestions && verificationResult.imageCheck.imageSuggestions.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {verificationResult.imageCheck.imageSuggestions.map((item: string, i: number) => (
+                          <div key={i} className="text-[10px] text-stone-500 font-mono flex items-center gap-1">
+                            <span className="text-amber-500 font-bold">•</span> {item}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Re-verify action */}
+              <div className="pt-2 text-right">
+                <button
+                  type="button"
+                  onClick={handleRunVerification}
+                  className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold uppercase tracking-widest inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" /> Re-verify Accuracy
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-stone-100/50 p-4 border border-stone-200 text-center">
+              <p className="text-[11px] text-stone-550 uppercase tracking-widest font-bold">Initiate an accuracy scan above to check if your listings name, info, and pictures are accurate.</p>
             </div>
           )}
         </div>

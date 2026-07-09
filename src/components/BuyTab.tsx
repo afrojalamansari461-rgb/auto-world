@@ -351,7 +351,8 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           sellerEmail: listing.sellerEmail,
           sellerPhone: listing.sellerPhone,
           location: listing.location,
-          negotiable: listing.negotiable
+          negotiable: listing.negotiable,
+          photos: listing.photos
         };
       });
 
@@ -705,7 +706,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             <button
                               key={tab.id}
                               onClick={() => setActiveChartTab(tab.id as any)}
-                              className={`px-3 py-2 text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 transition cursor-pointer select-none leading-none ${
+                              className={`px-3 py-2 text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 transition cursor-pointer select-none leading-none focus:outline-none focus-visible:ring-1 focus-visible:ring-stone-900 ${
                                 isActive ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:text-stone-900"
                               }`}
                             >

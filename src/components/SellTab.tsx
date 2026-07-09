@@ -974,6 +974,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             vehicleType={vehicleType}
             make={make}
             model={model}
+            year={year}
+            fuelType={fuelType}
+            transmission={transmission}
+            mileage={mileage}
+            photos={photos}
             onUpdateTitle={() => {}}
             onUpdateDescription={(newDesc) => setDescription(newDesc)}
             showToast={showToast}
