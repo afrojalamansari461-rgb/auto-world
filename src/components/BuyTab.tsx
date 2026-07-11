@@ -258,20 +258,34 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // STEP 3: Load listings combining both hardcoded assets & localStorage & Firestore collections
   useEffect(() => {
-    let defaultData = [...DEFAULT_VEHICLES];
-    try {
-      const hiddenStr = localStorage.getItem("autoWorld_hidden_defaults");
-      if (hiddenStr) {
-        const hiddenIds = JSON.parse(hiddenStr);
-        if (Array.isArray(hiddenIds)) {
-          defaultData = defaultData.filter(v => !hiddenIds.includes(v.id));
-        }
-      }
-    } catch (e) {
-      console.error("Failed to parse hidden default vehicles:", e);
-    }
-    
     const fetchAllListings = async () => {
+      let defaultData = [...DEFAULT_VEHICLES];
+      
+      // Fetch showcase vehicles from custom API
+      try {
+        const response = await fetch("/api/vehicles");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.vehicles)) {
+            defaultData = data.vehicles;
+          }
+        }
+      } catch (e) {
+        console.warn("Showcase API fetch failed, falling back to compiled list:", e);
+      }
+
+      try {
+        const hiddenStr = localStorage.getItem("autoWorld_hidden_defaults");
+        if (hiddenStr) {
+          const hiddenIds = JSON.parse(hiddenStr);
+          if (Array.isArray(hiddenIds)) {
+            defaultData = defaultData.filter(v => !hiddenIds.includes(v.id));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse hidden default vehicles:", e);
+      }
+
       let userListings: UserListing[] = [];
       
       // 1. Fetch from Firestore
@@ -983,6 +997,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                         }}
                         whileHover={{ scale: 1.025, y: -4, transition: { type: "spring", stiffness: 350, damping: 25 } }}
                         whileTap={{ scale: 0.97 }}
+                        onClick={() => onQuickView(car)}
                         className={`bg-[#FAF8F5] border overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-md ${
                           car.badge === "premium" ? "border-amber-500/60 ring-1 ring-amber-500/20" : "border-stone-900/15"
                         }`}
@@ -1018,7 +1033,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                         )}
 
                         <button
-                          onClick={() => toggleFavorite(car.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(car.id);
+                          }}
                           className={`absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition border ${
                             isFav
                               ? "bg-stone-950 text-white border-stone-950"
@@ -1032,7 +1050,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                       <div className="p-6 flex-1 flex flex-col justify-between">
                         <div>
                           <span className="text-[9px] font-mono tracking-widest text-[#777777] block uppercase mb-1">REF #AW0{car.id}</span>
-                          <h3 className="text-xl font-serif font-black text-stone-950 mb-3 cursor-pointer" onClick={() => onQuickView(car)}>
+                          <h3 className="text-xl font-serif font-black text-stone-950 mb-3 cursor-pointer">
                             {car.title}
                           </h3>
                           
@@ -1076,7 +1094,8 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 fetch("/api/send-sms-alert", {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
@@ -1294,22 +1313,24 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         {showScrollTop && (
           <motion.button
             key="scroll-to-top"
-            initial={{ opacity: 0, y: 50, scale: 0.85, rotate: -3 }}
+            initial={{ opacity: 0, y: 50, scale: 0.85, rotate: -4 }}
             animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
             exit={{ opacity: 0, y: 35, scale: 0.9, transition: { duration: 0.15 } }}
-            transition={{ type: "spring", stiffness: 350, damping: 24 }}
+            transition={{ type: "spring", stiffness: 380, damping: 22 }}
             whileHover={{ 
-              scale: 1.05,
-              y: -4,
+              scale: 1.06,
+              y: -5,
             }}
-            whileTap={{ scale: 0.96 }}
+            whileTap={{ scale: 0.95 }}
             onClick={scrollToTop}
             id="scroll-to-top-btn"
-            className="fixed bottom-8 right-8 z-50 flex items-center justify-center gap-2 px-4 py-3 bg-[#FAF8F5] text-stone-900 border border-stone-300 shadow-xl font-sans font-extrabold uppercase tracking-widest text-[9px] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all duration-200"
+            className="fixed bottom-24 right-6 z-50 flex items-center justify-center w-11 h-11 bg-stone-950 text-white border border-purple-400/85 shadow-[0_0_12px_rgba(192,132,252,0.5)] hover:shadow-[0_0_22px_rgba(192,132,252,0.9)] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:border-purple-300 transition-all duration-300"
             title="Scroll to Top"
           >
-            <ArrowUp className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 shrink-0" />
-            <span className="hidden sm:inline">Back to Top</span>
+            <div className="relative overflow-hidden w-4 h-4 flex items-center justify-center shrink-0">
+              <ArrowUp className="w-4 h-4 absolute transition-all duration-300 group-hover:-translate-y-6 text-white" />
+              <ArrowUp className="w-4 h-4 absolute translate-y-6 transition-all duration-300 group-hover:translate-y-0 text-white" />
+            </div>
           </motion.button>
         )}
       </AnimatePresence>

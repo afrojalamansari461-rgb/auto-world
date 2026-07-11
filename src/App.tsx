@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -616,9 +617,27 @@ export default function App() {
       </main>
 
       {/* Global Interactive detailed vehicle model overlay sheets */}
-      {selectedVehicle && (
-        <div className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in-0 duration-300">
-          <div className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] overflow-y-auto border border-stone-300 animate-in fade-in-0 slide-in-from-bottom-12 zoom-in-95 duration-300 ease-out">
+      <AnimatePresence>
+        {selectedVehicle && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{
+                type: "spring",
+                stiffness: 320,
+                damping: 24,
+                mass: 0.9
+              }}
+              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] flex flex-col border border-stone-300"
+            >
             {/* Close trigger */}
             <button
               onClick={() => setSelectedVehicle(null)}
@@ -629,10 +648,12 @@ export default function App() {
               ✕
             </button>
 
-            {/* Modal Inside Multi-grid layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-8">
-              {/* Media images panel */}
-              <div className="space-y-4 font-sans">
+            {/* Scrollable content wrapper */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Modal Inside Multi-grid layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-8">
+                {/* Media images panel */}
+                <div className="space-y-4 font-sans md:sticky md:top-0 self-start">
                 {(() => {
                   const images = getCarouselImages(selectedVehicle);
                   const hasMultiple = images.length > 1;
@@ -952,9 +973,11 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Toast Notification element */}
       {toast && (

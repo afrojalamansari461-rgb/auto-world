@@ -4,6 +4,7 @@ import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import { DEFAULT_VEHICLES } from "./src/types";
 
 dotenv.config();
 
@@ -22,6 +23,16 @@ async function startServer() {
       headers: {
         'User-Agent': 'aistudio-build',
       }
+    }
+  });
+
+  // API endpoint for vehicle showcase data
+  app.get("/api/vehicles", (req, res) => {
+    try {
+      res.json({ success: true, vehicles: DEFAULT_VEHICLES });
+    } catch (err: any) {
+      console.error("Failed to serve vehicles showcase API:", err);
+      res.status(500).json({ error: "Failed to retrieve vehicles" });
     }
   });
 
