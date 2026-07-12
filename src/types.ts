@@ -55,6 +55,7 @@ export interface UserListing {
   gears?: string;
   featured?: boolean;
   urgent?: boolean;
+  verified?: boolean;
   photos: { src: string; alt: string }[];
   datePosted: string;
   status: "pending" | "active" | "sold";

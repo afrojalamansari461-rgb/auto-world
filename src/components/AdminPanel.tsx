@@ -51,6 +51,36 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const [isLoading, setIsLoading] = useState(true);
   const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback">("inventory");
   
+  // Custom states for spectacular welcome intro sequence and floating animations
+  const [isIntroActive, setIsIntroActive] = useState(true);
+  const [introProgress, setIntroProgress] = useState(0);
+
+  useEffect(() => {
+    const isAuthorizedUser = currentUser?.email === "afrojalamansari461@gmail.com";
+    if (isAuthorizedUser) {
+      const interval = setInterval(() => {
+        setIntroProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + Math.floor(Math.random() * 12) + 5;
+        });
+      }, 120);
+
+      const timeout = setTimeout(() => {
+        setIsIntroActive(false);
+      }, 3300);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    } else {
+      setIsIntroActive(false);
+    }
+  }, [currentUser]);
+
   // States for hidden default vehicles stored in localStorage to customize catalogs
   const [hiddenDefaultIds, setHiddenDefaultIds] = useState<number[]>([]);
 
@@ -236,6 +266,19 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   };
 
+  // Toggle Verified status for user listing
+  const handleToggleVerified = async (item: UserListing) => {
+    const nextVerified = !item.verified;
+    try {
+      await updateDoc(doc(db, "listings", item.id), { verified: nextVerified });
+      setListings(prev => prev.map(l => l.id === item.id ? { ...l, verified: nextVerified } : l));
+      showToast(`Listing marked as ${nextVerified ? "Verified" : "Unverified"}!`, "success");
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
+      showToast("Failed to update listing verification status.", "error");
+    }
+  };
+
   // Toggle Urgent status for user listing
   const handleToggleUrgent = async (item: UserListing) => {
     const nextUrgent = !item.urgent;
@@ -376,7 +419,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
       fuel: listing.fuelType || "Petrol",
       transmission: listing.transmission || "Automatic",
-      badge: listing.featured ? "premium" : listing.urgent ? "hot" : null,
+      badge: listing.verified ? "verified" : listing.featured ? "premium" : listing.urgent ? "hot" : null,
       description: listing.description,
       features: listing.features || [],
       category: listing.type,
@@ -422,9 +465,102 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     );
   }
 
+  if (isIntroActive) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#0c0a09] text-[#FAF8F5] flex flex-col items-center justify-center p-6 select-none overflow-hidden font-mono">
+        {/* Futuristic Grid and Lines background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(192,132,252,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(192,132,252,0.04)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+        
+        {/* Floating background neon dots */}
+        <div className="absolute top-12 left-12 w-2 h-2 rounded-full bg-purple-400/40 blur-xs animate-ping" />
+        <div className="absolute bottom-24 right-12 w-3.5 h-3.5 rounded-full bg-purple-400/25 blur-xs animate-pulse" />
+        <div className="absolute top-1/4 right-1/4 w-1.5 h-1.5 rounded-full bg-purple-300/50 animate-bounce" style={{ animationDuration: '4.5s' }} />
+        <div className="absolute bottom-1/4 left-1/4 w-2.5 h-2.5 rounded-full bg-purple-500/30 blur-xs animate-pulse" style={{ animationDuration: '6s' }} />
+
+        {/* Outer security bracket frame */}
+        <div className="absolute inset-8 border border-purple-500/15 max-w-4xl mx-auto my-auto h-[85vh] rounded-xs flex flex-col items-center justify-center pointer-events-none">
+          {/* Animated corner brackets */}
+          <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-purple-400/80 animate-pulse" />
+        </div>
+
+        {/* Main centered box */}
+        <div className="relative z-10 max-w-md w-full text-center space-y-8 p-8 border border-stone-800 bg-stone-950/95 shadow-[0_0_35px_rgba(168,85,247,0.15)] backdrop-blur-md">
+          {/* Header */}
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-950/40 border border-purple-500/30 text-purple-300 text-[9px] font-black uppercase tracking-widest animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
+              Clearance: Certified Owner
+            </div>
+            <p className="text-[9px] text-stone-500 uppercase tracking-widest font-mono">establishing secure admin session</p>
+          </div>
+
+          {/* Central Logo / Visual */}
+          <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
+            {/* Spinning tech wheels */}
+            <div className="absolute inset-0 rounded-full border-2 border-t-purple-500 border-r-purple-300 border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1.2s' }} />
+            <div className="absolute inset-2 rounded-full border border-b-purple-400 border-t-transparent border-r-transparent border-l-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2.5s' }} />
+            <div className="absolute inset-4 rounded-full bg-stone-900 flex items-center justify-center border border-purple-500/15">
+              <ShieldAlert className="w-8 h-8 text-purple-400 animate-pulse" />
+            </div>
+          </div>
+
+          {/* Display Text */}
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-wider text-white">
+              Welcome to Admin Panel
+            </h1>
+            <p className="text-[10px] text-purple-300 uppercase tracking-widest font-extrabold font-mono">
+              SYSTEM OWNER: <span className="text-purple-200">Afroj Alam</span>
+            </p>
+          </div>
+
+          {/* Progress bar */}
+          <div className="space-y-2 text-left">
+            <div className="flex items-center justify-between text-[9px] text-stone-400 font-bold uppercase tracking-wider font-mono">
+              <span>Syncing Ledger Indexes</span>
+              <span className="text-purple-400 font-black">{Math.min(100, introProgress)}%</span>
+            </div>
+            <div className="w-full h-1 bg-stone-900 border border-stone-800 p-0.5 rounded-none overflow-hidden">
+              <div 
+                className="h-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all duration-150 ease-out"
+                style={{ width: `${Math.min(100, introProgress)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Action Button - Skip */}
+          <div className="pt-2">
+            <button
+              onClick={() => setIsIntroActive(false)}
+              className="w-full py-2.5 border border-purple-500 bg-purple-950/10 hover:bg-purple-500 hover:text-black text-purple-300 text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer shadow-[0_0_12px_rgba(168,85,247,0.15)] hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] font-mono"
+            >
+              Enter Workspace
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div id="admin-desk-view" className="animate-in fade-in duration-300 bg-[#F4F1EA] py-10 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div id="admin-desk-view" className="relative animate-in fade-in duration-500 bg-[#F4F1EA] py-10 min-h-screen overflow-hidden">
+      
+      {/* Continuous Floating Ambient Corner decorations & Neon borders */}
+      <div className="absolute top-6 left-6 w-14 h-14 border-t-2 border-l-2 border-purple-400/40 pointer-events-none animate-pulse" />
+      <div className="absolute top-6 right-6 w-14 h-14 border-t-2 border-r-2 border-purple-400/40 pointer-events-none animate-pulse" />
+      <div className="absolute bottom-6 left-6 w-14 h-14 border-b-2 border-l-2 border-purple-400/40 pointer-events-none animate-pulse" />
+      <div className="absolute bottom-6 right-6 w-14 h-14 border-b-2 border-r-2 border-purple-400/40 pointer-events-none animate-pulse" />
+
+      {/* Floating particles in outer background */}
+      <div className="absolute top-28 left-12 w-2.5 h-2.5 rounded-full bg-purple-400/20 blur-xs pointer-events-none animate-bounce" style={{ animationDuration: '6s' }} />
+      <div className="absolute top-1/3 right-12 w-2 h-2 rounded-full bg-purple-400/35 blur-xs pointer-events-none animate-pulse" style={{ animationDuration: '4.5s' }} />
+      <div className="absolute bottom-28 left-16 w-3 h-3 rounded-full bg-purple-400/15 blur-xs pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
+      <div className="absolute bottom-1/3 right-16 w-1.5 h-1.5 rounded-full bg-purple-400/30 pointer-events-none animate-bounce" style={{ animationDuration: '8s' }} />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Header Block */}
         <div className="bg-stone-900 text-[#F4F1EA] p-6 sm:p-8 border-2 border-stone-950 shadow-md mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -680,24 +816,37 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                     )}
                                   </button>
 
+                                  {/* Verified control */}
+                                  <button
+                                    onClick={() => handleToggleVerified(listings.find(l => l.id === item.listingId)!)}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
+                                      listings.find(l => l.id === item.listingId)?.verified
+                                        ? "bg-purple-650 text-white border-purple-700 shadow-[0_0_8px_rgba(168,85,247,0.4)]"
+                                        : "bg-[#FAF8F5] hover:bg-purple-50 border-stone-300 text-[#555]"
+                                    }`}
+                                  >
+                                    <CheckCircle className={`w-3.5 h-3.5 ${listings.find(l => l.id === item.listingId)?.verified ? "text-purple-300 fill-purple-300/20" : "text-stone-400"}`} />
+                                    {listings.find(l => l.id === item.listingId)?.verified ? "Verified" : "Verify"}
+                                  </button>
+
                                   {/* Featured control for User Listings */}
                                   <button
                                     onClick={() => handleToggleFeatured(listings.find(l => l.id === item.listingId)!)}
                                     className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
-                                      item.badge === "premium"
+                                      listings.find(l => l.id === item.listingId)?.featured
                                         ? "bg-amber-450 border-amber-600 text-stone-950"
                                         : "bg-[#FAF8F5] hover:bg-amber-50 border-stone-300 text-[#555]"
                                     }`}
                                   >
                                     <Sparkles className="w-3 h-3" />
-                                    {item.badge === "premium" ? "★ Featured" : "☆ Feature"}
+                                    {listings.find(l => l.id === item.listingId)?.featured ? "★ Featured" : "☆ Feature"}
                                   </button>
 
                                   {/* Urgent control */}
                                   <button
                                     onClick={() => handleToggleUrgent(listings.find(l => l.id === item.listingId)!)}
                                     className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
-                                      item.badge === "hot"
+                                      listings.find(l => l.id === item.listingId)?.urgent
                                         ? "bg-red-600 border-red-750 text-white"
                                         : "bg-[#FAF8F5] hover:bg-red-50 border-stone-300 text-stone-605"
                                     }`}

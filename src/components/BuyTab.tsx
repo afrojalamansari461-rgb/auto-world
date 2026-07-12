@@ -355,7 +355,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
           fuel: listing.fuelType ? (listing.fuelType.charAt(0).toUpperCase() + listing.fuelType.slice(1)) : "Petrol",
           transmission: listing.transmission ? (listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1)) : "Automatic",
-          badge: listing.featured ? "premium" : listing.urgent ? "hot" : null,
+          badge: listing.verified ? "verified" : listing.featured ? "premium" : listing.urgent ? "hot" : null,
           description: listing.description,
           features: listing.features,
           category: listing.type,
@@ -1020,13 +1020,20 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                         )}
 
                         {car.badge === "hot" && (
-                          <span className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-red-705 bg-stone-900 text-[#FAF8F5] text-[9px] font-sans font-black uppercase tracking-widest border border-red-500 flex items-center gap-1.5 shadow-sm">
+                          <span className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-stone-900 text-[#FAF8F5] text-[9px] font-sans font-black uppercase tracking-widest border border-red-500 flex items-center gap-1.5 shadow-sm">
                             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
                             Hot Urgent
                           </span>
                         )}
 
-                        {car.badge && car.badge !== "premium" && car.badge !== "hot" && (
+                        {car.badge === "verified" && (
+                          <span className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-stone-950 text-white text-[9px] font-sans font-black uppercase tracking-widest border border-purple-400/85 flex items-center gap-1.5 shadow-[0_0_12px_rgba(192,132,252,0.65)]">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 animate-pulse shrink-0" />
+                            Verified Specimen
+                          </span>
+                        )}
+
+                        {car.badge && car.badge !== "premium" && car.badge !== "hot" && car.badge !== "verified" && (
                           <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-sans font-bold uppercase tracking-wider border border-[#F4F1EA]/20">
                             {car.badge}
                           </span>
@@ -1318,7 +1325,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             exit={{ opacity: 0, y: 35, scale: 0.9, transition: { duration: 0.15 } }}
             transition={{ type: "spring", stiffness: 380, damping: 22 }}
             whileHover={{ 
-              scale: 1.06,
+              scale: 1.1,
               y: -5,
             }}
             whileTap={{ scale: 0.95 }}
