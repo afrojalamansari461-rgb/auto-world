@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -14,7 +14,7 @@ import FeedbackWidget from "./components/FeedbackWidget";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
-import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
 const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
@@ -506,6 +506,154 @@ export default function App() {
     setModalSellerInfo(null);
   }, [selectedVehicle]);
 
+  // ADMIN PANEL CONTROLS INSIDE THE OVERLAY MODAL
+  const handleToggleApprovalInModal = async () => {
+    if (!selectedVehicle || !selectedVehicle.isUserListing || !selectedVehicle.listingId) return;
+    const isCurrentlyApproved = selectedVehicle.status !== "pending";
+    const newStatus = isCurrentlyApproved ? "pending" : "active";
+    try {
+      await updateDoc(doc(db, "listings", selectedVehicle.listingId), { status: newStatus });
+      setSelectedVehicle(prev => prev ? { ...prev, status: newStatus } : null);
+      showToast(`Listing ${newStatus === "active" ? "Approved & Active" : "Unapproved & Hidden"}!`, "success");
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+    } catch (err: any) {
+      console.error(err);
+      showToast("Failed to update approval on Firestore", "error");
+    }
+  };
+
+  const handleToggleVerifyInModal = async () => {
+    if (!selectedVehicle) return;
+    if (selectedVehicle.isUserListing && selectedVehicle.listingId) {
+      const isCurrentlyVerified = selectedVehicle.badge === "verified";
+      const nextVerified = !isCurrentlyVerified;
+      const nextBadge = nextVerified ? "verified" : null;
+      try {
+        await updateDoc(doc(db, "listings", selectedVehicle.listingId), { verified: nextVerified });
+        setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
+        showToast(`Listing is now ${nextVerified ? "Verified" : "Standard"}!`, "success");
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (err: any) {
+        console.error(err);
+        showToast("Failed to update Firestore verification", "error");
+      }
+    } else {
+      try {
+        const currentBadgesStr = localStorage.getItem("autoWorld_default_badges") || "{}";
+        const badgesMap = JSON.parse(currentBadgesStr);
+        const isCurrentlyVerified = badgesMap[selectedVehicle.id] === "verified";
+        const nextBadge = isCurrentlyVerified ? null : "verified";
+        badgesMap[selectedVehicle.id] = nextBadge;
+        localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
+        setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
+        showToast(`Static vehicle is now ${nextBadge ? "Verified" : "Standard"}!`, "success");
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleToggleFeaturedInModal = async () => {
+    if (!selectedVehicle) return;
+    if (selectedVehicle.isUserListing && selectedVehicle.listingId) {
+      const isCurrentlyFeatured = selectedVehicle.badge === "premium";
+      const nextFeatured = !isCurrentlyFeatured;
+      const nextBadge = nextFeatured ? "premium" : null;
+      try {
+        await updateDoc(doc(db, "listings", selectedVehicle.listingId), { featured: nextFeatured });
+        setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
+        showToast(`Listing is now ${nextFeatured ? "Featured" : "Standard"}!`, "success");
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (err: any) {
+        console.error(err);
+        showToast("Failed to update Firestore featured flag", "error");
+      }
+    } else {
+      try {
+        const currentBadgesStr = localStorage.getItem("autoWorld_default_badges") || "{}";
+        const badgesMap = JSON.parse(currentBadgesStr);
+        const isCurrentlyPremium = badgesMap[selectedVehicle.id] === "premium";
+        const nextBadge = isCurrentlyPremium ? null : "premium";
+        badgesMap[selectedVehicle.id] = nextBadge;
+        localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
+        setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
+        showToast(`Static vehicle is now ${nextBadge ? "Featured" : "Standard"}!`, "success");
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleToggleHotInModal = async () => {
+    if (!selectedVehicle) return;
+    if (selectedVehicle.isUserListing && selectedVehicle.listingId) {
+      const isCurrentlyHot = selectedVehicle.badge === "hot";
+      const nextHot = !isCurrentlyHot;
+      const nextBadge = nextHot ? "hot" : null;
+      try {
+        await updateDoc(doc(db, "listings", selectedVehicle.listingId), { urgent: nextHot });
+        setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
+        showToast(`Listing is now ${nextHot ? "Hot Deal" : "Standard"}!`, "success");
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (err: any) {
+        console.error(err);
+        showToast("Failed to update Firestore hot flag", "error");
+      }
+    } else {
+      try {
+        const currentBadgesStr = localStorage.getItem("autoWorld_default_badges") || "{}";
+        const badgesMap = JSON.parse(currentBadgesStr);
+        const isCurrentlyHot = badgesMap[selectedVehicle.id] === "hot";
+        const nextBadge = isCurrentlyHot ? null : "hot";
+        badgesMap[selectedVehicle.id] = nextBadge;
+        localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
+        setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
+        showToast(`Static vehicle is now ${nextBadge ? "Hot Deal" : "Standard"}!`, "success");
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleDeleteInModal = async () => {
+    if (!selectedVehicle || !selectedVehicle.isUserListing || !selectedVehicle.listingId) return;
+    if (!window.confirm("Are you sure you want to permanently delete this user listing from Firestore? This is irreversible.")) return;
+    try {
+      await deleteDoc(doc(db, "listings", selectedVehicle.listingId));
+      showToast("Listing deleted successfully from Firestore database!", "success");
+      setSelectedVehicle(null);
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+    } catch (err: any) {
+      console.error(err);
+      showToast("Failed to delete from Firestore", "error");
+    }
+  };
+
+  const handleHideRestoreInModal = () => {
+    if (!selectedVehicle || selectedVehicle.isUserListing) return;
+    try {
+      const currentHiddenStr = localStorage.getItem("autoWorld_hidden_defaults") || "[]";
+      let hiddenIds: number[] = JSON.parse(currentHiddenStr);
+      const isCurrentlyHidden = hiddenIds.includes(selectedVehicle.id);
+      
+      if (isCurrentlyHidden) {
+        hiddenIds = hiddenIds.filter(id => id !== selectedVehicle.id);
+        showToast("Static vehicle restored to public view catalog!", "success");
+      } else {
+        hiddenIds.push(selectedVehicle.id);
+        showToast("Static vehicle hidden from public view catalog!", "success");
+      }
+      localStorage.setItem("autoWorld_hidden_defaults", JSON.stringify(hiddenIds));
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+      setSelectedVehicle(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Accessibility: Listen for Escape key to close the modal dialog
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -971,9 +1119,110 @@ export default function App() {
                     Request Callback
                   </button>
                 </div>
+
+                {/* ADMIN DIRECT CONTROL PANEL IN THE OVERLAY */}
+                {currentUser?.email === "afrojalamansari461@gmail.com" && (
+                  <div className="mt-6 p-4 bg-stone-900 border-2 border-amber-500 text-[#F4F1EA] font-sans space-y-4 shadow-lg">
+                    <div className="flex items-center gap-2 pb-2 border-b border-stone-800">
+                      <Wrench className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-amber-500 font-mono">BACKOFFICE DOSSIER CONTROL</h4>
+                        <span className="text-[9px] text-stone-400 block uppercase font-mono tracking-wider">Level 5 Security Access Activated</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {/* Approval Toggle (only for Firestore list items) */}
+                      {selectedVehicle.isUserListing ? (
+                        <button
+                          onClick={handleToggleApprovalInModal}
+                          className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                            selectedVehicle.status !== "pending"
+                              ? "bg-amber-500 text-stone-950 border-amber-600 hover:bg-amber-400"
+                              : "bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-500"
+                          }`}
+                          title="Toggle public listing visibility"
+                        >
+                          {selectedVehicle.status !== "pending" ? (
+                            <>
+                              <EyeOff className="w-3.5 h-3.5 shrink-0 text-stone-950" />
+                              Unapprove
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5 shrink-0 text-white" />
+                              Approve
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        /* Hide / Restore Toggle for default cars */
+                        <button
+                          onClick={handleHideRestoreInModal}
+                          className="px-2.5 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-500 hover:bg-amber-500/20 text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition"
+                          title="Hide default car from buy tab"
+                        >
+                          <EyeOff className="w-3.5 h-3.5 shrink-0" />
+                          Hide Spec
+                        </button>
+                      )}
+
+                      {/* Verified badge control */}
+                      <button
+                        onClick={handleToggleVerifyInModal}
+                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                          selectedVehicle.badge === "verified"
+                            ? "bg-purple-600 border-purple-700 text-white hover:bg-purple-500"
+                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
+                        }`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0 text-white" />
+                        {selectedVehicle.badge === "verified" ? "Verified" : "Verify"}
+                      </button>
+
+                      {/* Featured (premium) badge control */}
+                      <button
+                        onClick={handleToggleFeaturedInModal}
+                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                          selectedVehicle.badge === "premium"
+                            ? "bg-sky-600 border-sky-700 text-white hover:bg-sky-500"
+                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
+                        }`}
+                      >
+                        <Award className="w-3.5 h-3.5 shrink-0 text-white" />
+                        {selectedVehicle.badge === "premium" ? "Premium" : "Premiumize"}
+                      </button>
+
+                      {/* Hot Deal badge control */}
+                      <button
+                        onClick={handleToggleHotInModal}
+                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                          selectedVehicle.badge === "hot"
+                            ? "bg-red-600 border-red-700 text-white hover:bg-red-500"
+                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-white" />
+                        {selectedVehicle.badge === "hot" ? "Hot Deal" : "Set Hot"}
+                      </button>
+
+                      {/* Delete control (only for user listings) */}
+                      {selectedVehicle.isUserListing && (
+                        <button
+                          onClick={handleDeleteInModal}
+                          className="px-2.5 py-2 bg-red-800 hover:bg-red-700 border border-red-900 text-white text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition col-span-2 sm:col-span-1"
+                          title="Delete permanently from Firestore"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            </div>
+          </div>
           </motion.div>
         </motion.div>
       )}

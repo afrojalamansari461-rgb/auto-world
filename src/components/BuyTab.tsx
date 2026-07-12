@@ -286,6 +286,25 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         console.error("Failed to parse hidden default vehicles:", e);
       }
 
+      // Read default vehicle custom badges from local overrides
+      try {
+        const badgesStr = localStorage.getItem("autoWorld_default_badges");
+        if (badgesStr) {
+          const badgesMap = JSON.parse(badgesStr);
+          if (badgesMap && typeof badgesMap === "object") {
+            defaultData = defaultData.map(v => {
+              const customBadge = badgesMap[v.id];
+              return {
+                ...v,
+                badge: customBadge !== undefined ? customBadge : v.badge
+              };
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse custom default badges:", e);
+      }
+
       let userListings: UserListing[] = [];
       
       // 1. Fetch from Firestore
@@ -374,6 +393,12 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     };
 
     fetchAllListings();
+
+    const handleUpdate = () => {
+      fetchAllListings();
+    };
+    window.addEventListener("autoWorld_db_update", handleUpdate);
+    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
   }, []);
 
   // Synchronise recent search queries on mount

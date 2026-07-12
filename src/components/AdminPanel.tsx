@@ -54,26 +54,77 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   // Custom states for spectacular welcome intro sequence and floating animations
   const [isIntroActive, setIsIntroActive] = useState(true);
   const [introProgress, setIntroProgress] = useState(0);
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
+
+  // Simple, modern high-tech synth tone generator for ultimate futuristic feedback
+  const playSynthBeep = (freq = 800, duration = 0.1, type: OscillatorType = "sine") => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {
+      // Ignored if browser policy blocks instant playback before gesture
+    }
+  };
 
   useEffect(() => {
     const isAuthorizedUser = currentUser?.email === "afrojalamansari461@gmail.com";
     if (isAuthorizedUser) {
+      // Initialize some cool logs sequentially
+      const logTemplates = [
+        "[SYS_READY] INITIALIZING AUTOMOTIVE LEDGER ARCHITECTURE CORE...",
+        "[DB_STATE] SECURING WEB AUDIO CHANNELS & AMPLITUDES...",
+        "[INDEX_SYNC] CONNECTING DYNAMIC FIRESTORE LISTINGS CHANNELS...",
+        "[MEM_ALLOC] ALLOCATING NEON GRID COORDINATES AND POLAR MATRICES...",
+        "[AUTH_OK] USER VERIFIED: LEVEL 5 ACCESS LEVEL REGISTERED.",
+        "[RENDER_INIT] PREPARING BULK CONTROLS FOR ALL PLATFORM VEHICLES...",
+        "[COMPLETE] BOOT SEQUENCES ALIGNED. ACTIVE MONITORING SYSTEM ARMED."
+      ];
+
+      let logIdx = 0;
+      const logInterval = setInterval(() => {
+        if (logIdx < logTemplates.length) {
+          setTerminalLogs((prev) => [...prev, logTemplates[logIdx]]);
+          playSynthBeep(440 + logIdx * 80, 0.08, "triangle");
+          logIdx++;
+        } else {
+          clearInterval(logInterval);
+        }
+      }, 400);
+
       const interval = setInterval(() => {
         setIntroProgress((prev) => {
           if (prev >= 100) {
             clearInterval(interval);
             return 100;
           }
-          return prev + Math.floor(Math.random() * 12) + 5;
+          const increment = Math.floor(Math.random() * 14) + 6;
+          const next = prev + increment;
+          if (next >= 100) {
+            playSynthBeep(1200, 0.35, "sine");
+            return 100;
+          }
+          // Play mini click beep
+          playSynthBeep(600 + prev * 3, 0.04, "sine");
+          return next;
         });
-      }, 120);
+      }, 150);
 
       const timeout = setTimeout(() => {
         setIsIntroActive(false);
-      }, 3300);
+      }, 3600);
 
       return () => {
         clearInterval(interval);
+        clearInterval(logInterval);
         clearTimeout(timeout);
       };
     } else {
@@ -83,6 +134,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
   // States for hidden default vehicles stored in localStorage to customize catalogs
   const [hiddenDefaultIds, setHiddenDefaultIds] = useState<number[]>([]);
+  
+  // Custom badges for hardcoded default vehicles to control them
+  const [defaultBadges, setDefaultBadges] = useState<Record<number, string | null>>({});
+
+  // Active inventory viewer filter (controlling all cars, user list, or defaults)
+  const [inventoryFilter, setInventoryFilter] = useState<"all" | "user" | "default">("all");
 
   // Search filter inside admin panel
   const [adminSearch, setAdminSearch] = useState("");
@@ -224,6 +281,20 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     } catch (e) {
       console.error(e);
     }
+
+    const handleUpdate = () => {
+      loadData();
+      try {
+        const stored = localStorage.getItem("autoWorld_hidden_defaults");
+        if (stored) {
+          setHiddenDefaultIds(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener("autoWorld_db_update", handleUpdate);
+    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
   }, []);
 
   // Delete User Listing from Firestore
@@ -386,11 +457,131 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   };
 
+  // Toggle Custom badge for default static vehicle
+  const handleToggleDefaultBadge = (vehicleId: number, badgeType: "verified" | "premium" | "hot") => {
+    const currentBadge = defaultBadges[vehicleId];
+    const nextBadge = currentBadge === badgeType ? null : badgeType;
+    const updated = { ...defaultBadges, [vehicleId]: nextBadge };
+    setDefaultBadges(updated);
+    
+    // Also mirror to global default badges
+    localStorage.setItem("autoWorld_default_badges", JSON.stringify(updated));
+    showToast(`Vehicle #${vehicleId} badge modified to: ${nextBadge ? nextBadge.toUpperCase() : "STANDARD"}`, "success");
+  };
+
+  // BULK CONTROLS FOR ALL CARS
+  const handleBulkApprove = async () => {
+    if (!window.confirm("Are you sure you want to approve all pending user listings?")) return;
+    try {
+      const pendingListings = listings.filter(l => l.status === "pending" || l.status === undefined);
+      if (pendingListings.length === 0) {
+        showToast("No pending listings to approve.", "info");
+        return;
+      }
+      setIsLoading(true);
+      for (const item of pendingListings) {
+        await updateDoc(doc(db, "listings", item.id), { status: "active" });
+      }
+      setListings(prev => prev.map(l => ({ ...l, status: "active" })));
+      showToast("All user-submitted vehicle listings are now active and approved!", "success");
+    } catch (err: any) {
+      showToast("Error executing bulk approval.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBulkUnapprove = async () => {
+    if (!window.confirm("Are you sure you want to mark all user listings as pending approval?")) return;
+    try {
+      const activeListings = listings.filter(l => l.status === "active" || l.status === undefined);
+      if (activeListings.length === 0) {
+        showToast("No active listings to unapprove.", "info");
+        return;
+      }
+      setIsLoading(true);
+      for (const item of activeListings) {
+        await updateDoc(doc(db, "listings", item.id), { status: "pending" });
+      }
+      setListings(prev => prev.map(l => ({ ...l, status: "pending" })));
+      showToast("All user listings marked as pending/hidden.", "success");
+    } catch (err: any) {
+      showToast("Error executing bulk unapproval.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBulkVerifyAll = async () => {
+    if (!window.confirm("Would you like to instantly verify ALL vehicles on the platform (both static and user-submitted)?")) return;
+    try {
+      setIsLoading(true);
+      // 1. Verify all user listings in Firestore
+      for (const item of listings) {
+        await updateDoc(doc(db, "listings", item.id), { verified: true });
+      }
+      setListings(prev => prev.map(l => ({ ...l, verified: true })));
+
+      // 2. Verify all default vehicles in localStorage
+      const updatedBadges: Record<number, string | null> = {};
+      DEFAULT_VEHICLES.forEach(v => {
+        updatedBadges[v.id] = "verified";
+      });
+      setDefaultBadges(updatedBadges);
+      localStorage.setItem("autoWorld_default_badges", JSON.stringify(updatedBadges));
+
+      showToast("Platform verification scan complete. All available vehicles are now marked as Verified!", "success");
+    } catch (err: any) {
+      showToast("Error verifying all listings.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetAllControls = async () => {
+    if (!window.confirm("Reset all platform vehicles to standard settings? This restores all hidden static cars and clears customized badges/flags.")) return;
+    try {
+      // Clear local storage overrides
+      localStorage.removeItem("autoWorld_hidden_defaults");
+      localStorage.removeItem("autoWorld_default_badges");
+      setHiddenDefaultIds([]);
+      setDefaultBadges({});
+
+      // Reset all user listings to standard (remove verified, featured, hot, unapproved) in Firestore
+      setIsLoading(true);
+      for (const item of listings) {
+        await updateDoc(doc(db, "listings", item.id), {
+          verified: false,
+          featured: false,
+          urgent: false,
+          status: "active"
+        });
+      }
+      setListings(prev => prev.map(l => ({
+        ...l,
+        verified: false,
+        featured: false,
+        urgent: false,
+        status: "active"
+      })));
+
+      showToast("Reset completed successfully. All cars have returned to their default platform flags.", "success");
+    } catch (err: any) {
+      showToast("Error during global controls reset.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Build temporary listing list inside admin
-  const allDefaultsMapped: Vehicle[] = DEFAULT_VEHICLES.map(v => ({
-    ...v,
-    isUserListing: false
-  }));
+  const allDefaultsMapped: Vehicle[] = DEFAULT_VEHICLES.map(v => {
+    const customBadge = defaultBadges[v.id];
+    return {
+      ...v,
+      isUserListing: false,
+      badge: customBadge !== undefined ? customBadge : v.badge
+    };
+  });
 
   const userListingsMapped: Vehicle[] = listings.map((listing, index) => {
     let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
@@ -434,7 +625,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     };
   });
 
-  const aggregateInventoryList = [...allDefaultsMapped, ...userListingsMapped];
+  let aggregateInventoryList = [...allDefaultsMapped, ...userListingsMapped];
+
+  if (inventoryFilter === "user") {
+    aggregateInventoryList = userListingsMapped;
+  } else if (inventoryFilter === "default") {
+    aggregateInventoryList = allDefaultsMapped;
+  }
 
   // Filter listings based on input text
   const filteredInventory = aggregateInventoryList.filter(item => {
@@ -465,32 +662,41 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     );
   }
 
+  const handleEnterWorkspace = () => {
+    playSynthBeep(900, 0.15, "triangle");
+    setTimeout(() => playSynthBeep(1400, 0.35, "sine"), 120);
+    setIsIntroActive(false);
+  };
+
   if (isIntroActive) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#0c0a09] text-[#FAF8F5] flex flex-col items-center justify-center p-6 select-none overflow-hidden font-mono">
+      <div className="fixed inset-0 z-50 bg-[#060404] text-[#FAF8F5] flex flex-col items-center justify-center p-6 select-none overflow-hidden font-mono">
         {/* Futuristic Grid and Lines background */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(192,132,252,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(192,132,252,0.04)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(192,132,252,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(192,132,252,0.03)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none" />
         
+        {/* Laser scanner vertical sweep line */}
+        <div className="absolute left-0 w-full h-1 bg-purple-500/80 shadow-[0_0_15px_rgba(168,85,247,0.85)] pointer-events-none z-20 animate-scan" />
+
         {/* Floating background neon dots */}
-        <div className="absolute top-12 left-12 w-2 h-2 rounded-full bg-purple-400/40 blur-xs animate-ping" />
-        <div className="absolute bottom-24 right-12 w-3.5 h-3.5 rounded-full bg-purple-400/25 blur-xs animate-pulse" />
-        <div className="absolute top-1/4 right-1/4 w-1.5 h-1.5 rounded-full bg-purple-300/50 animate-bounce" style={{ animationDuration: '4.5s' }} />
-        <div className="absolute bottom-1/4 left-1/4 w-2.5 h-2.5 rounded-full bg-purple-500/30 blur-xs animate-pulse" style={{ animationDuration: '6s' }} />
+        <div className="absolute top-12 left-12 w-2 h-2 rounded-full bg-purple-500/40 blur-xs animate-ping" />
+        <div className="absolute bottom-24 right-12 w-3.5 h-3.5 rounded-full bg-purple-500/25 blur-xs animate-pulse" />
+        <div className="absolute top-1/4 right-1/4 w-1.5 h-1.5 rounded-full bg-purple-400/50 animate-bounce" style={{ animationDuration: '4.5s' }} />
+        <div className="absolute bottom-1/4 left-1/4 w-2.5 h-2.5 rounded-full bg-purple-650/30 blur-xs animate-pulse" style={{ animationDuration: '6s' }} />
 
         {/* Outer security bracket frame */}
-        <div className="absolute inset-8 border border-purple-500/15 max-w-4xl mx-auto my-auto h-[85vh] rounded-xs flex flex-col items-center justify-center pointer-events-none">
+        <div className="absolute inset-4 sm:inset-8 border border-purple-500/10 max-w-4xl mx-auto my-auto h-[90vh] rounded-xs flex flex-col items-center justify-center pointer-events-none">
           {/* Animated corner brackets */}
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-purple-400/80 animate-pulse" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-purple-400/80 animate-pulse" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-purple-400/80 animate-pulse" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-purple-400/80 animate-pulse" />
         </div>
 
         {/* Main centered box */}
-        <div className="relative z-10 max-w-md w-full text-center space-y-8 p-8 border border-stone-800 bg-stone-950/95 shadow-[0_0_35px_rgba(168,85,247,0.15)] backdrop-blur-md">
+        <div className="relative z-10 max-w-md w-full text-center space-y-6 p-6 sm:p-8 border-2 border-purple-950/40 bg-[#090707]/95 shadow-[0_0_50px_rgba(168,85,247,0.25)] backdrop-blur-md">
           {/* Header */}
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-950/40 border border-purple-500/30 text-purple-300 text-[9px] font-black uppercase tracking-widest animate-pulse">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-950/60 border border-purple-500/40 text-purple-300 text-[9px] font-black uppercase tracking-widest animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
               Clearance: Certified Owner
             </div>
@@ -498,23 +704,34 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           </div>
 
           {/* Central Logo / Visual */}
-          <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
+          <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
             {/* Spinning tech wheels */}
-            <div className="absolute inset-0 rounded-full border-2 border-t-purple-500 border-r-purple-300 border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1.2s' }} />
-            <div className="absolute inset-2 rounded-full border border-b-purple-400 border-t-transparent border-r-transparent border-l-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2.5s' }} />
-            <div className="absolute inset-4 rounded-full bg-stone-900 flex items-center justify-center border border-purple-500/15">
-              <ShieldAlert className="w-8 h-8 text-purple-400 animate-pulse" />
+            <div className="absolute inset-0 rounded-full border-2 border-t-purple-500 border-r-purple-300 border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1s' }} />
+            <div className="absolute inset-2 rounded-full border border-b-purple-400 border-t-transparent border-r-transparent border-l-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }} />
+            <div className="absolute inset-4 rounded-full bg-stone-900 flex items-center justify-center border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+              <ShieldAlert className="w-7 h-7 text-purple-400 animate-pulse" />
             </div>
           </div>
 
           {/* Display Text */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <h1 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-wider text-white">
-              Welcome to Admin Panel
+              Admin Control Deck
             </h1>
             <p className="text-[10px] text-purple-300 uppercase tracking-widest font-extrabold font-mono">
-              SYSTEM OWNER: <span className="text-purple-200">Afroj Alam</span>
+              SYSTEM OWNER: <span className="text-white bg-purple-950/60 px-2 py-0.5 border border-purple-500/20">Afroj Alam</span>
             </p>
+          </div>
+
+          {/* Code Execution Log Console */}
+          <div className="bg-[#030202] border border-stone-850 p-3 h-28 overflow-y-auto font-mono text-[8.5px] text-left space-y-1 rounded-xs select-text scrollbar-thin">
+            {terminalLogs.map((log, idx) => (
+              <div key={idx} className="text-purple-300/90 leading-normal flex items-start gap-1 font-mono">
+                <span className="text-purple-500 select-none shrink-0">&gt;</span>
+                <span>{log}</span>
+              </div>
+            ))}
+            <div className="inline-block w-1.5 h-3 bg-purple-400 animate-pulse vertical-align-middle" />
           </div>
 
           {/* Progress bar */}
@@ -523,9 +740,9 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               <span>Syncing Ledger Indexes</span>
               <span className="text-purple-400 font-black">{Math.min(100, introProgress)}%</span>
             </div>
-            <div className="w-full h-1 bg-stone-900 border border-stone-800 p-0.5 rounded-none overflow-hidden">
+            <div className="w-full h-1.5 bg-[#141212] border border-stone-850 p-0.5 rounded-none overflow-hidden">
               <div 
-                className="h-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all duration-150 ease-out"
+                className="h-full bg-gradient-to-r from-purple-600 to-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.9)] transition-all duration-150 ease-out"
                 style={{ width: `${Math.min(100, introProgress)}%` }}
               />
             </div>
@@ -534,8 +751,8 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           {/* Action Button - Skip */}
           <div className="pt-2">
             <button
-              onClick={() => setIsIntroActive(false)}
-              className="w-full py-2.5 border border-purple-500 bg-purple-950/10 hover:bg-purple-500 hover:text-black text-purple-300 text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer shadow-[0_0_12px_rgba(168,85,247,0.15)] hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] font-mono"
+              onClick={handleEnterWorkspace}
+              className="w-full py-2.5 border border-purple-500 bg-purple-950/20 hover:bg-purple-500 hover:text-black text-purple-300 text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.2)] hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] font-mono"
             >
               Enter Workspace
             </button>
@@ -698,6 +915,87 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             {/* SUBSECTION 1: INVENTORY MANAGEMENT */}
             {activeSubSection === "inventory" && (
               <div className="space-y-6">
+
+                {/* ADVANCED GLOBAL VEHICLES COMMAND & CONTROL DECK */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-5 space-y-4 shadow-[4px_4px_0px_0px_rgba(168,85,247,0.15)]">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-stone-200">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Database className="w-5 h-5 text-purple-600 animate-pulse" />
+                        <h2 className="text-xs sm:text-sm font-serif font-black uppercase text-stone-900 tracking-tight">Platform-wide Inventory Control Desk</h2>
+                      </div>
+                      <p className="text-[10px] text-stone-500 uppercase tracking-widest font-mono mt-0.5">unified master controls for static and database items</p>
+                    </div>
+                    
+                    {/* View filter buttons */}
+                    <div className="flex items-center border border-stone-300 p-0.5 bg-stone-100/60 self-start md:self-center font-mono text-[9px] font-black">
+                      <button
+                        onClick={() => { playSynthBeep(700, 0.05); setInventoryFilter("all"); }}
+                        className={`px-3 py-1.5 uppercase transition cursor-pointer ${
+                          inventoryFilter === "all"
+                            ? "bg-stone-900 text-white shadow-xs"
+                            : "text-stone-600 hover:text-stone-900 hover:bg-stone-200"
+                        }`}
+                      >
+                        All ({allDefaultsMapped.length + userListingsMapped.length})
+                      </button>
+                      <button
+                        onClick={() => { playSynthBeep(750, 0.05); setInventoryFilter("user"); }}
+                        className={`px-3 py-1.5 uppercase transition cursor-pointer ${
+                          inventoryFilter === "user"
+                            ? "bg-stone-900 text-white shadow-xs"
+                            : "text-stone-600 hover:text-stone-900 hover:bg-stone-200"
+                        }`}
+                      >
+                        User Postings ({userListingsMapped.length})
+                      </button>
+                      <button
+                        onClick={() => { playSynthBeep(800, 0.05); setInventoryFilter("default"); }}
+                        className={`px-3 py-1.5 uppercase transition cursor-pointer ${
+                          inventoryFilter === "default"
+                            ? "bg-stone-900 text-white shadow-xs"
+                            : "text-stone-600 hover:text-stone-900 hover:bg-stone-200"
+                        }`}
+                      >
+                        Static ({allDefaultsMapped.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1.5">
+                    <button
+                      onClick={() => { playSynthBeep(900, 0.1); handleBulkApprove(); }}
+                      className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-850 text-white border border-stone-950 text-[10px] font-extrabold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-2 font-mono shadow-xs"
+                    >
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                      Approve All
+                    </button>
+                    
+                    <button
+                      onClick={() => { playSynthBeep(600, 0.1); handleBulkUnapprove(); }}
+                      className="px-3.5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-900 border border-stone-300 text-[10px] font-extrabold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-2 font-mono shadow-xs"
+                    >
+                      <Filter className="w-4 h-4 text-amber-600 shrink-0" />
+                      Unapprove All
+                    </button>
+
+                    <button
+                      onClick={() => { playSynthBeep(1100, 0.15, "triangle"); handleBulkVerifyAll(); }}
+                      className="px-3.5 py-2.5 bg-purple-950/10 hover:bg-purple-950/20 text-purple-950 border border-purple-300 text-[10px] font-extrabold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-2 font-mono shadow-xs"
+                    >
+                      <CheckCircle className="w-4 h-4 text-purple-650 shrink-0" />
+                      Verify All
+                    </button>
+
+                    <button
+                      onClick={() => { playSynthBeep(500, 0.25, "sawtooth"); handleResetAllControls(); }}
+                      className="px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[10px] font-extrabold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-2 font-mono shadow-xs"
+                    >
+                      <RefreshCw className="w-4 h-4 text-red-500 shrink-0" />
+                      Global Reset
+                    </button>
+                  </div>
+                </div>
                 
                 {/* Search controller inside subsection */}
                 <div className="bg-[#FAF8F5] border border-stone-300 p-4 flex flex-col sm:flex-row items-center gap-4">
@@ -865,17 +1163,61 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                   </button>
                                 </>
                               ) : (
-                                /* Hardcoded system vehicles */
-                                <button
-                                  onClick={() => handleToggleHideDefault(item.id)}
-                                  className={`px-3 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1.5 font-mono ml-auto transition ${
-                                    isDefaultHidden
-                                      ? "bg-green-100 hover:bg-green-200 text-green-905 border-green-300"
-                                      : "bg-amber-50 hover:bg-amber-100 text-amber-850 border-amber-300"
-                                  }`}
-                                >
-                                  {isDefaultHidden ? "[ Restore Post ]" : "[ Hide Post ]"}
-                                </button>
+                                /* Hardcoded system vehicles with fully functional advanced controls */
+                                <>
+                                  {/* Verified control for default vehicle */}
+                                  <button
+                                    onClick={() => handleToggleDefaultBadge(item.id, "verified")}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
+                                      item.badge === "verified"
+                                        ? "bg-purple-650 text-white border-purple-700 shadow-[0_0_8px_rgba(168,85,247,0.4)]"
+                                        : "bg-[#FAF8F5] hover:bg-purple-50 border-stone-300 text-[#555]"
+                                    }`}
+                                    title="Mark this static vehicle as verified"
+                                  >
+                                    <CheckCircle className={`w-3.5 h-3.5 ${item.badge === "verified" ? "text-purple-300 fill-purple-300/20" : "text-stone-400"}`} />
+                                    {item.badge === "verified" ? "Verified" : "Verify"}
+                                  </button>
+
+                                  {/* Featured control for default vehicle */}
+                                  <button
+                                    onClick={() => handleToggleDefaultBadge(item.id, "premium")}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
+                                      item.badge === "premium"
+                                        ? "bg-amber-450 border-amber-600 text-stone-950"
+                                        : "bg-[#FAF8F5] hover:bg-amber-50 border-stone-300 text-[#555]"
+                                    }`}
+                                    title="Set premium featured status"
+                                  >
+                                    <Sparkles className="w-3 h-3 text-amber-500" />
+                                    {item.badge === "premium" ? "★ Featured" : "☆ Feature"}
+                                  </button>
+
+                                  {/* Hot Deal control for default vehicle */}
+                                  <button
+                                    onClick={() => handleToggleDefaultBadge(item.id, "hot")}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
+                                      item.badge === "hot"
+                                        ? "bg-red-600 border-red-750 text-white"
+                                        : "bg-[#FAF8F5] hover:bg-red-50 border-stone-300 text-stone-605"
+                                    }`}
+                                    title="Set hot deal tag"
+                                  >
+                                    Hot Deal
+                                  </button>
+
+                                  {/* Restore / Hide toggle */}
+                                  <button
+                                    onClick={() => handleToggleHideDefault(item.id)}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1.5 font-mono ml-auto transition ${
+                                      isDefaultHidden
+                                        ? "bg-green-100 hover:bg-green-200 text-green-905 border-green-300"
+                                        : "bg-amber-50 hover:bg-amber-100 text-amber-850 border-amber-300"
+                                    }`}
+                                  >
+                                    {isDefaultHidden ? "Restore" : "Hide"}
+                                  </button>
+                                </>
                               )}
                             </div>
                           </div>
