@@ -541,7 +541,7 @@ export default function App() {
       try {
         const currentBadgesStr = localStorage.getItem("autoWorld_default_badges") || "{}";
         const badgesMap = JSON.parse(currentBadgesStr);
-        const isCurrentlyVerified = badgesMap[selectedVehicle.id] === "verified";
+        const isCurrentlyVerified = selectedVehicle.badge === "verified";
         const nextBadge = isCurrentlyVerified ? null : "verified";
         badgesMap[selectedVehicle.id] = nextBadge;
         localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
@@ -573,7 +573,7 @@ export default function App() {
       try {
         const currentBadgesStr = localStorage.getItem("autoWorld_default_badges") || "{}";
         const badgesMap = JSON.parse(currentBadgesStr);
-        const isCurrentlyPremium = badgesMap[selectedVehicle.id] === "premium";
+        const isCurrentlyPremium = selectedVehicle.badge === "premium";
         const nextBadge = isCurrentlyPremium ? null : "premium";
         badgesMap[selectedVehicle.id] = nextBadge;
         localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
@@ -605,7 +605,7 @@ export default function App() {
       try {
         const currentBadgesStr = localStorage.getItem("autoWorld_default_badges") || "{}";
         const badgesMap = JSON.parse(currentBadgesStr);
-        const isCurrentlyHot = badgesMap[selectedVehicle.id] === "hot";
+        const isCurrentlyHot = selectedVehicle.badge === "hot";
         const nextBadge = isCurrentlyHot ? null : "hot";
         badgesMap[selectedVehicle.id] = nextBadge;
         localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
@@ -623,6 +623,19 @@ export default function App() {
     if (!window.confirm("Are you sure you want to permanently delete this user listing from Firestore? This is irreversible.")) return;
     try {
       await deleteDoc(doc(db, "listings", selectedVehicle.listingId));
+      
+      // Also update local storage if they mirrored it there
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const list: UserListing[] = JSON.parse(stored);
+          const updated = list.filter(item => item.id !== selectedVehicle.listingId);
+          localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
       showToast("Listing deleted successfully from Firestore database!", "success");
       setSelectedVehicle(null);
       window.dispatchEvent(new Event("autoWorld_db_update"));

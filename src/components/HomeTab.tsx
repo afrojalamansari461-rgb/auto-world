@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES } from "../types";
 import { motion } from "motion/react";
@@ -11,6 +11,40 @@ interface HomeTabProps {
   onQuickView: (vehicle: Vehicle) => void;
 }
 
+function getOverriddenVehicles(): Vehicle[] {
+  let list = [...DEFAULT_VEHICLES];
+  try {
+    const hiddenStr = localStorage.getItem("autoWorld_hidden_defaults");
+    if (hiddenStr) {
+      const hiddenIds = JSON.parse(hiddenStr);
+      if (Array.isArray(hiddenIds)) {
+        list = list.filter(v => !hiddenIds.includes(v.id));
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse hidden default vehicles in HomeTab:", e);
+  }
+
+  try {
+    const badgesStr = localStorage.getItem("autoWorld_default_badges");
+    if (badgesStr) {
+      const badgesMap = JSON.parse(badgesStr);
+      if (badgesMap && typeof badgesMap === "object") {
+        list = list.map(v => {
+          const customBadge = badgesMap[v.id];
+          return {
+            ...v,
+            badge: customBadge !== undefined ? customBadge : v.badge
+          };
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse custom default badges in HomeTab:", e);
+  }
+  return list;
+}
+
 export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSearchFilters, onQuickView }: HomeTabProps) {
   const [activeSearchTab, setActiveSearchTab] = useState<"buy" | "sell">("buy");
   const [selectedType, setSelectedType] = useState("Any Type");
@@ -18,6 +52,19 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
   const [selectedLocation, setSelectedLocation] = useState("");
 
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
+  const [featuredCars, setFeaturedCars] = useState<Vehicle[]>(() => {
+    return getOverriddenVehicles().slice(0, 3);
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setFeaturedCars(getOverriddenVehicles().slice(0, 3));
+    };
+    window.addEventListener("autoWorld_db_update", handleUpdate);
+    // Sync on mount
+    handleUpdate();
+    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +76,6 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
     setActiveTab("buy");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
-  const featuredCars = DEFAULT_VEHICLES.slice(0, 3);
 
   return (
     <div className="bg-[#F4F1EA] text-[#1A1A1A] font-sans overflow-hidden animate-in fade-in duration-300">

@@ -766,15 +766,36 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block">Make / Manufacturer <span className="text-stone-400 font-light">(required)</span></label>
               <select
                 value={make}
-                onChange={(e) => setMake(e.target.value)}
-                disabled={!vehicleType}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 disabled:opacity-50"
+                onChange={(e) => {
+                  const selectedMake = e.target.value;
+                  setMake(selectedMake);
+                  setModel("");
+                  if (selectedMake && selectedMake !== "Other") {
+                    // Auto-infer category type from selected brand
+                    const inferredCat = Object.keys(VEHICLE_MAKES).find(cat => 
+                      VEHICLE_MAKES[cat].includes(selectedMake)
+                    );
+                    if (inferredCat) {
+                      setVehicleType(inferredCat);
+                    }
+                  }
+                }}
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
               >
-                <option value="">Select Manufacturer</option>
-                {vehicleType && VEHICLE_MAKES[vehicleType]?.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-                {vehicleType && <option value="Other">Other / Custom</option>}
+                <option value="">Select Manufacturer (Any vehicle brand)</option>
+                {vehicleType ? (
+                  VEHICLE_MAKES[vehicleType]?.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))
+                ) : (
+                  Array.from(new Set(Object.values(VEHICLE_MAKES).flat()))
+                    .filter(m => m !== "Other")
+                    .sort()
+                    .map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))
+                )}
+                <option value="Other">Other / Custom Brand</option>
               </select>
               {make === "Other" && (
                 <input
@@ -784,6 +805,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   onChange={(e) => setCustomMake(e.target.value)}
                   className="w-full mt-1.5 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
                 />
+              )}
+              {!vehicleType && (
+                <p className="text-[9px] text-stone-500 font-medium italic mt-1 uppercase">★ Pro-Tip: Select any brand first; Auto World will classify the category type automatically.</p>
               )}
             </div>
 
@@ -796,7 +820,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 disabled:opacity-50"
               >
                 <option value="">Select Model</option>
-                {make && VEHICLE_MODELS[make]?.map((mod) => (
+                {make && (VEHICLE_MODELS[make] || Object.values(VEHICLE_MODELS).flat()).map((mod) => (
                   <option key={mod} value={mod}>{mod}</option>
                 ))}
                 {make && <option value="Other">Other Model</option>}

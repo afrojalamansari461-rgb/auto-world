@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { 
   ShieldAlert, Database, Trash2, Mail, Phone, Calendar, Heart, 
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
-  Crown, ExternalLink, Sparkles, Filter, Check, Eye
+  Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
+  Clock, Settings, AlertCircle, Wrench, EyeOff
 } from "lucide-react";
-import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
-import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
+import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 
 interface AdminPanelProps {
@@ -138,8 +139,31 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   // Custom badges for hardcoded default vehicles to control them
   const [defaultBadges, setDefaultBadges] = useState<Record<number, string | null>>({});
 
-  // Active inventory viewer filter (controlling all cars, user list, or defaults)
-  const [inventoryFilter, setInventoryFilter] = useState<"all" | "user" | "default">("all");
+  // Active inventory viewer filter (controlling all cars, user list, or defaults, or hidden)
+  const [inventoryFilter, setInventoryFilter] = useState<"all" | "user" | "default" | "hidden">("all");
+
+  // Interactive Admin Intake Form (Add New Vehicle Specimen) state variables
+  const [showIntakeForm, setShowIntakeForm] = useState(false);
+  const [newMake, setNewMake] = useState("");
+  const [newModel, setNewModel] = useState("");
+  const [newCustomMake, setNewCustomMake] = useState("");
+  const [newCustomModel, setNewCustomModel] = useState("");
+  const [newCategory, setNewCategory] = useState("car");
+  const [newYear, setNewYear] = useState(new Date().getFullYear().toString());
+  const [newPrice, setNewPrice] = useState("");
+  const [newMileage, setNewMileage] = useState("0");
+  const [newFuel, setNewFuel] = useState("Petrol");
+  const [newTransmission, setNewTransmission] = useState("Automatic");
+  const [newBadge, setNewBadge] = useState<"verified" | "premium" | "hot" | null>(null);
+  const [newDescription, setNewDescription] = useState("");
+  const [newImageUrl, setNewImageUrl] = useState("");
+  const [newSellerName, setNewSellerName] = useState("Auto World Executive Desk");
+  const [newSellerPhone, setNewSellerPhone] = useState("+91 99001 88224");
+  const [newSellerEmail, setNewSellerEmail] = useState("admin@autoworld.in");
+  const [newLocation, setNewLocation] = useState("New Delhi, Delhi");
+  const [newNegotiable, setNewNegotiable] = useState("no");
+  const [newFeatures, setNewFeatures] = useState("ABS, Airbags, Bluetooth, Backup Camera, Climate Control");
+  const [isSubmittingIntake, setIsSubmittingIntake] = useState(false);
 
   // Search filter inside admin panel
   const [adminSearch, setAdminSearch] = useState("");
@@ -282,12 +306,30 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       console.error(e);
     }
 
+    // Load default badges on mount
+    try {
+      const badgesStr = localStorage.getItem("autoWorld_default_badges");
+      if (badgesStr) {
+        setDefaultBadges(JSON.parse(badgesStr));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     const handleUpdate = () => {
       loadData();
       try {
         const stored = localStorage.getItem("autoWorld_hidden_defaults");
         if (stored) {
           setHiddenDefaultIds(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      try {
+        const badgesStr = localStorage.getItem("autoWorld_default_badges");
+        if (badgesStr) {
+          setDefaultBadges(JSON.parse(badgesStr));
         }
       } catch (e) {
         console.error(e);
@@ -387,6 +429,92 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     } catch (err: any) {
       handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
       showToast("Failed to update listing approval workflow.", "error");
+    }
+  };
+
+  // Compile and record brand-new vehicle specimen to Firestore & local storage
+  const handleSubmitIntake = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalMake = newMake === "Other" ? newCustomMake : newMake;
+    const finalModel = newModel === "Other" ? newCustomModel : newModel;
+    if (!finalMake || !finalModel) {
+      showToast("Manufacturer and Model are required!", "error");
+      return;
+    }
+    
+    setIsSubmittingIntake(true);
+    playSynthBeep(600, 0.2, "square");
+    
+    try {
+      const finalTitle = `${finalMake} ${finalModel} ${newYear}`;
+      const finalPriceInt = parseInt(newPrice) || 500000;
+      
+      const featuresArray = newFeatures
+        .split(",")
+        .map(f => f.trim())
+        .filter(Boolean);
+        
+      const listingData = {
+        title: finalTitle,
+        make: finalMake,
+        model: finalModel,
+        type: newCategory,
+        year: newYear,
+        price: finalPriceInt,
+        condition: 10,
+        mileage: newMileage,
+        fuelType: newFuel,
+        transmission: newTransmission,
+        description: newDescription || `Superb condition pristine ${finalTitle} curated for elite buyers.`,
+        negotiable: newNegotiable,
+        sellerName: newSellerName,
+        sellerPhone: newSellerPhone,
+        sellerEmail: newSellerEmail,
+        location: newLocation,
+        features: featuresArray,
+        verified: newBadge === "verified",
+        featured: newBadge === "premium",
+        urgent: newBadge === "hot",
+        photos: [{ src: newImageUrl || "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800", alt: finalTitle }],
+        datePosted: new Date().toISOString().split("T")[0],
+        status: "active" as const
+      };
+      
+      // Save directly to Firestore
+      const docRef = await addDoc(collection(db, "listings"), listingData);
+      
+      // Also add to local storage listings for offline sync fallback
+      try {
+        const stored = localStorage.getItem("autoWorld_listings") || "[]";
+        const localListings: UserListing[] = JSON.parse(stored);
+        localListings.push({ ...listingData, id: docRef.id } as UserListing);
+        localStorage.setItem("autoWorld_listings", JSON.stringify(localListings));
+      } catch (err) {
+        console.error(err);
+      }
+      
+      playSynthBeep(1000, 0.4, "sine");
+      showToast(`Specimen ${finalTitle} compiled & recorded to database!`, "success");
+      
+      // Trigger update
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+      
+      // Close form and reset
+      setShowIntakeForm(false);
+      setNewMake("");
+      setNewModel("");
+      setNewCustomMake("");
+      setNewCustomModel("");
+      setNewPrice("");
+      setNewMileage("0");
+      setNewDescription("");
+      setNewImageUrl("");
+      setNewBadge(null);
+    } catch (err: any) {
+      console.error(err);
+      showToast("Error uploading specimen to Firestore.", "error");
+    } finally {
+      setIsSubmittingIntake(false);
     }
   };
 
@@ -631,6 +759,8 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     aggregateInventoryList = userListingsMapped;
   } else if (inventoryFilter === "default") {
     aggregateInventoryList = allDefaultsMapped;
+  } else if (inventoryFilter === "hidden") {
+    aggregateInventoryList = allDefaultsMapped.filter(item => hiddenDefaultIds.includes(item.id));
   }
 
   // Filter listings based on input text
@@ -926,9 +1056,17 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                       </div>
                       <p className="text-[10px] text-stone-500 uppercase tracking-widest font-mono mt-0.5">unified master controls for static and database items</p>
                     </div>
+
+                    <button
+                      onClick={() => { playSynthBeep(900, 0.15, "triangle"); setShowIntakeForm(!showIntakeForm); }}
+                      className="px-4 py-2.5 bg-purple-900 hover:bg-purple-800 text-white text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 transition border border-purple-950 font-mono shadow-[0_0_12px_rgba(147,51,234,0.3)] animate-pulse cursor-pointer self-start md:self-center"
+                    >
+                      <Plus className="w-4 h-4 text-purple-300" />
+                      Add New Specimen
+                    </button>
                     
                     {/* View filter buttons */}
-                    <div className="flex items-center border border-stone-300 p-0.5 bg-stone-100/60 self-start md:self-center font-mono text-[9px] font-black">
+                    <div className="flex items-center border border-stone-300 p-0.5 bg-stone-100/60 self-start md:self-center font-mono text-[9px] font-black flex-wrap gap-0.5">
                       <button
                         onClick={() => { playSynthBeep(700, 0.05); setInventoryFilter("all"); }}
                         className={`px-3 py-1.5 uppercase transition cursor-pointer ${
@@ -958,6 +1096,18 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                         }`}
                       >
                         Static ({allDefaultsMapped.length})
+                      </button>
+                      <button
+                        onClick={() => { playSynthBeep(850, 0.05); setInventoryFilter("hidden"); }}
+                        className={`px-3 py-1.5 uppercase transition cursor-pointer flex items-center gap-1 ${
+                          inventoryFilter === "hidden"
+                            ? "bg-amber-600 text-white shadow-xs"
+                            : "text-amber-600 hover:bg-amber-100"
+                        }`}
+                        title="Show hidden static default vehicles"
+                      >
+                        <EyeOff className="w-3 h-3 text-amber-500 shrink-0" />
+                        Archived ({allDefaultsMapped.filter(item => hiddenDefaultIds.includes(item.id)).length})
                       </button>
                     </div>
                   </div>
@@ -996,7 +1146,347 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                     </button>
                   </div>
                 </div>
-                
+
+                <AnimatePresence>
+                  {showIntakeForm && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden mb-6"
+                    >
+                      <form 
+                        onSubmit={handleSubmitIntake}
+                        className="bg-[#FAF8F5] border-2 border-stone-900 p-6 space-y-6 shadow-[6px_6px_0px_0px_rgba(168,85,247,0.2)]"
+                      >
+                        <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+                          <div className="flex items-center gap-2">
+                            <Plus className="w-5 h-5 text-purple-600" />
+                            <h3 className="text-xs sm:text-sm font-serif font-black uppercase text-stone-900 tracking-tight">Cyber Vehicle Intake Console</h3>
+                          </div>
+                          <span className="text-[9px] font-mono font-black uppercase bg-purple-150 text-purple-950 border border-purple-300 px-2.5 py-1">Mode: Direct Database Insertion</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                          {/* Make select */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Make / Brand *</label>
+                            <select
+                              value={newMake}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setNewMake(val);
+                                setNewModel("");
+                                if (val && val !== "Other") {
+                                  const inferredCat = Object.keys(VEHICLE_MAKES).find(cat => 
+                                    VEHICLE_MAKES[cat].includes(val)
+                                  );
+                                  if (inferredCat) setNewCategory(inferredCat);
+                                }
+                              }}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            >
+                              <option value="">Select Manufacturer</option>
+                              {Array.from(new Set(Object.values(VEHICLE_MAKES).flat())).filter(m => m !== "Other").sort().map((m) => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                              <option value="Other">Other / Custom Brand</option>
+                            </select>
+                            {newMake === "Other" && (
+                              <input
+                                type="text"
+                                placeholder="Enter custom brand"
+                                value={newCustomMake}
+                                onChange={(e) => setNewCustomMake(e.target.value)}
+                                className="w-full mt-1.5 px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                                required
+                              />
+                            )}
+                          </div>
+
+                          {/* Model select */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Model *</label>
+                            <select
+                              value={newModel}
+                              onChange={(e) => setNewModel(e.target.value)}
+                              disabled={!newMake}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 disabled:opacity-50 text-stone-900"
+                              required
+                            >
+                              <option value="">Select Model</option>
+                              {newMake && (VEHICLE_MODELS[newMake] || Object.values(VEHICLE_MODELS).flat()).map((m) => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                              <option value="Other">Other Model</option>
+                            </select>
+                            {newModel === "Other" && (
+                              <input
+                                type="text"
+                                placeholder="Enter custom model"
+                                value={newCustomModel}
+                                onChange={(e) => setNewCustomModel(e.target.value)}
+                                className="w-full mt-1.5 px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                                required
+                              />
+                            )}
+                          </div>
+
+                          {/* Category select */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Category / Type *</label>
+                            <select
+                              value={newCategory}
+                              onChange={(e) => setNewCategory(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            >
+                              <option value="car">Car / Sedan</option>
+                              <option value="suv">SUV</option>
+                              <option value="truck">Truck</option>
+                              <option value="van">Van</option>
+                              <option value="motorcycle">Motorcycle</option>
+                              <option value="bicycle">Bicycle</option>
+                              <option value="commercial">Commercial Vehicle</option>
+                              <option value="other">Other / Custom</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+                          {/* Price */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Price (INR) *</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 1500000"
+                              value={newPrice}
+                              onChange={(e) => setNewPrice(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            />
+                          </div>
+
+                          {/* Year */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Year *</label>
+                            <input
+                              type="number"
+                              value={newYear}
+                              onChange={(e) => setNewYear(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            />
+                          </div>
+
+                          {/* Mileage */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Mileage (km or mi) *</label>
+                            <input
+                              type="text"
+                              value={newMileage}
+                              onChange={(e) => setNewMileage(e.target.value)}
+                              placeholder="e.g. 12,500 km"
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            />
+                          </div>
+
+                          {/* Fuel */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Fuel Type *</label>
+                            <select
+                              value={newFuel}
+                              onChange={(e) => setNewFuel(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                            >
+                              <option value="Petrol">Petrol</option>
+                              <option value="Diesel">Diesel</option>
+                              <option value="Electric">Electric</option>
+                              <option value="Hybrid">Hybrid</option>
+                              <option value="CNG">CNG</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                          {/* Transmission */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Transmission *</label>
+                            <select
+                              value={newTransmission}
+                              onChange={(e) => setNewTransmission(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                            >
+                              <option value="Automatic">Automatic</option>
+                              <option value="Manual">Manual</option>
+                              <option value="Semi-Automatic">Semi-Automatic</option>
+                            </select>
+                          </div>
+
+                          {/* Badge control */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Custom Spec Badge Tag</label>
+                            <select
+                              value={newBadge || ""}
+                              onChange={(e) => setNewBadge((e.target.value as any) || null)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                            >
+                              <option value="">Standard (No Badge)</option>
+                              <option value="verified">Verified (Verified Checklist)</option>
+                              <option value="premium">Premium (Featured Specimen)</option>
+                              <option value="hot">Hot Deal (Urgent Placement)</option>
+                            </select>
+                          </div>
+
+                          {/* Negotiable */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Negotiable Ask *</label>
+                            <select
+                              value={newNegotiable}
+                              onChange={(e) => setNewNegotiable(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                            >
+                              <option value="no">Fixed Ask (No negotiation)</option>
+                              <option value="yes">Yes, Negotiable</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Image field with premium Unsplash tag shortcuts */}
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Specimen Cover Image URL *</label>
+                          <input
+                            type="url"
+                            value={newImageUrl}
+                            onChange={(e) => setNewImageUrl(e.target.value)}
+                            placeholder="https://images.unsplash.com/photo-..."
+                            className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                            required
+                          />
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            <span className="text-[8px] font-mono font-bold text-stone-400 uppercase tracking-wider mr-1">Quick Presets:</span>
+                            {[
+                              { label: "🚗 Porsche 911", url: "https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=800&auto=format&fit=crop&q=80" },
+                              { label: "🚙 Mahindra Thar", url: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&auto=format&fit=crop&q=80" },
+                              { label: "🏍 RE Classic", url: "https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?w=800&auto=format&fit=crop&q=80" },
+                              { label: "⚡ Tesla Model Y", url: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800&auto=format&fit=crop&q=80" },
+                              { label: "⛰ Toyota Fortuner", url: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800" },
+                              { label: "🏎 Lamborghini", url: "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800&auto=format&fit=crop&q=80" }
+                            ].map((preset) => (
+                              <button
+                                key={preset.label}
+                                type="button"
+                                onClick={() => { playSynthBeep(950, 0.08); setNewImageUrl(preset.url); }}
+                                className="px-2 py-1 bg-stone-105 hover:bg-stone-200 border border-stone-300 text-[8px] font-mono font-bold uppercase tracking-wider transition cursor-pointer text-stone-800"
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Description & Features */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Dossier Narrative Description</label>
+                            <textarea
+                              rows={3}
+                              placeholder="Describe the condition, owner history, and mechanical highlights..."
+                              value={newDescription}
+                              onChange={(e) => setNewDescription(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Mechanical Features (comma-separated)</label>
+                            <textarea
+                              rows={3}
+                              placeholder="e.g. ABS, Airbags, Sunroof, Leather Seats, Ceramic Coating"
+                              value={newFeatures}
+                              onChange={(e) => setNewFeatures(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Location */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 pt-3 border-t border-stone-200">
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Location *</label>
+                            <input
+                              type="text"
+                              value={newLocation}
+                              onChange={(e) => setNewLocation(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Seller Name *</label>
+                            <input
+                              type="text"
+                              value={newSellerName}
+                              onChange={(e) => setNewSellerName(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Seller Phone *</label>
+                            <input
+                              type="text"
+                              value={newSellerPhone}
+                              onChange={(e) => setNewSellerPhone(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block font-mono">Seller Email *</label>
+                            <input
+                              type="email"
+                              value={newSellerEmail}
+                              onChange={(e) => setNewSellerEmail(e.target.value)}
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        {/* Submission triggers */}
+                        <div className="flex items-center justify-end gap-3 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => { playSynthBeep(400, 0.1); setShowIntakeForm(false); }}
+                            className="px-4 py-2.5 bg-stone-105 hover:bg-stone-200 text-stone-700 text-[10px] font-bold uppercase tracking-widest border border-stone-300 font-mono transition cursor-pointer"
+                          >
+                            Abort Intake
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSubmittingIntake}
+                            className="px-6 py-2.5 bg-purple-900 hover:bg-purple-800 text-white text-[10px] font-black uppercase tracking-widest border border-purple-950 font-mono transition flex items-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(168,85,247,0.3)] disabled:opacity-50"
+                          >
+                            {isSubmittingIntake ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                COMPILING SPECIMEN...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-purple-300" />
+                                COMPILE & INJECT TO DATABASE
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Search controller inside subsection */}
                 <div className="bg-[#FAF8F5] border border-stone-300 p-4 flex flex-col sm:flex-row items-center gap-4">
                   <div className="relative flex-grow w-full">
