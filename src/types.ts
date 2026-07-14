@@ -22,6 +22,10 @@ export interface Vehicle {
   negotiable?: string;
   status?: "pending" | "active" | "sold";
   photos?: { src: string; alt: string }[];
+  engine?: string;
+  color?: string;
+  owners?: string;
+  regNumber?: string;
 }
 
 export interface UserListing {
@@ -59,6 +63,10 @@ export interface UserListing {
   photos: { src: string; alt: string }[];
   datePosted: string;
   status: "pending" | "active" | "sold";
+  engine?: string;
+  color?: string;
+  owners?: string;
+  regNumber?: string;
 }
 
 export interface Subscription {

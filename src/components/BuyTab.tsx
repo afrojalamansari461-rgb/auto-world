@@ -286,6 +286,18 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         console.error("Failed to parse hidden default vehicles:", e);
       }
 
+      try {
+        const removedStr = localStorage.getItem("autoWorld_removed_defaults");
+        if (removedStr) {
+          const removedIds = JSON.parse(removedStr);
+          if (Array.isArray(removedIds)) {
+            defaultData = defaultData.filter(v => !removedIds.includes(v.id));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse removed default vehicles:", e);
+      }
+
       // Read default vehicle custom badges from local overrides
       try {
         const badgesStr = localStorage.getItem("autoWorld_default_badges");
@@ -385,7 +397,11 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           sellerPhone: listing.sellerPhone,
           location: listing.location,
           negotiable: listing.negotiable,
-          photos: listing.photos
+          photos: listing.photos,
+          engine: listing.engine,
+          color: listing.color,
+          owners: listing.owners,
+          regNumber: listing.regNumber
         };
       });
 

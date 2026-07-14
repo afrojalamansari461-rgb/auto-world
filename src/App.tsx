@@ -216,7 +216,11 @@ export default function App() {
               sellerPhone: listing.sellerPhone,
               location: listing.location,
               negotiable: listing.negotiable,
-              photos: listing.photos
+              photos: listing.photos,
+              engine: listing.engine,
+              color: listing.color,
+              owners: listing.owners,
+              regNumber: listing.regNumber
             };
 
             setSelectedVehicle(mappedVehicle);
@@ -962,6 +966,30 @@ export default function App() {
                       <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Production Year</span>
                       <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.year}</span>
                     </div>
+                    {selectedVehicle.engine && (
+                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Engine Spec</span>
+                        <span className="text-stone-900 font-bold mt-0.5 block text-[11px] font-mono leading-none">{selectedVehicle.engine}</span>
+                      </div>
+                    )}
+                    {selectedVehicle.color && (
+                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Exterior Paint</span>
+                        <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.color}</span>
+                      </div>
+                    )}
+                    {selectedVehicle.owners && (
+                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Owner Count</span>
+                        <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.owners}</span>
+                      </div>
+                    )}
+                    {selectedVehicle.regNumber && (
+                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Reg Number / Plate</span>
+                        <span className="text-stone-900 font-bold mt-0.5 block font-mono text-[11px] leading-none">{selectedVehicle.regNumber}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

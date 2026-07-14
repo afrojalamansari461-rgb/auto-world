@@ -26,6 +26,18 @@ function getOverriddenVehicles(): Vehicle[] {
   }
 
   try {
+    const removedStr = localStorage.getItem("autoWorld_removed_defaults");
+    if (removedStr) {
+      const removedIds = JSON.parse(removedStr);
+      if (Array.isArray(removedIds)) {
+        list = list.filter(v => !removedIds.includes(v.id));
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse removed default vehicles in HomeTab:", e);
+  }
+
+  try {
     const badgesStr = localStorage.getItem("autoWorld_default_badges");
     if (badgesStr) {
       const badgesMap = JSON.parse(badgesStr);
