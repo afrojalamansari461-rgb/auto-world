@@ -349,9 +349,9 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
         className="flex justify-center max-w-2xl mx-auto mb-12 border-b border-stone-300 pb-px gap-1 sm:gap-4 px-4 overflow-x-auto whitespace-nowrap scrollbar-none flex-nowrap"
       >
         {[
-          { id: "plans", label: "Plans", icon: Sparkles },
-          { id: "comparison", label: "Listing", icon: Award },
-          { id: "faq", label: "Billing", icon: ShieldCheck }
+          { id: "plans", label: "Plans & Packages", icon: Sparkles },
+          { id: "comparison", label: "Listing Features", icon: Award },
+          { id: "faq", label: "Billing & FAQ", icon: ShieldCheck }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSubTab === tab.id;
@@ -553,8 +553,8 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                     <tr className="bg-stone-100 border-b border-stone-350">
                       <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Core Benefits</th>
                       <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Basic</th>
-                      <th className="p-4 sm:p-5 text-[10px] font-black text-purple-700 uppercase font-mono tracking-widest font-extrabold">Pro</th>
-                      <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Business</th>
+                      <th className="p-4 sm:p-5 text-[10px] font-black text-purple-700 uppercase font-mono tracking-widest font-extrabold">Pro Professional</th>
+                      <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Business Dealership</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-200 text-xs sm:text-sm text-stone-600 font-semibold uppercase tracking-wide text-[11px]">
