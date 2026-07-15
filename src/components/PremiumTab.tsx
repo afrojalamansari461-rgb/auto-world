@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Crown, Check, X, Shield, Star, Award, ShieldCheck, Sparkles, ChevronDown, CreditCard, Lock, Radio } from "lucide-react";
 import { User as FirebaseUser } from "firebase/auth";
 import { setDoc, doc } from "firebase/firestore";
@@ -152,6 +152,36 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
 
   // Sub-tab selection state with sliding indicators
   const [activeSubTab, setActiveSubTab] = useState<"plans" | "comparison" | "faq">("plans");
+
+  useEffect(() => {
+    let isScrolling = false;
+    const handleScroll = () => {
+      if (isScrolling) return;
+      isScrolling = true;
+      requestAnimationFrame(() => {
+        const sections: Array<"plans" | "comparison" | "faq"> = ["plans", "comparison", "faq"];
+        let activeSection: "plans" | "comparison" | "faq" = "plans";
+        
+        for (const section of sections) {
+          const element = document.getElementById(`premium-${section}-section`);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            // A section is active if its top border is less than 200px from the top of the viewport
+            if (rect.top <= 200) {
+              activeSection = section;
+            }
+          }
+        }
+        setActiveSubTab(activeSection);
+        isScrolling = false;
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    // Trigger once on mount to align state
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // FAQ states
   const [openFAQIndex, setOpenFAQIndex] = useState<number | null>(null);
@@ -358,7 +388,13 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveSubTab(tab.id as any)}
+              onClick={() => {
+                setActiveSubTab(tab.id as any);
+                const element = document.getElementById(`premium-${tab.id}-section`);
+                if (element) {
+                  element.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
               className={`relative pb-3 flex items-center gap-1.5 px-3.5 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors duration-200 select-none cursor-pointer leading-none shrink-0 ${
                 isActive ? "text-stone-950 font-black" : "text-stone-550 hover:text-stone-850"
               }`}
@@ -378,243 +414,260 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
       </motion.div>
 
       {/* SUB-TABS DYNAMIC VIEWPORT */}
-      <motion.div variants={itemVariants} className="max-w-6xl mx-auto px-4">
-        <AnimatePresence mode="wait">
-          {activeSubTab === "plans" && (
-            <motion.div
-              key="plans"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="space-y-12"
-            >
-              {isOwner ? (
-                <div className="max-w-4xl mx-auto px-4">
-                  <div className="bg-[#FAF8F2] border-4 border-stone-950 p-8 sm:p-12 shadow-2xl relative overflow-hidden text-center">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-stone-900/10 rounded-full translate-x-12 -translate-y-12 border border-stone-300" />
-                    <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-stone-900/5 rounded-full border border-stone-300/50" />
-                    
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-900 text-[#F4F1EA] mb-6 rounded-full border border-amber-400 shadow-lg relative">
-                      <Crown className="w-8 h-8 fill-amber-400 text-amber-400 animate-bounce" />
-                    </div>
-                    
-                    <h3 className="text-3xl font-serif font-black uppercase text-stone-950 tracking-tight mb-2">
-                      Owner Active Pass
-                    </h3>
-                    <span className="inline-block text-[10px] font-mono tracking-widest uppercase bg-stone-900 text-amber-400 px-3.5 py-1 font-bold mb-6">
-                      Certified Administrator: afrojalamansari461@gmail.com
-                    </span>
-                    
-                    <div className="max-w-xl mx-auto space-y-4 text-xs sm:text-sm font-semibold uppercase tracking-wider text-stone-600">
-                      <p className="leading-relaxed">
-                        Auto World billing protocols are bypassed. Your verified owner sign-in profile holds absolute sovereign access, unlocking premium lists, direct broker routes, and custom dashboard indices globally.
-                      </p>
-                      
-                      <div className="border-y border-stone-300 py-4 my-6 grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Unlimited</span>
-                          <span className="text-[9px] text-stone-400 block font-mono">Listings Allowed</span>
-                        </div>
-                        <div className="border-x border-stone-200">
-                          <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Infinity</span>
-                          <span className="text-[9px] text-stone-400 block font-mono">Validity Period</span>
-                        </div>
-                        <div>
-                          <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">VIP Gold</span>
-                          <span className="text-[9px] text-stone-400 block font-mono">Access Permit</span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-[10px] font-mono font-bold text-stone-400 normal-case leading-snug">
-                        "With administrative ownership comes absolute system-wide command. Thank you for maintaining the pristine registry records of Auto World."
-                      </p>
-                    </div>
-                  </div>
+      <div className="max-w-6xl mx-auto px-4 space-y-24 pb-24">
+        
+        {/* PLANS SECTION */}
+        <div
+          id="premium-plans-section"
+          className="scroll-mt-28 space-y-12"
+        >
+          <div className="border-b border-stone-300 pb-4 mb-6">
+            <h2 className="text-xl font-serif font-black uppercase text-stone-900 tracking-tight flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              Plans & Packages
+            </h2>
+            <p className="text-stone-500 text-xs uppercase tracking-wider font-semibold font-mono">
+              Choose the perfect tier for your listing scale
+            </p>
+          </div>
+
+          {isOwner ? (
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="bg-[#FAF8F2] border-4 border-stone-950 p-8 sm:p-12 shadow-2xl relative overflow-hidden text-center">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-stone-900/10 rounded-full translate-x-12 -translate-y-12 border border-stone-300" />
+                <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-stone-900/5 rounded-full border border-stone-300/50" />
+                
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-900 text-[#F4F1EA] mb-6 rounded-full border border-amber-400 shadow-lg relative">
+                  <Crown className="w-8 h-8 fill-amber-400 text-amber-400 animate-bounce" />
                 </div>
-              ) : (
-                <>
-                  {/* Pricing Switcher */}
-                  <div className="flex justify-center items-center gap-3.5 mb-12">
-                    <button
-                      type="button"
-                      onClick={() => setPeriod("monthly")}
-                      className={`px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
-                        period === "monthly" 
-                          ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" 
-                          : "bg-[#FAF8F5] text-stone-600 hover:bg-stone-200 border border-stone-300"
-                      }`}
-                    >
-                      Monthly Billings
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPeriod("yearly")}
-                      className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
-                        period === "yearly" 
-                          ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" 
-                          : "bg-[#FAF8F5] text-stone-600 hover:bg-stone-200 border border-stone-300"
-                      }`}
-                    >
-                      Yearly Billings
-                      <span className="px-2 py-0.5 bg-emerald-200 text-emerald-950 font-black uppercase tracking-wider text-[9px]">Save 20%</span>
-                    </button>
+                
+                <h3 className="text-3xl font-serif font-black uppercase text-stone-950 tracking-tight mb-2">
+                  Owner Active Pass
+                </h3>
+                <span className="inline-block text-[10px] font-mono tracking-widest uppercase bg-stone-900 text-amber-400 px-3.5 py-1 font-bold mb-6">
+                  Certified Administrator: afrojalamansari461@gmail.com
+                </span>
+                
+                <div className="max-w-xl mx-auto space-y-4 text-xs sm:text-sm font-semibold uppercase tracking-wider text-stone-600">
+                  <p className="leading-relaxed">
+                    Auto World billing protocols are bypassed. Your verified owner sign-in profile holds absolute sovereign access, unlocking premium lists, direct broker routes, and custom dashboard indices globally.
+                  </p>
+                  
+                  <div className="border-y border-stone-300 py-4 my-6 grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Unlimited</span>
+                      <span className="text-[9px] text-stone-400 block font-mono">Listings Allowed</span>
+                    </div>
+                    <div className="border-x border-stone-200">
+                      <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Infinity</span>
+                      <span className="text-[9px] text-stone-400 block font-mono">Validity Period</span>
+                    </div>
+                    <div>
+                      <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">VIP Gold</span>
+                      <span className="text-[9px] text-stone-400 block font-mono">Access Permit</span>
+                    </div>
                   </div>
-
-                  {/* Plan Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Basic Card */}
-                    <PremiumPlanCard
-                      title="Basic Free"
-                      priceLabel="Free tier"
-                      priceVal="₹0"
-                      subLabel="Free lifetime"
-                      desc="Designed for individual casual brokers posting single listed items for basic localized visibility queries."
-                      features={[
-                        { label: "1 Active Listing", included: true },
-                        { label: "30 Days expiration", included: true },
-                        { label: "No Featured Listings", included: false },
-                        { label: "Standard support ranks", included: false }
-                      ]}
-                      btnLabel={subscriptionActive ? "Basic Inactive" : "Active Default plan"}
-                      btnDisabled={true}
-                    />
-
-                    {/* Pro Card */}
-                    <PremiumPlanCard
-                      title="Professional Pro"
-                      priceLabel="Expert Broker"
-                      priceVal={`₹${proPrice.toLocaleString("en-IN")}`}
-                      subLabel={period === "yearly" ? "billed yearly" : "billed monthly"}
-                      desc="Best suited for active individual dealer agents seeking top visibility and verified organic lead check tags."
-                      features={[
-                        { label: "10 Active Listings", included: true },
-                        { label: "60 Days validation", included: true },
-                        { label: "2 Featured spots / mo", included: true },
-                        { label: "24/7 Priority Helpline", included: true }
-                      ]}
-                      isMostPopular={true}
-                      badgeText="Most Popular"
-                      btnLabel={
-                        subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("pro")
-                          ? confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"
-                          : "Upgrade to Pro"
-                      }
-                      onBtnClick={
-                        subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("pro")
-                          ? handleCancelSubscription
-                          : () => handleOpenCheckout("pro", proPrice)
-                      }
-                    />
-
-                    {/* Business Card */}
-                    <PremiumPlanCard
-                      title="Dealership Business"
-                      priceLabel="Dealership fleet"
-                      priceVal={`₹${businessPrice.toLocaleString("en-IN")}`}
-                      subLabel={period === "yearly" ? "billed yearly" : "billed monthly"}
-                      desc="Unlimited list volume, bulk import scripts, and absolute VIP dedicated support panels safeguarding inventories."
-                      features={[
-                        { label: "Unlimited active listings", included: true },
-                        { label: "90 Days visibility list", included: true },
-                        { label: "Unlimited Featured spots", included: true },
-                        { label: "Dedicated Account Broker", included: true },
-                        { label: "Custom API XML listings feed", included: true }
-                      ]}
-                      btnLabel={
-                        subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("business")
-                          ? confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"
-                          : "Upgrade to Business"
-                      }
-                      onBtnClick={
-                        subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("business")
-                          ? handleCancelSubscription
-                          : () => handleOpenCheckout("business", businessPrice)
-                      }
-                    />
-                  </div>
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {activeSubTab === "comparison" && (
-            <motion.div
-              key="comparison"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="max-w-5xl mx-auto pt-4"
-            >
-              <div className="bg-[#FAF8F5] border-2 border-stone-950 shadow-sm overflow-hidden">
-                <table className="w-full border-collapse text-left">
-                  <thead>
-                    <tr className="bg-stone-100 border-b border-stone-350">
-                      <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Core Benefits</th>
-                      <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Basic</th>
-                      <th className="p-4 sm:p-5 text-[10px] font-black text-purple-700 uppercase font-mono tracking-widest font-extrabold">Pro Professional</th>
-                      <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Business Dealership</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-200 text-xs sm:text-sm text-stone-600 font-semibold uppercase tracking-wide text-[11px]">
-                    {plansComparison.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-stone-50 transition">
-                        <td className="p-4 sm:p-5 font-bold text-stone-950 leading-relaxed">{row.name}</td>
-                        <td className="p-4 sm:p-5 text-stone-500">{row.basic}</td>
-                        <td className="p-4 sm:p-5 text-purple-800 font-black">{row.pro}</td>
-                        <td className="p-4 sm:p-5 text-stone-700">{row.business}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  
+                  <p className="text-[10px] font-mono font-bold text-stone-400 normal-case leading-snug">
+                    "With administrative ownership comes absolute system-wide command. Thank you for maintaining the pristine registry records of Auto World."
+                  </p>
+                </div>
               </div>
-            </motion.div>
-          )}
+            </div>
+          ) : (
+            <>
+              {/* Pricing Switcher */}
+              <div className="flex justify-center items-center gap-3.5 mb-12">
+                <button
+                  type="button"
+                  onClick={() => setPeriod("monthly")}
+                  className={`px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
+                    period === "monthly" 
+                      ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" 
+                      : "bg-[#FAF8F5] text-stone-600 hover:bg-stone-200 border border-stone-300"
+                  }`}
+                >
+                  Monthly Billings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPeriod("yearly")}
+                  className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
+                    period === "yearly" 
+                      ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" 
+                      : "bg-[#FAF8F5] text-stone-600 hover:bg-stone-200 border border-stone-300"
+                  }`}
+                >
+                  Yearly Billings
+                  <span className="px-2 py-0.5 bg-emerald-200 text-emerald-950 font-black uppercase tracking-wider text-[9px]">Save 20%</span>
+                </button>
+              </div>
 
-          {activeSubTab === "faq" && (
-            <motion.div
-              key="faq"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="max-w-4xl mx-auto pt-4 space-y-4"
-            >
-              {faqs.map((faq, idx) => {
-                const isOpen = openFAQIndex === idx;
-                return (
-                  <div key={idx} className="bg-[#FAF8F5] border-2 border-stone-950 overflow-hidden shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setOpenFAQIndex(isOpen ? null : idx)}
-                      className="w-full p-5 text-left font-bold text-[#1A1A1A] flex items-center justify-between transition hover:bg-stone-100 cursor-pointer"
-                    >
-                      <span className="text-xs font-extrabold uppercase tracking-widest text-stone-850 leading-snug">{faq.q}</span>
-                      <ChevronDown className={`w-5 h-5 text-stone-500 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden border-t border-stone-300"
-                        >
-                          <div className="p-5 bg-stone-100 text-xs text-stone-600 leading-relaxed font-semibold">
-                            {faq.a}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </motion.div>
+              {/* Plan Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Basic Card */}
+                <PremiumPlanCard
+                  title="Basic Free"
+                  priceLabel="Free tier"
+                  priceVal="₹0"
+                  subLabel="Free lifetime"
+                  desc="Designed for individual casual brokers posting single listed items for basic localized visibility queries."
+                  features={[
+                    { label: "1 Active Listing", included: true },
+                    { label: "30 Days expiration", included: true },
+                    { label: "No Featured Listings", included: false },
+                    { label: "Standard support ranks", included: false }
+                  ]}
+                  btnLabel={subscriptionActive ? "Basic Inactive" : "Active Default plan"}
+                  btnDisabled={true}
+                />
+
+                {/* Pro Card */}
+                <PremiumPlanCard
+                  title="Professional Pro"
+                  priceLabel="Expert Broker"
+                  priceVal={`₹${proPrice.toLocaleString("en-IN")}`}
+                  subLabel={period === "yearly" ? "billed yearly" : "billed monthly"}
+                  desc="Best suited for active individual dealer agents seeking top visibility and verified organic lead check tags."
+                  features={[
+                    { label: "10 Active Listings", included: true },
+                    { label: "60 Days validation", included: true },
+                    { label: "2 Featured spots / mo", included: true },
+                    { label: "24/7 Priority Helpline", included: true }
+                  ]}
+                  isMostPopular={true}
+                  badgeText="Most Popular"
+                  btnLabel={
+                    subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("pro")
+                      ? confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"
+                      : "Upgrade to Pro"
+                  }
+                  onBtnClick={
+                    subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("pro")
+                      ? handleCancelSubscription
+                      : () => handleOpenCheckout("pro", proPrice)
+                  }
+                />
+
+                {/* Business Card */}
+                <PremiumPlanCard
+                  title="Dealership Business"
+                  priceLabel="Dealership fleet"
+                  priceVal={`₹${businessPrice.toLocaleString("en-IN")}`}
+                  subLabel={period === "yearly" ? "billed yearly" : "billed monthly"}
+                  desc="Unlimited list volume, bulk import scripts, and absolute VIP dedicated support panels safeguarding inventories."
+                  features={[
+                    { label: "Unlimited active listings", included: true },
+                    { label: "90 Days visibility list", included: true },
+                    { label: "Unlimited Featured spots", included: true },
+                    { label: "Dedicated Account Broker", included: true },
+                    { label: "Custom API XML listings feed", included: true }
+                  ]}
+                  btnLabel={
+                    subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("business")
+                      ? confirmCancel ? "Verifying cancel" : "Downgrade plan / Cancel"
+                      : "Upgrade to Business"
+                  }
+                  onBtnClick={
+                    subscriptionActive && localStorage.getItem("autoWorld_subscription")?.includes("business")
+                      ? handleCancelSubscription
+                      : () => handleOpenCheckout("business", businessPrice)
+                  }
+                />
+              </div>
+            </>
           )}
-        </AnimatePresence>
-      </motion.div>
+        </div>
+
+        {/* COMPARISON SECTION */}
+        <div
+          id="premium-comparison-section"
+          className="scroll-mt-28 space-y-8"
+        >
+          <div className="border-b border-stone-300 pb-4 mb-6">
+            <h2 className="text-xl font-serif font-black uppercase text-stone-900 tracking-tight flex items-center gap-2">
+              <Award className="w-5 h-5 text-purple-600" />
+              Listing Features & Comparison
+            </h2>
+            <p className="text-stone-500 text-xs uppercase tracking-wider font-semibold font-mono">
+              Compare features across different levels
+            </p>
+          </div>
+
+          <div className="bg-[#FAF8F5] border-2 border-stone-950 shadow-sm overflow-hidden">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-stone-100 border-b border-stone-350">
+                  <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Core Benefits</th>
+                  <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Basic</th>
+                  <th className="p-4 sm:p-5 text-[10px] font-black text-purple-700 uppercase font-mono tracking-widest font-extrabold">Pro Professional</th>
+                  <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Business Dealership</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-200 text-xs sm:text-sm text-stone-600 font-semibold uppercase tracking-wide text-[11px]">
+                {plansComparison.map((row, idx) => (
+                  <tr key={idx} className="hover:bg-stone-50 transition">
+                    <td className="p-4 sm:p-5 font-bold text-stone-950 leading-relaxed">{row.name}</td>
+                    <td className="p-4 sm:p-5 text-stone-500">{row.basic}</td>
+                    <td className="p-4 sm:p-5 text-purple-800 font-black">{row.pro}</td>
+                    <td className="p-4 sm:p-5 text-stone-700">{row.business}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* FAQ SECTION */}
+        <div
+          id="premium-faq-section"
+          className="scroll-mt-28 space-y-8"
+        >
+          <div className="border-b border-stone-300 pb-4 mb-6">
+            <h2 className="text-xl font-serif font-black uppercase text-stone-900 tracking-tight flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-purple-600" />
+              Billing & FAQ
+            </h2>
+            <p className="text-stone-500 text-xs uppercase tracking-wider font-semibold font-mono">
+              Frequently asked questions about our memberships
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {faqs.map((faq, idx) => {
+              const isOpen = openFAQIndex === idx;
+              return (
+                <div key={idx} className="bg-[#FAF8F5] border-2 border-stone-950 overflow-hidden shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFAQIndex(isOpen ? null : idx)}
+                    className="w-full p-5 text-left font-bold text-[#1A1A1A] flex items-center justify-between transition hover:bg-stone-100 cursor-pointer"
+                  >
+                    <span className="text-xs font-extrabold uppercase tracking-widest text-stone-850 leading-snug">{faq.q}</span>
+                    <ChevronDown className={`w-5 h-5 text-stone-500 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden border-t border-stone-300"
+                      >
+                        <div className="p-5 bg-stone-100 text-xs text-stone-600 leading-relaxed font-semibold">
+                          {faq.a}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
 
       {/* CHECKOUT POPUP DIALOG OVERLAY */}
       <AnimatePresence>
