@@ -119,7 +119,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
       
       {/* Editorial Split Hero Section */}
       <motion.section variants={itemVariants} className="relative border-b border-[#1A1A1A]/10">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12">
+        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12">
           
           {/* Left Column: Primary Narrative */}
           <motion.div 
@@ -253,10 +253,10 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
               {activeSearchTab === "sell" && (
                 <div className="text-center py-3 space-y-4">
                   <h3 className="text-sm font-bold font-serif italic text-stone-900">Commission-Free Listing Wizard</h3>
-                  <p className="text-xs text-stone-600 leading-relaxed max-w-sm mx-auto font-sans">
+                  <p className="text-sm md:text-xs text-stone-600 leading-relaxed max-w-sm mx-auto font-sans">
                     Specify mechanical specifications, configure your asking parameters, and allow premium buyers to query your verified details.
                   </p>
-                  <div className="grid grid-cols-3 gap-2.5 py-2">
+                  <div className="w-full grid grid-cols-3 gap-2.5 py-2">
                     <div className="p-2 bg-[#F4F1EA] border border-stone-200">
                       <span className="text-[9px] uppercase tracking-wider font-extrabold text-stone-900 block">01 / Classify</span>
                     </div>
@@ -300,7 +300,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
         </div>
 
         {/* AnimatePresence for grid filter transitions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-8">
           {featuredCars.map((car) => {
             const isFav = favorites.includes(car.id);
             const isHovered = hoveredCardId === car.id;
@@ -440,7 +440,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                       {car.title}
                     </h3>
                     
-                    <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-stone-200 text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-4">
+                    <div className="w-full grid grid-cols-3 gap-2 py-2.5 border-y border-stone-200 text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-4">
                       <div>
                         <span className="text-stone-400 block text-[9px] uppercase font-light">Mileage</span>
                         <span className="text-stone-900 font-bold">{car.mileage}</span>
@@ -483,7 +483,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
           <p className="text-stone-500 text-sm italic font-serif">We provide an physical print-grade framework safeguarding buyers and publishers.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {[
             { step: "01", title: "Browse Listings", desc: "Utilize clean typographic filter matrices to identify models. Examine mechanical checklists and high resolution photo documents." },
             { step: "02", title: "Inspect Metrics", desc: "Receive transparent reports holding exact engine conditions, structural health ratings, and estimated broker parameters." },
@@ -504,7 +504,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                 <span className="text-[10px] uppercase font-sans tracking-widest text-stone-400 font-bold">Chapter</span>
               </div>
               <h3 className="text-sm uppercase tracking-wider font-bold text-stone-950 mb-2">{item.title}</h3>
-              <p className="text-stone-605 text-xs leading-relaxed font-sans font-semibold">
+              <p className="text-stone-605 text-sm md:text-xs leading-relaxed font-sans font-semibold">
                 {item.desc}
               </p>
             </motion.div>
@@ -515,22 +515,22 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
       {/* Section 4: Statistics */}
       <motion.section variants={itemVariants} className="bg-stone-950 text-white py-16 border-b border-[#1A1A1A]/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-stone-800">
+          <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-stone-800">
             <div className="space-y-1">
               <div className="text-4xl sm:text-5xl font-serif font-light">10k+</div>
-              <p className="text-stone-400 text-[10px] uppercase tracking-widest font-sans font-bold">Motors Catalogued</p>
+              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Motors Catalogued</p>
             </div>
             <div className="space-y-1">
               <div className="text-4xl sm:text-5xl font-serif font-light">50k+</div>
-              <p className="text-stone-400 text-[10px] uppercase tracking-widest font-sans font-bold">Inspected Transfers</p>
+              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Inspected Transfers</p>
             </div>
             <div className="space-y-1">
               <div className="text-4xl sm:text-5xl font-serif font-light">100%</div>
-              <p className="text-stone-400 text-[10px] uppercase tracking-widest font-sans font-bold">Secure Vetting</p>
+              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Secure Vetting</p>
             </div>
             <div className="space-y-1">
               <div className="text-4xl sm:text-5xl font-serif font-light">4.9/5</div>
-              <p className="text-stone-400 text-[10px] uppercase tracking-widest font-sans font-bold">Broker Satisfaction</p>
+              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Broker Satisfaction</p>
             </div>
           </div>
         </div>

@@ -615,7 +615,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               </div>
               <div className="text-center sm:text-left">
                 <h4 className="text-sm font-serif font-black uppercase tracking-wider text-stone-900 font-sans">1st 3 Listings Free to View</h4>
-                <p className="text-xs text-stone-705 leading-snug">The first 3 cars on our registry are completely free to inspect. To unlock more cars in the catalog, activate your ₹1 premium account pass.</p>
+                <p className="text-sm md:text-xs text-stone-705 leading-snug">The first 3 cars on our registry are completely free to inspect. To unlock more cars in the catalog, activate your ₹1 premium account pass.</p>
               </div>
             </div>
             <button
@@ -692,7 +692,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 transition={{ duration: 0.3 }}
                 className="p-6 sm:p-8"
               >
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* LEFT PANEL: CHOOSE MODEL & METRIC SHOWCASE */}
                   <div className="space-y-6 lg:border-r lg:border-stone-200 lg:pr-8">
                     <div>
@@ -701,7 +701,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                     </div>
 
                     {/* Specimen Selection Grid */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="w-full grid grid-cols-2 gap-2">
                       {Object.keys(modelMetadata).map((key) => {
                         const isSelected = selectedVizModel === key;
                         const data = modelMetadata[key];
@@ -741,13 +741,13 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                         </div>
                       </div>
 
-                      <p className="text-xs text-stone-600 leading-relaxed font-semibold">
+                      <p className="text-sm md:text-xs text-stone-600 leading-relaxed font-semibold">
                         {modelMetadata[selectedVizModel].text}
                       </p>
 
                       <div className="pt-2">
                         <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 block mb-2">Technical Index Metrics</span>
-                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono tracking-wider font-extrabold uppercase mb-2">
+                        <div className="w-full grid grid-cols-2 gap-2 text-[10px] font-mono tracking-wider font-extrabold uppercase mb-2">
                           <div className="bg-stone-50 p-2 border.5 border-stone-200">
                             <span className="text-stone-400 text-[8px] font-light block uppercase leading-none mb-0.5">Average Hike</span>
                             <span className="text-stone-850">{modelMetadata[selectedVizModel].avgHike}</span>
@@ -902,7 +902,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         
         {/* FILTERS TOOLBAR PANEL */}
         <div className="bg-[#FAF8F5] border border-stone-300 p-6 sm:p-8 mb-10">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
+          <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Model Search Phrase</label>
               <div className="relative">
@@ -1043,7 +1043,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
           ) : (
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-8">
                 <AnimatePresence mode="popLayout">
                   {displayedVehicles.map((car, idx) => {
                     const isFav = favorites.includes(car.id);
@@ -1127,7 +1127,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             {car.title}
                           </h3>
                           
-                          <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-stone-200 text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-4">
+                          <div className="w-full grid grid-cols-3 gap-2 py-2.5 border-y border-stone-200 text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-4">
                             <div>
                               <span className="text-stone-400 block text-[9px] uppercase font-light">Mileage</span>
                               <span className="text-stone-900 font-bold">{car.mileage}</span>
@@ -1204,7 +1204,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                   </div>
                   <div>
                     <h3 className="text-lg font-serif font-black uppercase text-stone-950 tracking-tight">Plus {sortedVehicles.length - 3} More Specimens Catalogued</h3>
-                    <p className="text-xs text-stone-605 max-w-md mx-auto pt-1 leading-relaxed">
+                    <p className="text-sm md:text-xs text-stone-605 max-w-md mx-auto pt-1 leading-relaxed">
                       You are viewing the first 3 car listings completely free. Activate our secure ₹1 buyer pass to reveal all remaining catalog entries and direct broker contact registries inside your account.
                     </p>
                   </div>
@@ -1292,7 +1292,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3.5">
+                    <div className="w-full grid grid-cols-2 gap-3.5">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Expiration</label>
                         <input

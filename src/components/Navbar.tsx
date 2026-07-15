@@ -223,7 +223,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             aria-expanded={isMobileMenuOpen}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 hover:bg-stone-200/50 text-stone-900 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+            className="md:hidden p-3.5 hover:bg-stone-200/50 text-stone-900 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </motion.button>
@@ -251,7 +251,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => handleTabClick(item.id)}
-                  className={`flex items-center gap-3 px-4 py-2.5 text-xs font-sans uppercase tracking-widest transition ${
+                  className={`flex items-center gap-3 px-5 py-3.5 text-xs font-sans uppercase tracking-widest transition ${
                     isActive
                       ? "bg-stone-900 text-white font-extrabold"
                       : "text-stone-700 hover:bg-stone-100 font-bold"
@@ -266,7 +266,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             <hr className="border-stone-900/10 my-1" />
             <div className="flex flex-col gap-2">
               {currentUser ? (
-                <div className="flex items-center justify-between p-2.5 bg-[#FAF8F5] border border-stone-200">
+                <div className="flex items-center justify-between p-3.5 bg-[#FAF8F5] border border-stone-200">
                   <div className="flex items-center gap-2">
                     {currentUser.photoURL ? (
                       <img src={currentUser.photoURL} alt={currentUser.displayName || "Avatar"} className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
@@ -280,7 +280,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                   <button
                     onClick={handleSignOut}
                     aria-label="Sign out of AutoWorld account"
-                    className="flex items-center gap-1.5 px-3 py-1 bg-red-50 hover:bg-red-100 text-red-650 text-[10px] uppercase font-bold tracking-wider rounded-sm transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-4.5 py-3.5 bg-red-50 hover:bg-red-100 text-red-650 text-[11px] uppercase font-bold tracking-wider rounded-sm transition cursor-pointer"
                   >
                     <LogIn className="w-3 h-3" />
                     Sign Out
@@ -290,7 +290,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 <button
                   onClick={onSignInClick}
                   aria-label="Sign in with Google account"
-                  className="w-full flex items-center justify-center gap-2 p-2.5 bg-stone-900 text-white text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-stone-900 text-white text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
                   Sign In with Google
@@ -298,7 +298,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               )}
 
               {subscriptionActive ? (
-                <div className="flex items-center justify-center gap-2 p-2.5 bg-stone-950 text-[#F4F1EA] text-xs tracking-widest uppercase font-bold">
+                <div className="flex items-center justify-center gap-2 py-3.5 px-5 bg-stone-950 text-[#F4F1EA] text-xs tracking-widest uppercase font-bold">
                   <Crown className="w-4 h-4 fill-amber-500 text-amber-500" />
                   Premium Active Pass
                 </div>
@@ -306,7 +306,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 <button
                   onClick={() => handleTabClick("premium")}
                   aria-label="Upgrade to AutoWorld Premium Plan"
-                  className="w-full flex items-center justify-center gap-2 p-2.5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
                 >
                   <Crown className="w-4 h-4 text-amber-600" />
                   Go Premium Plan
@@ -315,7 +315,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               <button
                 onClick={() => handleTabClick("sell")}
                 aria-label="List your car free"
-                className="w-full text-center p-2.5 bg-stone-900 text-white font-serif italic text-xs tracking-widest uppercase font-bold cursor-pointer"
+                className="w-full text-center py-3.5 px-5 bg-stone-900 text-white font-serif italic text-xs tracking-widest uppercase font-bold cursor-pointer"
               >
                 List Car Free
               </button>

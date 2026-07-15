@@ -329,7 +329,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
   const faqs = [
     { q: "Can I cancel my premium plan anytime?", a: "Yes, you hold full autonomy to pause, downgrade, or cancel subscription parameters at any time inside your dashboard. No contract locks!" },
     { q: "What payment forms do you authorize?", a: "We support major credit cards (Visa, Mastercard, American Express), securely monitored and protected." },
-    { q: "How long does a listed car stay visible?", a: "Basic free accounts can list are car for 30 days. Pro members hold 60-day visibility, and Business listings stay up to 90 days." },
+    { q: "How long does a listed car stay visible?", a: "Basic free accounts can list a car for 30 days. Pro members hold 60-day visibility, and Business listings stay up to 90 days." },
     { q: "Do you offer refunds if my vehicle sells before cycle ends?", a: "Because we activate immediate ad distribution tools and priority rankings upon upgrades, we don't offer prorated refunds, but you can cancel next term billings securely." },
   ];
 
@@ -376,7 +376,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
       {/* PREMIUM SLIDING TABS CONTROLLER */}
       <motion.div 
         variants={itemVariants}
-        className="flex justify-center max-w-2xl mx-auto mb-12 border-b border-stone-300 pb-px gap-1 sm:gap-4 px-4 overflow-x-auto whitespace-nowrap scrollbar-none flex-nowrap"
+        className="flex justify-start sm:justify-center max-w-2xl mx-auto mb-12 border-b border-stone-300 pb-px gap-1 sm:gap-4 px-4 overflow-x-auto whitespace-nowrap scrollbar-none flex-nowrap"
       >
         {[
           { id: "plans", label: "Plans & Packages", icon: Sparkles },
@@ -453,16 +453,16 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                     Auto World billing protocols are bypassed. Your verified owner sign-in profile holds absolute sovereign access, unlocking premium lists, direct broker routes, and custom dashboard indices globally.
                   </p>
                   
-                  <div className="border-y border-stone-300 py-4 my-6 grid grid-cols-3 gap-4 text-center">
-                    <div>
+                  <div className="border-y border-stone-300 py-3 sm:py-4 my-6 grid grid-cols-1 sm:grid-cols-3 gap-y-3 sm:gap-y-0 divide-y sm:divide-y-0 sm:divide-x divide-stone-300 text-center">
+                    <div className="py-1 sm:py-0">
                       <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Unlimited</span>
                       <span className="text-[9px] text-stone-400 block font-mono">Listings Allowed</span>
                     </div>
-                    <div className="border-x border-stone-200">
+                    <div className="py-2 sm:py-0">
                       <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">Infinity</span>
                       <span className="text-[9px] text-stone-400 block font-mono">Validity Period</span>
                     </div>
-                    <div>
+                    <div className="py-2 sm:py-0">
                       <span className="block text-[#1A1A1A] text-lg sm:text-xl font-serif font-black">VIP Gold</span>
                       <span className="text-[9px] text-stone-400 block font-mono">Access Permit</span>
                     </div>
@@ -594,8 +594,8 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
             </p>
           </div>
 
-          <div className="bg-[#FAF8F5] border-2 border-stone-950 shadow-sm overflow-hidden">
-            <table className="w-full border-collapse text-left">
+          <div className="bg-[#FAF8F5] border-2 border-stone-950 shadow-sm overflow-x-auto scrollbar-thin">
+            <table className="w-full min-w-[650px] sm:min-w-full border-collapse text-left">
               <thead>
                 <tr className="bg-stone-100 border-b border-stone-350">
                   <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Core Benefits</th>

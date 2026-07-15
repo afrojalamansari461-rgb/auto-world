@@ -28,24 +28,24 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
             <p className="text-xs leading-relaxed text-stone-400 font-sans">
               The premier marketplace for buying and selling certified vehicles. Enjoy frictionless transactions, detailed digital inspections, and verified buyer contacts.
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <a href="#" className="w-8 h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all">
-                <Facebook className="w-4 h-4" />
+            <div className="flex items-center gap-3 mt-2">
+              <a href="#" className="w-11 h-11 sm:w-8 sm:h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all">
+                <Facebook className="w-4.5 h-4.5 sm:w-4 sm:h-4" />
               </a>
-              <a href="#" className="w-8 h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all">
-                <Twitter className="w-4 h-4" />
+              <a href="#" className="w-11 h-11 sm:w-8 sm:h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all">
+                <Twitter className="w-4.5 h-4.5 sm:w-4 sm:h-4" />
               </a>
               <a 
                 href="https://www.instagram.com/l_afroj_l/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 title="Follow Afroj on Instagram"
-                className="w-8 h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all"
+                className="w-11 h-11 sm:w-8 sm:h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all"
               >
-                <Instagram className="w-4 h-4" />
+                <Instagram className="w-4.5 h-4.5 sm:w-4 sm:h-4" />
               </a>
-              <a href="#" className="w-8 h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all">
-                <Linkedin className="w-4 h-4" />
+              <a href="#" className="w-11 h-11 sm:w-8 sm:h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all">
+                <Linkedin className="w-4.5 h-4.5 sm:w-4 sm:h-4" />
               </a>
             </div>
           </div>
@@ -53,24 +53,24 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
           {/* Section 2: Quick navigation */}
           <div>
             <h3 className="text-xs font-bold tracking-[0.2em] text-white uppercase mb-4 font-sans">Quick Links</h3>
-            <ul className="space-y-2.5 text-xs font-sans uppercase tracking-widest">
+            <ul className="space-y-1 sm:space-y-2.5 text-xs font-sans uppercase tracking-widest">
               <li>
-                <button onClick={() => handleLinkClick("home")} className="hover:text-white transition cursor-pointer text-stone-400 hover:underline">
+                <button onClick={() => handleLinkClick("home")} className="py-2.5 sm:py-0 w-full text-left hover:text-white transition cursor-pointer text-stone-400 hover:underline">
                   Home Page
                 </button>
               </li>
               <li>
-                <button onClick={() => handleLinkClick("buy")} className="hover:text-white transition cursor-pointer text-stone-400 hover:underline">
+                <button onClick={() => handleLinkClick("buy")} className="py-2.5 sm:py-0 w-full text-left hover:text-white transition cursor-pointer text-stone-400 hover:underline">
                   Browse Vehicles
                 </button>
               </li>
               <li>
-                <button onClick={() => handleLinkClick("sell")} className="hover:text-white transition cursor-pointer text-stone-400 hover:underline">
+                <button onClick={() => handleLinkClick("sell")} className="py-2.5 sm:py-0 w-full text-left hover:text-white transition cursor-pointer text-stone-400 hover:underline">
                   Sell Your Car
                 </button>
               </li>
               <li>
-                <button onClick={() => handleLinkClick("premium")} className="hover:text-white transition cursor-pointer text-stone-400 hover:underline">
+                <button onClick={() => handleLinkClick("premium")} className="py-2.5 sm:py-0 w-full text-left hover:text-white transition cursor-pointer text-stone-400 hover:underline">
                   Premium Deals
                 </button>
               </li>
@@ -80,11 +80,11 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
           {/* Section 3: Legal terms */}
           <div>
             <h3 className="text-xs font-bold tracking-[0.2em] text-white uppercase mb-4 font-sans">Legal & Support</h3>
-            <ul className="space-y-2.5 text-xs font-sans uppercase tracking-widest">
+            <ul className="space-y-1 sm:space-y-2.5 text-xs font-sans uppercase tracking-widest">
               <li>
                 <button 
                   onClick={() => onOpenLegal ? onOpenLegal("privacy") : handleLinkClick("contact")} 
-                  className="hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
+                  className="py-2.5 sm:py-0 hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
                 >
                   Privacy Policy
                 </button>
@@ -92,7 +92,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
               <li>
                 <button 
                   onClick={() => onOpenLegal ? onOpenLegal("terms") : handleLinkClick("contact")} 
-                  className="hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
+                  className="py-2.5 sm:py-0 hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
                 >
                   Terms of Service
                 </button>
@@ -100,7 +100,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
               <li>
                 <button 
                   onClick={() => onOpenLegal ? onOpenLegal("fraud") : handleLinkClick("contact")} 
-                  className="hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
+                  className="py-2.5 sm:py-0 hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
                 >
                   Fraud Protection
                 </button>
@@ -108,7 +108,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
               <li>
                 <button 
                   onClick={() => onOpenLegal ? onOpenLegal("support") : handleLinkClick("contact")} 
-                  className="hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
+                  className="py-2.5 sm:py-0 hover:text-white transition text-stone-400 block text-left w-full hover:underline cursor-pointer bg-transparent border-none p-0 normal-case"
                 >
                   FAQs & Support
                 </button>

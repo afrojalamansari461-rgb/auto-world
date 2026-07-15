@@ -683,7 +683,7 @@ export default function App() {
   }, [selectedVehicle]);
 
   return (
-    <div className="bg-[#F4F1EA] min-h-screen text-[#1A1A1A] flex flex-col justify-between font-sans selection:bg-stone-900 selection:text-[#F4F1EA]">
+    <div className="bg-[#F4F1EA] min-h-screen text-[#1A1A1A] flex flex-col justify-between font-sans selection:bg-stone-900 selection:text-[#F4F1EA] overflow-x-hidden">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -799,7 +799,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-2 sm:p-4"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 30 }}
@@ -811,14 +811,14 @@ export default function App() {
                 damping: 24,
                 mass: 0.9
               }}
-              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] flex flex-col border border-stone-300"
+              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] max-sm:fixed max-sm:inset-0 max-sm:p-2 max-sm:max-h-full max-sm:h-full flex flex-col border border-stone-300"
             >
             {/* Close trigger */}
             <button
               onClick={() => setSelectedVehicle(null)}
               aria-label="Close vehicle details overlay dialog"
               title="Close details (Esc)"
-              className="absolute top-4 right-4 z-50 text-[#F4F1EA] bg-stone-900 w-10 h-10 flex items-center justify-center text-xs font-mono font-bold cursor-pointer hover:bg-stone-850 focus:outline-none focus:ring-2 focus:ring-stone-950"
+              className="absolute top-2 right-2 sm:top-4 sm:right-4 z-50 text-[#F4F1EA] bg-stone-900 w-10 h-10 flex items-center justify-center text-xs font-mono font-bold cursor-pointer hover:bg-stone-850 focus:outline-none focus:ring-2 focus:ring-stone-950"
             >
               ✕
             </button>
@@ -1315,12 +1315,12 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-[#FAF8F5] text-stone-900 border border-stone-800 w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative font-sans">
             {/* Header / Newspaper Column Header banner */}
-            <div className="border-b-4 border-stone-950 p-6 flex items-start justify-between bg-[#F4F1EA]">
-              <div>
+            <div className="border-b-4 border-stone-950 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 bg-[#F4F1EA] relative">
+              <div className="pr-12 sm:pr-0">
                 <span className="text-[9px] font-mono font-black uppercase tracking-[0.25em] text-[#B45309] block mb-1">
                   OFFICIAL AUTO WORLD GAZETTE
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-serif font-black tracking-tight text-stone-950 uppercase">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-black tracking-tight text-stone-950 uppercase leading-tight">
                   {openLegalDoc === "privacy" && "Privacy & Personal Data Protocol"}
                   {openLegalDoc === "terms" && "Consolidated Terms of Service"}
                   {openLegalDoc === "fraud" && "Shield & Anti-Fraud Guidelines"}
@@ -1332,7 +1332,7 @@ export default function App() {
               </div>
               <button 
                 onClick={() => setOpenLegalDoc(null)}
-                className="text-xs font-mono font-bold uppercase tracking-wider text-stone-500 hover:text-stone-950 px-3 py-1.5 border border-stone-300 hover:border-stone-900 bg-white transition cursor-pointer"
+                className="absolute top-4 right-4 sm:relative sm:top-0 sm:right-0 text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-stone-500 hover:text-stone-950 px-2.5 py-1 sm:px-3 sm:py-1.5 border border-stone-300 hover:border-stone-900 bg-white transition cursor-pointer shrink-0 whitespace-nowrap"
               >
                 [ CLOSE ]
               </button>
@@ -1451,7 +1451,7 @@ export default function App() {
                   <section className="space-y-2">
                     <h3 className="font-serif font-black text-base uppercase text-stone-950 tracking-tight">2. Premium VIP Hotline</h3>
                     <p className="text-xs text-stone-600 leading-relaxed font-semibold">
-                      Pro Subscribers and $1 Daily Pass holders receive prioritised ticket handling. VIP routing routes your questions to our senior listing mechanics instantly for live advice on paint depth, engine safety, or registration transfers.
+                      Pro Subscribers and ₹1 Daily Pass holders receive prioritized ticket handling. VIP channels forward your questions to our senior listing mechanics instantly for live advice on paint depth, engine safety, or registration transfers.
                     </p>
                   </section>
 

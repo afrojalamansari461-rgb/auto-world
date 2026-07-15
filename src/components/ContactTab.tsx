@@ -74,7 +74,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
   const handleMessageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreePrivacy) {
-      showToast("Please agree to the Privacy Policy checking terms.", "error");
+      showToast("Please agree to the Privacy Policy terms.", "error");
       return;
     }
     if (!fullName || !emailAddress || !subject || !msgBody) {
@@ -114,7 +114,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
 
     setIsSending(false);
     setIsDone(true);
-    showToast("Message sent successfully! Our advisors will responding shortly.", "success");
+    showToast("Message sent successfully! Our advisors will respond shortly.", "success");
     
     // reset forms
     setFullName("");
@@ -125,10 +125,10 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
   };
 
   const contactFAQS = [
-    { q: "How do I list my vehicle for sale?", a: "Lists can be posted Free of charge. Select the Sell tab in top navigation, progressively walk through our 4-step wizard specifying category configurations, attach beautiful photo reports, and hit publish to update main index searches immediately." },
-    { q: "How long does are sale typically require?", a: "Most vehicles sell inside 7 to 10 days depending on local trade parameters, condition descriptions, and price competitiveness. Upgraded Pro Featured listing placements boost sale conversion rates up to 50% faster." },
-    { q: "Is there any commission tariff or publishing fee?", a: "No! Unlike traditional motor brokers, we do not inspect or subtract matching tariffs or sales percentages from your final Handover deals. Sells are 100% free with customizable optional listing boosts." },
-    { q: "How can I directly contact are listed broker?", a: "Once you purchase are daily access Pass ($1 USD) or subscribe to any Premium listing tier, simply select View Details on any vehicle. Under user-made listings, full actual email metrics, phone numbers, and location coordinates are revealed instantly!" }
+    { q: "How do I list my vehicle for sale?", a: "Listings can be posted free of charge. Select the Sell tab in top navigation, progressively walk through our 4-step wizard specifying vehicle details, attach photos, and hit publish to update main search listings immediately." },
+    { q: "How long does a typical sale take?", a: "Most vehicles sell within 7 to 10 days depending on local market demand, vehicle condition, and competitive pricing. Upgraded Pro Featured listing placements boost visibility and can help sell up to 50% faster." },
+    { q: "Is there any commission or listing fee?", a: "No! Unlike traditional motor brokers, we do not charge commissions or deduct percentages from your final transaction. Listing is 100% free with optional custom boosts available." },
+    { q: "How can I directly contact a listed seller?", a: "Once you purchase our daily access Pass (₹1 INR) or subscribe to any Premium listing tier, simply select View Details on any vehicle. Under user listings, full contact details (email and phone number) and location coordinates are revealed instantly!" }
   ];
 
   const containerVariants = {
