@@ -728,10 +728,10 @@ export default function App() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
+            initial={{ opacity: 0, x: 24, filter: "blur(4px)" }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, x: -24, filter: "blur(4px)" }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
             {activeTab === "home" && (
               <HomeTab
@@ -848,6 +848,7 @@ export default function App() {
                         <img
                           src={images[currentImageIndex]?.src || selectedVehicle.image}
                           alt={images[currentImageIndex]?.alt || selectedVehicle.title}
+                          decoding="async"
                           className="w-full h-full object-cover select-none transition-all duration-300"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
@@ -910,6 +911,8 @@ export default function App() {
                                 <img
                                   src={img.src}
                                   alt={`Thumbnail ${idx + 1}`}
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
@@ -1279,26 +1282,49 @@ export default function App() {
       )}
       </AnimatePresence>
 
-      {/* Toast Notification element */}
-      {toast && (
-        <div 
-          id="toast-notification"
-          className="fixed bottom-8 right-8 z-[250] flex items-center justify-between gap-4 px-6 py-4 border shadow-xl bg-stone-950 text-[#F4F1EA] border-stone-800 rounded-sm animate-in fade-in slide-in-from-bottom-5 duration-300 max-w-sm"
-        >
-          <div className="flex items-center gap-3">
-            <span className="w-4 h-4 text-emerald-400 font-bold font-mono text-sm shrink-0">✓</span>
-            <p className="text-[10px] font-sans font-extrabold uppercase tracking-widest text-[#F4F1EA]/90 leading-normal">
-              {toast.message}
-            </p>
-          </div>
-          <button 
-            onClick={() => setToast(null)}
-            className="text-[10px] font-mono hover:text-white cursor-pointer opacity-70 hover:opacity-100 transition whitespace-nowrap pl-2"
+      {/* Toast Notification element with Framer Motion AnimatePresence */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            id="toast-notification"
+            initial={{ opacity: 0, y: 32, scale: 0.9, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(2px)" }}
+            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            className="fixed bottom-8 right-8 z-[250] flex items-center justify-between gap-4 px-5 py-4 border shadow-xl bg-stone-950 text-[#F4F1EA] border-stone-800 rounded-sm max-w-sm"
           >
-            [close]
-          </button>
-        </div>
-      )}
+            <div className="flex items-center gap-3">
+              <motion.div
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.12 }}
+                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                  toast.type === "error" ? "bg-red-500/15 text-red-400 border border-red-500/30" :
+                  toast.type === "info" ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" :
+                  "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                }`}
+              >
+                {toast.type === "error" ? (
+                  <AlertCircle className="w-3.5 h-3.5" />
+                ) : toast.type === "info" ? (
+                  <Info className="w-3.5 h-3.5" />
+                ) : (
+                  <Check className="w-3.5 h-3.5" />
+                )}
+              </motion.div>
+              <p className="text-[10px] font-sans font-extrabold uppercase tracking-widest text-[#F4F1EA]/90 leading-normal">
+                {toast.message}
+              </p>
+            </div>
+            <button 
+              onClick={() => setToast(null)}
+              className="text-[10px] font-mono hover:text-white cursor-pointer opacity-70 hover:opacity-100 transition whitespace-nowrap pl-2"
+            >
+              [close]
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Central Login Modal overlaid with Netlify optimization options */}
       <SignInModal

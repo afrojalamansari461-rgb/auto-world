@@ -314,14 +314,16 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                 transition={{ duration: 0.35, ease: "easeOut" }}
                 onMouseEnter={() => setHoveredCardId(car.id)}
                 onMouseLeave={() => setHoveredCardId(null)}
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition cursor-pointer shadow-sm hover:shadow-xl relative animate-in fade-in zoom-in-95 duration-200"
+                whileHover={{ scale: 1.025, y: -6, transition: { type: "spring", stiffness: 300, damping: 20 } }}
+                className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl hover:border-stone-400 relative animate-in fade-in zoom-in-95"
               >
                 {/* Media frame */}
                 <div className="relative h-56 overflow-hidden bg-stone-200 grayscale-20 hover:grayscale-0 transition-all duration-500">
                   <img
                     src={car.image}
                     alt={car.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';

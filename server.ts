@@ -804,8 +804,21 @@ Format your output STRICTLY as a JSON object, with the following schema:
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      maxAge: '1d',
+      setHeaders: (res, filePath) => {
+        // Hashed Vite assets inside assets/ can be safely cached permanently
+        if (filePath.includes('/assets/') || filePath.includes('\\assets\\')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else {
+          // General assets can be cached for up to a day
+          res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+        }
+      }
+    }));
     app.get('*', (req, res) => {
+      // Prevent browser caching on index.html so users always get the latest code updates
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

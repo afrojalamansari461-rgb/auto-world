@@ -9,6 +9,7 @@ import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
+import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -1656,88 +1657,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
         {/* LOADING INDICATOR PANEL */}
         {isLoading ? (
-          <div className="bg-[#FAF8F5] border-2 border-stone-950 p-8 sm:p-12 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] max-w-2xl mx-auto my-12 relative overflow-hidden">
-            {/* Ambient cyber grid scanlines overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] pointer-events-none opacity-50" />
-            
-            {/* Spinning & Concentric Pulsing Orbs */}
-            <div className="relative w-24 h-24 mx-auto mb-8 flex items-center justify-center">
-              {/* Spinning Outer Segmented Ring */}
-              <motion.div
-                className="absolute inset-0 border-4 border-dashed border-purple-600 rounded-full"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              />
-              {/* Spinning Inner Ring Counter-Clockwise */}
-              <motion.div
-                className="absolute inset-2 border-2 border-dotted border-stone-900 rounded-full"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-              />
-              {/* Pulsing Solid Core */}
-              <motion.div
-                className="w-10 h-10 bg-purple-950 rounded-full flex items-center justify-center text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Database className="w-5 h-5 text-purple-300" />
-              </motion.div>
+          <div className="my-12">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="h-4 bg-stone-300 w-48 rounded-xs animate-pulse" />
+              <div className="h-4 bg-stone-300 w-24 rounded-xs animate-pulse" />
             </div>
-
-            {/* Simulated Active Status Console */}
-            <div className="space-y-1.5 mb-8">
-              <span className="text-[9px] font-black text-purple-700 tracking-widest uppercase font-mono block">
-                // PLATFORM_INITIALIZATION_SEQUENCE
-              </span>
-              <h3 className="text-md font-serif font-black uppercase text-stone-950 tracking-tight">
-                Synchronizing Ledger Index
-              </h3>
-              <p className="text-stone-500 text-[10px] uppercase font-mono max-w-sm mx-auto leading-relaxed">
-                Establishing handshake with Cloud Firestore and mounting reactive state sync handlers
-              </p>
-            </div>
-
-            {/* Dynamic Simulated Load Steps */}
-            <div className="bg-stone-950 text-emerald-400 p-4 font-mono text-[9px] text-left border-2 border-stone-950 space-y-1 shadow-[2px_2px_0px_0px_rgba(168,85,247,0.3)] max-w-md mx-auto">
-              <div className="flex items-center justify-between text-[10px] border-b border-emerald-900/30 pb-1 mb-1 font-bold text-emerald-300">
-                <span>SYSTEM STATUS LEDGER</span>
-                <span className="animate-pulse">● RUNNING</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-600">[0.02s]</span>
-                <span>DB_HANDSHAKE: INITIALIZED</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-600">[0.18s]</span>
-                <span>FIRESTORE: CONNECTING TO default_instance</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-600">[0.35s]</span>
-                <span className="flex items-center gap-1.5">
-                  STATUS: FETCHING USER LISTINGS & METRICS 
-                  <motion.span 
-                    animate={{ opacity: [1, 0, 1] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                    className="w-1.5 h-3 bg-emerald-400 inline-block"
-                  />
-                </span>
-              </div>
-            </div>
-
-            {/* Simulated progress slider */}
-            <div className="mt-8 max-w-xs mx-auto">
-              <div className="w-full h-1 bg-stone-200 overflow-hidden relative border border-stone-950">
-                <motion.div
-                  className="h-full bg-purple-750"
-                  animate={{ left: ["-100%", "100%"] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                  style={{ position: "absolute", width: "50%" }}
-                />
-              </div>
-              <span className="text-[8px] font-bold uppercase tracking-widest text-stone-400 font-mono mt-2.5 block">
-                Force synchronization handshake active
-              </span>
-            </div>
+            <SkeletonLoader count={6} />
           </div>
         ) : (
           <div>
