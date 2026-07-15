@@ -51,6 +51,38 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   const [firebaseError, setFirebaseError] = useState<{ code: string; message: string; type: "auth" | "firestore" } | null>(null);
   const [showTroubleshoot, setShowTroubleshoot] = useState(false);
 
+  // 3D card tilt & reflection states
+  const [rotateX, setRotateX] = useState(0);
+  const [rotateY, setRotateY] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [sheenX, setSheenX] = useState(50);
+  const [sheenY, setSheenY] = useState(50);
+
+  const isCurrentlyAdmin = auth.currentUser?.email === "afrojalamansari461@gmail.com" || email.trim().toLowerCase() === "afrojalamansari461@gmail.com";
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const box = card.getBoundingClientRect();
+    const x = e.clientX - box.left - box.width / 2;
+    const y = e.clientY - box.top - box.height / 2;
+    
+    // Smooth 3D tilt calculations
+    setRotateX(-y / 18);
+    setRotateY(x / 18);
+
+    // Sheen reflection position calculations
+    const sheenXVal = ((e.clientX - box.left) / box.width) * 100;
+    const sheenYVal = ((e.clientY - box.top) / box.height) * 100;
+    setSheenX(sheenXVal);
+    setSheenY(sheenYVal);
+  };
+
+  const handleMouseLeave = () => {
+    setRotateX(0);
+    setRotateY(0);
+    setIsHovered(false);
+  };
+
   if (!isOpen) return null;
 
   const handleGoogleSignIn = async () => {
@@ -254,24 +286,54 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   // Passcode operations removed under production-grade security architecture.
 
   return (
-    <div className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in-0 duration-300">
+    <div className="fixed inset-0 bg-stone-950/90 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in-0 duration-300">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        initial={{ opacity: 0, scale: 0.95, y: 25 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-[#F4F1EA] border-2 border-stone-90 w-full max-w-md shadow-2xl relative max-h-[95vh] overflow-y-auto p-6 sm:p-8"
+        className="bg-[#F4F1EA] border-2 border-stone-950 w-full max-w-md shadow-[8px_8px_0px_0px_rgba(168,85,247,0.3)] relative max-h-[95vh] overflow-y-auto p-6 sm:p-8 hover:shadow-[12px_12px_0px_0px_rgba(168,85,247,0.4)] transition-shadow duration-300 ease-out"
+        style={{
+          transformStyle: "preserve-3d",
+          transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+          transition: isHovered ? "none" : "transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)",
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={handleMouseLeave}
       >
+        {/* Interactive neon tech-grid backdrop inside the card */}
+        <div className="absolute inset-0 bg-[radial-gradient(#d6d3d1_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none opacity-40 z-0" />
+
+        {/* Dynamic 3D Reflection/Sheen */}
+        {isHovered && (
+          <div 
+            className="absolute inset-0 pointer-events-none z-50 duration-75 mix-blend-overlay opacity-50"
+            style={{
+              background: `radial-gradient(circle at ${sheenX}% ${sheenY}%, rgba(255,255,255,0.45) 0%, transparent 55%)`
+            }}
+          />
+        )}
+
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-stone-905 hover:text-stone-500 font-mono text-lg cursor-pointer"
+          className="absolute top-4 right-4 text-stone-950 hover:text-purple-700 font-mono text-lg cursor-pointer transition-colors duration-200 z-50 p-1"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-stone-900 text-white flex items-center justify-center mx-auto mb-3 shadow-md">
-            <LogIn className="w-6 h-6 text-[#F4F1EA]" />
+        <div className="text-center mb-6 relative z-10">
+          <div className="relative w-14 h-14 mx-auto mb-3 flex items-center justify-center">
+            {/* Pulsing neon light ring behind */}
+            <motion.div 
+              className="absolute inset-0 bg-purple-200 rounded-none border border-purple-500 opacity-65"
+              animate={{ scale: [1, 1.15, 1], rotate: [0, 45, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            />
+            {/* Spinning solid block */}
+            <div className="relative w-11 h-11 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(168,85,247,1)]">
+              <LogIn className="w-5 h-5 text-[#F4F1EA]" />
+            </div>
           </div>
           <h2 className="text-2xl font-serif font-black uppercase tracking-tight text-stone-950">
             Sign In to Auto<span className="font-light italic text-stone-500">World</span>
@@ -282,13 +344,13 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
         </div>
 
         {/* Dynamic sub tab layout */}
-        <div className="flex border-b border-stone-300 mb-5 text-[10px] font-bold uppercase tracking-wider font-mono" id="subtab-header">
+        <div className="flex border-b border-stone-300 mb-5 text-[10px] font-bold uppercase tracking-wider font-mono relative z-10" id="subtab-header">
           <button
             id="guest-tab"
             onClick={() => setActiveSubTab("guest")}
             className={`flex-1 pb-3 text-center transition ${
               activeSubTab === "guest"
-                ? "border-b-2 border-stone-905 text-stone-900 font-extrabold"
+                ? "border-b-2 border-purple-600 text-stone-900 font-extrabold"
                 : "text-stone-450 hover:text-stone-800"
             }`}
           >
@@ -300,7 +362,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
             onClick={() => setActiveSubTab("email")}
             className={`flex-1 pb-3 text-center transition ${
               activeSubTab === "email"
-                ? "border-b-2 border-stone-905 text-stone-900 font-extrabold"
+                ? "border-b-2 border-purple-600 text-stone-900 font-extrabold"
                 : "text-stone-450 hover:text-stone-800"
             }`}
           >
@@ -321,7 +383,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isSigningInGoogle || isSigningInGuest}
-                className="w-full py-3.5 bg-white border-2 border-stone-900 hover:bg-stone-50 text-stone-900 flex items-center justify-center gap-3 font-sans text-xs uppercase font-extrabold tracking-widest cursor-pointer transition disabled:opacity-55"
+                className="w-full py-3.5 bg-white border-2 border-stone-950 hover:bg-stone-50 text-stone-900 flex items-center justify-center gap-3 font-sans text-xs uppercase font-extrabold tracking-widest cursor-pointer transition disabled:opacity-55 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" width="100%" height="100%">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -333,7 +395,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
               </button>
 
               {/* Iframe connection safety tip */}
-              {typeof window !== "undefined" && window.self !== window.top && (
+              {isCurrentlyAdmin && typeof window !== "undefined" && window.self !== window.top && (
                 <div className="p-3.5 bg-[#FFFDF9] border border-amber-200 text-[11px] text-stone-700 leading-relaxed font-sans space-y-1.5 shadow-sm">
                   <div className="flex items-center gap-1.5 font-bold uppercase text-[9px] tracking-wider text-amber-800">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -474,7 +536,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
                 <button
                   type="submit"
                   disabled={isSigningInGoogle || isSigningInGuest}
-                  className="w-full py-3.5 bg-stone-900 hover:bg-stone-850 text-white flex items-center justify-center gap-2 font-sans text-xs uppercase font-extrabold tracking-widest cursor-pointer transition disabled:opacity-55"
+                  className="w-full py-3.5 bg-stone-950 hover:bg-stone-850 text-white flex items-center justify-center gap-2 font-sans text-xs uppercase font-extrabold tracking-widest cursor-pointer transition disabled:opacity-55 shadow-[3px_3px_0px_0px_rgba(168,85,247,0.3)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   {isSigningInGuest ? "Connecting..." : "Initiate Guest Connection"}
@@ -512,7 +574,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="afrojalamansari461@gmail.com"
+                        placeholder="client@autoworld.com"
                         className="w-full pl-9 pr-4 py-2 bg-[#FAF8F5] border-2 border-stone-300 focus:border-stone-900 text-stone-900 text-xs font-sans font-semibold outline-none"
                       />
                     </div>
@@ -627,7 +689,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
                 <button
                   type="submit"
                   disabled={isSigningInEmail}
-                  className="w-full py-3.5 bg-stone-900 hover:bg-stone-850 text-white flex items-center justify-center gap-2 font-sans text-xs uppercase font-extrabold tracking-widest cursor-pointer transition disabled:opacity-55"
+                  className="w-full py-3.5 bg-stone-950 hover:bg-stone-850 text-white flex items-center justify-center gap-2 font-sans text-xs uppercase font-extrabold tracking-widest cursor-pointer transition disabled:opacity-55 shadow-[3px_3px_0px_0px_rgba(168,85,247,0.3)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   {isSigningInEmail 
@@ -645,8 +707,9 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
         </AnimatePresence>
 
         {/* Diagnostic console toggler and panel */}
-        <div className="mt-5 space-y-3 font-sans">
-          <div className="flex justify-center">
+        {isCurrentlyAdmin && (
+          <div className="mt-5 space-y-3 font-sans">
+            <div className="flex justify-center">
             <button
               type="button"
               onClick={() => setShowTroubleshoot(!showTroubleshoot)}
@@ -779,6 +842,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
             </div>
           )}
         </div>
+        )}
 
         {/* Bottom Notice */}
         <div className="mt-6 pt-4 border-t border-stone-900/10 text-center">

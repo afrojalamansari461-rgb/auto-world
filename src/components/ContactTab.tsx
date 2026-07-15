@@ -228,8 +228,15 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white">
                   <Twitter className="w-4.5 h-4.5" />
                 </a>
-                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white">
-                  <Instagram className="w-4.5 h-4.5" />
+                <a 
+                  href="https://www.instagram.com/l_afroj_l/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  title="Follow Afroj on Instagram"
+                  className="px-2.5 py-1.5 bg-stone-800 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] transition flex items-center gap-1.5 font-mono text-[9px] font-bold"
+                >
+                  <Instagram className="w-4 h-4" />
+                  <span>@l_afroj_l</span>
                 </a>
                 <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-amber-500 transition flex items-center justify-center text-white">
                   <Linkedin className="w-4.5 h-4.5" />

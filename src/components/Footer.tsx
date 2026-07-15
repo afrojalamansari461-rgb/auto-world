@@ -40,9 +40,10 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 target="_blank" 
                 rel="noopener noreferrer"
                 title="Follow Afroj on Instagram"
-                className="w-8 h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all"
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 text-stone-400 border border-stone-850 transition-all font-mono text-[9px] font-bold tracking-tight rounded-sm"
               >
-                <Instagram className="w-4 h-4" />
+                <Instagram className="w-3.5 h-3.5" />
+                <span>@l_afroj_l</span>
               </a>
               <a href="#" className="w-8 h-8 bg-stone-900 hover:bg-[#F4F1EA] hover:text-stone-950 flex items-center justify-center text-stone-400 border border-stone-850 transition-all">
                 <Linkedin className="w-4 h-4" />
