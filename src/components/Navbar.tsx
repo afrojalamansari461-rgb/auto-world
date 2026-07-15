@@ -15,6 +15,14 @@ interface NavbarProps {
 export default function Navbar({ activeTab, setActiveTab, subscriptionActive, currentUser, onSignInClick }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isLoadingTabs, setIsLoadingTabs] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoadingTabs(false);
+    }, 850);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -92,37 +100,56 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-2 lg:gap-4" role="tablist" aria-label="Main navigation tabs">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  id={`nav-link-${item.id}`}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`tabpanel-${item.id}`}
-                  tabIndex={0}
-                  onClick={() => handleTabClick(item.id)}
-                  onKeyDown={(e) => handleKeyDown(e, item.id)}
-                  className={`relative flex items-center gap-2 px-3.5 py-2.5 text-xs lg:text-[13px] font-sans uppercase tracking-[0.1em] transition-all duration-250 cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-stone-900 focus-visible:outline-offset-2 ${
-                    isActive
-                      ? "text-stone-950 font-black"
-                      : "text-stone-600 hover:text-stone-950 hover:bg-stone-100/40 font-bold"
-                  }`}
+            {isLoadingTabs ? (
+              navItems.map((item, idx) => (
+                <div 
+                  key={`shimmer-${item.id}`} 
+                  className="w-24 h-9 bg-stone-200/55 border border-stone-300/30 relative overflow-hidden flex items-center justify-center rounded-none"
                 >
-                  <Icon className="w-4 h-4 text-stone-500 transition-colors group-hover:text-stone-900" />
-                  <span className="relative z-10">{item.label}</span>
-                  {isActive && (
-                    <motion.span
-                      layoutId="activeTabUnderline"
-                      className="absolute bottom-0 left-0 right-0 h-[3px] bg-stone-900"
-                      transition={{ type: "spring", stiffness: 350, damping: 28 }}
-                    />
-                  )}
-                </button>
-              );
-            })}
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{ repeat: Infinity, duration: 1.2, ease: "linear", delay: idx * 0.12 }}
+                  />
+                  <div className="w-14 h-3 bg-stone-300/40 rounded-none" />
+                </div>
+              ))
+            ) : (
+              navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <motion.button
+                    key={item.id}
+                    id={`nav-link-${item.id}`}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`tabpanel-${item.id}`}
+                    tabIndex={0}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleTabClick(item.id)}
+                    onKeyDown={(e) => handleKeyDown(e, item.id)}
+                    className={`relative flex items-center gap-2 px-3.5 py-2.5 text-xs lg:text-[13px] font-sans uppercase tracking-[0.1em] transition-all duration-200 cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-stone-900 focus-visible:outline-offset-2 ${
+                      isActive
+                        ? "text-stone-950 font-black"
+                        : "text-stone-600 hover:text-purple-700 hover:bg-purple-50/40 font-bold"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-stone-900" : "text-stone-500 hover:text-purple-600"}`} />
+                    <span className="relative z-10">{item.label}</span>
+                    {isActive && (
+                      <motion.span
+                        layoutId="activeTabUnderline"
+                        className="absolute bottom-0 left-0 right-0 h-[3px] bg-stone-900"
+                        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                      />
+                    )}
+                  </motion.button>
+                );
+              })
+            )}
           </div>
 
           {/* Right Accents */}

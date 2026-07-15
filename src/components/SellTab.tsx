@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { User } from "firebase/auth";
+import { motion } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import ListingAIAssistant from "./ListingAIAssistant";
@@ -481,8 +482,34 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setCurrentStep(1);
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.05
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { duration: 0.4, ease: "easeOut" } 
+    }
+  };
+
   return (
-    <div id="sell-form-wrapper" className="max-w-4xl mx-auto px-4 py-12 animate-in fade-in duration-305 bg-[#F4F1EA] text-[#1A1A1A] font-sans">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      id="sell-form-wrapper" 
+      className="max-w-4xl mx-auto px-4 py-12 bg-[#F4F1EA] text-[#1A1A1A] font-sans"
+    >
       
       {existingListingsCount >= 2 && !subscriptionActive && (
         <div className="mb-6 bg-amber-50 border border-amber-300 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1379,6 +1406,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         </div>
       )}
 
-    </div>
+     </motion.div>
   );
 }

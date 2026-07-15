@@ -4,6 +4,7 @@ import { Message } from "../types";
 import { User } from "firebase/auth";
 import { collection, addDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import { motion } from "motion/react";
 
 interface ContactTabProps {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -130,9 +131,35 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
     { q: "How can I directly contact are listed broker?", a: "Once you purchase are daily access Pass ($1 USD) or subscribe to any Premium listing tier, simply select View Details on any vehicle. Under user-made listings, full actual email metrics, phone numbers, and location coordinates are revealed instantly!" }
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.05
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { duration: 0.4, ease: "easeOut" } 
+    }
+  };
+
   return (
-    <div id="contact-view-wrapper" className="animate-in fade-in duration-300 bg-[#F4F1EA] py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      id="contact-view-wrapper" 
+      className="bg-[#F4F1EA] py-12"
+    >
+      <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <center className="mb-14">
           <h1 className="text-3xl sm:text-4xl font-serif font-black text-stone-900 tracking-tight mb-3 uppercase">Get in Touch</h1>
           <p className="text-stone-500 text-sm max-w-md uppercase tracking-wider font-bold">Our certified team handles queries and trade negotiations 24 hours a day.</p>
@@ -233,10 +260,9 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                   target="_blank" 
                   rel="noopener noreferrer"
                   title="Follow Afroj on Instagram"
-                  className="px-2.5 py-1.5 bg-stone-800 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] transition flex items-center gap-1.5 font-mono text-[9px] font-bold"
+                  className="w-9 h-9 bg-stone-800 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] transition flex items-center justify-center"
                 >
-                  <Instagram className="w-4 h-4" />
-                  <span>@l_afroj_l</span>
+                  <Instagram className="w-4.5 h-4.5" />
                 </a>
                 <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-amber-500 transition flex items-center justify-center text-white">
                   <Linkedin className="w-4.5 h-4.5" />
@@ -452,7 +478,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
             })}
           </div>
         </section>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

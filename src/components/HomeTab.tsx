@@ -89,11 +89,36 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.12,
+        delayChildren: 0.05
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.5, ease: "easeOut" }
+    }
+  };
+
   return (
-    <div className="bg-[#F4F1EA] text-[#1A1A1A] font-sans overflow-hidden animate-in fade-in duration-300">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="bg-[#F4F1EA] text-[#1A1A1A] font-sans overflow-hidden animate-in fade-in duration-300"
+    >
       
       {/* Editorial Split Hero Section */}
-      <section className="relative border-b border-[#1A1A1A]/10">
+      <motion.section variants={itemVariants} className="relative border-b border-[#1A1A1A]/10">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12">
           
           {/* Left Column: Primary Narrative */}
@@ -256,10 +281,10 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
           </motion.div>
 
         </div>
-      </section>
+      </motion.section>
 
       {/* Section 2: Featured vehicles Grid */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
+      <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
         <div className="flex flex-col md:flex-row justify-between items-baseline gap-4 mb-10 border-b border-stone-300 pb-6">
           <div>
             <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Pristine Specimens Currently Catalogued</span>
@@ -448,10 +473,10 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
             );
           })}
         </div>
-      </section>
+      </motion.section>
 
       {/* Section 3: Process Steps */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
+      <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
         <div className="text-center max-w-xl mx-auto mb-16">
           <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-400 block mb-1.5 font-bold">Verification Workflow</span>
           <h2 className="text-3xl font-serif font-black text-stone-900">How Auto World Operates</h2>
@@ -485,10 +510,10 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
             </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* Section 4: Statistics */}
-      <section className="bg-stone-950 text-white py-16 border-b border-[#1A1A1A]/10">
+      <motion.section variants={itemVariants} className="bg-stone-950 text-white py-16 border-b border-[#1A1A1A]/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-stone-800">
             <div className="space-y-1">
@@ -509,10 +534,10 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Section 5: Premium Promo */}
-      <section className="py-24 bg-[#E0DBCF] text-[#1A1A1A] relative overflow-hidden">
+      <motion.section variants={itemVariants} className="py-24 bg-[#E0DBCF] text-[#1A1A1A] relative overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 relative z-10 text-center space-y-6">
           <Crown className="w-12 h-12 text-stone-900 mx-auto" />
           <span className="text-[10px] tracking-[0.3em] font-sans font-bold uppercase block text-stone-600">The Editorial Index Plus</span>
@@ -529,8 +554,8 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
             </button>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-    </div>
+    </motion.div>
   );
 }

@@ -724,61 +724,71 @@ export default function App() {
       )}
 
       {/* Primary tab views switcher */}
-      <main className="flex-grow">
-        {activeTab === "home" && (
-          <HomeTab
-            setActiveTab={setActiveTab}
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-            setSearchFilters={setSearchFilters}
-            onQuickView={handleQuickView}
-          />
-        )}
-        
-        {activeTab === "buy" && (
-          <BuyTab
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-            searchFilters={searchFilters}
-            onQuickView={handleQuickView}
-            subscriptionActive={subscriptionActive}
-            showToast={showToast}
-            currentUser={currentUser}
-            onSignInClick={() => setIsSignInModalOpen(true)}
-          />
-        )}
+      <main className="flex-grow overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+          >
+            {activeTab === "home" && (
+              <HomeTab
+                setActiveTab={setActiveTab}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                setSearchFilters={setSearchFilters}
+                onQuickView={handleQuickView}
+              />
+            )}
+            
+            {activeTab === "buy" && (
+              <BuyTab
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                searchFilters={searchFilters}
+                onQuickView={handleQuickView}
+                subscriptionActive={subscriptionActive}
+                showToast={showToast}
+                currentUser={currentUser}
+                onSignInClick={() => setIsSignInModalOpen(true)}
+              />
+            )}
 
-        {activeTab === "sell" && (
-          <SellTab
-            setActiveTab={setActiveTab}
-            subscriptionActive={subscriptionActive}
-            showToast={showToast}
-            currentUser={currentUser}
-            onSignInClick={() => setIsSignInModalOpen(true)}
-          />
-        )}
+            {activeTab === "sell" && (
+              <SellTab
+                setActiveTab={setActiveTab}
+                subscriptionActive={subscriptionActive}
+                showToast={showToast}
+                currentUser={currentUser}
+                onSignInClick={() => setIsSignInModalOpen(true)}
+              />
+            )}
 
-        {activeTab === "premium" && (
-          <PremiumTab
-            subscriptionActive={subscriptionActive}
-            setSubscriptionActive={setSubscriptionActive}
-            showToast={showToast}
-            currentUser={currentUser}
-          />
-        )}
+            {activeTab === "premium" && (
+              <PremiumTab
+                subscriptionActive={subscriptionActive}
+                setSubscriptionActive={setSubscriptionActive}
+                showToast={showToast}
+                currentUser={currentUser}
+              />
+            )}
 
-        {activeTab === "contact" && (
-          <ContactTab showToast={showToast} currentUser={currentUser} />
-        )}
+            {activeTab === "contact" && (
+              <ContactTab showToast={showToast} currentUser={currentUser} />
+            )}
 
-        {activeTab === "admin" && (
-          <AdminPanel 
-            showToast={showToast} 
-            currentUser={currentUser} 
-            onQuickView={handleQuickView}
-            setActiveTab={setActiveTab}
-          />
-        )}
+            {activeTab === "admin" && (
+              <AdminPanel 
+                showToast={showToast} 
+                currentUser={currentUser} 
+                onQuickView={handleQuickView}
+                setActiveTab={setActiveTab}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Global Interactive detailed vehicle model overlay sheets */}

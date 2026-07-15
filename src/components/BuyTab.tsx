@@ -577,12 +577,37 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     setSearchQuery("");
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.05
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { duration: 0.4, ease: "easeOut" } 
+    }
+  };
+
   return (
-    <div className="bg-[#F4F1EA] text-[#1A1A1A] min-h-screen py-12 relative font-sans font-sans">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="bg-[#F4F1EA] text-[#1A1A1A] min-h-screen py-12 relative font-sans"
+    >
       
       {/* Mini warning header box if not paid */}
       {!hasPaidPass && (
-        <div className="max-w-7xl mx-auto px-4 mb-8">
+        <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 mb-8">
           <div className="bg-[#E0DBCF] border border-stone-400 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
@@ -600,12 +625,12 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               Activate Pass (₹1 Only)
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Floating active permit counter if pass is paid */}
       {hasPaidPass && (
-        <div className="max-w-7xl mx-auto px-4 mb-8">
+        <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 mb-8">
           <div className="bg-[#FAF8F5] w-full p-4 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-stone-900 shadow-sm">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -629,10 +654,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               )
             )}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="border-b border-stone-300 pb-6 mb-10">
           <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Index Repository</span>
           <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Verified Vehicle Inventory</h1>
@@ -1208,7 +1233,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* DETAILED DAILY PERMIT INLET MODAL */}
       {showPaymentModal && (
@@ -1382,6 +1407,6 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           </motion.button>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
