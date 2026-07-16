@@ -3,7 +3,7 @@ import {
   ShieldAlert, Database, Trash2, Mail, Phone, Calendar, Heart, 
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
-  Clock, Settings, AlertCircle, Wrench, EyeOff
+  Clock, Settings, AlertCircle, Wrench, EyeOff, Activity
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
@@ -1420,37 +1420,37 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             className="fixed inset-0 z-[200] bg-[#090807] text-[#FAF8F5] flex flex-col justify-between p-4 sm:p-8 select-none overflow-hidden font-mono"
           >
             {/* Elegant Background Grid & Matrix effects */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.035)_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none" />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(168,85,247,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(168,85,247,0.035)_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none" />
             
             {/* Continuous scanning line that sweeps vertically */}
             <motion.div 
               animate={{ y: ["-10%", "110%", "-10%"] }}
               transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-              className="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500/80 to-transparent shadow-[0_0_20px_rgba(245,158,11,0.7)] pointer-events-none"
+              className="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-purple-500/80 to-transparent shadow-[0_0_20px_rgba(168,85,247,0.7)] pointer-events-none"
               style={{ top: 0 }}
             />
 
             {/* Glowing framing borders that pulsate and frame the screen */}
-            <div className="absolute inset-4 sm:inset-6 border border-stone-850 pointer-events-none rounded-xs">
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-amber-500/50 animate-pulse" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-amber-500/50 animate-pulse" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-amber-500/50 animate-pulse" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-amber-500/50 animate-pulse" />
+            <div className="absolute inset-4 sm:inset-6 border border-stone-900 pointer-events-none rounded-xs">
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-purple-500/50 animate-pulse" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-purple-500/50 animate-pulse" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-purple-500/50 animate-pulse" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-purple-500/50 animate-pulse" />
               
               {/* Floating micro indicators on border edges */}
-              <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-amber-500 rounded-full animate-ping" />
-              <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-amber-500 rounded-full animate-ping" style={{ animationDelay: "1s" }} />
+              <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-purple-500 rounded-full animate-ping" />
+              <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-purple-500 rounded-full animate-ping" style={{ animationDelay: "1s" }} />
             </div>
 
             {/* TOP BAR INFORMATION HUD */}
             <div className="flex items-center justify-between w-full z-10 px-4 pt-2">
               <div className="flex items-start gap-3.5 text-stone-500">
                 <div className="p-2 border border-stone-800 bg-stone-950/70 rounded-xs flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-500 animate-pulse" />
+                  <Activity className="w-5 h-5 text-purple-500 animate-pulse" />
                 </div>
                 <div className="text-left">
                   <span className="text-[9px] text-stone-400 font-extrabold uppercase tracking-[0.2em] block">CHRONOMETER</span>
-                  <span className="text-sm text-amber-400 font-black tracking-widest font-mono">{liveTime || "04:19:00"}</span>
+                  <span className="text-sm text-purple-400 font-black tracking-widest font-mono">{liveTime || "04:19:00"}</span>
                   <span className="text-[8px] text-stone-600 block tracking-wider uppercase font-mono">LATENCY: 12ms // VERIFIED</span>
                 </div>
               </div>
@@ -1464,58 +1464,46 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
             {/* MAIN CENTRAL WORKSPACE CONSOLE */}
             <div className="flex-1 flex flex-col items-center justify-center max-w-xl mx-auto w-full z-10 my-4 px-2">
-              <div className="border-2 border-amber-500/40 bg-[#0c0a09]/95 p-6 sm:p-8 w-full shadow-[0_0_80px_rgba(245,158,11,0.2)] space-y-6 relative rounded-xs">
+              <div className="border-2 border-purple-500/40 bg-[#0c0a09]/95 p-6 sm:p-8 w-full shadow-[0_0_80px_rgba(168,85,247,0.2)] space-y-6 relative rounded-xs">
                 {/* Active target rect lines */}
-                <div className="absolute -top-1.5 -left-1.5 w-6 h-6 border-t-4 border-l-4 border-amber-500" />
-                <div className="absolute -top-1.5 -right-1.5 w-6 h-6 border-t-4 border-r-4 border-amber-500" />
-                <div className="absolute -bottom-1.5 -left-1.5 w-6 h-6 border-b-4 border-l-4 border-amber-500" />
-                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 border-b-4 border-r-4 border-amber-500" />
+                <div className="absolute -top-1.5 -left-1.5 w-6 h-6 border-t-4 border-l-4 border-purple-500" />
+                <div className="absolute -top-1.5 -right-1.5 w-6 h-6 border-t-4 border-r-4 border-purple-500" />
+                <div className="absolute -bottom-1.5 -left-1.5 w-6 h-6 border-b-4 border-l-4 border-purple-500" />
+                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 border-b-4 border-r-4 border-purple-500" />
 
                 {/* Header branding */}
-                <div className="text-center space-y-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[9px] font-black uppercase tracking-[0.2em]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                    SECURE CONSOLE INGRESS
+                <div className="text-center space-y-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[9px] font-black uppercase tracking-[0.2em]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
+                    CLEARANCE: CERTIFIED OWNER
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-widest text-[#FAF8F5] leading-none">
-                    Welcome to Admin Panel
-                  </h2>
-                  <p className="text-[10px] text-stone-400 uppercase tracking-widest font-mono">
-                    Owner Dossier: <span className="text-amber-500">afrojalamansari461@gmail.com</span>
+                  <p className="text-[9px] text-stone-400 font-bold uppercase tracking-[0.25em] block">
+                    ESTABLISHING SECURE ADMIN SESSION
                   </p>
-                </div>
 
-                {/* Radar Sonar segment */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-y border-stone-850 py-4 my-2">
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-12 h-12 shrink-0 bg-stone-950 border border-stone-800 rounded-full flex items-center justify-center overflow-hidden">
-                      {/* Active radar sweeps */}
-                      <motion.div 
-                        animate={{ scale: [1, 2], opacity: [0.6, 0] }}
-                        transition={{ repeat: Infinity, duration: 2.2, ease: "easeOut" }}
-                        className="absolute inset-0 rounded-full border border-amber-500/40"
-                      />
-                      <motion.div 
-                        animate={{ scale: [1, 1.4], opacity: [0.4, 0] }}
-                        transition={{ repeat: Infinity, duration: 2.2, delay: 1.1, ease: "easeOut" }}
-                        className="absolute inset-0 rounded-full border border-amber-500/20"
-                      />
-                      <Wrench className="w-4 h-4 text-amber-500 relative z-10 animate-pulse" />
-                    </div>
-                    <div className="text-left space-y-0.5">
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-stone-400 block">Ledger Link</span>
-                      <span className="text-[11px] text-amber-500 font-extrabold font-mono block">FIRESTORE COREGISTERS</span>
-                      <span className="text-[8px] text-stone-500 font-mono block uppercase">Status: OK / SECURE</span>
+                  {/* Glowing spinning radar gauge */}
+                  <div className="relative w-20 h-20 mx-auto my-4 flex items-center justify-center">
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                      className="absolute inset-0 border-2 border-purple-500/40 border-t-purple-500 border-b-purple-500 rounded-full"
+                    />
+                    <motion.div 
+                      animate={{ rotate: -360 }}
+                      transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
+                      className="absolute inset-1.5 border border-purple-500/20 border-l-purple-500/60 border-r-purple-500/60 rounded-full"
+                    />
+                    <div className="w-13 h-13 bg-stone-950/90 border border-stone-800 rounded-full flex items-center justify-center relative shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                      <ShieldAlert className="w-6 h-6 text-purple-400 animate-pulse" />
                     </div>
                   </div>
 
-                  <div className="text-left flex flex-col justify-center space-y-0.5 sm:border-l sm:border-stone-850 sm:pl-4">
-                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-stone-400 block">Active Metrics</span>
-                    <span className="text-xs text-[#FAF8F5] font-extrabold font-mono flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      {passes.length} BUYER PASSES SYNCED
-                    </span>
-                    <span className="text-[8px] text-stone-500 font-mono block uppercase">INQUIRIES RECORDED: {messages.length}</span>
+                  <h2 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-widest text-[#FAF8F5] leading-none">
+                    ADMIN CONTROL DECK
+                  </h2>
+
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-950/80 border border-purple-500/40 text-purple-200 text-[10px] font-black uppercase tracking-widest rounded-xs">
+                    SYSTEM OWNER: <span className="text-white font-extrabold bg-purple-900/50 px-1 py-0.5 rounded-xs">AFROJ ALAM</span>
                   </div>
                 </div>
 
@@ -1523,22 +1511,24 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                 <div className="bg-[#060505] border border-stone-850 p-3.5 h-28 overflow-y-auto font-mono text-[9px] text-left space-y-1.5 rounded-xs select-text scrollbar-thin">
                   {terminalLogs.map((log, idx) => (
                     <div key={idx} className="text-stone-300 leading-normal flex items-start gap-1.5 font-mono">
-                      <span className="text-amber-500 select-none shrink-0">&gt;</span>
+                      <span className="text-purple-500 select-none shrink-0">&gt;</span>
                       <span>{log}</span>
                     </div>
                   ))}
-                  <div className="inline-block w-1.5 h-3 bg-amber-500 animate-pulse" />
+                  {introProgress < 100 && (
+                    <div className="inline-block w-1.5 h-3 bg-purple-500 animate-pulse" />
+                  )}
                 </div>
 
                 {/* Calibration progress bar */}
                 <div className="space-y-2 text-left">
                   <div className="flex items-center justify-between text-[9px] text-stone-400 font-bold uppercase tracking-wider font-mono">
-                    <span>Synchronizing Secure Ingress ledger indexes</span>
-                    <span className="text-amber-500 font-black">{Math.min(100, introProgress)}%</span>
+                    <span>SYNCING LEDGER INDEXES</span>
+                    <span className="text-purple-400 font-black">{Math.min(100, introProgress)}%</span>
                   </div>
                   <div className="w-full h-2 bg-[#120f0d] border border-stone-850 p-0.5 rounded-none overflow-hidden">
                     <div 
-                      className="h-full bg-gradient-to-r from-amber-600 via-amber-500 to-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.8)] transition-all duration-150 ease-out"
+                      className="h-full bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-400 shadow-[0_0_12px_rgba(168,85,247,0.8)] transition-all duration-150 ease-out"
                       style={{ width: `${Math.min(100, introProgress)}%` }}
                     />
                   </div>
@@ -1548,15 +1538,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                 <div className="pt-2">
                   <button
                     onClick={handleEnterWorkspace}
-                    className={`w-full py-3.5 border-2 text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer font-mono flex items-center justify-center gap-2 ${
+                    className={`w-full py-3.5 border text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer font-mono flex items-center justify-center gap-2 ${
                       introProgress >= 100
-                        ? "border-amber-500 bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-[0_0_30px_rgba(245,158,11,0.5)] active:scale-95"
-                        : "border-stone-850 bg-stone-950/40 text-stone-500 cursor-not-allowed"
+                        ? "border-purple-500 bg-purple-500/10 hover:bg-purple-500 hover:text-stone-950 text-purple-300 shadow-[0_0_30px_rgba(168,85,247,0.3)] active:scale-95"
+                        : "border-stone-850 bg-stone-950/40 text-stone-600 cursor-not-allowed"
                     }`}
                     disabled={introProgress < 100}
                   >
-                    <Wrench className="w-4 h-4 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
-                    {introProgress >= 100 ? "UNLEASH SECURE COMMAND PANEL" : "CALIBRATING PLATFORM..."}
+                    <span>ENTER WORKSPACE</span>
                   </button>
                 </div>
               </div>
