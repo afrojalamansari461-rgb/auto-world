@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -14,7 +14,7 @@ import FeedbackWidget from "./components/FeedbackWidget";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
-import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
@@ -79,29 +79,6 @@ export default function App() {
   const [editMileage, setEditMileage] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editPhotos, setEditPhotos] = useState<{ src: string; alt: string }[]>([]);
-
-  // Extra detailed spec states for advanced admin editing
-  const [editMake, setEditMake] = useState("");
-  const [editModel, setEditModel] = useState("");
-  const [editYear, setEditYear] = useState(2023);
-  const [editCategory, setEditCategory] = useState("");
-  const [editFuel, setEditFuel] = useState("");
-  const [editTransmission, setEditTransmission] = useState("");
-  const [editEngine, setEditEngine] = useState("");
-  const [editColor, setEditColor] = useState("");
-  const [editOwners, setEditOwners] = useState("");
-  const [editRegNumber, setEditRegNumber] = useState("");
-  const [editSellerName, setEditSellerName] = useState("");
-  const [editSellerEmail, setEditSellerEmail] = useState("");
-  const [editSellerPhone, setEditSellerPhone] = useState("");
-  const [editLocation, setEditLocation] = useState("");
-  const [editStatus, setEditStatus] = useState("");
-  const [editSections, setEditSections] = useState({
-    general: true,
-    mechanical: false,
-    contact: false
-  });
-
   const [hasPaidPass, setHasPaidPass] = useState<boolean>(false);
   const [showAdminGrandEntry, setShowAdminGrandEntry] = useState<boolean>(false);
 
@@ -389,23 +366,9 @@ export default function App() {
 
   // Listen for admin login to trigger grand entrance animation once per session
   useEffect(() => {
-    if (currentUser?.email === "afrojalamansari461@gmail.com") {
-      const entered = sessionStorage.getItem("autoWorld_admin_entered");
-      if (!entered) {
-        setShowAdminGrandEntry(true);
-        sessionStorage.setItem("autoWorld_admin_entered", "true");
-      }
-    } else if (!currentUser) {
-      sessionStorage.removeItem("autoWorld_admin_entered");
-    }
+    // Disabled Admin Grand Entrance animation and sound per user request
+    setShowAdminGrandEntry(false);
   }, [currentUser]);
-
-  // Redirect non-admin users if they are on the "admin" tab
-  useEffect(() => {
-    if (activeTab === "admin" && currentUser?.email !== "afrojalamansari461@gmail.com") {
-      setActiveTab("home");
-    }
-  }, [currentUser, activeTab]);
 
   // load saved favorites on auth state change
   useEffect(() => {
@@ -792,36 +755,12 @@ export default function App() {
 
   const handleStartAdminEdit = () => {
     if (!selectedVehicle) return;
-    setEditTitle(selectedVehicle.title || "");
-    setEditImage(selectedVehicle.image || "");
-    setEditPrice(selectedVehicle.price || 0);
-    setEditMileage(selectedVehicle.mileage || "");
+    setEditTitle(selectedVehicle.title);
+    setEditImage(selectedVehicle.image);
+    setEditPrice(selectedVehicle.price);
+    setEditMileage(selectedVehicle.mileage);
     setEditDesc(selectedVehicle.description || "");
-    setEditPhotos(selectedVehicle.photos ? [...selectedVehicle.photos] : [{ src: selectedVehicle.image || "", alt: selectedVehicle.title || "" }]);
-    
-    setEditMake(selectedVehicle.make || "");
-    setEditModel(selectedVehicle.model || "");
-    setEditYear(selectedVehicle.year || 2023);
-    setEditCategory(selectedVehicle.category || "");
-    setEditFuel(selectedVehicle.fuel || "");
-    setEditTransmission(selectedVehicle.transmission || "");
-    setEditEngine(selectedVehicle.engine || "");
-    setEditColor(selectedVehicle.color || "");
-    setEditOwners(selectedVehicle.owners || "");
-    setEditRegNumber(selectedVehicle.regNumber || "");
-    setEditSellerName(selectedVehicle.sellerName || "");
-    setEditSellerEmail(selectedVehicle.sellerEmail || "");
-    setEditSellerPhone(selectedVehicle.sellerPhone || "");
-    setEditLocation(selectedVehicle.location || "");
-    setEditStatus(selectedVehicle.status || "active");
-    
-    // Default open sections: General Info expanded, others collapsed by default
-    setEditSections({
-      general: true,
-      mechanical: false,
-      contact: false
-    });
-
+    setEditPhotos(selectedVehicle.photos ? [...selectedVehicle.photos] : [{ src: selectedVehicle.image, alt: selectedVehicle.title }]);
     setIsAdminEditMode(true);
   };
 
@@ -838,22 +777,7 @@ export default function App() {
       price: editPrice,
       mileage: editMileage.trim(),
       description: editDesc.trim(),
-      photos: finalPhotos,
-      make: editMake.trim(),
-      model: editModel.trim(),
-      year: Number(editYear),
-      category: editCategory.trim(),
-      fuel: editFuel.trim(),
-      transmission: editTransmission.trim(),
-      engine: editEngine.trim(),
-      color: editColor.trim(),
-      owners: editOwners.trim(),
-      regNumber: editRegNumber.trim(),
-      sellerName: editSellerName.trim(),
-      sellerEmail: editSellerEmail.trim(),
-      sellerPhone: editSellerPhone.trim(),
-      location: editLocation.trim(),
-      status: editStatus as "pending" | "active" | "sold"
+      photos: finalPhotos
     };
     
     try {
@@ -867,22 +791,7 @@ export default function App() {
           photos: finalPhotos,
           price: editPrice,
           mileage: editMileage.trim(),
-          description: editDesc.trim(),
-          make: editMake.trim(),
-          model: editModel.trim(),
-          year: Number(editYear),
-          category: editCategory.trim(),
-          fuel: editFuel.trim(),
-          transmission: editTransmission.trim(),
-          engine: editEngine.trim(),
-          color: editColor.trim(),
-          owners: editOwners.trim(),
-          regNumber: editRegNumber.trim(),
-          sellerName: editSellerName.trim(),
-          sellerEmail: editSellerEmail.trim(),
-          sellerPhone: editSellerPhone.trim(),
-          location: editLocation.trim(),
-          status: editStatus
+          description: editDesc.trim()
         });
         
         // Also update local storage cached user listings if any
@@ -900,22 +809,7 @@ export default function App() {
                     photos: finalPhotos,
                     price: editPrice,
                     mileage: editMileage.trim(),
-                    description: editDesc.trim(),
-                    make: editMake.trim(),
-                    model: editModel.trim(),
-                    year: Number(editYear),
-                    category: editCategory.trim(),
-                    fuel: editFuel.trim(),
-                    transmission: editTransmission.trim(),
-                    engine: editEngine.trim(),
-                    color: editColor.trim(),
-                    owners: editOwners.trim(),
-                    regNumber: editRegNumber.trim(),
-                    sellerName: editSellerName.trim(),
-                    sellerEmail: editSellerEmail.trim(),
-                    sellerPhone: editSellerPhone.trim(),
-                    location: editLocation.trim(),
-                    status: editStatus
+                    description: editDesc.trim()
                   };
                 }
                 return item;
@@ -942,22 +836,7 @@ export default function App() {
           price: editPrice,
           mileage: editMileage.trim(),
           description: editDesc.trim(),
-          photos: finalPhotos,
-          make: editMake.trim(),
-          model: editModel.trim(),
-          year: Number(editYear),
-          category: editCategory.trim(),
-          fuel: editFuel.trim(),
-          transmission: editTransmission.trim(),
-          engine: editEngine.trim(),
-          color: editColor.trim(),
-          owners: editOwners.trim(),
-          regNumber: editRegNumber.trim(),
-          sellerName: editSellerName.trim(),
-          sellerEmail: editSellerEmail.trim(),
-          sellerPhone: editSellerPhone.trim(),
-          location: editLocation.trim(),
-          status: editStatus
+          photos: finalPhotos
         };
         
         localStorage.setItem("autoWorld_default_overrides", JSON.stringify(overrides));
@@ -966,22 +845,6 @@ export default function App() {
       setSelectedVehicle(updatedVehicle);
       setIsAdminEditMode(false);
       showToast("Dossier specifications updated successfully!", "success");
-      
-      // Record audit log
-      try {
-        const id = "log_" + Math.random().toString(36).substring(2, 11);
-        const email = currentUser?.email || "afrojalamansari461@gmail.com";
-        await addDoc(collection(db, "audit_logs"), {
-          id,
-          adminEmail: email,
-          actionType: "edit_listing",
-          description: `Updated dossier specifications of vehicle "${editTitle.trim()}" (ID: ${selectedVehicle.listingId || selectedVehicle.id})`,
-          timestamp: new Date().toISOString()
-        });
-      } catch (err) {
-        console.warn("Failed to write edit audit log:", err);
-      }
-
       window.dispatchEvent(new Event("autoWorld_db_update"));
     } catch (err: any) {
       console.error("Failed to save admin edits:", err);
@@ -1104,7 +967,7 @@ export default function App() {
               <ContactTab showToast={showToast} currentUser={currentUser} />
             )}
 
-            {activeTab === "admin" && currentUser?.email === "afrojalamansari461@gmail.com" && (
+            {activeTab === "admin" && (
               <AdminPanel 
                 showToast={showToast} 
                 currentUser={currentUser} 
@@ -1313,365 +1176,56 @@ export default function App() {
                     </div>
 
                     {/* Right Column: Spec fields */}
-                    <div className="space-y-5">
-                      <div className="flex items-center justify-between border-b border-stone-200 pb-2">
-                        <span className="text-[11px] font-mono uppercase tracking-widest text-stone-500 font-bold block">Spec Dossier Database Fields</span>
-                        <span className="text-[9px] font-mono text-amber-600 bg-amber-50 px-2 py-0.5 border border-amber-200 font-extrabold uppercase">Multi-Part Editor</span>
-                      </div>
+                    <div className="space-y-4">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 block border-b border-stone-150 pb-1">Spec Data Points</span>
                       
-                      <div className="space-y-4">
-                        {/* 1. GENERAL INFO SECTION */}
-                        <div className="border border-stone-250 bg-white/70 p-4 transition-all duration-300 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-                          <button
-                            type="button"
-                            onClick={() => setEditSections(prev => ({ ...prev, general: !prev.general }))}
-                            className="w-full flex items-center justify-between text-left cursor-pointer group"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 bg-amber-100 rounded-none flex items-center justify-center border border-amber-300 shrink-0">
-                                <Info className="w-4 h-4 text-amber-700" />
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-sans uppercase tracking-wider font-extrabold text-stone-900 group-hover:text-amber-700 transition">General Info</h4>
-                                <p className="text-[8px] text-stone-500 uppercase tracking-wide">Identity, status, pricing, and description</p>
-                              </div>
-                            </div>
-                            <div>
-                              {editSections.general ? (
-                                <ChevronUp className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
-                              )}
-                            </div>
-                          </button>
+                      {/* Title */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Vehicle Title (Name)</label>
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-sm font-serif font-black text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          placeholder="e.g. Toyota Fortuner 2.8L"
+                        />
+                      </div>
 
-                          <AnimatePresence initial={false}>
-                            {editSections.general && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.25, ease: "easeInOut" }}
-                                className="overflow-hidden"
-                              >
-                                <div className="space-y-4 pt-4 border-t border-stone-200/60 mt-3">
-                                  {/* Title */}
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Vehicle Title (Name)</label>
-                                    <input
-                                      type="text"
-                                      value={editTitle}
-                                      onChange={(e) => setEditTitle(e.target.value)}
-                                      className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                      placeholder="e.g. Toyota Fortuner 2.8L"
-                                    />
-                                  </div>
-
-                                  {/* Price and Year */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Price (in INR)</label>
-                                      <input
-                                        type="number"
-                                        value={editPrice}
-                                        onChange={(e) => setEditPrice(parseInt(e.target.value) || 0)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Model Year</label>
-                                      <input
-                                        type="number"
-                                        value={editYear}
-                                        onChange={(e) => setEditYear(parseInt(e.target.value) || 2023)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Make & Model */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Make (Brand)</label>
-                                      <input
-                                        type="text"
-                                        value={editMake}
-                                        onChange={(e) => setEditMake(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. Toyota"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Model</label>
-                                      <input
-                                        type="text"
-                                        value={editModel}
-                                        onChange={(e) => setEditModel(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. Fortuner"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Category & Status */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Category</label>
-                                      <select
-                                        value={editCategory}
-                                        onChange={(e) => setEditCategory(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950 cursor-pointer"
-                                      >
-                                        <option value="">Select Category</option>
-                                        <option value="SUV">SUV</option>
-                                        <option value="Sedan">Sedan</option>
-                                        <option value="Coupe">Coupe</option>
-                                        <option value="Hatchback">Hatchback</option>
-                                        <option value="Supercar">Supercar</option>
-                                        <option value="Cruiser">Cruiser</option>
-                                        <option value="Classic">Classic</option>
-                                      </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Listing Status</label>
-                                      <select
-                                        value={editStatus}
-                                        onChange={(e) => setEditStatus(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950 cursor-pointer"
-                                      >
-                                        <option value="active">Active Listing</option>
-                                        <option value="pending">Pending Review</option>
-                                        <option value="sold">Marked as Sold</option>
-                                      </select>
-                                    </div>
-                                  </div>
-
-                                  {/* Description */}
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Description Summary</label>
-                                    <textarea
-                                      value={editDesc}
-                                      onChange={(e) => setEditDesc(e.target.value)}
-                                      rows={3}
-                                      className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs text-stone-800 leading-normal font-medium focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                      placeholder="Detailed historical context, condition overview, or listings highlight details..."
-                                    />
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                      {/* Price and Mileage Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Price */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Price (in INR)</label>
+                          <input
+                            type="number"
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(parseInt(e.target.value) || 0)}
+                            className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          />
                         </div>
 
-                        {/* 2. MECHANICAL SPECS SECTION */}
-                        <div className="border border-stone-250 bg-white/70 p-4 transition-all duration-300 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-                          <button
-                            type="button"
-                            onClick={() => setEditSections(prev => ({ ...prev, mechanical: !prev.mechanical }))}
-                            className="w-full flex items-center justify-between text-left cursor-pointer group"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 bg-amber-100 rounded-none flex items-center justify-center border border-amber-300 shrink-0">
-                                <Wrench className="w-4 h-4 text-amber-700" />
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-sans uppercase tracking-wider font-extrabold text-stone-900 group-hover:text-amber-700 transition">Mechanical Specs</h4>
-                                <p className="text-[8px] text-stone-500 uppercase tracking-wide">Mileage, fuel, transmission, engine details</p>
-                              </div>
-                            </div>
-                            <div>
-                              {editSections.mechanical ? (
-                                <ChevronUp className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
-                              )}
-                            </div>
-                          </button>
-
-                          <AnimatePresence initial={false}>
-                            {editSections.mechanical && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.25, ease: "easeInOut" }}
-                                className="overflow-hidden"
-                              >
-                                <div className="space-y-4 pt-4 border-t border-stone-200/60 mt-3">
-                                  {/* Mileage & Fuel */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Mileage (e.g. '12,500 km')</label>
-                                      <input
-                                        type="text"
-                                        value={editMileage}
-                                        onChange={(e) => setEditMileage(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. 15,000 km"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Fuel Type</label>
-                                      <input
-                                        type="text"
-                                        value={editFuel}
-                                        onChange={(e) => setEditFuel(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. Petrol, Diesel, Hybrid, EV"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Transmission & Engine */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Transmission</label>
-                                      <input
-                                        type="text"
-                                        value={editTransmission}
-                                        onChange={(e) => setEditTransmission(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. Automatic, Manual"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Engine Size / Power</label>
-                                      <input
-                                        type="text"
-                                        value={editEngine}
-                                        onChange={(e) => setEditEngine(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. 2.8L Turbo Diesel"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Color, Owners & RegNumber */}
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Exterior Color</label>
-                                      <input
-                                        type="text"
-                                        value={editColor}
-                                        onChange={(e) => setEditColor(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. Pearl White"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">No. of Owners</label>
-                                      <input
-                                        type="text"
-                                        value={editOwners}
-                                        onChange={(e) => setEditOwners(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. 1st Owner"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Reg Number</label>
-                                      <input
-                                        type="text"
-                                        value={editRegNumber}
-                                        onChange={(e) => setEditRegNumber(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. MH-12-PQ-9999"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                        {/* Mileage */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Mileage (e.g. '12,500 km')</label>
+                          <input
+                            type="text"
+                            value={editMileage}
+                            onChange={(e) => setEditMileage(e.target.value)}
+                            className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          />
                         </div>
+                      </div>
 
-                        {/* 3. CONTACT DETAILS SECTION */}
-                        <div className="border border-stone-250 bg-white/70 p-4 transition-all duration-300 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-                          <button
-                            type="button"
-                            onClick={() => setEditSections(prev => ({ ...prev, contact: !prev.contact }))}
-                            className="w-full flex items-center justify-between text-left cursor-pointer group"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 bg-amber-100 rounded-none flex items-center justify-center border border-amber-300 shrink-0">
-                                <Phone className="w-4 h-4 text-amber-700" />
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-sans uppercase tracking-wider font-extrabold text-stone-900 group-hover:text-amber-700 transition">Contact Details</h4>
-                                <p className="text-[8px] text-stone-500 uppercase tracking-wide">Seller name, email, phone, location</p>
-                              </div>
-                            </div>
-                            <div>
-                              {editSections.contact ? (
-                                <ChevronUp className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
-                              )}
-                            </div>
-                          </button>
-
-                          <AnimatePresence initial={false}>
-                            {editSections.contact && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.25, ease: "easeInOut" }}
-                                className="overflow-hidden"
-                              >
-                                <div className="space-y-4 pt-4 border-t border-stone-200/60 mt-3">
-                                  {/* Seller Name & Phone */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Seller Name</label>
-                                      <input
-                                        type="text"
-                                        value={editSellerName}
-                                        onChange={(e) => setEditSellerName(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. Afroj Alam"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Seller Phone</label>
-                                      <input
-                                        type="text"
-                                        value={editSellerPhone}
-                                        onChange={(e) => setEditSellerPhone(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. +91 98765 43210"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Seller Email & Location */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Seller Email</label>
-                                      <input
-                                        type="email"
-                                        value={editSellerEmail}
-                                        onChange={(e) => setEditSellerEmail(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. afrojalamansari461@gmail.com"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Location</label>
-                                      <input
-                                        type="text"
-                                        value={editLocation}
-                                        onChange={(e) => setEditLocation(e.target.value)}
-                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                                        placeholder="e.g. Mumbai, Maharashtra"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
+                      {/* Description */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Description Summary</label>
+                        <textarea
+                          value={editDesc}
+                          onChange={(e) => setEditDesc(e.target.value)}
+                          rows={4}
+                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs text-stone-800 leading-normal font-medium focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          placeholder="Detailed historical context, service records, and mechanical condition overview."
+                        />
                       </div>
 
                       {/* Action buttons */}

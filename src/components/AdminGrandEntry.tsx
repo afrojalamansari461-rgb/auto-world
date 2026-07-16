@@ -10,7 +10,7 @@ interface AdminGrandEntryProps {
 
 export const AdminGrandEntry: React.FC<AdminGrandEntryProps> = ({ isOpen, onClose }) => {
   const [percent, setPercent] = useState(0);
-  const [visibleLogs, setVisibleLogs] = useState<string[]>([]);
+  const [stage, setStage] = useState(0);
 
   // Audio synthesizer helper
   const playBeep = (freq = 800, duration = 0.1, type: OscillatorType = "sine") => {
@@ -37,23 +37,8 @@ export const AdminGrandEntry: React.FC<AdminGrandEntryProps> = ({ isOpen, onClos
     }
   };
 
-  const logTemplates = [
-    "[SYS_READY] INITIALIZING AUTOMOTIVE LEDGER ARCHITECTURE CORE...",
-    "[DB_STATE] SECURING WEB AUDIO CHANNELS & AMPLITUDES...",
-    "[INDEX_SYNC] CONNECTING DYNAMIC FIRESTORE LISTINGS CHANNELS...",
-    "[MEM_ALLOC] ALLOCATING NEON GRID COORDINATES AND POLAR MATRICES...",
-    "[MEM_ALLOC] ALLOCATING NEON GRID COORDINATES AND POLAR MATRICES...",
-    "[AUTH_OK] USER VERIFIED: LEVEL 5 ROOT AUTHORITY BINDING COMPLETED.",
-    "[RENDER_INIT] PREPARING BULK CONTROLS FOR ALL PLATFORM SPECIMENS...",
-    "[COMPLETE] BOOT SEQUENCES ALIGNED. ACTIVE SYSTEM MONITORING ARMED."
-  ];
-
   useEffect(() => {
-    if (!isOpen) {
-      setPercent(0);
-      setVisibleLogs([]);
-      return;
-    }
+    if (!isOpen) return;
 
     // Play startup sequence chime
     playBeep(440, 0.15, "sawtooth");
@@ -61,41 +46,31 @@ export const AdminGrandEntry: React.FC<AdminGrandEntryProps> = ({ isOpen, onClos
     setTimeout(() => playBeep(659, 0.15, "sawtooth"), 200);
     setTimeout(() => playBeep(880, 0.35, "sine"), 300);
 
-    // Dynamic terminal logs loader
-    let logIdx = 0;
-    const logInterval = setInterval(() => {
-      if (logIdx < logTemplates.length) {
-        setVisibleLogs((prev) => [...prev, logTemplates[logIdx]]);
-        playBeep(440 + logIdx * 80, 0.08, "triangle");
-        logIdx++;
-      } else {
-        clearInterval(logInterval);
-      }
-    }, 350);
-
-    // Dynamic progress bar
-    const progressInterval = setInterval(() => {
+    // Dynamic terminal stages loader
+    const interval = setInterval(() => {
       setPercent((prev) => {
         if (prev >= 100) {
-          clearInterval(progressInterval);
+          clearInterval(interval);
           return 100;
         }
-        const increment = Math.floor(Math.random() * 8) + 4;
-        const next = prev + increment;
-        if (next >= 100) {
-          playBeep(1200, 0.35, "sine");
-          return 100;
-        }
-        playBeep(600 + prev * 3, 0.04, "sine");
-        return next;
+        return prev + 1;
       });
-    }, 120);
+    }, 20);
 
-    return () => {
-      clearInterval(progressInterval);
-      clearInterval(logInterval);
-    };
+    return () => clearInterval(interval);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (percent === 100) {
+      setStage(3);
+      playBeep(1200, 0.25, "sine");
+      setTimeout(() => playBeep(1500, 0.3, "sine"), 80);
+    } else if (percent > 65) {
+      setStage(2);
+    } else if (percent > 30) {
+      setStage(1);
+    }
+  }, [percent]);
 
   const handleAuthorize = () => {
     // Play final exit chord
@@ -114,146 +89,139 @@ export const AdminGrandEntry: React.FC<AdminGrandEntryProps> = ({ isOpen, onClos
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed inset-0 bg-[#090807] text-[#FAF8F5] z-[999] flex flex-col justify-between p-4 sm:p-8 select-none overflow-hidden font-mono"
+        className="fixed inset-0 bg-stone-950/98 backdrop-blur-xl z-[999] flex flex-col items-center justify-center p-4 overflow-hidden select-none"
       >
-        {/* Elegant Background Grid & Matrix effects */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(168,85,247,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(168,85,247,0.035)_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none" />
+        {/* Animated matrix grid overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#111111_1px,transparent_1px),linear-gradient(to_bottom,#111111_1px,transparent_1px)] bg-[size:32px_32px] opacity-60 pointer-events-none" />
         
-        {/* Continuous scanning line that sweeps vertically */}
-        <motion.div 
-          animate={{ y: ["-10%", "110%", "-10%"] }}
-          transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-          className="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-purple-500/80 to-transparent shadow-[0_0_20px_rgba(168,85,247,0.7)] pointer-events-none"
-          style={{ top: 0 }}
-        />
+        {/* Glowing atmospheric circles */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: "2s" }} />
 
-        {/* Glowing framing borders that pulsate and frame the screen */}
-        <div className="absolute inset-4 sm:inset-6 border border-stone-900 pointer-events-none rounded-xs">
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-purple-500/50 animate-pulse" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-purple-500/50 animate-pulse" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-purple-500/50 animate-pulse" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-purple-500/50 animate-pulse" />
-          
-          {/* Floating micro indicators on border edges */}
-          <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-purple-500 rounded-full animate-ping" />
-          <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-purple-500 rounded-full animate-ping" style={{ animationDelay: "1s" }} />
-        </div>
+        {/* Center Console Shield Card */}
+        <div className="w-full max-w-lg relative z-10 font-mono text-[#F4F1EA]">
+          <div className="border border-stone-800 bg-stone-950/80 backdrop-blur-md p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+            {/* Holographic scanner laser line effect */}
+            <motion.div 
+              initial={{ top: "-10%" }}
+              animate={{ top: "110%" }}
+              transition={{ repeat: Infinity, duration: 3.5, ease: "linear" }}
+              className="absolute left-0 right-0 h-1 bg-amber-500/30 blur-xs shadow-[0_0_10px_#f59e0b] pointer-events-none"
+            />
 
-        {/* TOP BAR INFORMATION HUD */}
-        <div className="flex items-center justify-between w-full z-10 px-4 pt-2">
-          <div className="flex items-start gap-3.5 text-stone-500">
-            <div className="p-2 border border-stone-800 bg-stone-950/70 rounded-xs flex items-center justify-center">
-              <Activity className="w-5 h-5 text-purple-500 animate-pulse" />
-            </div>
-            <div className="text-left">
-              <span className="text-[9px] text-stone-400 font-extrabold uppercase tracking-[0.2em] block">CHRONOMETER</span>
-              <span className="text-sm text-purple-400 font-black tracking-widest font-mono">
-                {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </span>
-              <span className="text-[8px] text-stone-600 block tracking-wider uppercase font-mono">LATENCY: 12ms // VERIFIED</span>
-            </div>
-          </div>
-
-          <div className="text-right hidden sm:block">
-            <span className="text-[9px] text-stone-400 font-extrabold uppercase tracking-[0.2em] block">CONNECTION INGRESS</span>
-            <span className="text-xs text-[#FAF8F5] font-black tracking-widest">PORT 3000 // STANDALONE</span>
-            <span className="text-[8px] text-stone-600 block tracking-wider uppercase font-mono">PROTOCOLS: ENCRYPTED CRYPTO L5</span>
-          </div>
-        </div>
-
-        {/* MAIN CENTRAL WORKSPACE CONSOLE */}
-        <div className="flex-1 flex flex-col items-center justify-center max-w-xl mx-auto w-full z-10 my-4 px-2">
-          <div className="border-2 border-purple-500/40 bg-[#0c0a09]/95 p-6 sm:p-8 w-full shadow-[0_0_80px_rgba(168,85,247,0.2)] space-y-6 relative rounded-xs">
-            {/* Active target rect lines */}
-            <div className="absolute -top-1.5 -left-1.5 w-6 h-6 border-t-4 border-l-4 border-purple-500" />
-            <div className="absolute -top-1.5 -right-1.5 w-6 h-6 border-t-4 border-r-4 border-purple-500" />
-            <div className="absolute -bottom-1.5 -left-1.5 w-6 h-6 border-b-4 border-l-4 border-purple-500" />
-            <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 border-b-4 border-r-4 border-purple-500" />
-
-            {/* Header branding */}
-            <div className="text-center space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[9px] font-black uppercase tracking-[0.2em]">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
-                CLEARANCE: CERTIFIED OWNER
-              </div>
-              <p className="text-[9px] text-stone-400 font-bold uppercase tracking-[0.25em] block">
-                ESTABLISHING SECURE ADMIN SESSION
-              </p>
-
-              {/* Glowing spinning radar gauge */}
-              <div className="relative w-20 h-20 mx-auto my-4 flex items-center justify-center">
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                  className="absolute inset-0 border-2 border-purple-500/40 border-t-purple-500 border-b-purple-500 rounded-full"
-                />
-                <motion.div 
-                  animate={{ rotate: -360 }}
-                  transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-                  className="absolute inset-1.5 border border-purple-500/20 border-l-purple-500/60 border-r-purple-500/60 rounded-full"
-                />
-                <div className="w-13 h-13 bg-stone-950/90 border border-stone-800 rounded-full flex items-center justify-center relative shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                  <ShieldAlert className="w-6 h-6 text-purple-400 animate-pulse" />
-                </div>
-              </div>
-
-              <h2 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-widest text-[#FAF8F5] leading-none">
-                ADMIN CONTROL DECK
-              </h2>
-
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-950/80 border border-purple-500/40 text-purple-200 text-[10px] font-black uppercase tracking-widest rounded-xs">
-                SYSTEM OWNER: <span className="text-white font-extrabold bg-purple-900/50 px-1 py-0.5 rounded-xs">AFROJ ALAM</span>
-              </div>
-            </div>
-
-            {/* Custom terminal console logs display */}
-            <div className="bg-[#060505] border border-stone-850 p-3.5 h-28 overflow-y-auto font-mono text-[9px] text-left space-y-1.5 rounded-xs select-text scrollbar-thin">
-              {visibleLogs.map((log, idx) => (
-                <div key={idx} className="text-stone-300 leading-normal flex items-start gap-1.5 font-mono">
-                  <span className="text-purple-500 select-none shrink-0">&gt;</span>
-                  <span>{log}</span>
-                </div>
-              ))}
-              {percent < 100 && (
-                <div className="inline-block w-1.5 h-3 bg-purple-500 animate-pulse" />
-              )}
-            </div>
-
-            {/* Calibration progress bar */}
-            <div className="space-y-2 text-left">
-              <div className="flex items-center justify-between text-[9px] text-stone-400 font-bold uppercase tracking-wider font-mono">
-                <span>SYNCING LEDGER INDEXES</span>
-                <span className="text-purple-400 font-black">{Math.min(100, percent)}%</span>
-              </div>
-              <div className="w-full h-2 bg-[#120f0d] border border-stone-850 p-0.5 rounded-none overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-400 shadow-[0_0_12px_rgba(168,85,247,0.8)] transition-all duration-150 ease-out"
-                  style={{ width: `${Math.min(100, percent)}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Interactive entrance activation button */}
-            <div className="pt-2">
-              <button
-                onClick={handleAuthorize}
-                className={`w-full py-3.5 border text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer font-mono flex items-center justify-center gap-2 ${
-                  percent >= 100
-                    ? "border-purple-500 bg-purple-500/10 hover:bg-purple-500 hover:text-stone-950 text-purple-300 shadow-[0_0_30px_rgba(168,85,247,0.3)] active:scale-95"
-                    : "border-stone-850 bg-stone-950/40 text-stone-600 cursor-not-allowed"
-                }`}
-                disabled={percent < 100}
+            {/* Shield and warning icons */}
+            <div className="flex flex-col items-center mb-6">
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 120,
+                  damping: 14,
+                  mass: 0.9,
+                  delay: 0.1,
+                }}
+                className="w-20 h-20 bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center rounded-full shadow-[0_0_30px_rgba(245,158,11,0.2)] mb-4"
               >
-                <span>ENTER WORKSPACE</span>
+                <ShieldAlert className="w-10 h-10 text-amber-500 animate-pulse" />
+              </motion.div>
+              <span className="text-[10px] uppercase tracking-[0.3em] font-black text-amber-500">
+                SYSTEM ADMINISTRATOR INTENT DETECTED
+              </span>
+            </div>
+
+            {/* Diagnostic Logs Panel */}
+            <div className="space-y-3.5 mb-6 border-y border-stone-800/80 py-4">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-stone-400">AUTHORIZED ADMIN:</span>
+                <span className="text-white font-bold font-sans">afrojalamansari461@gmail.com</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-stone-400">ACCESS LEVEL:</span>
+                <span className="text-amber-500 font-bold">LEVEL-5 ROOT AUTHORITY</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-stone-400">WORKSPACE SHELL:</span>
+                <span className="text-purple-400">CLOUD_RUN_SECURE_INGRESS</span>
+              </div>
+              
+              {/* Dynamic Loading Logs */}
+              <div className="bg-stone-900/60 p-3 border border-stone-850/80 rounded-sm text-[9px] font-mono text-stone-300 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-3.5 h-3.5 text-stone-500" />
+                  <span>$ autoworld-dossier --init-root-session</span>
+                </div>
+                <div className="text-stone-400 h-12 overflow-hidden flex flex-col justify-end space-y-0.5 leading-tight">
+                  {stage >= 0 && <span className="text-stone-500">Initializing core security handshake... OK</span>}
+                  {stage >= 1 && <span className="text-stone-400">Establishing verified Firestore tunnels... READY</span>}
+                  {stage >= 2 && <span className="text-purple-400">Binding Level-5 dossier specs override rules... ENFORCED</span>}
+                  {stage >= 3 && <span className="text-emerald-400 font-extrabold animate-pulse">ADMIN GRAND ENTRY SEQUENCE INITIATED</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Centered Grand Greeting Block with Spring Stagger */}
+            <AnimatePresence>
+              {stage >= 3 && (
+                <motion.div
+                  initial={{ opacity: 0, filter: "blur(8px)", y: 20 }}
+                  animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+                  transition={{ type: "spring", stiffness: 180, damping: 16 }}
+                  className="text-center space-y-2.5 my-6 p-4 bg-amber-500/5 border border-amber-500/20"
+                >
+                  <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest block bg-amber-500/10 py-1 max-w-xs mx-auto">
+                    ✓ SECURE HANDSHAKE COMPLETED
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-serif font-black tracking-tight text-white uppercase">
+                    WELCOME BACK, AFROJ ALAM ANSARI
+                  </h3>
+                  <p className="text-[10px] text-stone-400 leading-normal max-w-sm mx-auto">
+                    Full database editing triggers, hidden specification toggles, and premium override pipelines are ready.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Slider / Progress percentage */}
+            <div className="space-y-1.5 mt-4">
+              <div className="flex justify-between items-center text-[10px] font-bold text-stone-400">
+                <span>SYSTEM HANDSHAKE PROGRESS</span>
+                <span className="font-mono text-white text-xs">
+                  <CountUp to={percent} duration={1.5} formatter={(val) => `${val}%`} />
+                </span>
+              </div>
+              <div className="h-1 bg-stone-900 overflow-hidden relative border border-stone-850">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-purple-500 via-amber-500 to-emerald-500"
+                  style={{ width: `${percent}%` }}
+                  transition={{ ease: "easeOut" }}
+                />
+              </div>
+            </div>
+
+            {/* Interactive Access Trigger */}
+            <div className="mt-8">
+              <button
+                disabled={percent < 100}
+                onClick={handleAuthorize}
+                className={`w-full py-3.5 font-bold uppercase text-[11px] tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer relative ${
+                  percent === 100
+                    ? "bg-amber-500 hover:bg-amber-600 text-stone-950 font-black shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)]"
+                    : "bg-stone-900 text-stone-500 border border-stone-850 cursor-not-allowed"
+                }`}
+              >
+                <Lock className={`w-4 h-4 ${percent === 100 ? "hidden" : "block"}`} />
+                {percent === 100 ? (
+                  <>
+                    <span>DECRYPT BACKOFFICE DOSSIERS</span>
+                    <ArrowRight className="w-4 h-4 animate-bounce-horizontal" />
+                  </>
+                ) : (
+                  <span>DECRYPTING CREDENTIALS...</span>
+                )}
               </button>
             </div>
           </div>
-        </div>
-
-        {/* HUD BOTTOM BAR */}
-        <div className="flex items-center justify-between w-full z-10 px-4 pb-2 text-[8px] text-stone-500 font-mono select-none">
-          <span className="uppercase">AUTOWORLD PLATFORM ENGINE v2.4 // LEDGER MASTER CONTROLS</span>
-          <span className="hidden sm:inline uppercase">SYSTEM INFRASTRUCTURE STATUS: STABLE AND DEPLOYED ON PORT 3000</span>
         </div>
       </motion.div>
     </AnimatePresence>

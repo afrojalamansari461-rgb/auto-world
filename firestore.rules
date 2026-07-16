@@ -154,19 +154,5 @@ service cloud.firestore {
         && data.timestamp is string && data.timestamp.size() <= 50
         && data.status is string && (data.status == 'active' || data.status == 'archived' || data.status == 'resolved');
     }
-
-    // AUDIT LOGS RULES
-    match /audit_logs/{logId} {
-      allow read, create: if isAdmin() && isValidId(logId) && isValidAuditLog(incoming());
-      allow update, delete: if false;
-    }
-
-    function isValidAuditLog(data) {
-      return data.id is string && data.id.size() <= 128
-        && data.adminEmail is string && data.adminEmail == 'afrojalamansari461@gmail.com'
-        && data.actionType is string && data.actionType.size() <= 100
-        && data.description is string && data.description.size() <= 5000
-        && data.timestamp is string && data.timestamp.size() <= 50;
-    }
   }
 }

@@ -3,7 +3,7 @@ import {
   ShieldAlert, Database, Trash2, Mail, Phone, Calendar, Heart, 
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
-  Clock, Settings, AlertCircle, Wrench, EyeOff, Activity
+  Clock, Settings, AlertCircle, Wrench, EyeOff
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
@@ -11,7 +11,7 @@ import { db, handleFirestoreError, OperationType } from "../firebase";
 import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface AdminPanelProps {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -69,80 +69,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const [passes, setPasses] = useState<FirestoreBuyerPass[]>([]);
   const [feedbacks, setFeedbacks] = useState<FirestoreFeedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit">("inventory");
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-
-  const loadAuditLogs = async () => {
-    try {
-      const logsSnapshot = await getDocs(collection(db, "audit_logs"));
-      const loadedLogs: any[] = [];
-      logsSnapshot.forEach((docSnap) => {
-        loadedLogs.push({
-          ...docSnap.data(),
-          id: docSnap.id
-        });
-      });
-      loadedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      setAuditLogs(loadedLogs);
-    } catch (err: any) {
-      console.warn("Failed to load audit logs:", err);
-    }
-  };
-
-  const writeAuditLog = async (actionType: string, description: string) => {
-    try {
-      const email = currentUser?.email || "afrojalamansari461@gmail.com";
-      const id = "log_" + Math.random().toString(36).substring(2, 11);
-      const logData = {
-        id,
-        adminEmail: email,
-        actionType,
-        description,
-        timestamp: new Date().toISOString()
-      };
-      await addDoc(collection(db, "audit_logs"), logData);
-      await loadAuditLogs();
-    } catch (err: any) {
-      console.error("Failed to write audit log:", err);
-    }
-  };
-  
-  // Developer bypass state for testing
-  const [devBypass, setDevBypass] = useState(() => {
-    try {
-      return localStorage.getItem("autoWorld_admin_bypass") === "true";
-    } catch (e) {
-      return false;
-    }
-  });
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback">("inventory");
   
   // Custom states for spectacular welcome intro sequence and floating animations
-  const [isIntroActive, setIsIntroActive] = useState(() => {
-    try {
-      return sessionStorage.getItem("autoWorld_admin_entered") !== "true";
-    } catch (e) {
-      return true;
-    }
-  });
-  const [introProgress, setIntroProgress] = useState(0);
+  const [isIntroActive, setIsIntroActive] = useState(false);
+  const [introProgress, setIntroProgress] = useState(100);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
-  const [liveTime, setLiveTime] = useState("");
-
-  useEffect(() => {
-    try {
-      setLiveTime(new Date().toLocaleTimeString("en-US", { hour12: false }));
-    } catch (e) {
-      setLiveTime("04:20:00");
-    }
-    const timer = setInterval(() => {
-      try {
-        setLiveTime(new Date().toLocaleTimeString("en-US", { hour12: false }));
-      } catch (e) {
-        // Ignored
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Simple, modern high-tech synth tone generator for ultimate futuristic feedback
   const playSynthBeep = (freq = 800, duration = 0.1, type: OscillatorType = "sine") => {
@@ -164,56 +96,9 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   };
 
   useEffect(() => {
-    const isAuthorizedUser = currentUser?.email === "afrojalamansari461@gmail.com" || devBypass;
-    if (isAuthorizedUser) {
-      // Initialize some cool logs sequentially
-      const logTemplates = [
-        "[SYS_READY] INITIALIZING AUTOMOTIVE LEDGER ARCHITECTURE CORE...",
-        "[DB_STATE] SECURING WEB AUDIO CHANNELS & AMPLITUDES...",
-        "[INDEX_SYNC] CONNECTING DYNAMIC FIRESTORE LISTINGS CHANNELS...",
-        "[MEM_ALLOC] ALLOCATING NEON GRID COORDINATES AND POLAR MATRICES...",
-        "[AUTH_OK] USER VERIFIED: LEVEL 5 ACCESS LEVEL REGISTERED.",
-        "[RENDER_INIT] PREPARING BULK CONTROLS FOR ALL PLATFORM VEHICLES...",
-        "[COMPLETE] BOOT SEQUENCES ALIGNED. ACTIVE MONITORING SYSTEM ARMED."
-      ];
-
-      let logIdx = 0;
-      const logInterval = setInterval(() => {
-        if (logIdx < logTemplates.length) {
-          setTerminalLogs((prev) => [...prev, logTemplates[logIdx]]);
-          playSynthBeep(440 + logIdx * 80, 0.08, "triangle");
-          logIdx++;
-        } else {
-          clearInterval(logInterval);
-        }
-      }, 400);
-
-      const interval = setInterval(() => {
-        setIntroProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          const increment = Math.floor(Math.random() * 14) + 6;
-          const next = prev + increment;
-          if (next >= 100) {
-            playSynthBeep(1200, 0.35, "sine");
-            return 100;
-          }
-          // Play mini click beep
-          playSynthBeep(600 + prev * 3, 0.04, "sine");
-          return next;
-        });
-      }, 150);
-
-      return () => {
-        clearInterval(interval);
-        clearInterval(logInterval);
-      };
-    } else {
-      setIsIntroActive(false);
-    }
-  }, [currentUser, devBypass]);
+    // Disabled Admin Panel entry animation and sounds per user request
+    setIsIntroActive(false);
+  }, [currentUser]);
 
   // States for hidden default vehicles stored in localStorage to customize catalogs
   const [hiddenDefaultIds, setHiddenDefaultIds] = useState<number[]>([]);
@@ -341,37 +226,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const [adminMakeFilter, setAdminMakeFilter] = useState("");
   const [adminYearFilter, setAdminYearFilter] = useState("");
   const [adminStatusFilter, setAdminStatusFilter] = useState("");
-  const [chartMode, setChartMode] = useState<"status" | "active-categories" | "activity-30">("status");
-
-  const get30DaysListingActivity = () => {
-    const activityMap: Record<string, number> = {};
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split("T")[0];
-      activityMap[dateStr] = 0;
-    }
-    listings.forEach((listing) => {
-      if (listing.datePosted) {
-        let cleanDate = listing.datePosted;
-        if (cleanDate.includes("T")) {
-          cleanDate = cleanDate.split("T")[0];
-        }
-        if (activityMap[cleanDate] !== undefined) {
-          activityMap[cleanDate]++;
-        }
-      }
-    });
-    return Object.keys(activityMap).sort().map((dateStr) => {
-      const parts = dateStr.split("-");
-      const shortDate = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateStr;
-      return {
-        date: shortDate,
-        fullDate: dateStr,
-        count: activityMap[dateStr]
-      };
-    });
-  };
+  const [chartMode, setChartMode] = useState<"status" | "active-categories">("status");
 
   // Multi-selection management for platform vehicles
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -517,9 +372,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       }
     }
 
-    // 5. Load Admin Audit Logs
-    await loadAuditLogs();
-
     setIsLoading(false);
   };
 
@@ -616,7 +468,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           }
 
           triggerHudAlert("SPECIMEN PURGED", `"${title}" was successfully deleted from Firestore.`, "delete");
-          await writeAuditLog("delete_listing", `Purged user vehicle listing "${title}" (ID: ${listingId})`);
         } catch (err: any) {
           handleFirestoreError(err, OperationType.DELETE, `listings/${listingId}`);
           showToast("Deletion failed: Check database rules credentials.", "error");
@@ -636,7 +487,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         `Specimen "${item.title}" is now ${nextFeatured ? "flagged as Featured premium star" : "reverted to normal stock"}.`,
         "premium"
       );
-      await writeAuditLog("toggle_featured", `Toggled featured status for user vehicle "${item.title}" to ${nextFeatured}`);
     } catch (err: any) {
       handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
       showToast("Failed to update listing: insufficient rules.", "error");
@@ -654,7 +504,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         `Specimen "${item.title}" has been ${nextVerified ? "certified and verified" : "demoted to unverified"}.`,
         "verified"
       );
-      await writeAuditLog("toggle_verified", `Toggled verified status for user vehicle "${item.title}" to ${nextVerified}`);
     } catch (err: any) {
       handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
       showToast("Failed to update listing verification status.", "error");
@@ -672,7 +521,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         `Specimen "${item.title}" highlighted as ${nextUrgent ? "a sizzling hot deal" : "a regular stock value"}.`,
         "hot"
       );
-      await writeAuditLog("toggle_urgent", `Toggled hot deal status for user vehicle "${item.title}" to ${nextUrgent}`);
     } catch (err: any) {
       handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
       showToast("Failed to update listing flags.", "error");
@@ -703,7 +551,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         `Specimen "${item.title}" is now ${nextStatus === "active" ? "active and visible to public catalog" : "archived in pending drafts"}.`,
         nextStatus === "active" ? "approve" : "unapprove"
       );
-      await writeAuditLog("status_change", `Updated approval status of user vehicle "${item.title}" to ${nextStatus}`);
     } catch (err: any) {
       handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
       showToast("Failed to update listing approval workflow.", "error");
@@ -790,7 +637,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       
       // Trigger update
       window.dispatchEvent(new Event("autoWorld_db_update"));
-      await writeAuditLog("create_listing", `Injected new vehicle specimen "${finalTitle}" into Firestore (ID: ${docRef.id})`);
       
       // Close form and reset
       setShowIntakeForm(false);
@@ -873,7 +719,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           await deleteDoc(doc(db, "messages", messageId));
           setMessages(prev => prev.filter(item => item.id !== messageId));
           triggerHudAlert("RECORD PURGED", `Inquiry lead from "${nameStr}" purged.`, "delete");
-          await writeAuditLog("delete_message", `Purged inquiry lead from "${nameStr}" (ID: ${messageId})`);
         } catch (err: any) {
           handleFirestoreError(err, OperationType.DELETE, `messages/${messageId}`);
           showToast("Failed to remove message record: rules constraint.", "error");
@@ -911,7 +756,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           }
 
           triggerHudAlert("TESTIMONIAL PURGED", `Feedback from "${author}" scrubbed.`, "delete");
-          await writeAuditLog("delete_feedback", `Purged feedback correspondence from "${author}" (ID: ${id})`);
         } catch (err: any) {
           handleFirestoreError(err, OperationType.DELETE, `feedbacks/${id}`);
           showToast("Could not delete feedback: rules constraint.", "error");
@@ -927,7 +771,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       await updateDoc(doc(db, "feedbacks", item.id), { status: nextStatus });
       setFeedbacks(prev => prev.map(fb => fb.id === item.id ? { ...fb, status: nextStatus } : fb));
       showToast(`Feedback status updated to ${nextStatus}!`, "success");
-      await writeAuditLog("status_change", `Updated feedback status of correspondence from "${item.name || "Anonymous"}" to "${nextStatus}"`);
     } catch (err: any) {
       handleFirestoreError(err, OperationType.UPDATE, `feedbacks/${item.id}`);
       showToast("Failed to update feedback status: insufficient rules.", "error");
@@ -1358,7 +1201,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
   const totalRevenueEstimates = passes.length * 1; // ₹1 per pass
 
-  const isAuthorized = currentUser?.email === "afrojalamansari461@gmail.com" || devBypass;
+  const isAuthorized = currentUser?.email === "afrojalamansari461@gmail.com";
 
   if (!isAuthorized) {
     return (
@@ -1375,23 +1218,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         >
           Return to Home Page
         </button>
-
-        <div className="pt-4 border-t border-stone-200">
-          <button
-            onClick={() => {
-              try {
-                localStorage.setItem("autoWorld_admin_bypass", "true");
-                setDevBypass(true);
-                showToast("Developer Admin Bypass Enabled", "success");
-              } catch (e) {
-                console.error(e);
-              }
-            }}
-            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black uppercase tracking-widest transition duration-200 cursor-pointer font-mono"
-          >
-            Bypass Owner Check (Dev Mode)
-          </button>
-        </div>
       </div>
     );
   }
@@ -1399,174 +1225,111 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const handleEnterWorkspace = () => {
     playSynthBeep(900, 0.15, "triangle");
     setTimeout(() => playSynthBeep(1400, 0.35, "sine"), 120);
-    try {
-      sessionStorage.setItem("autoWorld_admin_entered", "true");
-    } catch (e) {
-      console.error(e);
-    }
     setIsIntroActive(false);
   };
 
+  if (isIntroActive) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#060404] text-[#FAF8F5] flex flex-col items-center justify-center p-6 select-none overflow-hidden font-mono">
+        {/* Futuristic Grid and Lines background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(192,132,252,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(192,132,252,0.03)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none" />
+        
+        {/* Laser scanner vertical sweep line */}
+        <div className="absolute left-0 w-full h-1 bg-purple-500/80 shadow-[0_0_15px_rgba(168,85,247,0.85)] pointer-events-none z-20 animate-scan" />
+
+        {/* Floating background neon dots */}
+        <div className="absolute top-12 left-12 w-2 h-2 rounded-full bg-purple-500/40 blur-xs animate-ping" />
+        <div className="absolute bottom-24 right-12 w-3.5 h-3.5 rounded-full bg-purple-500/25 blur-xs animate-pulse" />
+        <div className="absolute top-1/4 right-1/4 w-1.5 h-1.5 rounded-full bg-purple-400/50 animate-bounce" style={{ animationDuration: '4.5s' }} />
+        <div className="absolute bottom-1/4 left-1/4 w-2.5 h-2.5 rounded-full bg-purple-600/30 blur-xs animate-pulse" style={{ animationDuration: '6s' }} />
+
+        {/* Outer security bracket frame */}
+        <div className="absolute inset-4 sm:inset-8 border border-purple-500/10 max-w-4xl mx-auto my-auto h-[90vh] rounded-xs flex flex-col items-center justify-center pointer-events-none">
+          {/* Animated corner brackets */}
+          <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-purple-400/80 animate-pulse" />
+          <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-purple-400/80 animate-pulse" />
+        </div>
+
+        {/* Main centered box */}
+        <div className="relative z-10 max-w-md w-full text-center space-y-6 p-6 sm:p-8 border-2 border-purple-950/40 bg-[#090707]/95 shadow-[0_0_50px_rgba(168,85,247,0.25)] backdrop-blur-md">
+          {/* Header */}
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-950/60 border border-purple-500/40 text-purple-300 text-[9px] font-black uppercase tracking-widest animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
+              Clearance: Certified Owner
+            </div>
+            <p className="text-[9px] text-stone-500 uppercase tracking-widest font-mono">establishing secure admin session</p>
+          </div>
+
+          {/* Central Logo / Visual */}
+          <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+            {/* Spinning tech wheels */}
+            <div className="absolute inset-0 rounded-full border-2 border-t-purple-500 border-r-purple-300 border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1s' }} />
+            <div className="absolute inset-2 rounded-full border border-b-purple-400 border-t-transparent border-r-transparent border-l-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }} />
+            <div className="absolute inset-4 rounded-full bg-stone-900 flex items-center justify-center border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+              <ShieldAlert className="w-7 h-7 text-purple-400 animate-pulse" />
+            </div>
+          </div>
+
+          {/* Display Text */}
+          <div className="space-y-1.5">
+            <h1 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-wider text-white">
+              Admin Control Deck
+            </h1>
+            <p className="text-[10px] text-purple-300 uppercase tracking-widest font-extrabold font-mono">
+              SYSTEM OWNER: <span className="text-white bg-purple-950/60 px-2 py-0.5 border border-purple-500/20">Afroj Alam</span>
+            </p>
+          </div>
+
+          {/* Code Execution Log Console */}
+          <div className="bg-[#030202] border border-stone-850 p-3 h-28 overflow-y-auto font-mono text-[8.5px] text-left space-y-1 rounded-xs select-text scrollbar-thin">
+            {terminalLogs.map((log, idx) => (
+              <div key={idx} className="text-purple-300/90 leading-normal flex items-start gap-1 font-mono">
+                <span className="text-purple-500 select-none shrink-0">&gt;</span>
+                <span>{log}</span>
+              </div>
+            ))}
+            <div className="inline-block w-1.5 h-3 bg-purple-400 animate-pulse vertical-align-middle" />
+          </div>
+
+          {/* Progress bar */}
+          <div className="space-y-2 text-left">
+            <div className="flex items-center justify-between text-[9px] text-stone-400 font-bold uppercase tracking-wider font-mono">
+              <span>Syncing Ledger Indexes</span>
+              <span className="text-purple-400 font-black">{Math.min(100, introProgress)}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-[#141212] border border-stone-850 p-0.5 rounded-none overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-purple-600 to-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.9)] transition-all duration-150 ease-out"
+                style={{ width: `${Math.min(100, introProgress)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Action Button - Skip */}
+          <div className="pt-2">
+            <button
+              onClick={handleEnterWorkspace}
+              className="w-full py-2.5 border border-purple-500 bg-purple-950/20 hover:bg-purple-500 hover:text-black text-purple-300 text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.2)] hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] font-mono"
+            >
+              Enter Workspace
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative min-h-screen bg-[#F4F1EA] overflow-hidden">
-      {/* CINEMATIC FULL-SCREEN BOOT SEQUENCE OVERLAY */}
-      <AnimatePresence>
-        {isIntroActive && (
-          <motion.div
-            key="admin-boot-overlay"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.95, filter: "blur(15px)" }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-[200] bg-[#090807] text-[#FAF8F5] flex flex-col justify-between p-4 sm:p-8 select-none overflow-hidden font-mono"
-          >
-            {/* Elegant Background Grid & Matrix effects */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(168,85,247,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(168,85,247,0.035)_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none" />
-            
-            {/* Continuous scanning line that sweeps vertically */}
-            <motion.div 
-              animate={{ y: ["-10%", "110%", "-10%"] }}
-              transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-              className="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-purple-500/80 to-transparent shadow-[0_0_20px_rgba(168,85,247,0.7)] pointer-events-none"
-              style={{ top: 0 }}
-            />
-
-            {/* Glowing framing borders that pulsate and frame the screen */}
-            <div className="absolute inset-4 sm:inset-6 border border-stone-900 pointer-events-none rounded-xs">
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-purple-500/50 animate-pulse" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-purple-500/50 animate-pulse" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-purple-500/50 animate-pulse" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-purple-500/50 animate-pulse" />
-              
-              {/* Floating micro indicators on border edges */}
-              <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-purple-500 rounded-full animate-ping" />
-              <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-purple-500 rounded-full animate-ping" style={{ animationDelay: "1s" }} />
-            </div>
-
-            {/* TOP BAR INFORMATION HUD */}
-            <div className="flex items-center justify-between w-full z-10 px-4 pt-2">
-              <div className="flex items-start gap-3.5 text-stone-500">
-                <div className="p-2 border border-stone-800 bg-stone-950/70 rounded-xs flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-purple-500 animate-pulse" />
-                </div>
-                <div className="text-left">
-                  <span className="text-[9px] text-stone-400 font-extrabold uppercase tracking-[0.2em] block">CHRONOMETER</span>
-                  <span className="text-sm text-purple-400 font-black tracking-widest font-mono">{liveTime || "04:19:00"}</span>
-                  <span className="text-[8px] text-stone-600 block tracking-wider uppercase font-mono">LATENCY: 12ms // VERIFIED</span>
-                </div>
-              </div>
-
-              <div className="text-right hidden sm:block">
-                <span className="text-[9px] text-stone-400 font-extrabold uppercase tracking-[0.2em] block">CONNECTION INGRESS</span>
-                <span className="text-xs text-[#FAF8F5] font-black tracking-widest">PORT 3000 // STANDALONE</span>
-                <span className="text-[8px] text-stone-600 block tracking-wider uppercase font-mono">PROTOCOLS: ENCRYPTED CRYPTO L5</span>
-              </div>
-            </div>
-
-            {/* MAIN CENTRAL WORKSPACE CONSOLE */}
-            <div className="flex-1 flex flex-col items-center justify-center max-w-xl mx-auto w-full z-10 my-4 px-2">
-              <div className="border-2 border-purple-500/40 bg-[#0c0a09]/95 p-6 sm:p-8 w-full shadow-[0_0_80px_rgba(168,85,247,0.2)] space-y-6 relative rounded-xs">
-                {/* Active target rect lines */}
-                <div className="absolute -top-1.5 -left-1.5 w-6 h-6 border-t-4 border-l-4 border-purple-500" />
-                <div className="absolute -top-1.5 -right-1.5 w-6 h-6 border-t-4 border-r-4 border-purple-500" />
-                <div className="absolute -bottom-1.5 -left-1.5 w-6 h-6 border-b-4 border-l-4 border-purple-500" />
-                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 border-b-4 border-r-4 border-purple-500" />
-
-                {/* Header branding */}
-                <div className="text-center space-y-3">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[9px] font-black uppercase tracking-[0.2em]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
-                    CLEARANCE: CERTIFIED OWNER
-                  </div>
-                  <p className="text-[9px] text-stone-400 font-bold uppercase tracking-[0.25em] block">
-                    ESTABLISHING SECURE ADMIN SESSION
-                  </p>
-
-                  {/* Glowing spinning radar gauge */}
-                  <div className="relative w-20 h-20 mx-auto my-4 flex items-center justify-center">
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                      className="absolute inset-0 border-2 border-purple-500/40 border-t-purple-500 border-b-purple-500 rounded-full"
-                    />
-                    <motion.div 
-                      animate={{ rotate: -360 }}
-                      transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-                      className="absolute inset-1.5 border border-purple-500/20 border-l-purple-500/60 border-r-purple-500/60 rounded-full"
-                    />
-                    <div className="w-13 h-13 bg-stone-950/90 border border-stone-800 rounded-full flex items-center justify-center relative shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                      <ShieldAlert className="w-6 h-6 text-purple-400 animate-pulse" />
-                    </div>
-                  </div>
-
-                  <h2 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-widest text-[#FAF8F5] leading-none">
-                    ADMIN CONTROL DECK
-                  </h2>
-
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-950/80 border border-purple-500/40 text-purple-200 text-[10px] font-black uppercase tracking-widest rounded-xs">
-                    SYSTEM OWNER: <span className="text-white font-extrabold bg-purple-900/50 px-1 py-0.5 rounded-xs">AFROJ ALAM</span>
-                  </div>
-                </div>
-
-                {/* Custom terminal console logs display */}
-                <div className="bg-[#060505] border border-stone-850 p-3.5 h-28 overflow-y-auto font-mono text-[9px] text-left space-y-1.5 rounded-xs select-text scrollbar-thin">
-                  {terminalLogs.map((log, idx) => (
-                    <div key={idx} className="text-stone-300 leading-normal flex items-start gap-1.5 font-mono">
-                      <span className="text-purple-500 select-none shrink-0">&gt;</span>
-                      <span>{log}</span>
-                    </div>
-                  ))}
-                  {introProgress < 100 && (
-                    <div className="inline-block w-1.5 h-3 bg-purple-500 animate-pulse" />
-                  )}
-                </div>
-
-                {/* Calibration progress bar */}
-                <div className="space-y-2 text-left">
-                  <div className="flex items-center justify-between text-[9px] text-stone-400 font-bold uppercase tracking-wider font-mono">
-                    <span>SYNCING LEDGER INDEXES</span>
-                    <span className="text-purple-400 font-black">{Math.min(100, introProgress)}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-[#120f0d] border border-stone-850 p-0.5 rounded-none overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-400 shadow-[0_0_12px_rgba(168,85,247,0.8)] transition-all duration-150 ease-out"
-                      style={{ width: `${Math.min(100, introProgress)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Interactive entrance activation button */}
-                <div className="pt-2">
-                  <button
-                    onClick={handleEnterWorkspace}
-                    className={`w-full py-3.5 border text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer font-mono flex items-center justify-center gap-2 ${
-                      introProgress >= 100
-                        ? "border-purple-500 bg-purple-500/10 hover:bg-purple-500 hover:text-stone-950 text-purple-300 shadow-[0_0_30px_rgba(168,85,247,0.3)] active:scale-95"
-                        : "border-stone-850 bg-stone-950/40 text-stone-600 cursor-not-allowed"
-                    }`}
-                    disabled={introProgress < 100}
-                  >
-                    <span>ENTER WORKSPACE</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* HUD BOTTOM BAR */}
-            <div className="flex items-center justify-between w-full z-10 px-4 pb-2 text-[8px] text-stone-500 font-mono select-none">
-              <span className="uppercase">AUTOWORLD PLATFORM ENGINE v2.4 // LEDGER MASTER CONTROLS</span>
-              <span className="hidden sm:inline uppercase">SYSTEM INFRASTRUCTURE STATUS: STABLE AND DEPLOYED ON PORT 3000</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.995, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-        id="admin-desk-view" 
-        className="relative bg-[#F4F1EA] py-10 min-h-screen overflow-hidden"
-      >
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.995, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+      id="admin-desk-view" 
+      className="relative bg-[#F4F1EA] py-10 min-h-screen overflow-hidden"
+    >
       
       {/* Continuous Floating Ambient Corner decorations & Neon borders */}
       <div className="absolute top-6 left-6 w-14 h-14 border-t-2 border-l-2 border-purple-400/40 pointer-events-none animate-pulse" />
@@ -1664,19 +1427,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               </span>
               <h2 className="text-lg font-serif font-black text-stone-950 uppercase flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-stone-900" />
-                {chartMode === "status" 
-                  ? "Firestore Listings Status Distribution" 
-                  : chartMode === "active-categories" 
-                    ? "Active Listings Category Breakdown" 
-                    : "30-Day Listing Publication Activity"
-                }
+                {chartMode === "status" ? "Firestore Listings Status Distribution" : "Active Listings Category Breakdown"}
               </h2>
               <p className="text-stone-500 text-[10px] uppercase font-mono leading-relaxed">
                 {chartMode === "status" 
                   ? "Live visualization of Active, Pending, and Sold listings created by users in production"
-                  : chartMode === "active-categories"
-                    ? "Granular breakdown of Active published listings categorized by vehicle type (SUV, Sedan, Motorcycle, etc.)"
-                    : "Time-series representation of newly created vehicle listings over the last 30 days"
+                  : "Granular breakdown of Active published listings categorized by vehicle type (SUV, Sedan, Motorcycle, etc.)"
                 }
               </p>
             </div>
@@ -1707,17 +1463,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                 >
                   Active Categories
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { playSynthBeep(950, 0.05); chartMode !== "activity-30" && setChartMode("activity-30"); }}
-                  className={`px-3 py-1.5 transition duration-150 cursor-pointer ${
-                    chartMode === "activity-30"
-                      ? "bg-amber-600 text-white shadow-sm"
-                      : "text-stone-600 hover:text-stone-950"
-                  }`}
-                >
-                  30-Day Activity
-                </button>
               </div>
 
               {/* Status Indicators Legend */}
@@ -1737,7 +1482,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                       <span>Sold ({listings.filter(l => l.status === "sold").length})</span>
                     </div>
                   </>
-                ) : chartMode === "active-categories" ? (
+                ) : (
                   <>
                     <div className="flex items-center gap-1">
                       <span className="w-2 h-2 bg-[#16a34a] border border-stone-950 rounded-xs" />
@@ -1752,13 +1497,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                       <span>Motorcycle ({listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "motorcycle").length})</span>
                     </div>
                   </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 bg-amber-500 border border-stone-950 rounded-xs" />
-                      <span>30-Day Sum ({listings.length} Specimen)</span>
-                    </div>
-                  </>
                 )}
               </div>
             </div>
@@ -1766,103 +1504,63 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
           <div className="w-full h-64 md:h-80">
             <ResponsiveContainer width="100%" height="100%">
-              {chartMode === "activity-30" ? (
-                <LineChart
-                  data={get30DaysListingActivity()}
-                  margin={{ top: 15, right: 25, left: -20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#1c1917"
-                    tick={{ fontSize: 8, fontFamily: "monospace", fontWeight: "bold" }}
-                  />
-                  <YAxis 
-                    stroke="#1c1917"
-                    tick={{ fontSize: 9, fontFamily: "monospace", fontWeight: "bold" }}
-                    allowDecimals={false}
-                  />
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-[#FAF8F5] border-2 border-stone-950 p-2.5 font-mono text-[9px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                            <p className="text-stone-950 font-black">Date: {payload[0].payload.fullDate}</p>
-                            <p className="text-amber-600 mt-1">Injected: {payload[0].value} listings</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }} 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="count" 
-                    stroke="#d97706" 
-                    strokeWidth={3} 
-                    dot={{ r: 4, stroke: '#1c1917', strokeWidth: 1.5, fill: '#f59e0b' }}
-                    activeDot={{ r: 6, stroke: '#1c1917', strokeWidth: 2, fill: '#ffffff' }}
-                  />
-                </LineChart>
-              ) : (
-                <BarChart
-                  data={
-                    chartMode === "status"
+              <BarChart
+                data={
+                  chartMode === "status"
+                    ? [
+                        { name: "Active", count: listings.filter(l => l.status === "active").length },
+                        { name: "Pending", count: listings.filter(l => l.status === "pending" || !l.status).length },
+                        { name: "Sold", count: listings.filter(l => l.status === "sold").length }
+                      ]
+                    : [
+                        { name: "SUV", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "suv").length },
+                        { name: "Sedan / Car", count: listings.filter(l => l.status === "active" && (l.category?.toLowerCase() === "car" || l.category?.toLowerCase() === "sedan" || !l.category)).length },
+                        { name: "Motorcycle", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "motorcycle").length },
+                        { name: "Truck", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "truck").length },
+                        { name: "Van", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "van").length },
+                        { name: "Bicycle", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "bicycle").length },
+                        { name: "Commercial", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "commercial").length },
+                        { name: "Other", count: listings.filter(l => l.status === "active" && (l.category?.toLowerCase() === "other" || !["suv", "car", "sedan", "motorcycle", "truck", "van", "bicycle", "commercial"].includes(l.category?.toLowerCase() || ""))).length }
+                      ]
+                }
+                margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#1c1917"
+                  tick={{ fontSize: 10, fontFamily: "monospace", fontWeight: "bold" }}
+                />
+                <YAxis 
+                  stroke="#1c1917"
+                  tick={{ fontSize: 10, fontFamily: "monospace", fontWeight: "bold" }}
+                  allowDecimals={false}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.03)' }} />
+                <Bar dataKey="count" radius={[2, 2, 0, 0]} maxBarSize={60}>
+                  {
+                    (chartMode === "status"
                       ? [
-                          { name: "Active", count: listings.filter(l => l.status === "active").length },
-                          { name: "Pending", count: listings.filter(l => l.status === "pending" || !l.status).length },
-                          { name: "Sold", count: listings.filter(l => l.status === "sold").length }
+                          { fill: "#16a34a" },
+                          { fill: "#d97706" },
+                          { fill: "#4b5563" }
                         ]
                       : [
-                          { name: "SUV", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "suv").length },
-                          { name: "Sedan / Car", count: listings.filter(l => l.status === "active" && (l.category?.toLowerCase() === "car" || l.category?.toLowerCase() === "sedan" || !l.category)).length },
-                          { name: "Motorcycle", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "motorcycle").length },
-                          { name: "Truck", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "truck").length },
-                          { name: "Van", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "van").length },
-                          { name: "Bicycle", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "bicycle").length },
-                          { name: "Commercial", count: listings.filter(l => l.status === "active" && l.category?.toLowerCase() === "commercial").length },
-                          { name: "Other", count: listings.filter(l => l.status === "active" && (l.category?.toLowerCase() === "other" || !["suv", "car", "sedan", "motorcycle", "truck", "van", "bicycle", "commercial"].includes(l.category?.toLowerCase() || ""))).length }
+                          { fill: "#16a34a" },
+                          { fill: "#2563eb" },
+                          { fill: "#ea580c" },
+                          { fill: "#dc2626" },
+                          { fill: "#7c3aed" },
+                          { fill: "#db2777" },
+                          { fill: "#0d9488" },
+                          { fill: "#4b5563" }
                         ]
+                    ).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} stroke="#1c1917" strokeWidth={1.5} />
+                    ))
                   }
-                  margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#1c1917"
-                    tick={{ fontSize: 10, fontFamily: "monospace", fontWeight: "bold" }}
-                  />
-                  <YAxis 
-                    stroke="#1c1917"
-                    tick={{ fontSize: 10, fontFamily: "monospace", fontWeight: "bold" }}
-                    allowDecimals={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.03)' }} />
-                  <Bar dataKey="count" radius={[2, 2, 0, 0]} maxBarSize={60}>
-                    {
-                      (chartMode === "status"
-                        ? [
-                            { fill: "#16a34a" },
-                            { fill: "#d97706" },
-                            { fill: "#4b5563" }
-                          ]
-                        : [
-                            { fill: "#16a34a" },
-                            { fill: "#2563eb" },
-                            { fill: "#ea580c" },
-                            { fill: "#dc2626" },
-                            { fill: "#7c3aed" },
-                            { fill: "#db2777" },
-                            { fill: "#0d9488" },
-                            { fill: "#4b5563" }
-                          ]
-                      ).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} stroke="#1c1917" strokeWidth={1.5} />
-                      ))
-                    }
-                  </Bar>
-                </BarChart>
-              )}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -1915,18 +1613,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           >
             <MessageSquare className="w-4 h-4 shrink-0 text-emerald-600" />
             User Feedback ({feedbacks.length})
-          </button>
-
-          <button
-            onClick={() => { playSynthBeep(1000, 0.05); setActiveSubSection("audit"); }}
-            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
-              activeSubSection === "audit"
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
-            }`}
-          >
-            <Clock className="w-4 h-4 shrink-0 text-amber-500 animate-pulse" />
-            Admin Audit Log ({auditLogs.length})
           </button>
         </div>
 
@@ -3201,133 +2887,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                 )}
               </div>
             )}
-
-            {/* SUBSECTION 5: ADMIN AUDIT LOG */}
-            {activeSubSection === "audit" && (
-              <div className="space-y-6">
-                <div className="bg-[#FAF8F5] border border-stone-300 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xs uppercase font-extrabold text-amber-600 tracking-wider font-mono flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-500 animate-pulse" />
-                      SECURE AUDIT PIPELINE / SYSTEM AUDIT LOGS:
-                    </h2>
-                    <p className="text-[10px] text-stone-400 font-mono mt-0.5">
-                      Immutable record of admin actions synchronized live from Google Cloud Firestore collection 'audit_logs'
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={async () => { playSynthBeep(600, 0.05); await loadAuditLogs(); showToast("Audit logs refreshed!", "success"); }}
-                      className="p-1.5 border border-stone-300 hover:bg-stone-100 text-stone-700 font-mono uppercase text-[9px] font-bold flex items-center gap-1 cursor-pointer"
-                      title="Sync system pipeline"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      Sync Tunnels
-                    </button>
-                    <span className="text-[10px] font-bold px-2.5 py-1 bg-stone-900 text-white uppercase font-mono tracking-widest shrink-0">
-                      Total Records: {auditLogs.length}
-                    </span>
-                  </div>
-                </div>
-
-                {auditLogs.length === 0 ? (
-                  <div className="bg-[#FAF8F5] border border-stone-300 py-20 text-center">
-                    <Clock className="w-12 h-12 text-stone-300 mx-auto mb-3 animate-spin-slow" />
-                    <h3 className="text-md uppercase font-bold tracking-widest text-stone-600">
-                      No security audit records detected.
-                    </h3>
-                    <p className="text-stone-400 text-xs mt-1 uppercase font-mono">
-                      Actions taken within this backoffice console are registered securely and immutably
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3.5 max-h-[700px] overflow-y-auto pr-1">
-                    {auditLogs.map((log, idx) => {
-                      const dateObj = new Date(log.timestamp);
-                      const displayDate = isNaN(dateObj.getTime()) 
-                        ? "Time Unspecified" 
-                        : dateObj.toLocaleDateString("en-IN") + " " + dateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-
-                      let borderAccent = "border-l-stone-500";
-                      let badgeColor = "bg-stone-100 text-stone-850 border-stone-300";
-                      let actionLabel = log.actionType || "SYSTEM";
-
-                      if (log.actionType === "delete_listing") {
-                        borderAccent = "border-l-red-600";
-                        badgeColor = "bg-red-50 text-red-950 border-red-200";
-                        actionLabel = "PURGE_SPECIMEN";
-                      } else if (log.actionType === "create_listing") {
-                        borderAccent = "border-l-emerald-600";
-                        badgeColor = "bg-emerald-50 text-emerald-950 border-emerald-200";
-                        actionLabel = "INJECT_SPECIMEN";
-                      } else if (log.actionType === "toggle_featured") {
-                        borderAccent = "border-l-purple-600";
-                        badgeColor = "bg-purple-50 text-purple-950 border-purple-200";
-                        actionLabel = "TAG_FEATURED";
-                      } else if (log.actionType === "toggle_verified") {
-                        borderAccent = "border-l-blue-600";
-                        badgeColor = "bg-blue-50 text-blue-950 border-blue-200";
-                        actionLabel = "TAG_VERIFIED";
-                      } else if (log.actionType === "toggle_urgent") {
-                        borderAccent = "border-l-amber-600";
-                        badgeColor = "bg-amber-50 text-amber-950 border-amber-200";
-                        actionLabel = "TAG_HOT_DEAL";
-                      } else if (log.actionType === "status_change") {
-                        borderAccent = "border-l-amber-500";
-                        badgeColor = "bg-amber-50 text-amber-950 border-amber-200";
-                        actionLabel = "STATUS_OVERRIDE";
-                      } else if (log.actionType === "delete_message") {
-                        borderAccent = "border-l-rose-500";
-                        badgeColor = "bg-rose-50 text-rose-950 border-rose-200";
-                        actionLabel = "PURGE_INQUIRY";
-                      } else if (log.actionType === "delete_feedback") {
-                        borderAccent = "border-l-rose-600";
-                        badgeColor = "bg-rose-50 text-rose-950 border-rose-200";
-                        actionLabel = "PURGE_FEEDBACK";
-                      } else if (log.actionType === "edit_listing") {
-                        borderAccent = "border-l-sky-500";
-                        badgeColor = "bg-sky-50 text-sky-950 border-sky-200";
-                        actionLabel = "SPECIMEN_MODIFIED";
-                      }
-
-                      return (
-                        <motion.div
-                          key={log.id || idx}
-                          initial={{ opacity: 0, x: -5 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: Math.min(idx * 0.04, 0.4) }}
-                          className={`bg-[#FAF8F5] border border-stone-200 border-l-4 ${borderAccent} p-4 flex flex-col md:flex-row md:items-center justify-between gap-3.5 transition duration-200 hover:bg-stone-50`}
-                        >
-                          <div className="space-y-1.5 flex-grow">
-                            <div className="flex flex-wrap items-center gap-2.5">
-                              <span className={`text-[9px] font-mono font-black border px-2 py-0.5 uppercase tracking-widest ${badgeColor}`}>
-                                {actionLabel}
-                              </span>
-                              <span className="text-[10px] text-stone-450 font-bold font-mono">
-                                {displayDate}
-                              </span>
-                              <span className="text-[9px] text-stone-400 font-mono lowercase">
-                                GUID: {log.id ? log.id.slice(0, 10) : "N/A"}
-                              </span>
-                            </div>
-                            <p className="text-xs font-mono font-bold text-stone-850 leading-relaxed uppercase">
-                              {log.description}
-                            </p>
-                          </div>
-                          
-                          <div className="text-right shrink-0 border-t md:border-t-0 pt-2.5 md:pt-0 border-stone-200">
-                            <span className="text-[10px] text-stone-500 font-mono block">OPERATOR</span>
-                            <span className="text-xs font-mono font-bold text-stone-800 block">
-                              {log.adminEmail || "afrojalamansari461@gmail.com"}
-                            </span>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -3440,6 +2999,5 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         ))}
       </div>
     </motion.div>
-    </div>
   );
 }

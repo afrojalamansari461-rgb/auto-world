@@ -111,19 +111,6 @@
         "status": { "type": "string", "enum": ["active", "archived", "resolved"] }
       },
       "required": ["id", "text", "category", "timestamp", "status"]
-    },
-    "AdminAuditLog": {
-      "title": "AdminAuditLog",
-      "description": "Immutable log tracking security, state, and editing operations executed by the system administrator",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "adminEmail": { "type": "string" },
-        "actionType": { "type": "string" },
-        "description": { "type": "string" },
-        "timestamp": { "type": "string" }
-      },
-      "required": ["id", "adminEmail", "actionType", "description", "timestamp"]
     }
   },
   "firestore": {
@@ -150,10 +137,6 @@
     "feedbacks": {
       "schema": "UserFeedback",
       "description": "Collection tracking user feedback submissions"
-    },
-    "audit_logs": {
-      "schema": "AdminAuditLog",
-      "description": "Immutable collection tracking administrator actions and state updates"
     }
   }
 }

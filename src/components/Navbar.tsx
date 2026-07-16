@@ -40,16 +40,19 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const isUserAdmin = currentUser?.email === "afrojalamansari461@gmail.com";
+
   const navItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "buy", label: "Buy", icon: Search },
     { id: "sell", label: "Sell", icon: Tag },
     { id: "premium", label: "Premium", icon: Crown },
     { id: "contact", label: "Contact", icon: Mail },
-    ...(currentUser?.email === "afrojalamansari461@gmail.com"
-      ? [{ id: "admin", label: "Admin Panel", icon: ShieldAlert }]
-      : []),
   ];
+
+  if (isUserAdmin) {
+    navItems.push({ id: "admin", label: "Admin Panel", icon: ShieldAlert });
+  }
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId);
