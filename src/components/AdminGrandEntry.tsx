@@ -172,11 +172,25 @@ export const AdminGrandEntry: React.FC<AdminGrandEntryProps> = ({ isOpen, onClos
                   <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest block bg-amber-500/10 py-1 max-w-xs mx-auto">
                     ✓ SECURE HANDSHAKE COMPLETED
                   </span>
-                  <h3 className="text-lg sm:text-xl font-serif font-black tracking-tight text-white uppercase">
-                    WELCOME BACK, AFROJ ALAM ANSARI
-                  </h3>
-                  <p className="text-[10px] text-stone-400 leading-normal max-w-sm mx-auto">
-                    Full database editing triggers, hidden specification toggles, and premium override pipelines are ready.
+                  
+                  {/* Cinematic Welcome Administrator text reveal effect */}
+                  <div className="flex justify-center overflow-hidden py-1">
+                    <motion.h3 
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: "auto", opacity: 1 }}
+                      transition={{ duration: 1.2, ease: "easeInOut" }}
+                      className="text-lg sm:text-xl font-mono font-black tracking-widest text-amber-500 uppercase whitespace-nowrap border-r-2 border-amber-500 pr-1 animate-pulse"
+                      style={{ textShadow: "0 0 10px rgba(245, 158, 11, 0.5)" }}
+                    >
+                      WELCOME ADMINISTRATOR
+                    </motion.h3>
+                  </div>
+
+                  <p className="text-[10px] text-stone-400 leading-normal max-w-sm mx-auto uppercase">
+                    Operator: afrojalamansari461@gmail.com
+                  </p>
+                  <p className="text-[9px] text-stone-500 leading-normal max-w-sm mx-auto">
+                    Full database editing triggers, hidden specification toggles, and premium override pipelines are decrypted and ready.
                   </p>
                 </motion.div>
               )}

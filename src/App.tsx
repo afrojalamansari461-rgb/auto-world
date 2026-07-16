@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -14,7 +14,7 @@ import FeedbackWidget from "./components/FeedbackWidget";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
-import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
@@ -78,6 +78,30 @@ export default function App() {
   const [editPrice, setEditPrice] = useState(0);
   const [editMileage, setEditMileage] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editPhotos, setEditPhotos] = useState<{ src: string; alt: string }[]>([]);
+
+  // Extra detailed spec states for advanced admin editing
+  const [editMake, setEditMake] = useState("");
+  const [editModel, setEditModel] = useState("");
+  const [editYear, setEditYear] = useState(2023);
+  const [editCategory, setEditCategory] = useState("");
+  const [editFuel, setEditFuel] = useState("");
+  const [editTransmission, setEditTransmission] = useState("");
+  const [editEngine, setEditEngine] = useState("");
+  const [editColor, setEditColor] = useState("");
+  const [editOwners, setEditOwners] = useState("");
+  const [editRegNumber, setEditRegNumber] = useState("");
+  const [editSellerName, setEditSellerName] = useState("");
+  const [editSellerEmail, setEditSellerEmail] = useState("");
+  const [editSellerPhone, setEditSellerPhone] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editSections, setEditSections] = useState({
+    general: true,
+    mechanical: false,
+    contact: false
+  });
+
   const [hasPaidPass, setHasPaidPass] = useState<boolean>(false);
   const [showAdminGrandEntry, setShowAdminGrandEntry] = useState<boolean>(false);
 
@@ -376,6 +400,13 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Redirect non-admin users if they are on the "admin" tab
+  useEffect(() => {
+    if (activeTab === "admin" && currentUser?.email !== "afrojalamansari461@gmail.com") {
+      setActiveTab("home");
+    }
+  }, [currentUser, activeTab]);
+
   // load saved favorites on auth state change
   useEffect(() => {
     let ignore = false;
@@ -530,8 +561,17 @@ export default function App() {
     }
   };
 
-  const handleQuickView = (vehicle: Vehicle) => {
+  const handleQuickView = (vehicle: Vehicle, editMode?: boolean) => {
     setSelectedVehicle(vehicle);
+    if (editMode) {
+      setEditTitle(vehicle.title);
+      setEditImage(vehicle.image);
+      setEditPrice(vehicle.price);
+      setEditMileage(vehicle.mileage);
+      setEditDesc(vehicle.description || "");
+      setEditPhotos(vehicle.photos ? [...vehicle.photos] : [{ src: vehicle.image, alt: vehicle.title }]);
+      setIsAdminEditMode(true);
+    }
   };
 
   // Find user listing specifics for details modal
@@ -752,24 +792,68 @@ export default function App() {
 
   const handleStartAdminEdit = () => {
     if (!selectedVehicle) return;
-    setEditTitle(selectedVehicle.title);
-    setEditImage(selectedVehicle.image);
-    setEditPrice(selectedVehicle.price);
-    setEditMileage(selectedVehicle.mileage);
+    setEditTitle(selectedVehicle.title || "");
+    setEditImage(selectedVehicle.image || "");
+    setEditPrice(selectedVehicle.price || 0);
+    setEditMileage(selectedVehicle.mileage || "");
     setEditDesc(selectedVehicle.description || "");
+    setEditPhotos(selectedVehicle.photos ? [...selectedVehicle.photos] : [{ src: selectedVehicle.image || "", alt: selectedVehicle.title || "" }]);
+    
+    setEditMake(selectedVehicle.make || "");
+    setEditModel(selectedVehicle.model || "");
+    setEditYear(selectedVehicle.year || 2023);
+    setEditCategory(selectedVehicle.category || "");
+    setEditFuel(selectedVehicle.fuel || "");
+    setEditTransmission(selectedVehicle.transmission || "");
+    setEditEngine(selectedVehicle.engine || "");
+    setEditColor(selectedVehicle.color || "");
+    setEditOwners(selectedVehicle.owners || "");
+    setEditRegNumber(selectedVehicle.regNumber || "");
+    setEditSellerName(selectedVehicle.sellerName || "");
+    setEditSellerEmail(selectedVehicle.sellerEmail || "");
+    setEditSellerPhone(selectedVehicle.sellerPhone || "");
+    setEditLocation(selectedVehicle.location || "");
+    setEditStatus(selectedVehicle.status || "active");
+    
+    // Default open sections: General Info expanded, others collapsed by default
+    setEditSections({
+      general: true,
+      mechanical: false,
+      contact: false
+    });
+
     setIsAdminEditMode(true);
   };
 
   const handleSaveAdminEdits = async () => {
     if (!selectedVehicle) return;
     
+    const finalPhotos = editPhotos.filter(p => p.src.trim() !== "");
+    const primaryImage = finalPhotos.length > 0 ? finalPhotos[0].src.trim() : editImage.trim();
+
     const updatedVehicle = {
       ...selectedVehicle,
       title: editTitle.trim(),
-      image: editImage.trim(),
+      image: primaryImage,
       price: editPrice,
       mileage: editMileage.trim(),
-      description: editDesc.trim()
+      description: editDesc.trim(),
+      photos: finalPhotos,
+      make: editMake.trim(),
+      model: editModel.trim(),
+      year: Number(editYear),
+      category: editCategory.trim(),
+      fuel: editFuel.trim(),
+      transmission: editTransmission.trim(),
+      engine: editEngine.trim(),
+      color: editColor.trim(),
+      owners: editOwners.trim(),
+      regNumber: editRegNumber.trim(),
+      sellerName: editSellerName.trim(),
+      sellerEmail: editSellerEmail.trim(),
+      sellerPhone: editSellerPhone.trim(),
+      location: editLocation.trim(),
+      status: editStatus as "pending" | "active" | "sold"
     };
     
     try {
@@ -779,14 +863,26 @@ export default function App() {
         const docRef = doc(db, "listings", selectedVehicle.listingId);
         await updateDoc(docRef, {
           title: editTitle.trim(),
-          image: editImage.trim(),
-          photos: [
-            { src: editImage.trim(), alt: editTitle.trim() },
-            ...(selectedVehicle.photos ? selectedVehicle.photos.slice(1) : [])
-          ],
+          image: primaryImage,
+          photos: finalPhotos,
           price: editPrice,
           mileage: editMileage.trim(),
-          description: editDesc.trim()
+          description: editDesc.trim(),
+          make: editMake.trim(),
+          model: editModel.trim(),
+          year: Number(editYear),
+          category: editCategory.trim(),
+          fuel: editFuel.trim(),
+          transmission: editTransmission.trim(),
+          engine: editEngine.trim(),
+          color: editColor.trim(),
+          owners: editOwners.trim(),
+          regNumber: editRegNumber.trim(),
+          sellerName: editSellerName.trim(),
+          sellerEmail: editSellerEmail.trim(),
+          sellerPhone: editSellerPhone.trim(),
+          location: editLocation.trim(),
+          status: editStatus
         });
         
         // Also update local storage cached user listings if any
@@ -800,13 +896,26 @@ export default function App() {
                   return {
                     ...item,
                     title: editTitle.trim(),
-                    photos: [
-                      { src: editImage.trim(), alt: editTitle.trim() },
-                      ...(item.photos ? item.photos.slice(1) : [])
-                    ],
+                    image: primaryImage,
+                    photos: finalPhotos,
                     price: editPrice,
                     mileage: editMileage.trim(),
-                    description: editDesc.trim()
+                    description: editDesc.trim(),
+                    make: editMake.trim(),
+                    model: editModel.trim(),
+                    year: Number(editYear),
+                    category: editCategory.trim(),
+                    fuel: editFuel.trim(),
+                    transmission: editTransmission.trim(),
+                    engine: editEngine.trim(),
+                    color: editColor.trim(),
+                    owners: editOwners.trim(),
+                    regNumber: editRegNumber.trim(),
+                    sellerName: editSellerName.trim(),
+                    sellerEmail: editSellerEmail.trim(),
+                    sellerPhone: editSellerPhone.trim(),
+                    location: editLocation.trim(),
+                    status: editStatus
                   };
                 }
                 return item;
@@ -829,10 +938,26 @@ export default function App() {
         
         overrides[selectedVehicle.id] = {
           title: editTitle.trim(),
-          image: editImage.trim(),
+          image: primaryImage,
           price: editPrice,
           mileage: editMileage.trim(),
-          description: editDesc.trim()
+          description: editDesc.trim(),
+          photos: finalPhotos,
+          make: editMake.trim(),
+          model: editModel.trim(),
+          year: Number(editYear),
+          category: editCategory.trim(),
+          fuel: editFuel.trim(),
+          transmission: editTransmission.trim(),
+          engine: editEngine.trim(),
+          color: editColor.trim(),
+          owners: editOwners.trim(),
+          regNumber: editRegNumber.trim(),
+          sellerName: editSellerName.trim(),
+          sellerEmail: editSellerEmail.trim(),
+          sellerPhone: editSellerPhone.trim(),
+          location: editLocation.trim(),
+          status: editStatus
         };
         
         localStorage.setItem("autoWorld_default_overrides", JSON.stringify(overrides));
@@ -841,6 +966,22 @@ export default function App() {
       setSelectedVehicle(updatedVehicle);
       setIsAdminEditMode(false);
       showToast("Dossier specifications updated successfully!", "success");
+      
+      // Record audit log
+      try {
+        const id = "log_" + Math.random().toString(36).substring(2, 11);
+        const email = currentUser?.email || "afrojalamansari461@gmail.com";
+        await addDoc(collection(db, "audit_logs"), {
+          id,
+          adminEmail: email,
+          actionType: "edit_listing",
+          description: `Updated dossier specifications of vehicle "${editTitle.trim()}" (ID: ${selectedVehicle.listingId || selectedVehicle.id})`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn("Failed to write edit audit log:", err);
+      }
+
       window.dispatchEvent(new Event("autoWorld_db_update"));
     } catch (err: any) {
       console.error("Failed to save admin edits:", err);
@@ -963,7 +1104,7 @@ export default function App() {
               <ContactTab showToast={showToast} currentUser={currentUser} />
             )}
 
-            {activeTab === "admin" && (
+            {activeTab === "admin" && currentUser?.email === "afrojalamansari461@gmail.com" && (
               <AdminPanel 
                 showToast={showToast} 
                 currentUser={currentUser} 
@@ -1021,8 +1162,8 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Left Column: Image and Image presets */}
-                    <div className="space-y-4">
+                    {/* Left Column: Image and Multi-Image Gallery Editor */}
+                    <div className="space-y-5">
                       <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 block border-b border-stone-150 pb-1">Media Corrective Vault</span>
                       
                       {/* Live preview */}
@@ -1036,26 +1177,106 @@ export default function App() {
                           }}
                         />
                         <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-stone-900/85 text-white text-[8px] font-mono uppercase tracking-wider">
-                          Live Preview Frame
+                          Live Showcase Image Preview
                         </div>
                       </div>
 
-                      {/* Image URL Input */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Custom Image Resource URL</label>
-                        <input
-                          type="text"
-                          value={editImage}
-                          onChange={(e) => setEditImage(e.target.value)}
-                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono text-stone-850 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                          placeholder="https://example.com/car.jpg"
-                        />
+                      {/* Multi-Image List Editor */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Dossier Image Gallery ({editPhotos.length} items)</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditPhotos([...editPhotos, { src: "", alt: `${editTitle} View` }]);
+                            }}
+                            className="px-2.5 py-1 bg-stone-900 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-stone-800 transition rounded-none cursor-pointer"
+                          >
+                            + Add Image Slot
+                          </button>
+                        </div>
+                        
+                        <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1 border border-stone-200 p-2.5 bg-white">
+                          {editPhotos.map((photo, index) => (
+                            <div key={index} className="flex flex-col sm:flex-row gap-2 border-b border-stone-100 pb-2.5 last:border-b-0 last:pb-0">
+                              <div className="w-14 h-10 border border-stone-350 shrink-0 bg-stone-100 relative">
+                                <img
+                                  src={photo.src}
+                                  alt={`Slot ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
+                                  }}
+                                />
+                                <span className="absolute bottom-0 right-0 bg-stone-950/80 text-[7px] text-white px-1 py-0.2 font-mono">
+                                  #{index + 1}
+                                </span>
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    value={photo.src}
+                                    onChange={(e) => {
+                                      const newPhotos = [...editPhotos];
+                                      newPhotos[index].src = e.target.value;
+                                      setEditPhotos(newPhotos);
+                                      if (index === 0) {
+                                        setEditImage(e.target.value);
+                                      }
+                                    }}
+                                    className="w-full bg-[#FAF8F5] border border-stone-300 p-1.5 text-[10px] font-mono text-stone-850 focus:outline-none"
+                                    placeholder="Image URL https://..."
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newPhotos = editPhotos.filter((_, i) => i !== index);
+                                      setEditPhotos(newPhotos);
+                                      if (newPhotos.length > 0 && index === 0) {
+                                        setEditImage(newPhotos[0].src);
+                                      }
+                                    }}
+                                    className="p-1.5 bg-red-50 text-red-650 border border-red-200 hover:bg-red-100 text-[10px] uppercase font-bold cursor-pointer"
+                                    title="Remove this image slot"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                                <div className="flex items-center justify-between text-[8px] font-mono text-stone-500">
+                                  <span>Alt label: {photo.alt || "None"}</span>
+                                  {index === 0 ? (
+                                    <span className="text-amber-650 font-extrabold uppercase">★ Primary Showcase Image</span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        // Move to top (make primary)
+                                        const newPhotos = [...editPhotos];
+                                        const [target] = newPhotos.splice(index, 1);
+                                        newPhotos.unshift(target);
+                                        setEditPhotos(newPhotos);
+                                        setEditImage(target.src);
+                                      }}
+                                      className="text-stone-700 hover:text-stone-950 underline font-bold cursor-pointer"
+                                    >
+                                      Make Primary Showcase
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {editPhotos.length === 0 && (
+                            <p className="text-[10px] text-stone-500 font-mono text-center py-4">No images listed. Click "+ Add Image Slot" to insert images.</p>
+                          )}
+                        </div>
                       </div>
 
                       {/* Presets Grid */}
-                      <div className="space-y-1.5 pt-2">
+                      <div className="space-y-1.5 pt-1">
                         <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700 block">Clear & High-Quality Image Presets</label>
-                        <span className="text-[9px] text-stone-400 block leading-tight">If the original listing image is blurred or unclear, select one of these professional presets:</span>
+                        <span className="text-[9px] text-stone-400 block leading-tight">Apply preset to slot #1 showcase image:</span>
                         <div className="grid grid-cols-2 gap-1.5 pt-1">
                           {[
                             { label: "Premium SUV (High Res)", url: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1000" },
@@ -1068,10 +1289,19 @@ export default function App() {
                             <button
                               key={p.label}
                               type="button"
-                              onClick={() => setEditImage(p.url)}
+                              onClick={() => {
+                                if (editPhotos.length > 0) {
+                                  const newPhotos = [...editPhotos];
+                                  newPhotos[0].src = p.url;
+                                  setEditPhotos(newPhotos);
+                                } else {
+                                  setEditPhotos([{ src: p.url, alt: `${editTitle} Primary` }]);
+                                }
+                                setEditImage(p.url);
+                              }}
                               className={`p-2 text-left border rounded-xs text-[10px] font-bold uppercase cursor-pointer transition ${
                                 editImage === p.url
-                                  ? "bg-amber-500/10 border-amber-500 text-amber-900"
+                                  ? "bg-amber-550/10 border-amber-500 text-amber-900"
                                   : "bg-white hover:bg-stone-50 border-stone-200 text-stone-600"
                               }`}
                             >
@@ -1083,56 +1313,365 @@ export default function App() {
                     </div>
 
                     {/* Right Column: Spec fields */}
-                    <div className="space-y-4">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 block border-b border-stone-150 pb-1">Spec Data Points</span>
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                        <span className="text-[11px] font-mono uppercase tracking-widest text-stone-500 font-bold block">Spec Dossier Database Fields</span>
+                        <span className="text-[9px] font-mono text-amber-600 bg-amber-50 px-2 py-0.5 border border-amber-200 font-extrabold uppercase">Multi-Part Editor</span>
+                      </div>
                       
-                      {/* Title */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Vehicle Title (Name)</label>
-                        <input
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-sm font-serif font-black text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                          placeholder="e.g. Toyota Fortuner 2.8L"
-                        />
-                      </div>
+                      <div className="space-y-4">
+                        {/* 1. GENERAL INFO SECTION */}
+                        <div className="border border-stone-250 bg-white/70 p-4 transition-all duration-300 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+                          <button
+                            type="button"
+                            onClick={() => setEditSections(prev => ({ ...prev, general: !prev.general }))}
+                            className="w-full flex items-center justify-between text-left cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 bg-amber-100 rounded-none flex items-center justify-center border border-amber-300 shrink-0">
+                                <Info className="w-4 h-4 text-amber-700" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-sans uppercase tracking-wider font-extrabold text-stone-900 group-hover:text-amber-700 transition">General Info</h4>
+                                <p className="text-[8px] text-stone-500 uppercase tracking-wide">Identity, status, pricing, and description</p>
+                              </div>
+                            </div>
+                            <div>
+                              {editSections.general ? (
+                                <ChevronUp className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
+                              )}
+                            </div>
+                          </button>
 
-                      {/* Price and Mileage Grid */}
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Price */}
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Price (in INR)</label>
-                          <input
-                            type="number"
-                            value={editPrice}
-                            onChange={(e) => setEditPrice(parseInt(e.target.value) || 0)}
-                            className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                          />
+                          <AnimatePresence initial={false}>
+                            {editSections.general && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: "easeInOut" }}
+                                className="overflow-hidden"
+                              >
+                                <div className="space-y-4 pt-4 border-t border-stone-200/60 mt-3">
+                                  {/* Title */}
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Vehicle Title (Name)</label>
+                                    <input
+                                      type="text"
+                                      value={editTitle}
+                                      onChange={(e) => setEditTitle(e.target.value)}
+                                      className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                      placeholder="e.g. Toyota Fortuner 2.8L"
+                                    />
+                                  </div>
+
+                                  {/* Price and Year */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Price (in INR)</label>
+                                      <input
+                                        type="number"
+                                        value={editPrice}
+                                        onChange={(e) => setEditPrice(parseInt(e.target.value) || 0)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Model Year</label>
+                                      <input
+                                        type="number"
+                                        value={editYear}
+                                        onChange={(e) => setEditYear(parseInt(e.target.value) || 2023)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Make & Model */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Make (Brand)</label>
+                                      <input
+                                        type="text"
+                                        value={editMake}
+                                        onChange={(e) => setEditMake(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. Toyota"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Model</label>
+                                      <input
+                                        type="text"
+                                        value={editModel}
+                                        onChange={(e) => setEditModel(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. Fortuner"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Category & Status */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Category</label>
+                                      <select
+                                        value={editCategory}
+                                        onChange={(e) => setEditCategory(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950 cursor-pointer"
+                                      >
+                                        <option value="">Select Category</option>
+                                        <option value="SUV">SUV</option>
+                                        <option value="Sedan">Sedan</option>
+                                        <option value="Coupe">Coupe</option>
+                                        <option value="Hatchback">Hatchback</option>
+                                        <option value="Supercar">Supercar</option>
+                                        <option value="Cruiser">Cruiser</option>
+                                        <option value="Classic">Classic</option>
+                                      </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Listing Status</label>
+                                      <select
+                                        value={editStatus}
+                                        onChange={(e) => setEditStatus(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950 cursor-pointer"
+                                      >
+                                        <option value="active">Active Listing</option>
+                                        <option value="pending">Pending Review</option>
+                                        <option value="sold">Marked as Sold</option>
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  {/* Description */}
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Description Summary</label>
+                                    <textarea
+                                      value={editDesc}
+                                      onChange={(e) => setEditDesc(e.target.value)}
+                                      rows={3}
+                                      className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs text-stone-800 leading-normal font-medium focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                      placeholder="Detailed historical context, condition overview, or listings highlight details..."
+                                    />
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
 
-                        {/* Mileage */}
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Mileage (e.g. '12,500 km')</label>
-                          <input
-                            type="text"
-                            value={editMileage}
-                            onChange={(e) => setEditMileage(e.target.value)}
-                            className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
-                          />
-                        </div>
-                      </div>
+                        {/* 2. MECHANICAL SPECS SECTION */}
+                        <div className="border border-stone-250 bg-white/70 p-4 transition-all duration-300 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+                          <button
+                            type="button"
+                            onClick={() => setEditSections(prev => ({ ...prev, mechanical: !prev.mechanical }))}
+                            className="w-full flex items-center justify-between text-left cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 bg-amber-100 rounded-none flex items-center justify-center border border-amber-300 shrink-0">
+                                <Wrench className="w-4 h-4 text-amber-700" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-sans uppercase tracking-wider font-extrabold text-stone-900 group-hover:text-amber-700 transition">Mechanical Specs</h4>
+                                <p className="text-[8px] text-stone-500 uppercase tracking-wide">Mileage, fuel, transmission, engine details</p>
+                              </div>
+                            </div>
+                            <div>
+                              {editSections.mechanical ? (
+                                <ChevronUp className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
+                              )}
+                            </div>
+                          </button>
 
-                      {/* Description */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Description Summary</label>
-                        <textarea
-                          value={editDesc}
-                          onChange={(e) => setEditDesc(e.target.value)}
-                          rows={4}
-                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs text-stone-800 leading-normal font-medium focus:outline-none focus:ring-1 focus:ring-stone-950"
-                          placeholder="Detailed historical context, service records, and mechanical condition overview."
-                        />
+                          <AnimatePresence initial={false}>
+                            {editSections.mechanical && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: "easeInOut" }}
+                                className="overflow-hidden"
+                              >
+                                <div className="space-y-4 pt-4 border-t border-stone-200/60 mt-3">
+                                  {/* Mileage & Fuel */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Mileage (e.g. '12,500 km')</label>
+                                      <input
+                                        type="text"
+                                        value={editMileage}
+                                        onChange={(e) => setEditMileage(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. 15,000 km"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Fuel Type</label>
+                                      <input
+                                        type="text"
+                                        value={editFuel}
+                                        onChange={(e) => setEditFuel(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. Petrol, Diesel, Hybrid, EV"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Transmission & Engine */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Transmission</label>
+                                      <input
+                                        type="text"
+                                        value={editTransmission}
+                                        onChange={(e) => setEditTransmission(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. Automatic, Manual"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Engine Size / Power</label>
+                                      <input
+                                        type="text"
+                                        value={editEngine}
+                                        onChange={(e) => setEditEngine(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. 2.8L Turbo Diesel"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Color, Owners & RegNumber */}
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Exterior Color</label>
+                                      <input
+                                        type="text"
+                                        value={editColor}
+                                        onChange={(e) => setEditColor(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. Pearl White"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">No. of Owners</label>
+                                      <input
+                                        type="text"
+                                        value={editOwners}
+                                        onChange={(e) => setEditOwners(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. 1st Owner"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Reg Number</label>
+                                      <input
+                                        type="text"
+                                        value={editRegNumber}
+                                        onChange={(e) => setEditRegNumber(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. MH-12-PQ-9999"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* 3. CONTACT DETAILS SECTION */}
+                        <div className="border border-stone-250 bg-white/70 p-4 transition-all duration-300 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+                          <button
+                            type="button"
+                            onClick={() => setEditSections(prev => ({ ...prev, contact: !prev.contact }))}
+                            className="w-full flex items-center justify-between text-left cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 bg-amber-100 rounded-none flex items-center justify-center border border-amber-300 shrink-0">
+                                <Phone className="w-4 h-4 text-amber-700" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-sans uppercase tracking-wider font-extrabold text-stone-900 group-hover:text-amber-700 transition">Contact Details</h4>
+                                <p className="text-[8px] text-stone-500 uppercase tracking-wide">Seller name, email, phone, location</p>
+                              </div>
+                            </div>
+                            <div>
+                              {editSections.contact ? (
+                                <ChevronUp className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-amber-700 transition" />
+                              )}
+                            </div>
+                          </button>
+
+                          <AnimatePresence initial={false}>
+                            {editSections.contact && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: "easeInOut" }}
+                                className="overflow-hidden"
+                              >
+                                <div className="space-y-4 pt-4 border-t border-stone-200/60 mt-3">
+                                  {/* Seller Name & Phone */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Seller Name</label>
+                                      <input
+                                        type="text"
+                                        value={editSellerName}
+                                        onChange={(e) => setEditSellerName(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. Afroj Alam"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Seller Phone</label>
+                                      <input
+                                        type="text"
+                                        value={editSellerPhone}
+                                        onChange={(e) => setEditSellerPhone(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. +91 98765 43210"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Seller Email & Location */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Seller Email</label>
+                                      <input
+                                        type="email"
+                                        value={editSellerEmail}
+                                        onChange={(e) => setEditSellerEmail(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. afrojalamansari461@gmail.com"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Location</label>
+                                      <input
+                                        type="text"
+                                        value={editLocation}
+                                        onChange={(e) => setEditLocation(e.target.value)}
+                                        className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-sans font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                                        placeholder="e.g. Mumbai, Maharashtra"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
 
                       {/* Action buttons */}
@@ -1264,6 +1803,117 @@ export default function App() {
                     All listed specifications have been digitally audited by Auto World mechanics. Double check conditions upon scheduling inspect callbacks.
                   </p>
                 </div>
+
+                {/* ADMIN DIRECT CONTROL PANEL IN THE OVERLAY - MOVED STICKY */}
+                {currentUser?.email === "afrojalamansari461@gmail.com" && (
+                  <div className="p-4 bg-stone-900 border-2 border-amber-500 text-[#F4F1EA] font-sans space-y-4 shadow-lg sticky top-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-stone-800">
+                      <Wrench className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-amber-500 font-mono">BACKOFFICE DOSSIER CONTROL</h4>
+                        <span className="text-[9px] text-stone-400 block uppercase font-mono tracking-wider">Level 5 Security Access Activated</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {/* Edit Specs Toggle Button */}
+                      <button
+                        onClick={handleStartAdminEdit}
+                        className="px-2.5 py-2 bg-amber-500 hover:bg-amber-400 border border-amber-600 text-stone-950 text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition col-span-2 sm:col-span-1"
+                        title="Edit name, image, price, and mileage specifications"
+                      >
+                        <Wrench className="w-3.5 h-3.5 shrink-0 text-stone-950" />
+                        Edit Specs
+                      </button>
+
+                      {/* Approval Toggle (only for Firestore list items) */}
+                      {selectedVehicle.isUserListing ? (
+                        <button
+                          onClick={handleToggleApprovalInModal}
+                          className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                            selectedVehicle.status !== "pending"
+                              ? "bg-amber-500 text-stone-950 border-amber-600 hover:bg-amber-400"
+                              : "bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-500"
+                          }`}
+                          title="Toggle public listing visibility"
+                        >
+                          {selectedVehicle.status !== "pending" ? (
+                            <>
+                              <EyeOff className="w-3.5 h-3.5 shrink-0 text-stone-950" />
+                              Unapprove
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5 shrink-0 text-white" />
+                              Approve
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        /* Hide / Restore Toggle for default cars */
+                        <button
+                          onClick={handleHideRestoreInModal}
+                          className="px-2.5 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-500 hover:bg-amber-500/20 text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition"
+                          title="Hide default car from buy tab"
+                        >
+                          <EyeOff className="w-3.5 h-3.5 shrink-0" />
+                          Hide Spec
+                        </button>
+                      )}
+
+                      {/* Verified badge control */}
+                      <button
+                        onClick={handleToggleVerifyInModal}
+                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                          selectedVehicle.badge === "verified"
+                            ? "bg-purple-600 border-purple-700 text-white hover:bg-purple-500"
+                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
+                        }`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0 text-white" />
+                        {selectedVehicle.badge === "verified" ? "Verified" : "Verify"}
+                      </button>
+
+                      {/* Featured (premium) badge control */}
+                      <button
+                        onClick={handleToggleFeaturedInModal}
+                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                          selectedVehicle.badge === "premium"
+                            ? "bg-sky-600 border-sky-700 text-white hover:bg-sky-500"
+                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
+                        }`}
+                      >
+                        <Award className="w-3.5 h-3.5 shrink-0 text-white" />
+                        {selectedVehicle.badge === "premium" ? "Premium" : "Premiumize"}
+                      </button>
+
+                      {/* Hot Deal badge control */}
+                      <button
+                        onClick={handleToggleHotInModal}
+                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
+                          selectedVehicle.badge === "hot"
+                            ? "bg-red-600 border-red-700 text-white hover:bg-red-500"
+                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-white" />
+                        {selectedVehicle.badge === "hot" ? "Hot Deal" : "Set Hot"}
+                      </button>
+
+                      {/* Delete control (only for user listings) */}
+                      {selectedVehicle.isUserListing && (
+                        <button
+                          onClick={handleDeleteInModal}
+                          className="px-2.5 py-2 bg-red-800 hover:bg-red-700 border border-red-900 text-white text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition col-span-2 sm:col-span-1"
+                          title="Delete permanently from Firestore"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>              {/* Informational Specs and contacts panel */}
               <div className="space-y-6">
                 <div>
@@ -1542,124 +2192,13 @@ export default function App() {
                   </button>
                 </div>
               </div>
-
-                {/* ADMIN DIRECT CONTROL PANEL IN THE OVERLAY */}
-                {currentUser?.email === "afrojalamansari461@gmail.com" && (
-                  <div className="mt-6 p-4 bg-stone-900 border-2 border-amber-500 text-[#F4F1EA] font-sans space-y-4 shadow-lg">
-                    <div className="flex items-center gap-2 pb-2 border-b border-stone-800">
-                      <Wrench className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-amber-500 font-mono">BACKOFFICE DOSSIER CONTROL</h4>
-                        <span className="text-[9px] text-stone-400 block uppercase font-mono tracking-wider">Level 5 Security Access Activated</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {/* Edit Specs Toggle Button */}
-                      <button
-                        onClick={handleStartAdminEdit}
-                        className="px-2.5 py-2 bg-amber-500 hover:bg-amber-400 border border-amber-600 text-stone-950 text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition col-span-2 sm:col-span-1"
-                        title="Edit name, image, price, and mileage specifications"
-                      >
-                        <Wrench className="w-3.5 h-3.5 shrink-0 text-stone-950" />
-                        Edit Specs
-                      </button>
-
-                      {/* Approval Toggle (only for Firestore list items) */}
-                      {selectedVehicle.isUserListing ? (
-                        <button
-                          onClick={handleToggleApprovalInModal}
-                          className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
-                            selectedVehicle.status !== "pending"
-                              ? "bg-amber-500 text-stone-950 border-amber-600 hover:bg-amber-400"
-                              : "bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-500"
-                          }`}
-                          title="Toggle public listing visibility"
-                        >
-                          {selectedVehicle.status !== "pending" ? (
-                            <>
-                              <EyeOff className="w-3.5 h-3.5 shrink-0 text-stone-950" />
-                              Unapprove
-                            </>
-                          ) : (
-                            <>
-                              <Check className="w-3.5 h-3.5 shrink-0 text-white" />
-                              Approve
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        /* Hide / Restore Toggle for default cars */
-                        <button
-                          onClick={handleHideRestoreInModal}
-                          className="px-2.5 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-500 hover:bg-amber-500/20 text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition"
-                          title="Hide default car from buy tab"
-                        >
-                          <EyeOff className="w-3.5 h-3.5 shrink-0" />
-                          Hide Spec
-                        </button>
-                      )}
-
-                      {/* Verified badge control */}
-                      <button
-                        onClick={handleToggleVerifyInModal}
-                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
-                          selectedVehicle.badge === "verified"
-                            ? "bg-purple-600 border-purple-700 text-white hover:bg-purple-500"
-                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
-                        }`}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5 shrink-0 text-white" />
-                        {selectedVehicle.badge === "verified" ? "Verified" : "Verify"}
-                      </button>
-
-                      {/* Featured (premium) badge control */}
-                      <button
-                        onClick={handleToggleFeaturedInModal}
-                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
-                          selectedVehicle.badge === "premium"
-                            ? "bg-sky-600 border-sky-700 text-white hover:bg-sky-500"
-                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
-                        }`}
-                      >
-                        <Award className="w-3.5 h-3.5 shrink-0 text-white" />
-                        {selectedVehicle.badge === "premium" ? "Premium" : "Premiumize"}
-                      </button>
-
-                      {/* Hot Deal badge control */}
-                      <button
-                        onClick={handleToggleHotInModal}
-                        className={`px-2.5 py-2 border text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition ${
-                          selectedVehicle.badge === "hot"
-                            ? "bg-red-600 border-red-700 text-white hover:bg-red-500"
-                            : "bg-stone-850 hover:bg-stone-800 border-stone-700 text-stone-300"
-                        }`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-white" />
-                        {selectedVehicle.badge === "hot" ? "Hot Deal" : "Set Hot"}
-                      </button>
-
-                      {/* Delete control (only for user listings) */}
-                      {selectedVehicle.isUserListing && (
-                        <button
-                          onClick={handleDeleteInModal}
-                          className="px-2.5 py-2 bg-red-800 hover:bg-red-700 border border-red-900 text-white text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition col-span-2 sm:col-span-1"
-                          title="Delete permanently from Firestore"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
+          )}
           </div>
-          </motion.div>
         </motion.div>
-      )}
-      </AnimatePresence>
+      </motion.div>
+    )}
+  </AnimatePresence>
 
       {/* Toast Notification element with Framer Motion AnimatePresence */}
       <AnimatePresence>
