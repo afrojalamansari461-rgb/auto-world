@@ -16,6 +16,8 @@ import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
+import { CountUp } from "./components/CountUp";
+import { AdminGrandEntry } from "./components/AdminGrandEntry";
 
 const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
   if (vehicle.photos && vehicle.photos.length > 0) {
@@ -68,6 +70,16 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [firebaseConfigError, setFirebaseConfigError] = useState<boolean>(false);
+
+  // Admin Edit and Buyer Pass status states
+  const [isAdminEditMode, setIsAdminEditMode] = useState<boolean>(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editImage, setEditImage] = useState("");
+  const [editPrice, setEditPrice] = useState(0);
+  const [editMileage, setEditMileage] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [hasPaidPass, setHasPaidPass] = useState<boolean>(false);
+  const [showAdminGrandEntry, setShowAdminGrandEntry] = useState<boolean>(false);
 
   // Check Firebase Database reachability on startup
   useEffect(() => {
@@ -295,6 +307,73 @@ export default function App() {
     return () => {
       ignore = true;
     };
+  }, [currentUser]);
+
+  // Sync hasPaidPass reactively for selectedVehicle modal and custom contacts gating
+  useEffect(() => {
+    if (currentUser?.email === "afrojalamansari461@gmail.com") {
+      setHasPaidPass(true);
+      return;
+    }
+    if (subscriptionActive) {
+      setHasPaidPass(true);
+      return;
+    }
+    if (!currentUser || currentUser.isAnonymous) {
+      setHasPaidPass(false);
+      return;
+    }
+
+    // Check local fallback
+    const localPass = localStorage.getItem(`autoWorld_buyerPass_${currentUser.uid}`);
+    const localPassDate = localStorage.getItem(`autoWorld_buyerPassDate_${currentUser.uid}`);
+    if (localPass === "true" && localPassDate) {
+      const passDate = new Date(localPassDate);
+      const now = new Date();
+      const diffHours = (now.getTime() - passDate.getTime()) / (1000 * 60 * 60);
+      if (diffHours < 24) {
+        setHasPaidPass(true);
+        return;
+      }
+    }
+
+    // Dynamic firestore check
+    const fetchPass = async () => {
+      try {
+        const { getDoc, doc } = await import("firebase/firestore");
+        const docRef = doc(db, "buyer_passes", currentUser.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().paid) {
+          const passDateStr = docSnap.data().date;
+          if (passDateStr) {
+            const passDate = new Date(passDateStr);
+            const now = new Date();
+            const diffHours = (now.getTime() - passDate.getTime()) / (1000 * 60 * 60);
+            if (diffHours < 24) {
+              setHasPaidPass(true);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Firestore buyer pass fetch warning inside App.tsx:", err);
+      }
+      setHasPaidPass(false);
+    };
+    fetchPass();
+  }, [currentUser, subscriptionActive, selectedVehicle]);
+
+  // Listen for admin login to trigger grand entrance animation once per session
+  useEffect(() => {
+    if (currentUser?.email === "afrojalamansari461@gmail.com") {
+      const entered = sessionStorage.getItem("autoWorld_admin_entered");
+      if (!entered) {
+        setShowAdminGrandEntry(true);
+        sessionStorage.setItem("autoWorld_admin_entered", "true");
+      }
+    } else if (!currentUser) {
+      sessionStorage.removeItem("autoWorld_admin_entered");
+    }
   }, [currentUser]);
 
   // load saved favorites on auth state change
@@ -671,6 +750,111 @@ export default function App() {
     }
   };
 
+  const handleStartAdminEdit = () => {
+    if (!selectedVehicle) return;
+    setEditTitle(selectedVehicle.title);
+    setEditImage(selectedVehicle.image);
+    setEditPrice(selectedVehicle.price);
+    setEditMileage(selectedVehicle.mileage);
+    setEditDesc(selectedVehicle.description || "");
+    setIsAdminEditMode(true);
+  };
+
+  const handleSaveAdminEdits = async () => {
+    if (!selectedVehicle) return;
+    
+    const updatedVehicle = {
+      ...selectedVehicle,
+      title: editTitle.trim(),
+      image: editImage.trim(),
+      price: editPrice,
+      mileage: editMileage.trim(),
+      description: editDesc.trim()
+    };
+    
+    try {
+      if (selectedVehicle.isUserListing && selectedVehicle.listingId) {
+        // Update user listing in Firestore
+        const { doc, updateDoc } = await import("firebase/firestore");
+        const docRef = doc(db, "listings", selectedVehicle.listingId);
+        await updateDoc(docRef, {
+          title: editTitle.trim(),
+          image: editImage.trim(),
+          photos: [
+            { src: editImage.trim(), alt: editTitle.trim() },
+            ...(selectedVehicle.photos ? selectedVehicle.photos.slice(1) : [])
+          ],
+          price: editPrice,
+          mileage: editMileage.trim(),
+          description: editDesc.trim()
+        });
+        
+        // Also update local storage cached user listings if any
+        const rawLocal = localStorage.getItem("autoWorld_listings");
+        if (rawLocal) {
+          try {
+            const list = JSON.parse(rawLocal);
+            if (Array.isArray(list)) {
+              const updatedList = list.map((item: any) => {
+                if (item.id === selectedVehicle.listingId) {
+                  return {
+                    ...item,
+                    title: editTitle.trim(),
+                    photos: [
+                      { src: editImage.trim(), alt: editTitle.trim() },
+                      ...(item.photos ? item.photos.slice(1) : [])
+                    ],
+                    price: editPrice,
+                    mileage: editMileage.trim(),
+                    description: editDesc.trim()
+                  };
+                }
+                return item;
+              });
+              localStorage.setItem("autoWorld_listings", JSON.stringify(updatedList));
+            }
+          } catch (e) {
+            console.error("Local storage listing sync failed:", e);
+          }
+        }
+      } else {
+        // Update default listing overrides in localStorage
+        const overridesStr = localStorage.getItem("autoWorld_default_overrides") || "{}";
+        let overrides: Record<string, any> = {};
+        try {
+          overrides = JSON.parse(overridesStr);
+        } catch (e) {
+          overrides = {};
+        }
+        
+        overrides[selectedVehicle.id] = {
+          title: editTitle.trim(),
+          image: editImage.trim(),
+          price: editPrice,
+          mileage: editMileage.trim(),
+          description: editDesc.trim()
+        };
+        
+        localStorage.setItem("autoWorld_default_overrides", JSON.stringify(overrides));
+      }
+      
+      setSelectedVehicle(updatedVehicle);
+      setIsAdminEditMode(false);
+      showToast("Dossier specifications updated successfully!", "success");
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+    } catch (err: any) {
+      console.error("Failed to save admin edits:", err);
+      showToast("Error updating dossier details: " + err.message, "error");
+    }
+  };
+
+  // Reset admin edit mode when selectedVehicle becomes null
+  useEffect(() => {
+    if (!selectedVehicle) {
+      setIsAdminEditMode(false);
+    }
+  }, [selectedVehicle]);
+
   // Accessibility: Listen for Escape key to close the modal dialog
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -825,8 +1009,155 @@ export default function App() {
 
             {/* Scrollable content wrapper */}
             <div className="flex-1 overflow-y-auto">
-              {/* Modal Inside Multi-grid layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-8">
+              {isAdminEditMode ? (
+                /* Admin Edit specifications form */
+                <div className="p-6 md:p-8 space-y-6">
+                  <div className="flex items-center gap-2 pb-3 border-b border-stone-250">
+                    <Wrench className="w-5 h-5 text-amber-500 animate-spin" />
+                    <div>
+                      <h3 className="text-sm font-sans uppercase tracking-[0.2em] font-black text-stone-900">ADMINISTRATIVE DOSSIER WRITER</h3>
+                      <p className="text-[10px] text-stone-500 uppercase font-mono">Modify validated specs for Ref: AW-{selectedVehicle.id}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Left Column: Image and Image presets */}
+                    <div className="space-y-4">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 block border-b border-stone-150 pb-1">Media Corrective Vault</span>
+                      
+                      {/* Live preview */}
+                      <div className="aspect-video bg-stone-900 border border-stone-300 overflow-hidden relative">
+                        <img
+                          src={editImage}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
+                          }}
+                        />
+                        <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-stone-900/85 text-white text-[8px] font-mono uppercase tracking-wider">
+                          Live Preview Frame
+                        </div>
+                      </div>
+
+                      {/* Image URL Input */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Custom Image Resource URL</label>
+                        <input
+                          type="text"
+                          value={editImage}
+                          onChange={(e) => setEditImage(e.target.value)}
+                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono text-stone-850 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          placeholder="https://example.com/car.jpg"
+                        />
+                      </div>
+
+                      {/* Presets Grid */}
+                      <div className="space-y-1.5 pt-2">
+                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700 block">Clear & High-Quality Image Presets</label>
+                        <span className="text-[9px] text-stone-400 block leading-tight">If the original listing image is blurred or unclear, select one of these professional presets:</span>
+                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                          {[
+                            { label: "Premium SUV (High Res)", url: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1000" },
+                            { label: "Executive Sedan (Clear)", url: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=1000" },
+                            { label: "Sports Coupe (HD)", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1000" },
+                            { label: "Off-Road Terrain (Clean)", url: "https://images.unsplash.com/photo-1532581291347-9c39cf10a73c?w=1000" },
+                            { label: "Cruiser Motorcycle (Crisp)", url: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=1000" },
+                            { label: "Classic Hatchback", url: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=1000" }
+                          ].map((p) => (
+                            <button
+                              key={p.label}
+                              type="button"
+                              onClick={() => setEditImage(p.url)}
+                              className={`p-2 text-left border rounded-xs text-[10px] font-bold uppercase cursor-pointer transition ${
+                                editImage === p.url
+                                  ? "bg-amber-500/10 border-amber-500 text-amber-900"
+                                  : "bg-white hover:bg-stone-50 border-stone-200 text-stone-600"
+                              }`}
+                            >
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Spec fields */}
+                    <div className="space-y-4">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 block border-b border-stone-150 pb-1">Spec Data Points</span>
+                      
+                      {/* Title */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Vehicle Title (Name)</label>
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-sm font-serif font-black text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          placeholder="e.g. Toyota Fortuner 2.8L"
+                        />
+                      </div>
+
+                      {/* Price and Mileage Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Price */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Price (in INR)</label>
+                          <input
+                            type="number"
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(parseInt(e.target.value) || 0)}
+                            className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          />
+                        </div>
+
+                        {/* Mileage */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Mileage (e.g. '12,500 km')</label>
+                          <input
+                            type="text"
+                            value={editMileage}
+                            onChange={(e) => setEditMileage(e.target.value)}
+                            className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-sans uppercase tracking-wider font-bold text-stone-700">Description Summary</label>
+                        <textarea
+                          value={editDesc}
+                          onChange={(e) => setEditDesc(e.target.value)}
+                          rows={4}
+                          className="w-full bg-[#FAF8F5] border border-stone-300 p-2.5 text-xs text-stone-800 leading-normal font-medium focus:outline-none focus:ring-1 focus:ring-stone-950"
+                          placeholder="Detailed historical context, service records, and mechanical condition overview."
+                        />
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-3 pt-4 border-t border-stone-200">
+                        <button
+                          type="button"
+                          onClick={() => setIsAdminEditMode(false)}
+                          className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-[10px] uppercase font-bold tracking-widest cursor-pointer transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveAdminEdits}
+                          className="flex-1 py-3 bg-stone-900 border border-stone-900 hover:bg-stone-850 text-white text-[10px] uppercase font-bold tracking-widest cursor-pointer transition"
+                        >
+                          Save Dossier Changes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-8">
+                  {/* Modal Inside Multi-grid layout */}
                 {/* Media images panel */}
                 <div className="space-y-4 font-sans md:sticky md:top-0 self-start">
                 {(() => {
@@ -945,8 +1276,9 @@ export default function App() {
                   <h2 className="text-2xl font-serif font-black text-stone-950 tracking-tight leading-tight">
                     {selectedVehicle.title}
                   </h2>
-                  <div className="text-3xl font-serif font-black text-stone-900 mt-2">
-                    ₹{selectedVehicle.price.toLocaleString("en-IN")}
+                  <div className="text-3xl font-serif font-black text-stone-900 mt-2 flex items-center gap-0.5">
+                    <span>₹</span>
+                    <CountUp to={selectedVehicle.price} />
                   </div>
                 </div>
 
@@ -965,7 +1297,9 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3 text-xs text-stone-700">
                     <div className="p-3 bg-[#FAF8F5] border border-stone-300">
                       <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Mileage run</span>
-                      <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.mileage}</span>
+                      <span className="text-stone-900 font-bold mt-0.5 block">
+                        <CountUp to={selectedVehicle.mileage} />
+                      </span>
                     </div>
                     <div className="p-3 bg-[#FAF8F5] border border-stone-300">
                       <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Displacement</span>
@@ -1046,93 +1380,127 @@ export default function App() {
                 </div>
 
                 {/* Seller direct contact info module */}
-                <div className="p-4 bg-[#FAF8F5] border border-stone-300 font-sans space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-stone-200">
-                    <User className="w-5 h-5 text-stone-900" />
-                    <div>
-                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest leading-none">Vetted Seller Profile</h4>
-                      <span className="text-[9px] text-[#777777] block font-bold uppercase tracking-widest mt-0.5 font-sans">Verified Contact details</span>
+                {hasPaidPass ? (
+                  <div className="p-4 bg-[#FAF8F5] border border-stone-300 font-sans space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-stone-200">
+                      <User className="w-5 h-5 text-stone-900" />
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest leading-none">Vetted Seller Profile</h4>
+                        <span className="text-[9px] text-[#777777] block font-bold uppercase tracking-widest mt-0.5 font-sans">Verified Contact details</span>
+                      </div>
+                    </div>
+
+                    {modalSellerInfo ? (
+                      <div className="space-y-3.5 text-xs text-stone-705 leading-relaxed font-sans">
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Seller Username:</span>
+                          <span className="text-stone-900 font-bold">{modalSellerInfo.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Register Email:</span>
+                          <span className="text-stone-955 font-mono tracking-tight font-bold">{modalSellerInfo.email}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">WhatsApp Callback:</span>
+                          <span className="text-stone-900 font-bold block">{modalSellerInfo.phone}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Trade Location:</span>
+                          <span className="text-stone-900 font-bold">{modalSellerInfo.location}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Price Negotiability:</span>
+                          <span className="font-bold text-stone-900 uppercase text-[9px]">
+                            {modalSellerInfo.negotiable === "yes" ? "Authorized Negotiable" : "Firm pricing only"}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 text-xs text-[#555555] leading-relaxed font-sans">
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Seller Profile:</span>
+                          <span className="text-stone-900 font-bold">Auto World Certified agent</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Corporate Email:</span>
+                          <span className="text-stone-955 font-mono tracking-tight font-bold">brokerage@autoworld.com</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Support phone:</span>
+                          <span className="text-stone-900 font-mono font-bold">+91 1800 123 4567</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-400 uppercase tracking-widest text-[9px]">Trade Location:</span>
+                          <span className="text-stone-900 font-bold">Corporate square, Mumbai</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Operational callback shortcuts */}
+                    <div className="grid grid-cols-2 gap-3 pt-3">
+                      <a
+                        href={`mailto:${modalSellerInfo ? modalSellerInfo.email : 'brokerage@autoworld.com'}?subject=Inquiry%20regarding%20${encodeURIComponent(selectedVehicle.title)}`}
+                        className="px-4 py-3 bg-stone-905 text-[#F4F1EA] text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer hover:bg-stone-850"
+                      >
+                        <Mail className="w-4 h-4 shrink-0 text-white" />
+                        Direct Email
+                      </a>
+                      <a
+                        href={`https://wa.me/${(modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
+                          `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
+                          `🚗 *${selectedVehicle.title}*\n` +
+                          `• Ref Code: AW-${selectedVehicle.id}\n` +
+                          `• Valuation: ₹${selectedVehicle.price.toLocaleString("en-IN")}\n` +
+                          `• Mileage: ${selectedVehicle.mileage}\n` +
+                          `• Fuel: ${selectedVehicle.fuel}\n\n` +
+                          `Is this vehicle still available for a physical inspection or negotiation?`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => {
+                          const phone = modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556';
+                          triggerSmsLeadAlert(phone, selectedVehicle.title, selectedVehicle.id, "whatsapp");
+                        }}
+                        className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 hover:border-emerald-700 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
+                      >
+                        <MessageCircle className="w-4 h-4 shrink-0 text-white" />
+                        WhatsApp Chat
+                      </a>
                     </div>
                   </div>
-
-                  {modalSellerInfo ? (
-                    <div className="space-y-3.5 text-xs text-stone-705 leading-relaxed font-sans">
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Seller Username:</span>
-                        <span className="text-stone-900 font-bold">{modalSellerInfo.name}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Register Email:</span>
-                        <span className="text-stone-950 font-mono tracking-tight font-bold">{modalSellerInfo.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">WhatsApp Callback:</span>
-                        <span className="text-stone-900 font-bold block">{modalSellerInfo.phone}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Trade Location:</span>
-                        <span className="text-stone-900 font-bold">{modalSellerInfo.location}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Price Negotiability:</span>
-                        <span className="font-bold text-stone-900 uppercase text-[9px]">
-                          {modalSellerInfo.negotiable === "yes" ? "Authorized Negotiable" : "Firm pricing only"}
-                        </span>
+                ) : (
+                  <div className="p-4 bg-[#FAF8F5] border border-stone-300 font-sans space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-stone-200">
+                      <User className="w-5 h-5 text-stone-900" />
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest leading-none">Vetted Seller Profile</h4>
+                        <span className="text-[9px] text-amber-600 font-bold uppercase tracking-widest mt-0.5 font-sans animate-pulse">Contact Locked</span>
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-2.5 text-xs text-[#555555] leading-relaxed font-sans">
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Seller Profile:</span>
-                        <span className="text-stone-900 font-bold">Auto World Certified agent</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Corporate Email:</span>
-                        <span className="text-stone-955 font-mono tracking-tight font-bold">brokerage@autoworld.com</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Support phone:</span>
-                        <span className="text-stone-900 font-mono font-bold">+91 1800 123 4567</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-stone-400 uppercase tracking-widest text-[9px]">Trade Location:</span>
-                        <span className="text-stone-900 font-bold">Corporate square, Mumbai</span>
-                      </div>
+                    
+                    <div className="py-4 text-center space-y-3">
+                      <Lock className="w-8 h-8 text-amber-600 mx-auto" />
+                      <h5 className="text-[11px] font-bold text-stone-800 uppercase tracking-wider">Seller Contacts Restricted</h5>
+                      <p className="text-[10px] text-stone-500 leading-relaxed max-w-sm mx-auto uppercase font-sans">
+                        Unlocked exclusively for Premium Pass owners or active subscribers.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSelectedVehicle(null);
+                          setActiveTab("buy");
+                          setTimeout(() => {
+                            const section = document.getElementById("inventory-catalog-start");
+                            if (section) section.scrollIntoView({ behavior: "smooth" });
+                          }, 300);
+                          showToast("Unlock seller coordinates with our ₹1 verification pass!", "info");
+                        }}
+                        className="mt-2 px-4 py-2 bg-stone-900 hover:bg-stone-850 text-white text-[9px] font-extrabold uppercase tracking-widest cursor-pointer transition border border-stone-900"
+                      >
+                        Unlock with ₹1 Pass
+                      </button>
                     </div>
-                  )}
-
-                  {/* Operational callback shortcuts */}
-                  <div className="grid grid-cols-2 gap-3 pt-3">
-                    <a
-                      href={`mailto:${modalSellerInfo ? modalSellerInfo.email : 'brokerage@autoworld.com'}?subject=Inquiry%20regarding%20${encodeURIComponent(selectedVehicle.title)}`}
-                      className="px-4 py-3 bg-stone-905 text-[#F4F1EA] text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer hover:bg-stone-850"
-                    >
-                      <Mail className="w-4 h-4 shrink-0 text-white" />
-                      Direct Email
-                    </a>
-                    <a
-                      href={`https://wa.me/${(modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
-                        `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
-                        `🚗 *${selectedVehicle.title}*\n` +
-                        `• Ref Code: AW-${selectedVehicle.id}\n` +
-                        `• Valuation: ₹${selectedVehicle.price.toLocaleString("en-IN")}\n` +
-                        `• Mileage: ${selectedVehicle.mileage}\n` +
-                        `• Fuel: ${selectedVehicle.fuel}\n\n` +
-                        `Is this vehicle still available for a physical inspection or negotiation?`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => {
-                        const phone = modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556';
-                        triggerSmsLeadAlert(phone, selectedVehicle.title, selectedVehicle.id, "whatsapp");
-                      }}
-                      className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 hover:border-emerald-700 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
-                    >
-                      <MessageCircle className="w-4 h-4 shrink-0 text-white" />
-                      WhatsApp Chat
-                    </a>
                   </div>
-                </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 font-sans">
                   <button
@@ -1173,6 +1541,7 @@ export default function App() {
                     Request Callback
                   </button>
                 </div>
+              </div>
 
                 {/* ADMIN DIRECT CONTROL PANEL IN THE OVERLAY */}
                 {currentUser?.email === "afrojalamansari461@gmail.com" && (
@@ -1186,6 +1555,16 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {/* Edit Specs Toggle Button */}
+                      <button
+                        onClick={handleStartAdminEdit}
+                        className="px-2.5 py-2 bg-amber-500 hover:bg-amber-400 border border-amber-600 text-stone-950 text-[9px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-1 font-mono transition col-span-2 sm:col-span-1"
+                        title="Edit name, image, price, and mileage specifications"
+                      >
+                        <Wrench className="w-3.5 h-3.5 shrink-0 text-stone-950" />
+                        Edit Specs
+                      </button>
+
                       {/* Approval Toggle (only for Firestore list items) */}
                       {selectedVehicle.isUserListing ? (
                         <button
@@ -1275,7 +1654,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
           </motion.div>
         </motion.div>
@@ -1504,6 +1883,12 @@ export default function App() {
       <FeedbackWidget 
         showToast={showToast} 
         currentUser={currentUser} 
+      />
+
+      {/* Admin Grand Entrance Premium overlay */}
+      <AdminGrandEntry 
+        isOpen={showAdminGrandEntry} 
+        onClose={() => setShowAdminGrandEntry(false)} 
       />
     </div>
   );

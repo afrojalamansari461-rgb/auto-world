@@ -54,6 +54,22 @@ function getOverriddenVehicles(): Vehicle[] {
   } catch (e) {
     console.error("Failed to parse custom default badges in HomeTab:", e);
   }
+
+  try {
+    const overridesStr = localStorage.getItem("autoWorld_default_overrides");
+    if (overridesStr) {
+      const overridesMap = JSON.parse(overridesStr);
+      if (overridesMap && typeof overridesMap === "object") {
+        list = list.map(v => {
+          const override = overridesMap[v.id];
+          return override ? { ...v, ...override } : v;
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse custom default overrides in HomeTab:", e);
+  }
+
   return list;
 }
 

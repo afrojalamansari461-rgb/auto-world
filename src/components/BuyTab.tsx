@@ -320,6 +320,22 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         console.error("Failed to parse custom default badges:", e);
       }
 
+      // Read default vehicle spec overrides from local overrides
+      try {
+        const overridesStr = localStorage.getItem("autoWorld_default_overrides");
+        if (overridesStr) {
+          const overridesMap = JSON.parse(overridesStr);
+          if (overridesMap && typeof overridesMap === "object") {
+            defaultData = defaultData.map(v => {
+              const override = overridesMap[v.id];
+              return override ? { ...v, ...override } : v;
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse custom default overrides in BuyTab:", e);
+      }
+
       let userListings: UserListing[] = [];
       
       // 1. Fetch from Firestore
@@ -1036,48 +1052,57 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                       </h3>
                     </div>
 
-                    {/* Computed Blueprint Card */}
-                    <div className="mt-4 bg-white border border-stone-250 p-4 shadow-sm space-y-3">
-                      <div className="flex justify-between items-start border-b border-stone-150 pb-2">
-                        <div>
-                          <span className="text-[8px] font-mono uppercase tracking-widest text-stone-400">matched profile archetype</span>
-                          <h4 className="text-sm font-serif font-black text-stone-950 uppercase tracking-tight leading-tight mt-0.5">
-                            {getFreeLifestyleRecommendation().name}
-                          </h4>
+                    {/* Computed Blueprint Card with Elite Spring & Blur Animations */}
+                    <AnimatePresence mode="popLayout">
+                      <motion.div
+                        key={`${userBudget}-${selectedPreference}-${usagePriority}`}
+                        initial={{ opacity: 0, scale: 0.95, y: 20, filter: "blur(4px)" }}
+                        animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, scale: 0.95, y: -20, filter: "blur(2px)" }}
+                        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                        className="mt-4 bg-white border border-stone-250 p-4 shadow-sm space-y-3"
+                      >
+                        <div className="flex justify-between items-start border-b border-stone-150 pb-2">
+                          <div>
+                            <span className="text-[8px] font-mono uppercase tracking-widest text-stone-400">matched profile archetype</span>
+                            <h4 className="text-sm font-serif font-black text-stone-950 uppercase tracking-tight leading-tight mt-0.5">
+                              {getFreeLifestyleRecommendation().name}
+                            </h4>
+                          </div>
+                          <span className="px-1.5 py-0.5 bg-stone-950 text-[#FAF8F5] text-[8px] font-mono uppercase tracking-widest border border-stone-800">
+                            Free Match
+                          </span>
                         </div>
-                        <span className="px-1.5 py-0.5 bg-stone-950 text-[#FAF8F5] text-[8px] font-mono uppercase tracking-widest border border-stone-800">
-                          Free Match
-                        </span>
-                      </div>
 
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center text-[10px]">
-                          <span className="text-stone-500 font-bold uppercase">Format Standard</span>
-                          <span className="font-mono text-stone-850 font-bold text-stone-900">{getFreeLifestyleRecommendation().category}</span>
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-stone-500 font-bold uppercase">Format Standard</span>
+                            <span className="font-mono text-stone-850 font-bold text-stone-900">{getFreeLifestyleRecommendation().category}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-stone-500 font-bold uppercase">Target Price Range</span>
+                            <span className="font-mono text-emerald-700 font-black">{getFreeLifestyleRecommendation().pricing}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center text-[10px]">
-                          <span className="text-stone-500 font-bold uppercase">Target Price Range</span>
-                          <span className="font-mono text-emerald-700 font-black">{getFreeLifestyleRecommendation().pricing}</span>
-                        </div>
-                      </div>
 
-                      <p className="text-[10px] text-stone-600 leading-normal italic bg-stone-50 p-2.5 border border-stone-150 rounded-xs">
-                        "{getFreeLifestyleRecommendation().desc}"
-                      </p>
+                        <p className="text-[10px] text-stone-600 leading-normal italic bg-stone-50 p-2.5 border border-stone-150 rounded-xs">
+                          "{getFreeLifestyleRecommendation().desc}"
+                        </p>
 
-                      {/* Synthetic Tech specs list */}
-                      <div className="space-y-1.5 pt-1">
-                        <span className="text-[8px] font-mono uppercase tracking-widest text-stone-400 block">Representative Engineering Blueprint</span>
-                        <div className="grid grid-cols-2 gap-2 text-[9px]">
-                          {getFreeLifestyleRecommendation().specs.map((spec) => (
-                            <div key={spec.name} className="border-b border-stone-100 pb-1">
-                              <div className="text-stone-400 uppercase tracking-tight text-[8px] truncate">{spec.name}</div>
-                              <div className="font-mono text-stone-800 font-black truncate">{spec.value}</div>
-                            </div>
-                          ))}
+                        {/* Synthetic Tech specs list */}
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[8px] font-mono uppercase tracking-widest text-stone-400 block">Representative Engineering Blueprint</span>
+                          <div className="grid grid-cols-2 gap-2 text-[9px]">
+                            {getFreeLifestyleRecommendation().specs.map((spec) => (
+                              <div key={spec.name} className="border-b border-stone-100 pb-1">
+                                <div className="text-stone-400 uppercase tracking-tight text-[8px] truncate">{spec.name}</div>
+                                <div className="font-mono text-stone-800 font-black truncate">{spec.value}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
 
                   {/* Upgrade CTA banner block */}
@@ -1303,10 +1328,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                         <AnimatePresence mode="popLayout">
                           <motion.div
                             key={`${userBudget}-${selectedPreference}-${usagePriority}`}
-                            initial={{ opacity: 0, y: 15 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -15 }}
-                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            initial={{ opacity: 0, scale: 0.95, y: 20, filter: "blur(4px)" }}
+                            animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, scale: 0.95, y: -20, filter: "blur(2px)" }}
+                            transition={{ type: "spring", stiffness: 300, damping: 24 }}
                             className="space-y-3.5"
                           >
                             {getSmartRecommendations().map((item, idx) => (
