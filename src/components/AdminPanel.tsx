@@ -3,13 +3,14 @@ import {
   ShieldAlert, Database, Trash2, Mail, Phone, Calendar, Heart, 
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
-  Clock, Settings, AlertCircle, Wrench, EyeOff
+  Clock, Settings, AlertCircle, Wrench, EyeOff, History
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
+import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -69,7 +70,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const [passes, setPasses] = useState<FirestoreBuyerPass[]>([]);
   const [feedbacks, setFeedbacks] = useState<FirestoreFeedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback">("inventory");
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit">("inventory");
   
   // Custom states for spectacular welcome intro sequence and floating animations
   const [isIntroActive, setIsIntroActive] = useState(false);
@@ -467,6 +468,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             console.error(e);
           }
 
+          // Record action in Audit Log
+          await recordAuditLog(
+            currentUser?.email || "Admin",
+            "Delete Vehicle",
+            `Deleted vehicle "${title}" (ID: ${listingId}) from listings.`
+          );
+
           triggerHudAlert("SPECIMEN PURGED", `"${title}" was successfully deleted from Firestore.`, "delete");
         } catch (err: any) {
           handleFirestoreError(err, OperationType.DELETE, `listings/${listingId}`);
@@ -482,6 +490,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     try {
       await updateDoc(doc(db, "listings", item.id), { featured: nextFeatured });
       setListings(prev => prev.map(l => l.id === item.id ? { ...l, featured: nextFeatured } : l));
+      
+      // Record in Audit Log
+      await recordAuditLog(
+        currentUser?.email || "Admin",
+        "Toggle Featured",
+        `Set Featured flag of vehicle "${item.title}" (ID: ${item.id}) to ${nextFeatured}.`
+      );
+
       triggerHudAlert(
         nextFeatured ? "FEATURED TAG ACTIVATED" : "FEATURED TAG DEACTIVATED",
         `Specimen "${item.title}" is now ${nextFeatured ? "flagged as Featured premium star" : "reverted to normal stock"}.`,
@@ -499,6 +515,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     try {
       await updateDoc(doc(db, "listings", item.id), { verified: nextVerified });
       setListings(prev => prev.map(l => l.id === item.id ? { ...l, verified: nextVerified } : l));
+      
+      // Record in Audit Log
+      await recordAuditLog(
+        currentUser?.email || "Admin",
+        "Toggle Verified",
+        `Set Verified flag of vehicle "${item.title}" (ID: ${item.id}) to ${nextVerified}.`
+      );
+
       triggerHudAlert(
         nextVerified ? "VERIFIED ACCREDITATION GRANTED" : "VERIFIED ACCREDITATION REVOKED",
         `Specimen "${item.title}" has been ${nextVerified ? "certified and verified" : "demoted to unverified"}.`,
@@ -516,6 +540,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     try {
       await updateDoc(doc(db, "listings", item.id), { urgent: nextUrgent });
       setListings(prev => prev.map(l => l.id === item.id ? { ...l, urgent: nextUrgent } : l));
+      
+      // Record in Audit Log
+      await recordAuditLog(
+        currentUser?.email || "Admin",
+        "Toggle Urgent",
+        `Set Urgent flag of vehicle "${item.title}" (ID: ${item.id}) to ${nextUrgent}.`
+      );
+
       triggerHudAlert(
         nextUrgent ? "HOT DEAL FLAME ACTIVATED" : "HOT DEAL FLAME DEACTIVATED",
         `Specimen "${item.title}" highlighted as ${nextUrgent ? "a sizzling hot deal" : "a regular stock value"}.`,
@@ -545,6 +577,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       } catch (e) {
         console.error("Failed to update local storage approved status:", e);
       }
+
+      // Record in Audit Log
+      await recordAuditLog(
+        currentUser?.email || "Admin",
+        "Toggle Approval",
+        `Updated approval status of vehicle "${item.title}" (ID: ${item.id}) to "${nextStatus}".`
+      );
 
       triggerHudAlert(
         nextStatus === "active" ? "SPECIMEN PUBLISHED ONLINE" : "SPECIMEN HELD / HIDDEN",
@@ -612,6 +651,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       // Save directly to Firestore
       const docRef = await addDoc(collection(db, "listings"), listingData);
       
+      // Record action in Audit Log
+      await recordAuditLog(
+        currentUser?.email || "Admin",
+        "Create Vehicle",
+        `Created and published new vehicle "${finalTitle}" (ID: ${docRef.id}, Price: ₹${finalPriceInt}).`
+      );
+
       // Also add to local storage listings for offline sync fallback
       try {
         const stored = localStorage.getItem("autoWorld_listings") || "[]";
@@ -817,6 +863,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             await updateDoc(doc(db, "listings", item.id), { status: "active" });
           }
           setListings(prev => prev.map(l => ({ ...l, status: "active" })));
+
+          // Record in Audit Log
+          await recordAuditLog(
+            currentUser?.email || "Admin",
+            "Bulk Approve",
+            `Approved and published all ${pendingListings.length} pending user listings.`
+          );
+
           triggerHudAlert("BULK APPROVE SUCCESS", `Approved and published all ${pendingListings.length} pending user listings.`, "bulk");
           window.dispatchEvent(new Event("autoWorld_db_update"));
         } catch (err: any) {
@@ -847,6 +901,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             await updateDoc(doc(db, "listings", item.id), { status: "pending" });
           }
           setListings(prev => prev.map(l => ({ ...l, status: "pending" })));
+
+          // Record in Audit Log
+          await recordAuditLog(
+            currentUser?.email || "Admin",
+            "Bulk Unapprove",
+            `Suspended and hid all ${activeListings.length} active user listings.`
+          );
+
           triggerHudAlert("BULK SUSPEND COMPLETE", `Hidden and suspended all ${activeListings.length} active listings.`, "bulk");
           window.dispatchEvent(new Event("autoWorld_db_update"));
         } catch (err: any) {
@@ -879,6 +941,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           });
           setDefaultBadges(updatedBadges);
           localStorage.setItem("autoWorld_default_badges", JSON.stringify(updatedBadges));
+
+          // Record in Audit Log
+          await recordAuditLog(
+            currentUser?.email || "Admin",
+            "Bulk Verify All",
+            `Instantly awarded [VERIFIED] status to all ${listings.length} user listings and all default static vehicles on the platform.`
+          );
 
           triggerHudAlert("BULK VERIFY ENGAGED", "Platform-wide scanning complete. All vehicles certified.", "verified");
           window.dispatchEvent(new Event("autoWorld_db_update"));
@@ -925,6 +994,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             urgent: false,
             status: "active"
           })));
+
+          // Record in Audit Log
+          await recordAuditLog(
+            currentUser?.email || "Admin",
+            "System Reset",
+            `Executed global factory reset: cleared all default badges, restored all hidden vehicles, and reset all ${listings.length} user listings.`
+          );
 
           triggerHudAlert("SYSTEM INDEX RESET", "All administrator controls, archives, and badges returned to baseline standards.", "delete");
           window.dispatchEvent(new Event("autoWorld_db_update"));
@@ -1613,6 +1689,18 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           >
             <MessageSquare className="w-4 h-4 shrink-0 text-emerald-600" />
             User Feedback ({feedbacks.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("audit")}
+            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              activeSubSection === "audit"
+                ? "bg-stone-900 text-white"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+          >
+            <History className="w-4 h-4 shrink-0 text-amber-600" />
+            Audit Logs
           </button>
         </div>
 
@@ -2886,6 +2974,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                   </div>
                 )}
               </div>
+            )}
+
+            {/* SUBSECTION 5: SYSTEM OPERATION AUDIT LOGS */}
+            {activeSubSection === "audit" && (
+              <AdminAuditLogs
+                currentUserEmail={currentUser?.email || "Admin"}
+                showToast={showToast}
+              />
             )}
           </div>
         )}

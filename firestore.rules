@@ -154,5 +154,11 @@ service cloud.firestore {
         && data.timestamp is string && data.timestamp.size() <= 50
         && data.status is string && (data.status == 'active' || data.status == 'archived' || data.status == 'resolved');
     }
+
+    // AUDIT LOGS RULES
+    match /audit_logs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
   }
 }
