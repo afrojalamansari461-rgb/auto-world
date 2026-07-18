@@ -352,17 +352,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                     </span>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => toggleFavorite(car.id)}
-                    className={`absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition border shadow-sm ${
-                      isFav
-                        ? "bg-stone-900 text-stone-100 border-stone-950"
-                        : "bg-white/80 text-stone-700 hover:text-stone-950 hover:bg-white border-stone-200"
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${isFav ? "fill-white" : ""}`} />
-                  </button>
+
 
                   {/* Dynamic Laser Scanning Line */}
                   {isHovered && (
@@ -479,12 +469,29 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                       <span className="text-xs text-stone-400 block uppercase font-light font-sans">Valuation</span>
                       <span className="text-2xl font-serif font-black text-stone-950">₹{car.price.toLocaleString("en-IN")}</span>
                     </div>
-                    <button
-                      onClick={() => onQuickView(car)}
-                      className="px-4 py-2.5 bg-stone-950 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] text-xs font-sans uppercase font-bold tracking-widest border border-stone-950 transition-all duration-300"
-                    >
-                      View Dossier
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(car.id);
+                        }}
+                        className={`w-10 h-10 border flex items-center justify-center transition-all duration-300 cursor-pointer ${
+                          isFav
+                            ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-850"
+                            : "bg-[#FAF8F5] border-stone-300 text-stone-600 hover:text-stone-950 hover:border-stone-400"
+                        }`}
+                        title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                      >
+                        <Heart className={`w-4.5 h-4.5 ${isFav ? "fill-current" : ""}`} />
+                      </button>
+                      <button
+                        onClick={() => onQuickView(car)}
+                        className="px-4 py-2.5 bg-stone-950 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] text-xs font-sans uppercase font-bold tracking-widest border border-stone-950 transition-all duration-300"
+                      >
+                        View Dossier
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>

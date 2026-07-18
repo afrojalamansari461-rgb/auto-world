@@ -114,28 +114,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, subscriptionActive, showToast, currentUser, onSignInClick }: BuyTabProps) {
-  // Scroll to top state & effect
-  const [showScrollTop, setShowScrollTop] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-  };
 
   // Payment states
   const [hasPaidPass, setHasPaidPass] = useState(false);
@@ -881,7 +860,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         </motion.div>
       )}
 
-      <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="border-b border-stone-300 pb-6 mb-10">
           <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Index Repository</span>
           <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Verified Vehicle Inventory</h1>
@@ -1412,7 +1391,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         )}
 
         {/* FILTERS TOOLBAR PANEL */}
-        <div id="inventory-catalog-start" className="bg-[#FAF8F5] border border-stone-300 p-6 sm:p-8 mb-10">
+        <div id="inventory-catalog-start" className="bg-[#FAF8F5] border border-stone-300 p-3.5 sm:p-8 mb-10">
           <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Model Search Phrase</label>
@@ -1556,7 +1535,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
           ) : (
             <div>
-              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6 md:gap-8">
                 <AnimatePresence mode="popLayout">
                   {displayedVehicles.map((car, idx) => {
                     const isFav = favorites.includes(car.id);
@@ -1619,23 +1598,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             {car.badge}
                           </span>
                         )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(car.id);
-                          }}
-                          className={`absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition border ${
-                            isFav
-                              ? "bg-stone-950 text-white border-stone-950"
-                              : "bg-white/80 text-stone-700 hover:text-stone-950 hover:bg-white border-stone-200"
-                          }`}
-                        >
-                          <Heart className={`w-4 h-4 ${isFav ? "fill-white" : ""}`} />
-                        </button>
                       </div>
 
-                      <div className="p-6 flex-1 flex flex-col justify-between">
+                      <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between">
                         <div>
                           <span className="text-[9px] font-mono tracking-widest text-[#777777] block uppercase mb-1">REF #AW0{car.id}</span>
                           <h3 className="text-xl font-serif font-black text-stone-950 mb-3 cursor-pointer">
@@ -1663,7 +1628,22 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             <span className="text-xs text-stone-400 block uppercase font-light font-sans">Valuation</span>
                             <span className="text-lg sm:text-xl font-serif font-black text-stone-950 block leading-tight">₹{car.price.toLocaleString("en-IN")}</span>
                           </div>
-                          <div className="flex gap-1.5 shrink-0">
+                          <div className="flex gap-1.5 shrink-0 items-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(car.id);
+                              }}
+                              className={`p-2 border flex items-center justify-center transition-all duration-300 cursor-pointer ${
+                                isFav
+                                  ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-850"
+                                  : "bg-[#FAF8F5] border-stone-300 text-stone-600 hover:text-stone-950 hover:border-stone-400"
+                              }`}
+                              title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                            >
+                              <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-current" : ""}`} />
+                            </button>
                             <button
                               onClick={() => onQuickView(car)}
                               className="px-3 py-2 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-[10px] font-sans uppercase font-bold tracking-widest border border-stone-950 transition-all cursor-pointer"
@@ -1671,37 +1651,52 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             >
                               Dossier
                             </button>
-                            <a
-                              href={`https://wa.me/${(car.sellerPhone || '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
-                                `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
-                                `🚗 *${car.title}*\n` +
-                                `• Price: ₹${car.price.toLocaleString("en-IN")}\n` +
-                                `• Mileage: ${car.mileage}\n` +
-                                `• Ref Code: AW-${car.id}\n\n` +
-                                `Is this still available for direct inspection or purchase discussion?`
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                fetch("/api/send-sms-alert", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    sellerPhone: car.sellerPhone || '+91 98230 44556',
-                                    vehicleTitle: car.title,
-                                    listingId: car.id,
-                                    buyerName: "A vetted buyer",
-                                    actionType: "whatsapp"
-                                  })
-                                }).catch(err => console.error(err));
-                              }}
-                              className="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-emerald-600 hover:border-emerald-700 cursor-pointer shadow-sm"
-                              title="Contact seller instantly via WhatsApp"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5 shrink-0 text-white" />
-                              WhatsApp
-                            </a>
+                            {hasPaidPass ? (
+                              <a
+                                href={`https://wa.me/${(car.sellerPhone || '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
+                                  `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
+                                  `🚗 *${car.title}*\n` +
+                                  `• Price: ₹${car.price.toLocaleString("en-IN")}\n` +
+                                  `• Mileage: ${car.mileage}\n` +
+                                  `• Ref Code: AW-${car.id}\n\n` +
+                                  `Is this still available for direct inspection or purchase discussion?`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  fetch("/api/send-sms-alert", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      sellerPhone: car.sellerPhone || '+91 98230 44556',
+                                      vehicleTitle: car.title,
+                                      listingId: car.id,
+                                      buyerName: "A vetted buyer",
+                                      actionType: "whatsapp"
+                                    })
+                                  }).catch(err => console.error(err));
+                                }}
+                                className="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-emerald-600 hover:border-emerald-700 cursor-pointer shadow-sm"
+                                title="Contact seller instantly via WhatsApp"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 shrink-0 text-white" />
+                                WhatsApp
+                              </a>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowPaymentModal(true);
+                                  showToast("Unlock seller coordinates with our ₹1 verification pass!", "info");
+                                }}
+                                className="px-2.5 py-2 bg-stone-200 text-stone-500 hover:text-stone-700 hover:bg-stone-300 text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-stone-300 cursor-pointer shadow-sm"
+                                title="Contacts locked. Purchase pass to unlock."
+                              >
+                                <Lock className="w-3 h-3 text-amber-500" />
+                                Locked
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1896,32 +1891,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         </div>
       )}
 
-      {/* Floating Scroll to Top */}
-      <AnimatePresence>
-        {showScrollTop && (
-          <motion.button
-            key="scroll-to-top"
-            initial={{ opacity: 0, y: 50, scale: 0.85, rotate: -4 }}
-            animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
-            exit={{ opacity: 0, y: 35, scale: 0.9, transition: { duration: 0.15 } }}
-            transition={{ type: "spring", stiffness: 380, damping: 22 }}
-            whileHover={{ 
-              scale: 1.1,
-              y: -5,
-            }}
-            whileTap={{ scale: 0.95 }}
-            onClick={scrollToTop}
-            id="scroll-to-top-btn"
-            className="fixed bottom-24 right-6 z-50 flex items-center justify-center w-11 h-11 bg-stone-950 text-white border border-purple-400/85 shadow-[0_0_12px_rgba(192,132,252,0.5)] hover:shadow-[0_0_22px_rgba(192,132,252,0.9)] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:border-purple-300 transition-all duration-300"
-            title="Scroll to Top"
-          >
-            <div className="relative overflow-hidden w-4 h-4 flex items-center justify-center shrink-0">
-              <ArrowUp className="w-4 h-4 absolute transition-all duration-300 group-hover:-translate-y-6 text-white" />
-              <ArrowUp className="w-4 h-4 absolute translate-y-6 transition-all duration-300 group-hover:translate-y-0 text-white" />
-            </div>
-          </motion.button>
-        )}
-      </AnimatePresence>
+
     </motion.div>
   );
 }

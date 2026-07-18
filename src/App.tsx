@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles, ArrowUp } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -9,6 +9,7 @@ import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
 import AdminPanel from "./components/AdminPanel";
+import FavoritesTab from "./components/FavoritesTab";
 import SignInModal from "./components/SignInModal";
 import FeedbackWidget from "./components/FeedbackWidget";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
@@ -81,6 +82,29 @@ export default function App() {
   const [editPhotos, setEditPhotos] = useState<{ src: string; alt: string }[]>([]);
   const [hasPaidPass, setHasPaidPass] = useState<boolean>(false);
   const [showAdminGrandEntry, setShowAdminGrandEntry] = useState<boolean>(false);
+
+  // Global Scroll to top state & effect
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
 
   // Check Firebase Database reachability on startup
   useEffect(() => {
@@ -965,6 +989,15 @@ export default function App() {
 
             {activeTab === "contact" && (
               <ContactTab showToast={showToast} currentUser={currentUser} />
+            )}
+
+            {activeTab === "favorites" && (
+              <FavoritesTab
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                onQuickView={handleQuickView}
+                setActiveTab={setActiveTab}
+              />
             )}
 
             {activeTab === "admin" && (
@@ -1983,6 +2016,34 @@ export default function App() {
         isOpen={showAdminGrandEntry} 
         onClose={() => setShowAdminGrandEntry(false)} 
       />
+
+      {/* Floating Scroll to Top */}
+      <AnimatePresence>
+        {showScrollTop && activeTab === "buy" && (
+          <motion.button
+            key="scroll-to-top"
+            initial={{ opacity: 0, y: 50, scale: 0.85, rotate: -4 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+            exit={{ opacity: 0, y: 35, scale: 0.9, transition: { duration: 0.15 } }}
+            transition={{ type: "spring", stiffness: 380, damping: 22 }}
+            whileHover={{ 
+              scale: 1.1,
+              y: -5,
+            }}
+            whileTap={{ scale: 0.95 }}
+            onClick={scrollToTop}
+            id="scroll-to-top-btn"
+            className="fixed bottom-24 right-6 z-50 flex items-center justify-center w-11 h-11 bg-stone-950 text-white border border-purple-400/85 shadow-[0_0_12px_rgba(192,132,252,0.5)] hover:shadow-[0_0_22px_rgba(192,132,252,0.9)] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:border-purple-300 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950"
+            title="Scroll to Top"
+            aria-label="Scroll back to the top of the vehicle catalog"
+          >
+            <div className="relative overflow-hidden w-4 h-4 flex items-center justify-center shrink-0">
+              <ArrowUp className="w-4 h-4 absolute transition-all duration-300 group-hover:-translate-y-6 text-white" />
+              <ArrowUp className="w-4 h-4 absolute translate-y-6 transition-all duration-300 group-hover:translate-y-0 text-white" />
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
