@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Car, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Send, Check, Heart, ShieldCheck, Sparkles } from "lucide-react";
+import { Car, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, Check, Heart, ShieldCheck, Sparkles } from "lucide-react";
 
 interface FooterProps {
   setActiveTab: (tab: string) => void;
@@ -92,6 +92,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 <input
                   type="email"
                   required
+                  aria-label="Executive email address for newsletter subscription"
                   placeholder="Enter your executive email address..."
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -238,10 +239,10 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
               </a>
               <a 
                 href="#" 
-                className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-[#1DA1F2] hover:text-white hover:border-[#1DA1F2] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(29,161,242,0.3)] cursor-pointer" 
-                title="Twitter Channel"
+                className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-white hover:text-black hover:border-white hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(255,255,255,0.15)] cursor-pointer" 
+                title="X Channel"
               >
-                <Twitter className="w-4 h-4 transition-transform duration-300" />
+                <span className="text-[13px] font-sans font-bold transition-transform duration-300 select-none">𝕏</span>
               </a>
               <a 
                 href="https://www.instagram.com/l_afroj_l/" 

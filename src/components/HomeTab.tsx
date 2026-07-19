@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles } from "lucide-react";
-import { Vehicle, DEFAULT_VEHICLES } from "../types";
+import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion } from "motion/react";
+import { db } from "../firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 interface HomeTabProps {
   setActiveTab: (tab: string) => void;
@@ -73,6 +75,111 @@ function getOverriddenVehicles(): Vehicle[] {
   return list;
 }
 
+async function getHomeFeaturedVehicles(): Promise<Vehicle[]> {
+  const defaults = getOverriddenVehicles();
+  let userListings: UserListing[] = [];
+
+  try {
+    const stored = localStorage.getItem("autoWorld_listings");
+    if (stored) {
+      userListings = JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error("Local storage listings read failed in HomeTab:", e);
+  }
+
+  try {
+    const querySnapshot = await getDocs(collection(db, "listings"));
+    const fetched: UserListing[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data() as UserListing;
+      fetched.push({ ...data, id: docSnap.id });
+    });
+    if (fetched.length > 0) {
+      userListings = fetched;
+    }
+  } catch (e) {
+    console.warn("Firestore fetch in HomeTab failed, using local fallback:", e);
+  }
+
+  const mappedUserListings: Vehicle[] = userListings
+    .filter(item => item.status === "active")
+    .map((listing, index) => {
+      let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
+      if (listing.type === "car" || listing.type === "suv") {
+        image = listing.photos && listing.photos.length > 0 
+          ? listing.photos[0].src 
+          : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
+      } else if (listing.type === "truck") {
+        image = listing.photos && listing.photos.length > 0 
+          ? listing.photos[0].src 
+          : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
+      } else if (listing.type === "motorcycle") {
+        image = listing.photos && listing.photos.length > 0 
+          ? listing.photos[0].src 
+          : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
+      } else if (listing.type === "bicycle") {
+        image = listing.photos && listing.photos.length > 0 
+          ? listing.photos[0].src 
+          : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
+      }
+
+      return {
+        id: 1000 + index,
+        title: listing.title,
+        price: listing.price,
+        image: image,
+        make: listing.make,
+        model: listing.model,
+        year: parseInt(listing.year) || 2023,
+        mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
+        fuel: listing.fuelType ? (listing.fuelType.charAt(0).toUpperCase() + listing.fuelType.slice(1)) : "Petrol",
+        transmission: listing.transmission ? (listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1)) : "Automatic",
+        badge: listing.verified ? "verified" : listing.featured ? "premium" : listing.urgent ? "hot" : null,
+        description: listing.description,
+        features: listing.features || [],
+        category: listing.type,
+        isUserListing: true,
+        listingId: listing.id,
+        sellerName: listing.sellerName,
+        sellerEmail: listing.sellerEmail,
+        sellerPhone: listing.sellerPhone,
+        location: listing.location,
+        negotiable: listing.negotiable,
+        status: listing.status
+      };
+    });
+
+  const allVehicles = [
+    ...defaults.map(v => ({ ...v, uniqueKey: `default-${v.id}` })),
+    ...mappedUserListings.map(v => ({ ...v, uniqueKey: `user-${v.listingId}` }))
+  ];
+
+  try {
+    const homeFeaturedStr = localStorage.getItem("autoWorld_home_featured_ids");
+    if (homeFeaturedStr) {
+      const keys: string[] = JSON.parse(homeFeaturedStr);
+      if (Array.isArray(keys) && keys.length > 0) {
+        const selectedList: Vehicle[] = [];
+        keys.forEach(key => {
+          const found = allVehicles.find(v => v.uniqueKey === key);
+          if (found) {
+            const { uniqueKey, ...cleanVehicle } = found;
+            selectedList.push(cleanVehicle);
+          }
+        });
+        if (selectedList.length > 0) {
+          return selectedList;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load/parse autoWorld_home_featured_ids in HomeTab:", e);
+  }
+
+  return defaults.slice(0, 3);
+}
+
 export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSearchFilters, onQuickView }: HomeTabProps) {
   const [activeSearchTab, setActiveSearchTab] = useState<"buy" | "sell">("buy");
   const [selectedType, setSelectedType] = useState("Any Type");
@@ -85,11 +192,15 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
   });
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setFeaturedCars(getOverriddenVehicles().slice(0, 3));
+    const handleUpdate = async () => {
+      try {
+        const vehicles = await getHomeFeaturedVehicles();
+        setFeaturedCars(vehicles);
+      } catch (err) {
+        console.error("Error loading home featured vehicles:", err);
+      }
     };
     window.addEventListener("autoWorld_db_update", handleUpdate);
-    // Sync on mount
     handleUpdate();
     return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
   }, []);
@@ -211,8 +322,9 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
               {activeSearchTab === "buy" && (
                 <form onSubmit={handleSearchSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Class Configuration</label>
+                    <label htmlFor="home-type-select" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Class Configuration</label>
                     <select
+                      id="home-type-select"
                       value={selectedType}
                       onChange={(e) => setSelectedType(e.target.value)}
                       className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
@@ -228,8 +340,9 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Target Broker Budget</label>
+                    <label htmlFor="home-price-select" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Target Broker Budget</label>
                     <select
+                      id="home-price-select"
                       value={selectedPriceRange}
                       onChange={(e) => setSelectedPriceRange(e.target.value)}
                       className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
@@ -243,10 +356,11 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Region Coordinates</label>
+                    <label htmlFor="home-location-input" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Region Coordinates</label>
                     <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
+                      <MapPin aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
                       <input
+                        id="home-location-input"
                         type="text"
                         placeholder="City, state, or ZIP..."
                         value={selectedLocation}

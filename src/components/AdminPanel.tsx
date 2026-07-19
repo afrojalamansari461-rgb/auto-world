@@ -3,7 +3,7 @@ import {
   ShieldAlert, Database, Trash2, Mail, Phone, Calendar, Heart, 
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
-  Clock, Settings, AlertCircle, Wrench, EyeOff, History
+  Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
@@ -106,6 +106,9 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   
   // Custom states for simulated permanent deletion of static defaults
   const [removedDefaultIds, setRemovedDefaultIds] = useState<number[]>([]);
+
+  // States for customizable home page featured vehicles
+  const [homeFeaturedIds, setHomeFeaturedIds] = useState<string[]>([]);
 
   // Customized Interactive Confirmation Modal states
   const [confirmModal, setConfirmModal] = useState<{
@@ -409,6 +412,16 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       console.error(e);
     }
 
+    // Load home page featured IDs on mount
+    try {
+      const storedHome = localStorage.getItem("autoWorld_home_featured_ids");
+      if (storedHome) {
+        setHomeFeaturedIds(JSON.parse(storedHome));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     const handleUpdate = () => {
       loadData();
       try {
@@ -431,6 +444,16 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         const badgesStr = localStorage.getItem("autoWorld_default_badges");
         if (badgesStr) {
           setDefaultBadges(JSON.parse(badgesStr));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      try {
+        const storedHome = localStorage.getItem("autoWorld_home_featured_ids");
+        if (storedHome) {
+          setHomeFeaturedIds(JSON.parse(storedHome));
+        } else {
+          setHomeFeaturedIds([]);
         }
       } catch (e) {
         console.error(e);
@@ -723,6 +746,63 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     setHiddenDefaultIds(updated);
     localStorage.setItem("autoWorld_hidden_defaults", JSON.stringify(updated));
     window.dispatchEvent(new Event("autoWorld_db_update"));
+  };
+
+  // Toggle home page featured pinning status
+  const handleToggleHomeFeatured = (uniqueKey: string, title: string) => {
+    let updated: string[];
+    const isPinned = homeFeaturedIds.includes(uniqueKey);
+
+    if (isPinned) {
+      updated = homeFeaturedIds.filter(id => id !== uniqueKey);
+      triggerHudAlert("REMOVED FROM HOME", `"${title}" has been removed from the Home Page Featured Showcase.`, "hide");
+    } else {
+      updated = [...homeFeaturedIds, uniqueKey];
+      triggerHudAlert("PINNED TO HOME", `"${title}" has been successfully pinned to the Home Page Featured Showcase.`, "premium");
+    }
+
+    setHomeFeaturedIds(updated);
+    localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(updated));
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+  };
+
+  // Move home page featured showcase item up or down in list
+  const moveHomeFeaturedItem = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === homeFeaturedIds.length - 1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const updated = [...homeFeaturedIds];
+
+    // Swap positions
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+
+    setHomeFeaturedIds(updated);
+    localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(updated));
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    playSynthBeep(direction === "up" ? 600 : 500, 0.1, "sine");
+    triggerHudAlert("ORDER MODIFIED", "Homepage featured item sequence rearranged.", "restore");
+  };
+
+  // Set absolute order rank for home page featured showcase item (1-based index)
+  const setHomeFeaturedItemRank = (index: number, newRankStr: string) => {
+    const newRank = parseInt(newRankStr);
+    if (isNaN(newRank) || newRank < 1 || newRank > homeFeaturedIds.length) return;
+
+    const updated = [...homeFeaturedIds];
+    const itemToMove = updated[index];
+
+    // Remove from current position and insert at new target position (0-based)
+    updated.splice(index, 1);
+    updated.splice(newRank - 1, 0, itemToMove);
+
+    setHomeFeaturedIds(updated);
+    localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(updated));
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    playSynthBeep(700, 0.12, "sine");
+    triggerHudAlert("RANK REASSIGNED", `Item moved to Rank #${newRank} in featured catalog.`, "premium");
   };
 
   // Permanently remove a default hardcoded vehicle with advanced HUD confirmation
@@ -1719,6 +1799,120 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             {activeSubSection === "inventory" && (
               <div className="space-y-6">
 
+                {/* HOME PAGE FEATURED SHOWCASE MANAGEMENT PANEL */}
+                <div className="bg-stone-900 text-[#F4F1EA] border-2 border-stone-950 p-5 space-y-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Home className="w-5 h-5 text-amber-500" />
+                        <h2 className="text-xs sm:text-sm font-serif font-black uppercase text-white tracking-tight">Home Page Featured Showcase ({homeFeaturedIds.length})</h2>
+                      </div>
+                      <p className="text-[10px] text-stone-400 uppercase tracking-widest font-mono mt-0.5">Select and pin items directly displayed in the home tab featured collections</p>
+                    </div>
+                    {homeFeaturedIds.length > 0 && (
+                      <button
+                        onClick={() => {
+                          playSynthBeep(400, 0.15, "sawtooth");
+                          setConfirmModal({
+                            isOpen: true,
+                            title: "CLEAR HOME SHOWCASE",
+                            message: "Are you sure you want to reset the Home Page Showcase? It will revert to showing the default first 3 active vehicles.",
+                            onConfirm: () => {
+                              setHomeFeaturedIds([]);
+                              localStorage.removeItem("autoWorld_home_featured_ids");
+                              window.dispatchEvent(new Event("autoWorld_db_update"));
+                              triggerHudAlert("SHOWCASE RESET", "Home Page Featured Showcase has been reset to defaults.", "restore");
+                            }
+                          });
+                        }}
+                        className="px-3 py-1.5 border border-stone-700 hover:bg-stone-800 text-stone-305 hover:text-white text-[9px] font-mono font-bold uppercase cursor-pointer"
+                      >
+                        Reset to Defaults
+                      </button>
+                    )}
+                  </div>
+
+                  {homeFeaturedIds.length === 0 ? (
+                    <div className="text-center py-4 border border-dashed border-stone-800 rounded-sm">
+                      <p className="text-stone-400 text-[10px] uppercase font-mono">No custom home page items chosen. The system is displaying the first 3 active defaults.</p>
+                      <p className="text-stone-500 text-[9px] uppercase font-mono mt-1">Click the "🏠 Pin to Home" button on any vehicle card below to start customizing your home tab!</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {homeFeaturedIds.map((key, idx) => {
+                        // find the corresponding item in aggregateList. We map both defaults and listings to their matches
+                        const item = [
+                          ...allDefaultsMapped.map(v => ({ ...v, uniqueKey: `default-${v.id}` })),
+                          ...userListingsMapped.map(v => ({ ...v, uniqueKey: `user-${v.listingId}` }))
+                        ].find(v => v.uniqueKey === key);
+
+                        if (!item) return null;
+                        return (
+                          <div key={key} className="bg-stone-950 p-2 border border-stone-800 flex flex-col justify-between space-y-2 group relative">
+                            <div className="relative aspect-video bg-stone-900 overflow-hidden">
+                              <img src={item.image} alt={item.title} className="w-full h-full object-cover animate-in fade-in" referrerPolicy="no-referrer" />
+                              <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-stone-900/90 text-white font-mono text-[7px] border border-stone-800">
+                                #{idx + 1}
+                              </span>
+                            </div>
+                            <div className="space-y-0.5">
+                              <h4 className="text-[10px] font-bold uppercase tracking-tight text-white line-clamp-1">{item.title}</h4>
+                              <p className="text-stone-400 text-[8px] font-mono">₹{item.price.toLocaleString()}</p>
+                            </div>
+
+                            {/* Precise Ordering Controls */}
+                            <div className="flex items-center justify-between gap-1 bg-stone-900 p-1 border border-stone-850">
+                              {/* Move Up */}
+                              <button
+                                disabled={idx === 0}
+                                onClick={() => moveHomeFeaturedItem(idx, "up")}
+                                className="p-1 bg-stone-950 hover:bg-stone-800 text-stone-400 hover:text-amber-400 disabled:opacity-20 disabled:hover:bg-stone-950 disabled:hover:text-stone-400 cursor-pointer rounded-sm border border-stone-800 transition"
+                                title="Move Position Up"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+
+                              {/* Rank Select */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[7px] font-mono text-stone-500 uppercase tracking-widest">Rank</span>
+                                <select
+                                  value={idx + 1}
+                                  onChange={(e) => setHomeFeaturedItemRank(idx, e.target.value)}
+                                  className="bg-stone-950 text-amber-500 hover:text-amber-400 border border-stone-800 font-mono text-[9px] py-0.5 px-1 rounded-sm focus:outline-none focus:border-amber-500 cursor-pointer text-center font-bold"
+                                  title="Change precise display rank position"
+                                >
+                                  {Array.from({ length: homeFeaturedIds.length }).map((_, rankIdx) => (
+                                    <option key={rankIdx} value={rankIdx + 1}>
+                                      {rankIdx + 1}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Move Down */}
+                              <button
+                                disabled={idx === homeFeaturedIds.length - 1}
+                                onClick={() => moveHomeFeaturedItem(idx, "down")}
+                                className="p-1 bg-stone-950 hover:bg-stone-800 text-stone-400 hover:text-amber-400 disabled:opacity-20 disabled:hover:bg-stone-950 disabled:hover:text-stone-400 cursor-pointer rounded-sm border border-stone-800 transition"
+                                title="Move Position Down"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            <button
+                              onClick={() => handleToggleHomeFeatured(key, item.title)}
+                              className="w-full py-1 bg-stone-900 hover:bg-red-950 text-stone-400 hover:text-red-200 text-[8px] font-mono font-bold uppercase border border-stone-800 cursor-pointer"
+                            >
+                              Unpin
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 {/* ADVANCED GLOBAL VEHICLES COMMAND & CONTROL DECK */}
                 <div className="bg-[#FAF8F5] border-2 border-stone-900 p-5 space-y-4 shadow-[4px_4px_0px_0px_rgba(168,85,247,0.15)]">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-stone-200">
@@ -2630,6 +2824,23 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                     Hot Deal
                                   </button>
 
+                                  {/* Home Page Featured Showcase control */}
+                                  <button
+                                    onClick={(e) => {
+                                      handleToggleHomeFeatured(`user-${item.listingId}`, item.title);
+                                      spawnParticles(e, '#f59e0b', homeFeaturedIds.includes(`user-${item.listingId}`) ? '-HOME' : '+HOME', '🏠');
+                                    }}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
+                                      homeFeaturedIds.includes(`user-${item.listingId}`)
+                                        ? "bg-[#D97706] text-white border-[#B45309]"
+                                        : "bg-[#FAF8F5] hover:bg-stone-100 border-stone-300 text-stone-700"
+                                    }`}
+                                    title="Pin or unpin this listing to the Home Page Featured Showcase"
+                                  >
+                                    <Home className="w-3.5 h-3.5" />
+                                    {homeFeaturedIds.includes(`user-${item.listingId}`) ? "🏠 Pinned" : "🏠 Pin Home"}
+                                  </button>
+
                                   {/* Absolute Deletion */}
                                   <button
                                     onClick={() => handleDeleteListing(item.listingId!)}
@@ -2691,6 +2902,23 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                     title="Set hot deal tag"
                                   >
                                     Hot Deal
+                                  </button>
+
+                                  {/* Home Page Featured Showcase control */}
+                                  <button
+                                    onClick={(e) => {
+                                      handleToggleHomeFeatured(`default-${item.id}`, item.title);
+                                      spawnParticles(e, '#f59e0b', homeFeaturedIds.includes(`default-${item.id}`) ? '-HOME' : '+HOME', '🏠');
+                                    }}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
+                                      homeFeaturedIds.includes(`default-${item.id}`)
+                                        ? "bg-[#D97706] text-white border-[#B45309]"
+                                        : "bg-[#FAF8F5] hover:bg-stone-100 border-stone-300 text-stone-700"
+                                    }`}
+                                    title="Pin or unpin this vehicle to the Home Page Featured Showcase"
+                                  >
+                                    <Home className="w-3.5 h-3.5" />
+                                    {homeFeaturedIds.includes(`default-${item.id}`) ? "🏠 Pinned" : "🏠 Pin Home"}
                                   </button>
 
                                   {/* Restore / Hide toggle */}

@@ -1394,10 +1394,11 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         <div id="inventory-catalog-start" className="bg-[#FAF8F5] border border-stone-300 p-3.5 sm:p-8 mb-10">
           <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Model Search Phrase</label>
+              <label htmlFor="buy-search-phrase" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Model Search Phrase</label>
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
+                <Search aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
                 <input
+                  id="buy-search-phrase"
                   type="text"
                   placeholder="Toyota, Mustang, Hybrid..."
                   value={searchQuery}
@@ -1410,7 +1411,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               {recentSearches.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 pt-1.5 text-[10px] animate-in fade-in-0 duration-200">
                   <span className="text-stone-500 font-bold uppercase tracking-wider text-[9px] flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5 shrink-0" /> Recent:
+                    <Clock aria-hidden="true" className="w-2.5 h-2.5 shrink-0" /> Recent:
                   </span>
                   {recentSearches.map((sq, idx) => (
                     <button
@@ -1433,8 +1434,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Vehicle Category</label>
+              <label htmlFor="buy-category-select" className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Vehicle Category</label>
               <select
+                id="buy-category-select"
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
@@ -1450,8 +1452,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Make / Brand Manufacturer</label>
+              <label htmlFor="buy-make-select" className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Make / Brand Manufacturer</label>
               <select
+                id="buy-make-select"
                 value={selectedMake}
                 onChange={(e) => setSelectedMake(e.target.value)}
                 className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
@@ -1470,8 +1473,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Cap Pricing Bracket</label>
+              <label htmlFor="buy-price-select" className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Cap Pricing Bracket</label>
               <select
+                id="buy-price-select"
                 value={selectedPriceRange}
                 onChange={(e) => setSelectedPriceRange(e.target.value)}
                 className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
