@@ -4,6 +4,7 @@ import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion } from "motion/react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
 
 interface HomeTabProps {
   setActiveTab: (tab: string) => void;
@@ -454,7 +455,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                     alt={car.title}
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
                     }}
@@ -597,7 +598,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                         }`}
                         title={isFav ? "Remove from Favorites" : "Add to Favorites"}
                       >
-                        <Heart className={`w-4.5 h-4.5 ${isFav ? "fill-current" : ""}`} />
+                        <AnimatedFavoriteHeart isFav={isFav} className="w-4.5 h-4.5" />
                       </button>
                       <button
                         onClick={() => onQuickView(car)}

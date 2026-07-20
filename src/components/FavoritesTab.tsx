@@ -4,6 +4,7 @@ import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
 
 interface FavoritesTabProps {
   favorites: number[];
@@ -213,7 +214,7 @@ export default function FavoritesTab({
                   <img
                     src={car.image}
                     alt={car.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
                     }}
@@ -278,7 +279,7 @@ export default function FavoritesTab({
                         className="w-10 h-10 border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-650 flex items-center justify-center transition-all cursor-pointer"
                         title="Remove from Saved"
                       >
-                        <Heart className="w-4.5 h-4.5 fill-current" />
+                        <AnimatedFavoriteHeart isFav={true} className="w-4.5 h-4.5" />
                       </button>
                       <button
                         onClick={() => onQuickView(car)}

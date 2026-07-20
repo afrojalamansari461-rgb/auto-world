@@ -8,6 +8,7 @@ import BuyTab from "./components/BuyTab";
 import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
+import { AnimatedFavoriteHeart } from "./components/AnimatedFavoriteHeart";
 import AdminPanel from "./components/AdminPanel";
 import FavoritesTab from "./components/FavoritesTab";
 import SignInModal from "./components/SignInModal";
@@ -159,6 +160,63 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Keyboard shortcuts for the vehicle detail modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedVehicle) return;
+
+      // Avoid shortcuts when typing inside an input, textarea, or editable element
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          (activeEl as HTMLElement).contentEditable === "true")
+      ) {
+        return;
+      }
+
+      // 1. Arrow keys for carousel navigation
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const images = getCarouselImages(selectedVehicle);
+        if (images.length > 1) {
+          setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const images = getCarouselImages(selectedVehicle);
+        if (images.length > 1) {
+          setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+        }
+      }
+
+      // 2. Ctrl+S or Cmd+S to save/bookmark the current vehicle
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        toggleFavorite(selectedVehicle.id);
+        const isCurrentlyFav = favorites.includes(selectedVehicle.id);
+        showToast(
+          isCurrentlyFav
+            ? "Removed from your Curated Garage!"
+            : "Successfully saved to your Curated Garage!",
+          "success"
+        );
+      }
+
+      // 3. Escape key to close the modal
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSelectedVehicle(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedVehicle, favorites, favoritesLoaded]);
 
   // Search parameters forwarded from Home quick forms to is Buy tab
   const [searchFilters, setSearchFilters] = useState<{ type: string; priceRange: string; location: string }>({
@@ -1326,6 +1384,13 @@ export default function App() {
                           </span>
                         )}
 
+                        {/* Keyboard navigation Hint */}
+                        {hasMultiple && (
+                          <span className="absolute bottom-4 left-4 z-10 px-2 py-1 bg-stone-900/80 backdrop-blur-sm text-stone-300 font-mono text-[9px] font-bold border border-stone-700/80 select-none hidden sm:inline-block">
+                            Use ← / → keys
+                          </span>
+                        )}
+
                         {/* Left arrow navigation */}
                         {hasMultiple && (
                           <button
@@ -1747,12 +1812,17 @@ export default function App() {
                     }}
                     className={`flex-1 py-3.5 border text-[10px] uppercase font-bold tracking-widest cursor-pointer flex items-center justify-center gap-2 transition ${
                       favorites.includes(selectedVehicle.id)
-                        ? "bg-stone-900 border-stone-900 text-[#F4F1EA]"
-                        : "bg-[#FAF8F5] border-stone-300 text-stone-900 hover:bg-stone-200"
+                        ? "bg-black border-black text-white hover:bg-neutral-900"
+                        : "bg-white border-black text-black hover:bg-neutral-100"
                     }`}
                   >
-                    <Heart className={`w-4 h-4 ${favorites.includes(selectedVehicle.id) ? "fill-current" : ""}`} />
-                    {favorites.includes(selectedVehicle.id) ? "Saved bookmark" : "Add to Favorites"}
+                    <AnimatedFavoriteHeart isFav={favorites.includes(selectedVehicle.id)} className="w-4 h-4" />
+                    <span>{favorites.includes(selectedVehicle.id) ? "Saved bookmark" : "Add to Favorites"}</span>
+                    <kbd className={`hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[8px] rounded font-mono scale-90 transition-colors ${
+                      favorites.includes(selectedVehicle.id)
+                        ? "bg-neutral-800 border border-neutral-700 text-neutral-400"
+                        : "bg-neutral-100 border border-neutral-200 text-neutral-500"
+                    }`}>Ctrl+S</kbd>
                   </button>
                   <button
                     onClick={() => {
