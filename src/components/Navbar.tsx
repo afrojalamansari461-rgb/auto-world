@@ -34,7 +34,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      setIsScrolled(window.scrollY > 30);
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
@@ -74,46 +74,82 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
       aria-label="Primary website navigation"
       className={`sticky top-0 z-[100] transition-all duration-300 ${
         isScrolled
-          ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-sm py-3 border-b border-stone-900/15"
-          : "bg-[#F4F1EA] border-b border-stone-900/10 py-4"
+          ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-md py-2.5 border-b border-stone-900/15"
+          : "bg-[#F4F1EA]/90 backdrop-blur-sm border-b border-stone-900/10 py-3.5"
       }`}
     >
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12">
-        <div className="flex justify-between items-center">
-          {/* Logo */}
-          <button
+      <div className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-10">
+        <div className="flex justify-between items-center gap-2 lg:gap-6">
+          {/* Logo with Advanced Animated "AutoWorld" */}
+          <motion.button
             id="nav-logo"
             aria-label="AutoWorld homepage"
             onClick={() => handleTabClick("home")}
-            className="flex items-center gap-3 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+            initial="rest"
+            whileHover="hover"
+            whileTap="tap"
+            className="flex items-center gap-3 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 py-1 select-none shrink-0"
           >
             <motion.div 
-              whileHover={{ scale: 1.1, rotate: 3 }}
-              whileTap={{ scale: 0.9 }}
-              className="w-9 h-9 bg-stone-900 flex items-center justify-center text-white transition-all shadow-sm"
+              variants={{
+                rest: { scale: 1, rotate: 0, backgroundColor: "#1c1917" },
+                hover: { scale: 1.12, rotate: 6, backgroundColor: "#0c0a09" },
+                tap: { scale: 0.92 }
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 16 }}
+              className="w-10 h-10 bg-stone-900 rounded-lg flex items-center justify-center text-white transition-shadow shadow-md group-hover:shadow-lg group-hover:shadow-stone-900/20"
             >
-              <Car className="w-5 h-5 text-[#F4F1EA]" />
+              <Car className="w-5 h-5 text-[#F4F1EA] transition-transform duration-300 group-hover:scale-110" />
             </motion.div>
-            <span className="text-xl font-bold tracking-tighter uppercase font-serif text-stone-900">
-              Auto<span className="font-light italic text-stone-600">World</span>
-            </span>
-          </button>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2 lg:gap-4" role="tablist" aria-label="Main navigation tabs">
+            <div className="relative flex flex-col justify-center">
+              <span className="text-xl lg:text-2xl font-black font-serif uppercase tracking-tight text-stone-900 flex items-center">
+                <motion.span
+                  className="inline-block"
+                  variants={{
+                    rest: { y: 0, color: "#1c1917" },
+                    hover: { y: -2, color: "#000000", transition: { type: "spring", stiffness: 400, damping: 14 } }
+                  }}
+                >
+                  Auto
+                </motion.span>
+                <motion.span
+                  className="inline-block font-serif font-normal italic ml-0.5 text-stone-600"
+                  variants={{
+                    rest: { x: 0, rotate: 0, color: "#525252" },
+                    hover: { x: 4, rotate: -3, color: "#d97706", transition: { type: "spring", stiffness: 350, damping: 12 } }
+                  }}
+                >
+                  World
+                </motion.span>
+              </span>
+
+              {/* Advanced Kinetic Underline Indicator */}
+              <motion.span 
+                className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-gradient-to-r from-stone-900 via-amber-500 to-stone-900 rounded-full origin-left"
+                variants={{
+                  rest: { scaleX: 0, opacity: 0 },
+                  hover: { scaleX: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
+                }}
+              />
+            </div>
+          </motion.button>
+
+          {/* Desktop Navigation Links - Shown on laptop/desktop (lg+) */}
+          <div className="hidden lg:flex items-center gap-1 xl:gap-2 mx-auto" role="tablist" aria-label="Main navigation tabs">
             {isLoadingTabs ? (
               navItems.map((item, idx) => (
                 <div 
                   key={`shimmer-${item.id}`} 
-                  className="w-24 h-9 bg-stone-200/55 border border-stone-300/30 relative overflow-hidden flex items-center justify-center rounded-none"
+                  className="w-20 lg:w-24 h-8 bg-stone-200/60 rounded-full relative overflow-hidden flex items-center justify-center"
                 >
                   <motion.div 
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
                     initial={{ x: "-100%" }}
                     animate={{ x: "100%" }}
-                    transition={{ repeat: Infinity, duration: 1.2, ease: "linear", delay: idx * 0.12 }}
+                    transition={{ repeat: Infinity, duration: 1.2, ease: "linear", delay: idx * 0.1 }}
                   />
-                  <div className="w-14 h-3 bg-stone-300/40 rounded-none" />
+                  <div className="w-12 h-2.5 bg-stone-300/50 rounded-full" />
                 </div>
               ))
             ) : (
@@ -128,23 +164,23 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                     aria-selected={isActive}
                     aria-controls={`tabpanel-${item.id}`}
                     tabIndex={0}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => handleTabClick(item.id)}
                     onKeyDown={(e) => handleKeyDown(e, item.id)}
-                    className={`relative flex items-center gap-2 px-3.5 py-2.5 text-xs lg:text-[13px] font-sans uppercase tracking-[0.1em] transition-all duration-200 cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-stone-900 focus-visible:outline-offset-2 ${
+                    className={`relative flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 py-1.5 text-xs lg:text-[13px] font-sans uppercase tracking-wider transition-all duration-200 cursor-pointer rounded-full whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 ${
                       isActive
                         ? "text-stone-950 font-black"
-                        : "text-stone-600 hover:text-purple-700 hover:bg-purple-50/40 font-bold"
+                        : "text-stone-600 hover:text-stone-950 hover:bg-stone-900/5 font-semibold"
                     }`}
                   >
-                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-stone-900" : "text-stone-500 hover:text-purple-600"}`} />
-                    <span className="relative z-10">{item.label}</span>
+                    <Icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 transition-colors ${isActive ? "text-stone-900" : "text-stone-500"}`} />
+                    <span className="relative z-10 whitespace-nowrap">{item.label}</span>
                     {isActive && (
-                      <motion.span
-                        layoutId="activeTabUnderline"
-                        className="absolute bottom-0 left-0 right-0 h-[3px] bg-stone-900"
-                        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                      <motion.div
+                        layoutId="activeTabPill"
+                        className="absolute inset-0 bg-stone-900/10 rounded-full border border-stone-900/15 z-0"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
                       />
                     )}
                   </motion.button>
@@ -153,25 +189,33 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             )}
           </div>
 
-          {/* Right Accents */}
-          <div className="hidden md:flex items-center gap-3.5 lg:gap-5">
+          {/* Right Actions Section - Shown on laptop/desktop (lg+) */}
+          <div className="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0">
             {currentUser ? (
               <motion.div 
                 id="user-profile-menu" 
                 layout
-                className="flex items-center gap-2.5 px-3.5 py-1.5 bg-[#FAF8F5] border border-stone-300 shadow-sm"
+                className="flex items-center gap-2 p-1 pl-2.5 bg-stone-100 hover:bg-stone-200/70 rounded-full border border-stone-200/90 transition shadow-2xs shrink-0"
               >
                 {currentUser.photoURL ? (
-                  <img src={currentUser.photoURL} alt={currentUser.displayName || "User Avatar"} className="w-6 h-6 rounded-full border border-stone-300" referrerPolicy="no-referrer" />
+                  <img src={currentUser.photoURL} alt={currentUser.displayName || "User Avatar"} className="w-5.5 h-5.5 rounded-full border border-stone-300 object-cover" referrerPolicy="no-referrer" />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center text-[10px] font-bold">
+                  <div className="w-5.5 h-5.5 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center text-[10px] font-bold shrink-0">
                     {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}
                   </div>
                 )}
-                <div className="flex flex-col items-start leading-[1.1]">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[90px]">{currentUser.displayName || "User"}</span>
-                  <button onClick={handleSignOut} aria-label="Sign out of AutoWorld account" className="text-[9px] uppercase tracking-widest font-bold text-red-650 hover:underline cursor-pointer">Sign Out</button>
-                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[80px] xl:max-w-[110px]">
+                  {currentUser.displayName || "User"}
+                </span>
+                <button 
+                  onClick={handleSignOut} 
+                  title="Sign Out"
+                  aria-label="Sign out of AutoWorld account" 
+                  className="flex items-center gap-1 px-2.5 py-1 bg-red-100/90 hover:bg-red-600 hover:text-white text-red-700 font-bold text-[10px] uppercase tracking-wider rounded-full transition cursor-pointer shrink-0"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Sign Out</span>
+                </button>
               </motion.div>
             ) : (
               <motion.button
@@ -179,9 +223,9 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 whileTap={{ scale: 0.97 }}
                 onClick={onSignInClick}
                 aria-label="Sign in to your account"
-                className="flex items-center gap-1.5 px-4 py-2 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs lg:text-[13px] font-sans uppercase tracking-[0.1em] transition-all cursor-pointer font-bold bg-[#FAF8F5] shadow-sm focus:outline-none focus-visible:outline-2 focus-visible:outline-stone-900"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-stone-800 hover:text-stone-950 hover:bg-stone-900/5 rounded-full transition-all cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
               >
-                <LogIn className="w-3.5 h-3.5" />
+                <LogIn className="w-3.5 h-3.5 text-stone-600" />
                 Sign In
               </motion.button>
             )}
@@ -189,10 +233,10 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             {subscriptionActive ? (
               <motion.div 
                 layout
-                className="flex items-center gap-1.5 px-4 py-2 bg-stone-900 text-stone-100 text-xs lg:text-[13px] font-sans uppercase tracking-widest font-bold border border-stone-900 shadow-sm rounded-sm"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-900 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-full border border-amber-500/40 shadow-sm whitespace-nowrap shrink-0"
               >
-                <Crown className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                PREMIUM ACTIVE
+                <Crown className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                Premium
               </motion.div>
             ) : (
               <motion.button
@@ -200,38 +244,29 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleTabClick("premium")}
                 aria-label="Upgrade to AutoWorld Premium Plan"
-                className="flex items-center gap-1.5 px-4 py-2 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs lg:text-[13px] font-sans uppercase tracking-widest transition-all cursor-pointer bg-[#FAF8F5]/50 focus:outline-none focus-visible:outline-2 focus-visible:outline-stone-900 font-bold"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full border border-amber-600/35 bg-amber-500/10 text-amber-950 hover:bg-amber-500/20 transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
               >
-                <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-350" />
+                <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-400" />
                 Go Premium
               </motion.button>
             )}
-            <motion.button
-              whileHover={{ scale: 1.03, y: -0.5 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleTabClick("sell")}
-              aria-label="List your vehicle for sale free"
-              className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-serif italic text-xs lg:text-[13px] uppercase tracking-widest transition-all cursor-pointer border border-stone-900 shadow-sm focus:outline-none focus-visible:outline-2 focus-visible:outline-stone-900 font-bold"
-            >
-              List Car Free
-            </motion.button>
           </div>
 
-          {/* Mobile Menu Toggle Button */}
+          {/* Mobile & Tablet Hamburger Toggle Button (lg:hidden) */}
           <motion.button
             id="mobile-menu-toggle"
             aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={isMobileMenuOpen}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-3.5 hover:bg-stone-200/50 text-stone-900 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+            className="lg:hidden p-2.5 rounded-full hover:bg-stone-200/60 text-stone-900 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 shrink-0"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </motion.button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile & Tablet Menu Drawer (lg:hidden) */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -239,7 +274,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="md:hidden border-t border-stone-900/10 bg-[#FAF8F5] shadow-lg absolute top-full left-0 right-0 overflow-hidden py-4 px-4 flex flex-col gap-2.5"
+            className="lg:hidden border-t border-stone-900/10 bg-[#FAF8F5] shadow-xl absolute top-full left-0 right-0 overflow-hidden py-4 px-4 flex flex-col gap-2"
             role="tablist"
           >
             {navItems.map((item) => {
@@ -252,9 +287,9 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => handleTabClick(item.id)}
-                  className={`flex items-center gap-3 px-5 py-3.5 text-xs font-sans uppercase tracking-widest transition ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-sans uppercase tracking-widest transition ${
                     isActive
-                      ? "bg-stone-900 text-white font-extrabold"
+                      ? "bg-stone-900 text-white font-extrabold shadow-sm"
                       : "text-stone-700 hover:bg-stone-100 font-bold"
                   }`}
                 >
@@ -267,7 +302,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             <hr className="border-stone-900/10 my-1" />
             <div className="flex flex-col gap-2">
               {currentUser ? (
-                <div className="flex items-center justify-between p-3.5 bg-[#FAF8F5] border border-stone-200">
+                <div className="flex items-center justify-between p-3 bg-stone-100 rounded-xl border border-stone-200">
                   <div className="flex items-center gap-2">
                     {currentUser.photoURL ? (
                       <img src={currentUser.photoURL} alt={currentUser.displayName || "Avatar"} className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
@@ -276,14 +311,14 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                         {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}
                       </div>
                     )}
-                    <span className="text-xs font-bold uppercase text-stone-900">{currentUser.displayName || "User"}</span>
+                    <span className="text-xs font-bold uppercase text-stone-900 truncate max-w-[140px]">{currentUser.displayName || "User"}</span>
                   </div>
                   <button
                     onClick={handleSignOut}
                     aria-label="Sign out of AutoWorld account"
-                    className="flex items-center gap-1.5 px-4.5 py-3.5 bg-red-50 hover:bg-red-100 text-red-650 text-[11px] uppercase font-bold tracking-wider rounded-sm transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-[11px] uppercase font-bold tracking-wider rounded-lg transition cursor-pointer"
                   >
-                    <LogIn className="w-3 h-3" />
+                    <LogIn className="w-3.5 h-3.5" />
                     Sign Out
                   </button>
                 </div>
@@ -291,7 +326,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 <button
                   onClick={onSignInClick}
                   aria-label="Sign in with Google account"
-                  className="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-stone-900 text-white text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3 px-5 bg-stone-900 text-white text-xs font-sans uppercase tracking-widest transition-all font-bold rounded-xl cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
                   Sign In with Google
@@ -299,27 +334,20 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               )}
 
               {subscriptionActive ? (
-                <div className="flex items-center justify-center gap-2 py-3.5 px-5 bg-stone-950 text-[#F4F1EA] text-xs tracking-widest uppercase font-bold">
-                  <Crown className="w-4 h-4 fill-amber-500 text-amber-500" />
+                <div className="flex items-center justify-center gap-2 py-3 px-5 bg-stone-950 text-amber-400 text-xs tracking-widest uppercase font-bold rounded-xl border border-amber-500/30">
+                  <Crown className="w-4 h-4 fill-amber-400 text-amber-400" />
                   Premium Active Pass
                 </div>
               ) : (
                 <button
                   onClick={() => handleTabClick("premium")}
                   aria-label="Upgrade to AutoWorld Premium Plan"
-                  className="w-full flex items-center justify-center gap-2 py-3.5 px-5 hover:bg-stone-900 hover:text-white border border-stone-900 text-stone-900 text-xs font-sans uppercase tracking-widest transition-all font-bold cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3 px-5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-600/30 text-amber-950 text-xs font-sans uppercase tracking-widest transition-all font-bold rounded-xl cursor-pointer"
                 >
                   <Crown className="w-4 h-4 text-amber-600" />
                   Go Premium Plan
                 </button>
               )}
-              <button
-                onClick={() => handleTabClick("sell")}
-                aria-label="List your car free"
-                className="w-full text-center py-3.5 px-5 bg-stone-900 text-white font-serif italic text-xs tracking-widest uppercase font-bold cursor-pointer"
-              >
-                List Car Free
-              </button>
             </div>
           </motion.div>
         )}

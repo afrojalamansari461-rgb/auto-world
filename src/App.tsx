@@ -1817,12 +1817,7 @@ export default function App() {
                     }`}
                   >
                     <AnimatedFavoriteHeart isFav={favorites.includes(selectedVehicle.id)} className="w-4 h-4" />
-                    <span>{favorites.includes(selectedVehicle.id) ? "Saved bookmark" : "Add to Favorites"}</span>
-                    <kbd className={`hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[8px] rounded font-mono scale-90 transition-colors ${
-                      favorites.includes(selectedVehicle.id)
-                        ? "bg-neutral-800 border border-neutral-700 text-neutral-400"
-                        : "bg-neutral-100 border border-neutral-200 text-neutral-500"
-                    }`}>Ctrl+S</kbd>
+                    {favorites.includes(selectedVehicle.id) ? "Saved bookmark" : "Add to Favorites"}
                   </button>
                   <button
                     onClick={() => {
