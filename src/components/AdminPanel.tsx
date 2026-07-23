@@ -584,38 +584,55 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
   // Toggle Admin Approval status ('pending' vs 'active')
   const handleToggleApproval = async (item: UserListing) => {
-    const nextStatus = item.status === "pending" || item.status === undefined ? "active" : "pending";
-    try {
-      await updateDoc(doc(db, "listings", item.id), { status: nextStatus });
-      setListings(prev => prev.map(l => l.id === item.id ? { ...l, status: nextStatus } : l));
-      
-      // Also update local storage cache if mirrored there
+    const isUnapproving = item.status === "active" || item.status === undefined;
+    const nextStatus = isUnapproving ? "pending" : "active";
+
+    const performApprovalToggle = async () => {
       try {
-        const stored = localStorage.getItem("autoWorld_listings");
-        if (stored) {
-          const list: UserListing[] = JSON.parse(stored);
-          const updated = list.map(l => l.id === item.id ? { ...l, status: nextStatus } : l);
-          localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
+        await updateDoc(doc(db, "listings", item.id), { status: nextStatus });
+        setListings(prev => prev.map(l => l.id === item.id ? { ...l, status: nextStatus } : l));
+        
+        // Also update local storage cache if mirrored there
+        try {
+          const stored = localStorage.getItem("autoWorld_listings");
+          if (stored) {
+            const list: UserListing[] = JSON.parse(stored);
+            const updated = list.map(l => l.id === item.id ? { ...l, status: nextStatus } : l);
+            localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
+          }
+        } catch (e) {
+          console.error("Failed to update local storage approved status:", e);
         }
-      } catch (e) {
-        console.error("Failed to update local storage approved status:", e);
+
+        // Record in Audit Log
+        await recordAuditLog(
+          currentUser?.email || "Admin",
+          "Toggle Approval",
+          `Updated approval status of vehicle "${item.title}" (ID: ${item.id}) to "${nextStatus}".`
+        );
+
+        triggerHudAlert(
+          nextStatus === "active" ? "SPECIMEN PUBLISHED ONLINE" : "SPECIMEN HELD / HIDDEN",
+          `Specimen "${item.title}" is now ${nextStatus === "active" ? "active and visible to public catalog" : "archived in pending drafts"}.`,
+          nextStatus === "active" ? "approve" : "unapprove"
+        );
+      } catch (err: any) {
+        handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
+        showToast("Failed to update listing approval workflow.", "error");
       }
+    };
 
-      // Record in Audit Log
-      await recordAuditLog(
-        currentUser?.email || "Admin",
-        "Toggle Approval",
-        `Updated approval status of vehicle "${item.title}" (ID: ${item.id}) to "${nextStatus}".`
-      );
-
-      triggerHudAlert(
-        nextStatus === "active" ? "SPECIMEN PUBLISHED ONLINE" : "SPECIMEN HELD / HIDDEN",
-        `Specimen "${item.title}" is now ${nextStatus === "active" ? "active and visible to public catalog" : "archived in pending drafts"}.`,
-        nextStatus === "active" ? "approve" : "unapprove"
-      );
-    } catch (err: any) {
-      handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
-      showToast("Failed to update listing approval workflow.", "error");
+    if (isUnapproving) {
+      setConfirmModal({
+        isOpen: true,
+        title: "UNAPPROVE VEHICLE LISTING",
+        message: `Are you sure you want to unapprove vehicle "${item.title}"? This will suspend its public status and hide it from the marketplace catalog.`,
+        danger: true,
+        confirmText: "UNAPPROVE LISTING",
+        onConfirm: performApprovalToggle
+      });
+    } else {
+      await performApprovalToggle();
     }
   };
 

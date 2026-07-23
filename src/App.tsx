@@ -84,6 +84,21 @@ export default function App() {
   const [hasPaidPass, setHasPaidPass] = useState<boolean>(false);
   const [showAdminGrandEntry, setShowAdminGrandEntry] = useState<boolean>(false);
 
+  // Custom Confirmation Modal state for vehicle actions & modal operations
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    danger?: boolean;
+    confirmText?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
   // Global Scroll to top state & effect
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -679,14 +694,30 @@ export default function App() {
     if (!selectedVehicle || !selectedVehicle.isUserListing || !selectedVehicle.listingId) return;
     const isCurrentlyApproved = selectedVehicle.status !== "pending";
     const newStatus = isCurrentlyApproved ? "pending" : "active";
-    try {
-      await updateDoc(doc(db, "listings", selectedVehicle.listingId), { status: newStatus });
-      setSelectedVehicle(prev => prev ? { ...prev, status: newStatus } : null);
-      showToast(`Listing ${newStatus === "active" ? "Approved & Active" : "Unapproved & Hidden"}!`, "success");
-      window.dispatchEvent(new Event("autoWorld_db_update"));
-    } catch (err: any) {
-      console.error(err);
-      showToast("Failed to update approval on Firestore", "error");
+
+    const performApprovalChange = async () => {
+      try {
+        await updateDoc(doc(db, "listings", selectedVehicle.listingId!), { status: newStatus });
+        setSelectedVehicle(prev => prev ? { ...prev, status: newStatus } : null);
+        showToast(`Listing ${newStatus === "active" ? "Approved & Active" : "Unapproved & Hidden"}!`, "success");
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (err: any) {
+        console.error(err);
+        showToast("Failed to update approval on Firestore", "error");
+      }
+    };
+
+    if (isCurrentlyApproved) {
+      setConfirmModal({
+        isOpen: true,
+        title: "UNAPPROVE VEHICLE LISTING",
+        message: `Are you sure you want to unapprove vehicle "${selectedVehicle.title}"? This will suspend the listing and hide it from the public catalog.`,
+        danger: true,
+        confirmText: "UNAPPROVE LISTING",
+        onConfirm: performApprovalChange
+      });
+    } else {
+      await performApprovalChange();
     }
   };
 
@@ -788,29 +819,38 @@ export default function App() {
 
   const handleDeleteInModal = async () => {
     if (!selectedVehicle || !selectedVehicle.isUserListing || !selectedVehicle.listingId) return;
-    if (!window.confirm("Are you sure you want to permanently delete this user listing from Firestore? This is irreversible.")) return;
-    try {
-      await deleteDoc(doc(db, "listings", selectedVehicle.listingId));
-      
-      // Also update local storage if they mirrored it there
-      try {
-        const stored = localStorage.getItem("autoWorld_listings");
-        if (stored) {
-          const list: UserListing[] = JSON.parse(stored);
-          const updated = list.filter(item => item.id !== selectedVehicle.listingId);
-          localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
-        }
-      } catch (e) {
-        console.error(e);
-      }
+    
+    setConfirmModal({
+      isOpen: true,
+      title: "PERMANENT VEHICLE DELETION",
+      message: `Are you sure you want to permanently delete "${selectedVehicle.title}" from the Firestore database? This action is absolute and cannot be undone.`,
+      danger: true,
+      confirmText: "PERMANENTLY DELETE",
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "listings", selectedVehicle.listingId!));
+          
+          // Also update local storage if they mirrored it there
+          try {
+            const stored = localStorage.getItem("autoWorld_listings");
+            if (stored) {
+              const list: UserListing[] = JSON.parse(stored);
+              const updated = list.filter(item => item.id !== selectedVehicle.listingId);
+              localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
+            }
+          } catch (e) {
+            console.error(e);
+          }
 
-      showToast("Listing deleted successfully from Firestore database!", "success");
-      setSelectedVehicle(null);
-      window.dispatchEvent(new Event("autoWorld_db_update"));
-    } catch (err: any) {
-      console.error(err);
-      showToast("Failed to delete from Firestore", "error");
-    }
+          showToast("Listing deleted successfully from Firestore database!", "success");
+          setSelectedVehicle(null);
+          window.dispatchEvent(new Event("autoWorld_db_update"));
+        } catch (err: any) {
+          console.error(err);
+          showToast("Failed to delete from Firestore", "error");
+        }
+      }
+    });
   };
 
   const handleHideRestoreInModal = () => {
@@ -2107,6 +2147,62 @@ export default function App() {
               <ArrowUp className="w-4 h-4 absolute translate-y-6 transition-all duration-300 group-hover:translate-y-0 text-white" />
             </div>
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirmation Modal for Vehicle Actions */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-[2px]"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-md bg-[#FAF8F5] border-3 border-stone-900 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] z-10 space-y-6 font-mono"
+            >
+              <div className="flex items-center gap-2.5 pb-3 border-b-2 border-stone-900">
+                <div className={`w-3 h-3 rounded-none rotate-45 ${confirmModal.danger ? "bg-red-600" : "bg-purple-600"}`} />
+                <h3 className="text-xs font-mono font-black tracking-wider uppercase text-stone-950">
+                  {confirmModal.title || "CONFIRMATION REQUIRED"}
+                </h3>
+              </div>
+              
+              <p className="text-xs text-stone-800 leading-relaxed uppercase font-mono">
+                {confirmModal.message}
+              </p>
+              
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 bg-stone-105 hover:bg-stone-200 border border-stone-300 text-[10px] font-bold uppercase tracking-widest font-mono cursor-pointer transition"
+                >
+                  ABORT TRANSACTION
+                </button>
+                
+                <button
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  }}
+                  className={`px-5 py-2 text-white text-[10px] font-black uppercase tracking-widest font-mono cursor-pointer transition ${
+                    confirmModal.danger 
+                      ? "bg-red-600 hover:bg-red-700 shadow-[0_0_12px_rgba(220,38,38,0.3)]" 
+                      : "bg-stone-900 hover:bg-stone-800"
+                  }`}
+                >
+                  {confirmModal.confirmText || "EXECUTE ACTION"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

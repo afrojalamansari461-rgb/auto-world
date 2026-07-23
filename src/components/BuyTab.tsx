@@ -1622,15 +1622,14 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                       <motion.div
                         key={car.id}
                         layout
-                        initial={{ opacity: 0, scale: 0.96, y: 24, boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" }}
-                        animate={{ opacity: 1, scale: 1, y: 0, boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" }}
-                        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
                         transition={{
-                          type: "spring",
-                          stiffness: 100,
-                          damping: 16,
-                          delay: Math.min(idx * 0.045, 0.45),
-                          layout: { type: "spring", stiffness: 180, damping: 25 }
+                          opacity: { duration: 0.25 },
+                          scale: { duration: 0.25 },
+                          y: { duration: 0.25 },
+                          layout: { type: "spring", stiffness: 220, damping: 26 }
                         }}
                         whileHover={{
                           scale: 1.015,
