@@ -26,6 +26,21 @@ export interface Vehicle {
   color?: string;
   owners?: string;
   regNumber?: string;
+  // Category specific attributes
+  bikeType?: string;
+  bikeEngine?: string;
+  bikeMileage?: string;
+  bikeGears?: string;
+  bicycleType?: string;
+  frameSize?: string;
+  gears?: string;
+  brakeType?: string;
+  frameMaterial?: string;
+  batteryCapacity?: string;
+  electricRange?: string;
+  driveType?: string;
+  doors?: string;
+  seats?: string;
 }
 
 export interface UserListing {
@@ -57,6 +72,11 @@ export interface UserListing {
   bicycleType?: string;
   frameSize?: string;
   gears?: string;
+  brakeType?: string;
+  frameMaterial?: string;
+  batteryCapacity?: string;
+  electricRange?: string;
+  driveType?: string;
   featured?: boolean;
   urgent?: boolean;
   verified?: boolean;

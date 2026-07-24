@@ -71,7 +71,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [seats, setSeats] = useState("");
   const [checkedFeatures, setCheckedFeatures] = useState<string[]>([]);
   
-  // Bike / Bicycle specific states
+  // Category specific states
   const [bikeType, setBikeType] = useState("");
   const [bikeEngine, setBikeEngine] = useState("");
   const [bikeMileage, setBikeMileage] = useState("");
@@ -79,6 +79,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [bicycleType, setBicycleType] = useState("");
   const [frameSize, setFrameSize] = useState("");
   const [gears, setGears] = useState("");
+  const [brakeType, setBrakeType] = useState("");
+  const [frameMaterial, setFrameMaterial] = useState("");
+  const [batteryCapacity, setBatteryCapacity] = useState("");
+  const [electricRange, setElectricRange] = useState("");
+  const [driveType, setDriveType] = useState("");
 
   // STEP 3: Base64 Photos state
   const [photos, setPhotos] = useState<{ src: string; alt: string }[]>([]);
@@ -96,6 +101,141 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   // Suggested price outputs
   const [suggestedMin, setSuggestedMin] = useState(0);
   const [suggestedMax, setSuggestedMax] = useState(0);
+
+  // Auto-save draft states
+  const DRAFT_STORAGE_KEY = "autoWorld_sell_draft";
+  const [hasDraft, setHasDraft] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+
+  // Restore auto-saved draft on mount
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (savedDraft) {
+        const d = JSON.parse(savedDraft);
+        if (d && typeof d === "object") {
+          if (d.vehicleType !== undefined) setVehicleType(d.vehicleType);
+          if (d.make !== undefined) setMake(d.make);
+          if (d.model !== undefined) setModel(d.model);
+          if (d.year !== undefined) setYear(d.year);
+          if (d.customMake !== undefined) setCustomMake(d.customMake);
+          if (d.customModel !== undefined) setCustomModel(d.customModel);
+          if (d.condition !== undefined) setCondition(d.condition);
+          if (d.mileage !== undefined) setMileage(d.mileage);
+          if (d.fuelType !== undefined) setFuelType(d.fuelType);
+          if (d.description !== undefined) setDescription(d.description);
+          if (d.transmission !== undefined) setTransmission(d.transmission);
+          if (d.engineSize !== undefined) setEngineSize(d.engineSize);
+          if (d.doors !== undefined) setDoors(d.doors);
+          if (d.seats !== undefined) setSeats(d.seats);
+          if (Array.isArray(d.checkedFeatures)) setCheckedFeatures(d.checkedFeatures);
+          if (d.bikeType !== undefined) setBikeType(d.bikeType);
+          if (d.bikeEngine !== undefined) setBikeEngine(d.bikeEngine);
+          if (d.bikeMileage !== undefined) setBikeMileage(d.bikeMileage);
+          if (d.bikeGears !== undefined) setBikeGears(d.bikeGears);
+          if (d.bicycleType !== undefined) setBicycleType(d.bicycleType);
+          if (d.frameSize !== undefined) setFrameSize(d.frameSize);
+          if (d.gears !== undefined) setGears(d.gears);
+          if (d.brakeType !== undefined) setBrakeType(d.brakeType);
+          if (d.frameMaterial !== undefined) setFrameMaterial(d.frameMaterial);
+          if (d.batteryCapacity !== undefined) setBatteryCapacity(d.batteryCapacity);
+          if (d.electricRange !== undefined) setElectricRange(d.electricRange);
+          if (d.driveType !== undefined) setDriveType(d.driveType);
+          if (Array.isArray(d.photos)) setPhotos(d.photos);
+          if (d.askingPrice !== undefined) setAskingPrice(d.askingPrice);
+          if (d.negotiable !== undefined) setNegotiable(d.negotiable);
+          if (d.sellerName !== undefined) setSellerName(d.sellerName);
+          if (d.sellerEmail !== undefined) setSellerEmail(d.sellerEmail);
+          if (d.sellerPhone !== undefined) setSellerPhone(d.sellerPhone);
+          if (d.locationStr !== undefined) setLocationStr(d.locationStr);
+          if (d.featuredListing !== undefined) setFeaturedListing(d.featuredListing);
+          if (d.urgentListing !== undefined) setUrgentListing(d.urgentListing);
+          if (d.currentStep && d.currentStep <= 5) setCurrentStep(d.currentStep);
+
+          const hasContent = Boolean(
+            d.vehicleType || d.make || d.model || d.year || d.description || d.askingPrice || (d.photos && d.photos.length > 0) || d.sellerPhone
+          );
+          if (hasContent) {
+            setHasDraft(true);
+            if (d.updatedAt) {
+              setLastSavedTime(new Date(d.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+            showToast("Restored auto-saved listing draft!", "info");
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to parse auto-save draft:", err);
+    }
+  }, []);
+
+  // Save draft whenever form state changes
+  useEffect(() => {
+    if (currentStep > 5) return;
+
+    const isFormDirty = Boolean(
+      vehicleType || make || model || year || description || askingPrice || (photos && photos.length > 0) || sellerPhone || locationStr
+    );
+
+    if (!isFormDirty) return;
+
+    const draftData = {
+      currentStep,
+      vehicleType,
+      make,
+      model,
+      year,
+      customMake,
+      customModel,
+      condition,
+      mileage,
+      fuelType,
+      description,
+      transmission,
+      engineSize,
+      doors,
+      seats,
+      checkedFeatures,
+      bikeType,
+      bikeEngine,
+      bikeMileage,
+      bikeGears,
+      bicycleType,
+      frameSize,
+      gears,
+      brakeType,
+      frameMaterial,
+      batteryCapacity,
+      electricRange,
+      driveType,
+      photos,
+      askingPrice,
+      negotiable,
+      sellerName,
+      sellerEmail,
+      sellerPhone,
+      locationStr,
+      featuredListing,
+      urgentListing,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftData));
+      setHasDraft(true);
+      setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    } catch (err) {
+      console.warn("Error auto-saving draft to localStorage:", err);
+    }
+  }, [
+    currentStep, vehicleType, make, model, year, customMake, customModel,
+    condition, mileage, fuelType, description, transmission, engineSize,
+    doors, seats, checkedFeatures, bikeType, bikeEngine, bikeMileage,
+    bikeGears, bicycleType, frameSize, gears, brakeType, frameMaterial,
+    batteryCapacity, electricRange, driveType, photos, askingPrice,
+    negotiable, sellerName, sellerEmail, sellerPhone, locationStr,
+    featuredListing, urgentListing
+  ]);
 
   // Publish Status details
   const [isPublishing, setIsPublishing] = useState(false);
@@ -191,10 +331,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           status: "active"
         };
 
-        const listingData = {
+        const rawListingData = {
           ...newListing,
           userId: currentUser.uid
         };
+
+        const listingData = Object.fromEntries(
+          Object.entries(rawListingData).filter(([_, val]) => val !== undefined)
+        );
 
         // Sync to Firestore
         try {
@@ -268,10 +412,29 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
   const ratingLabels = ["Poor", "Fair", "Good", "Very Good", "Excellent"];
 
-  const defaultFeatures = [
-    "Air Conditioning", "Power Windows", "Power Steering", "ABS",
-    "Airbags", "Sunroof/Moonroof", "Leather Seats", "Bluetooth", "Backup Camera"
-  ];
+  const getFeaturesForCategory = () => {
+    if (vehicleType === "bicycle") {
+      return [
+        "Front Suspension", "Full Suspension", "Hydraulic Disc Brakes", "Mechanical Disc Brakes",
+        "Rear Carrier Rack", "Mudguards / Fenders", "Kickstand", "LED Safety Lights",
+        "Water Bottle Cage", "Helmet Included", "Gel Comfort Seat", "Puncture-Resistant Tyres"
+      ];
+    }
+    if (vehicleType === "motorcycle") {
+      return [
+        "Anti-Lock Braking (ABS)", "Dual Disc Brakes", "Alloy Wheels", "Digital Speedometer Console",
+        "Electric Push Start", "LED Headlight", "Riding Modes", "Traction Control",
+        "Luggage Rack / Top Box", "Engine Crash Guard", "Tubeless Tyres", "USB Charging Port"
+      ];
+    }
+    return [
+      "Air Conditioning", "Power Windows", "Power Steering", "ABS Brakes",
+      "Front & Side Airbags", "Sunroof / Moonroof", "Leather Seats", "Bluetooth & Apple CarPlay",
+      "Backup Camera / 360", "Cruise Control", "Alloy Wheels", "Keyless Entry & Push Start"
+    ];
+  };
+
+  const defaultFeatures = getFeaturesForCategory();
 
   const handleFeatureToggle = (featureName: string) => {
     if (checkedFeatures.includes(featureName)) {
@@ -399,26 +562,31 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         year: year,
         price: parseInt(askingPrice),
         condition: condition,
-        mileage: mileage || "0",
-        fuelType: fuelType || "Petrol",
+        mileage: vehicleType === "bicycle" ? "0" : (mileage || "0"),
+        fuelType: vehicleType === "bicycle" ? "Pedal / Human Powered" : (fuelType || "Petrol"),
         description: description,
         negotiable: negotiable,
         sellerName: sellerName,
         sellerEmail: sellerEmail,
         sellerPhone: sellerPhone,
         location: locationStr,
-        features: checkedFeatures.length > 0 ? checkedFeatures : ["Air Conditioning", "ABS"],
-        transmission: transmission,
-        engineSize: engineSize,
-        doors: doors,
-        seats: seats,
-        bikeType: bikeType,
-        bikeEngine: bikeEngine,
-        bikeMileage: bikeMileage,
-        bikeGears: bikeGears,
-        bicycleType: bicycleType,
-        frameSize: frameSize,
-        gears: gears,
+        features: checkedFeatures.length > 0 ? checkedFeatures : defaultFeatures.slice(0, 3),
+        transmission: vehicleType === "bicycle" ? (gears ? `${gears} Gears` : "Pedal Drive") : (transmission || "Manual"),
+        engineSize: vehicleType === "bicycle" ? "" : (fuelType === "electric" ? `${batteryCapacity || "EV"} kWh` : (engineSize || "")),
+        doors: ["car", "suv", "truck", "van", "commercial"].includes(vehicleType) ? (doors || "4") : "",
+        seats: ["car", "suv", "truck", "van", "commercial"].includes(vehicleType) ? (seats || "5") : "",
+        bikeType: bikeType || "",
+        bikeEngine: bikeEngine || "",
+        bikeMileage: bikeMileage || "",
+        bikeGears: bikeGears || "",
+        bicycleType: bicycleType || "",
+        frameSize: frameSize || "",
+        gears: gears || "",
+        brakeType: brakeType || "",
+        frameMaterial: frameMaterial || "",
+        batteryCapacity: batteryCapacity || "",
+        electricRange: electricRange || "",
+        driveType: driveType || "",
         featured: featuredListing,
         urgent: urgentListing,
         photos: photos,
@@ -426,10 +594,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         status: "active"
       };
 
-      const listingData = {
+      const rawListingData = {
         ...newListing,
         userId: currentUser.uid
       };
+
+      // Sanitize object to remove any keys with undefined values before sending to Firestore
+      const listingData = Object.fromEntries(
+        Object.entries(rawListingData).filter(([_, val]) => val !== undefined)
+      );
 
       if (currentUser) {
         try {
@@ -453,6 +626,16 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       setPublishedListingId(generatedId);
       setPublishedTimeStr(new Date().toLocaleString());
       setIsPublishing(false);
+      
+      // Clear auto-save draft upon successful publication
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch (e) {
+        console.warn("Could not clear draft from localStorage", e);
+      }
+      setHasDraft(false);
+      setLastSavedTime(null);
+
       showToast("Successfully Listed your vehicle!", "success");
       setCurrentStep(6); // Success step screen (changed from 5)
       window.scrollTo({ top: 100, behavior: "smooth" });
@@ -472,14 +655,44 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setDescription("");
     setTransmission("");
     setEngineSize("");
+    setDoors("");
+    setSeats("");
+    setCheckedFeatures([]);
+    setBikeType("");
+    setBikeEngine("");
+    setBikeMileage("");
+    setBikeGears("");
+    setBicycleType("");
+    setFrameSize("");
+    setGears("");
+    setBrakeType("");
+    setFrameMaterial("");
+    setBatteryCapacity("");
+    setElectricRange("");
+    setDriveType("");
     setPhotos([]);
     setAskingPrice("");
+    setNegotiable("yes");
     setSellerName("");
     setSellerEmail("");
     setSellerPhone("");
     setLocationStr("");
-    setCheckedFeatures([]);
+    setFeaturedListing(false);
+    setUrgentListing(false);
     setCurrentStep(1);
+
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (e) {
+      console.warn("Could not clear draft from localStorage", e);
+    }
+    setHasDraft(false);
+    setLastSavedTime(null);
+  };
+
+  const handleClearDraft = () => {
+    handleResetWizardForm();
+    showToast("Listing draft cleared. Started fresh form!", "info");
   };
 
   const containerVariants = {
@@ -730,6 +943,34 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         </div>
       )}
 
+      {/* Auto-Save Draft Status Bar */}
+      {!showDealerUpload && currentStep <= 5 && (
+        <div className="mb-6 py-2.5 px-4 bg-[#E8E3D7] border border-stone-300 flex flex-col sm:flex-row items-center justify-between text-[11px] font-sans gap-2 rounded-none">
+          <div className="flex items-center gap-2 text-stone-800 font-semibold">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+            <span className="uppercase text-[10px] tracking-wider font-bold">Auto-Save Enabled</span>
+            {lastSavedTime ? (
+              <span className="text-stone-500 font-mono text-[10px] lowercase">
+                • last draft saved at {lastSavedTime}
+              </span>
+            ) : (
+              <span className="text-stone-500 text-[10px]">
+                • changes auto-save automatically
+              </span>
+            )}
+          </div>
+          {hasDraft && (
+            <button
+              type="button"
+              onClick={handleClearDraft}
+              className="text-[10px] text-stone-700 hover:text-red-700 uppercase font-bold tracking-widest underline cursor-pointer transition"
+            >
+              Discard Draft & Start Fresh
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Top wizard stepper */}
       {!showDealerUpload && currentStep <= 5 && (
         <div className="mb-10 border-b border-stone-300 pb-8">
@@ -899,9 +1140,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <p className="text-stone-500 text-xs mt-1">Provide engine specs, mileage parameters, and list modifications honestly.</p>
           </div>
 
-          {/* Condition Rating Display */}
+          {/* CONDITION & CATEGORY SPECIFIC INPUTS */}
           <div className="p-6 bg-[#F4F1EA] border border-stone-300 text-center space-y-2">
-            <h3 className="text-xs uppercase tracking-wider font-bold text-stone-900">Declare Current Overall State Rating</h3>
+            <h3 className="text-xs uppercase tracking-wider font-bold text-stone-900">Declare Current Overall Condition Rating</h3>
             <div className="flex justify-center gap-2 py-1">
               {[1, 2, 3, 4, 5].map((val) => {
                 const isActive = (hoveredCondition !== null ? hoveredCondition : condition) >= val;
@@ -924,88 +1165,363 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-stone-550 uppercase tracking-widest block">Mileage Metric (mi / km)</label>
-              <input
-                type="number"
-                placeholder="e.g. 15000"
-                value={mileage}
-                onChange={(e) => setMileage(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-stone-550 uppercase tracking-widest block">Power / Fuel Type</label>
-              <select
-                value={fuelType}
-                onChange={(e) => setFuelType(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
-              >
-                <option value="">Select Fuel</option>
-                <option value="petrol">Petrol / Gasoline</option>
-                <option value="diesel">Diesel</option>
-                <option value="electric">Full Electric</option>
-                <option value="hybrid">Plugin Hybrid</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Additional details for four wheelers */}
-          {["car", "suv", "truck", "van", "commercial"].includes(vehicleType) && (
-            <div className="border-t border-stone-200 pt-5 space-y-4">
-              <h3 className="text-xs uppercase tracking-widest font-bold text-stone-900">Transmission & Auxiliary Options</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <span className="text-[10px] text-stone-400 block uppercase font-bold">Transmission style</span>
+          {/* 1. BICYCLE SPECIFIC FIELDS */}
+          {vehicleType === "bicycle" && (
+            <div className="space-y-4 pt-2">
+              <div className="bg-amber-50/60 p-3 border border-amber-200 text-amber-900 text-[11px] font-medium flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Bicycle Mode Activated: Engine & Fuel fields omitted for human-powered / electric pedal assist bicycles.</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Bicycle Category Style</label>
                   <select
-                    value={transmission}
-                    onChange={(e) => setTransmission(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#F4F1EA] border border-stone-300 text-xs"
+                    value={bicycleType}
+                    onChange={(e) => setBicycleType(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
                   >
-                    <option value="">Select style</option>
-                    <option value="automatic">Automatic</option>
-                    <option value="manual">Manual Transmission</option>
+                    <option value="">Select Style</option>
+                    <option value="Road Bike">Road Bike</option>
+                    <option value="Mountain Bike (MTB)">Mountain Bike (MTB)</option>
+                    <option value="Hybrid / City">Hybrid / City Bike</option>
+                    <option value="BMX">BMX</option>
+                    <option value="Folding Bike">Folding Bike</option>
+                    <option value="Electric E-Bike">Electric E-Bike</option>
+                    <option value="Gravel / Cyclocross">Gravel / Cyclocross</option>
+                    <option value="Cruiser">Cruiser</option>
+                    <option value="Kids Bike">Kids Bike</option>
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] text-[#555555] block uppercase font-bold">Volume / Engine size</span>
-                  <input
-                    type="text"
-                    placeholder="e.g. 1500cc or 2.0L"
-                    value={engineSize}
-                    onChange={(e) => setEngineSize(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#F4F1EA] border border-stone-300 text-xs"
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-2 pt-2">
-                <span className="text-[10px] text-stone-400 block uppercase font-bold tracking-wider">Auxiliary Features Tags Checkbox</span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {defaultFeatures.map((fName) => {
-                    const isChecked = checkedFeatures.includes(fName);
-                    return (
-                      <button
-                        key={fName}
-                        type="button"
-                        onClick={() => handleFeatureToggle(fName)}
-                        className={`px-3 py-2.5 text-[10px] font-bold uppercase transition border text-left flex items-center justify-between cursor-pointer ${
-                          isChecked
-                            ? "bg-stone-900 border-stone-900 text-white"
-                            : "bg-[#F4F1EA] border-stone-300 text-stone-705"
-                        }`}
-                      >
-                        {fName}
-                        {isChecked && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
-                      </button>
-                    );
-                  })}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Frame Size</label>
+                  <select
+                    value={frameSize}
+                    onChange={(e) => setFrameSize(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Frame Size</option>
+                    <option value="Extra Small (XS / 14&quot;)">Extra Small (XS / 14")</option>
+                    <option value="Small (S / 16&quot;)">Small (S / 16")</option>
+                    <option value="Medium (M / 18&quot;)">Medium (M / 18")</option>
+                    <option value="Large (L / 20&quot;)">Large (L / 20")</option>
+                    <option value="Extra Large (XL / 22&quot;)">Extra Large (XL / 22")</option>
+                    <option value="Kids (16&quot;-20&quot; Wheel)">Kids (16"-20" Wheel)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Gear Count / Drivetrain</label>
+                  <select
+                    value={gears}
+                    onChange={(e) => setGears(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Drivetrain</option>
+                    <option value="Single Speed">Single Speed (No Gears)</option>
+                    <option value="7-Speed">7-Speed Shimano</option>
+                    <option value="18-Speed">18-Speed</option>
+                    <option value="21-Speed">21-Speed Tourney/Acera</option>
+                    <option value="24-Speed">24-Speed Altus/Deore</option>
+                    <option value="27-Speed">27-Speed Deore/SLX</option>
+                    <option value="30-Speed / 1x12">30-Speed / 1x12 SRAM</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Brake System</label>
+                  <select
+                    value={brakeType}
+                    onChange={(e) => setBrakeType(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Brakes</option>
+                    <option value="Hydraulic Disc Brakes">Hydraulic Disc Brakes</option>
+                    <option value="Mechanical Disc Brakes">Mechanical Disc Brakes</option>
+                    <option value="V-Brakes / Rim Brakes">V-Brakes / Rim Brakes</option>
+                    <option value="Coaster Brake">Coaster Brake</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Frame Material</label>
+                  <select
+                    value={frameMaterial}
+                    onChange={(e) => setFrameMaterial(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Frame Material</option>
+                    <option value="Aluminum Alloy 6061">Aluminum Alloy 6061 (Lightweight)</option>
+                    <option value="Carbon Fiber">Carbon Fiber (Ultra Light / Performance)</option>
+                    <option value="Chromoly Steel">Chromoly Steel (Durable / Vintage)</option>
+                    <option value="Titanium">Titanium</option>
+                  </select>
                 </div>
               </div>
             </div>
           )}
+
+          {/* 2. MOTORCYCLE / SCOOTER SPECIFIC FIELDS */}
+          {vehicleType === "motorcycle" && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Bike Category Type</label>
+                  <select
+                    value={bikeType}
+                    onChange={(e) => setBikeType(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Motorcycle Type</option>
+                    <option value="Sports Bike">Sports Bike</option>
+                    <option value="Cruiser">Cruiser</option>
+                    <option value="Commuter">Commuter</option>
+                    <option value="Scooter / Moped">Scooter / Moped</option>
+                    <option value="Adventure / Off-Road">Adventure / Off-Road</option>
+                    <option value="Cafe Racer">Cafe Racer</option>
+                    <option value="Touring">Touring</option>
+                    <option value="Electric Scooter/Bike">Electric Scooter / Bike</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Odometer Mileage (km/mi)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 12000"
+                    value={mileage}
+                    onChange={(e) => setMileage(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Power / Fuel Type</label>
+                  <select
+                    value={fuelType}
+                    onChange={(e) => setFuelType(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Power Source</option>
+                    <option value="petrol">Petrol / Gasoline</option>
+                    <option value="electric">Full Electric (EV)</option>
+                  </select>
+                </div>
+
+                {fuelType === "electric" ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Battery Capacity (kWh)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 3.7 kWh"
+                        value={batteryCapacity}
+                        onChange={(e) => setBatteryCapacity(e.target.value)}
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Range Per Charge (km)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 120 km"
+                        value={electricRange}
+                        onChange={(e) => setElectricRange(e.target.value)}
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Engine Size (cc)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 150cc, 350cc"
+                      value={engineSize}
+                      onChange={(e) => setEngineSize(e.target.value)}
+                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Gearbox / Transmission</label>
+                  <select
+                    value={transmission}
+                    onChange={(e) => setTransmission(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Transmission</option>
+                    <option value="Manual (5-Speed)">Manual (5-Speed)</option>
+                    <option value="Manual (6-Speed)">Manual (6-Speed)</option>
+                    <option value="Automatic / CVT">Automatic / CVT (Scooter)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. FOUR WHEELERS & COMMERCIAL SPECIFIC FIELDS */}
+          {["car", "suv", "truck", "van", "commercial"].includes(vehicleType) && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Odometer Mileage (km/mi)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 25000"
+                    value={mileage}
+                    onChange={(e) => setMileage(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Power / Fuel Type</label>
+                  <select
+                    value={fuelType}
+                    onChange={(e) => setFuelType(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Fuel</option>
+                    <option value="petrol">Petrol / Gasoline</option>
+                    <option value="diesel">Diesel</option>
+                    <option value="electric">Full Electric (EV)</option>
+                    <option value="hybrid">Plugin Hybrid</option>
+                    <option value="cng">CNG / LPG</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Transmission Style</label>
+                  <select
+                    value={transmission}
+                    onChange={(e) => setTransmission(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Transmission</option>
+                    <option value="automatic">Automatic</option>
+                    <option value="manual">Manual Transmission</option>
+                    <option value="amt">AMT (Automated Manual)</option>
+                    <option value="cvt">CVT (Continuously Variable)</option>
+                    <option value="dct">Dual-Clutch (DCT/DSG)</option>
+                  </select>
+                </div>
+
+                {fuelType === "electric" ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Battery Capacity (kWh)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 75 kWh"
+                        value={batteryCapacity}
+                        onChange={(e) => setBatteryCapacity(e.target.value)}
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Electric Range (km)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 450 km per charge"
+                        value={electricRange}
+                        onChange={(e) => setElectricRange(e.target.value)}
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Engine Volume / Size</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1.5L i-VTEC or 2.0L Turbo"
+                      value={engineSize}
+                      onChange={(e) => setEngineSize(e.target.value)}
+                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Drivetrain</label>
+                  <select
+                    value={driveType}
+                    onChange={(e) => setDriveType(e.target.value)}
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="">Select Drivetrain</option>
+                    <option value="FWD">FWD (Front-Wheel Drive)</option>
+                    <option value="RWD">RWD (Rear-Wheel Drive)</option>
+                    <option value="AWD">AWD (All-Wheel Drive)</option>
+                    <option value="4WD">4WD (4x4 with Low Range)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-stone-600 uppercase tracking-widest block">Doors / Seats</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={doors}
+                      onChange={(e) => setDoors(e.target.value)}
+                      className="w-1/2 px-2 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold"
+                    >
+                      <option value="">Doors</option>
+                      <option value="2">2 Doors</option>
+                      <option value="3">3 Doors</option>
+                      <option value="4">4 Doors</option>
+                      <option value="5">5 Doors</option>
+                    </select>
+                    <select
+                      value={seats}
+                      onChange={(e) => setSeats(e.target.value)}
+                      className="w-1/2 px-2 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold"
+                    >
+                      <option value="">Seats</option>
+                      <option value="2">2 Seats</option>
+                      <option value="4">4 Seats</option>
+                      <option value="5">5 Seats</option>
+                      <option value="7">7 Seats</option>
+                      <option value="8">8+ Seats</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DYNAMIC CATEGORY FEATURES CHECKLIST */}
+          <div className="space-y-2 pt-3 border-t border-stone-200">
+            <span className="text-[10px] text-stone-600 block uppercase font-bold tracking-wider">
+              {vehicleType === "bicycle" 
+                ? "Bicycle Accessories & Components Checkbox"
+                : vehicleType === "motorcycle"
+                ? "Motorcycle Safety & Tech Options Checkbox"
+                : "Vehicle Comfort & Safety Features Checkbox"
+              }
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {defaultFeatures.map((fName) => {
+                const isChecked = checkedFeatures.includes(fName);
+                return (
+                  <button
+                    key={fName}
+                    type="button"
+                    onClick={() => handleFeatureToggle(fName)}
+                    className={`px-3 py-2.5 text-[10px] font-bold uppercase transition border text-left flex items-center justify-between cursor-pointer ${
+                      isChecked
+                        ? "bg-stone-900 border-stone-900 text-white"
+                        : "bg-[#F4F1EA] border-stone-300 text-stone-700 hover:bg-stone-200"
+                    }`}
+                  >
+                    <span className="truncate pr-1">{fName}</span>
+                    {isChecked && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-stone-550 uppercase tracking-widest block">Textual specifications description <span className="text-stone-400 font-light">(required)</span></label>

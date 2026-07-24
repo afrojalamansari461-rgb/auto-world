@@ -1627,47 +1627,82 @@ export default function App() {
                 <div className="space-y-2">
                   <h3 className="text-[10px] uppercase tracking-widest font-bold text-stone-400">Technical specs</h3>
                   <div className="grid grid-cols-2 gap-3 text-xs text-stone-700">
-                    <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                      <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Mileage run</span>
-                      <span className="text-stone-900 font-bold mt-0.5 block">
-                        <CountUp to={selectedVehicle.mileage} />
-                      </span>
-                    </div>
-                    <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                      <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Displacement</span>
-                      <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.fuel}</span>
-                    </div>
-                    <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                      <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Transmission</span>
-                      <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.transmission}</span>
-                    </div>
-                    <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                      <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Production Year</span>
-                      <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.year}</span>
-                    </div>
-                    {selectedVehicle.engine && (
-                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Engine Spec</span>
-                        <span className="text-stone-900 font-bold mt-0.5 block text-[11px] font-mono leading-none">{selectedVehicle.engine}</span>
-                      </div>
-                    )}
-                    {selectedVehicle.color && (
-                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Exterior Paint</span>
-                        <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.color}</span>
-                      </div>
-                    )}
-                    {selectedVehicle.owners && (
-                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Owner Count</span>
-                        <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.owners}</span>
-                      </div>
-                    )}
-                    {selectedVehicle.regNumber && (
-                      <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Reg Number / Plate</span>
-                        <span className="text-stone-900 font-bold mt-0.5 block font-mono text-[11px] leading-none">{selectedVehicle.regNumber}</span>
-                      </div>
+                    {selectedVehicle.category === "bicycle" || selectedVehicle.fuel?.toLowerCase().includes("human") || selectedVehicle.fuel?.toLowerCase().includes("pedal") ? (
+                      <>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Frame Size</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.frameSize || "Standard"}</span>
+                        </div>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Cycle Style</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.bicycleType || selectedVehicle.make || "Bicycle"}</span>
+                        </div>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Drivetrain / Gears</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.gears || selectedVehicle.transmission || "Pedal Drive"}</span>
+                        </div>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Model Year</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.year}</span>
+                        </div>
+                        {selectedVehicle.frameMaterial && (
+                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Frame Material</span>
+                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] font-mono leading-none">{selectedVehicle.frameMaterial}</span>
+                          </div>
+                        )}
+                        {selectedVehicle.brakeType && (
+                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Brake System</span>
+                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.brakeType}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Mileage run</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">
+                            <CountUp to={selectedVehicle.mileage} />
+                          </span>
+                        </div>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Power / Fuel</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.fuel}</span>
+                        </div>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Transmission</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.transmission}</span>
+                        </div>
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Production Year</span>
+                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.year}</span>
+                        </div>
+                        {selectedVehicle.engine && (
+                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Engine / Battery</span>
+                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] font-mono leading-none">{selectedVehicle.engine}</span>
+                          </div>
+                        )}
+                        {selectedVehicle.color && (
+                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Exterior Color</span>
+                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.color}</span>
+                          </div>
+                        )}
+                        {selectedVehicle.owners && (
+                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Owner Count</span>
+                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.owners}</span>
+                          </div>
+                        )}
+                        {selectedVehicle.regNumber && (
+                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
+                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Reg Number / Plate</span>
+                            <span className="text-stone-900 font-bold mt-0.5 block font-mono text-[11px] leading-none">{selectedVehicle.regNumber}</span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
