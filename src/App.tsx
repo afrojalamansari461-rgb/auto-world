@@ -17,6 +17,7 @@ import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
+import { saveCatalogOverride, saveAdminSettingsToFirestore } from "./lib/catalogSync";
 import firebaseConfig from "../firebase-applet-config.json";
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
@@ -744,9 +745,9 @@ export default function App() {
         const nextBadge = isCurrentlyVerified ? null : "verified";
         badgesMap[selectedVehicle.id] = nextBadge;
         localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
+        await saveAdminSettingsToFirestore({ defaultBadges: badgesMap });
         setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
         showToast(`Static vehicle is now ${nextBadge ? "Verified" : "Standard"}!`, "success");
-        window.dispatchEvent(new Event("autoWorld_db_update"));
       } catch (e) {
         console.error(e);
       }
@@ -776,9 +777,9 @@ export default function App() {
         const nextBadge = isCurrentlyPremium ? null : "premium";
         badgesMap[selectedVehicle.id] = nextBadge;
         localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
+        await saveAdminSettingsToFirestore({ defaultBadges: badgesMap });
         setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
         showToast(`Static vehicle is now ${nextBadge ? "Featured" : "Standard"}!`, "success");
-        window.dispatchEvent(new Event("autoWorld_db_update"));
       } catch (e) {
         console.error(e);
       }
@@ -808,9 +809,9 @@ export default function App() {
         const nextBadge = isCurrentlyHot ? null : "hot";
         badgesMap[selectedVehicle.id] = nextBadge;
         localStorage.setItem("autoWorld_default_badges", JSON.stringify(badgesMap));
+        await saveAdminSettingsToFirestore({ defaultBadges: badgesMap });
         setSelectedVehicle(prev => prev ? { ...prev, badge: nextBadge } : null);
         showToast(`Static vehicle is now ${nextBadge ? "Hot Deal" : "Standard"}!`, "success");
-        window.dispatchEvent(new Event("autoWorld_db_update"));
       } catch (e) {
         console.error(e);
       }
@@ -853,7 +854,7 @@ export default function App() {
     });
   };
 
-  const handleHideRestoreInModal = () => {
+  const handleHideRestoreInModal = async () => {
     if (!selectedVehicle || selectedVehicle.isUserListing) return;
     try {
       const currentHiddenStr = localStorage.getItem("autoWorld_hidden_defaults") || "[]";
@@ -868,7 +869,7 @@ export default function App() {
         showToast("Static vehicle hidden from public view catalog!", "success");
       }
       localStorage.setItem("autoWorld_hidden_defaults", JSON.stringify(hiddenIds));
-      window.dispatchEvent(new Event("autoWorld_db_update"));
+      await saveAdminSettingsToFirestore({ hiddenDefaultIds: hiddenIds });
       setSelectedVehicle(null);
     } catch (e) {
       console.error(e);
@@ -905,7 +906,6 @@ export default function App() {
     try {
       if (selectedVehicle.isUserListing && selectedVehicle.listingId) {
         // Update user listing in Firestore
-        const { doc, updateDoc } = await import("firebase/firestore");
         const docRef = doc(db, "listings", selectedVehicle.listingId);
         await updateDoc(docRef, {
           title: editTitle.trim(),
@@ -943,25 +943,15 @@ export default function App() {
           }
         }
       } else {
-        // Update default listing overrides in localStorage
-        const overridesStr = localStorage.getItem("autoWorld_default_overrides") || "{}";
-        let overrides: Record<string, any> = {};
-        try {
-          overrides = JSON.parse(overridesStr);
-        } catch (e) {
-          overrides = {};
-        }
-        
-        overrides[selectedVehicle.id] = {
+        // Save catalog override directly to Firestore
+        await saveCatalogOverride(selectedVehicle.id, {
           title: editTitle.trim(),
           image: primaryImage,
           price: editPrice,
           mileage: editMileage.trim(),
           description: editDesc.trim(),
           photos: finalPhotos
-        };
-        
-        localStorage.setItem("autoWorld_default_overrides", JSON.stringify(overrides));
+        });
       }
       
       setSelectedVehicle(updatedVehicle);

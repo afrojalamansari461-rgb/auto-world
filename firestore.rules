@@ -157,8 +157,20 @@ service cloud.firestore {
 
     // AUDIT LOGS RULES
     match /audit_logs/{logId} {
-      allow read, create: if isAdmin();
+      allow read, create: if isAdmin() || isRegisteredUser();
       allow update, delete: if false;
+    }
+
+    // ADMIN SETTINGS RULES (global catalog state, badges, hidden defaults, home featured)
+    match /admin_settings/{settingId} {
+      allow read: if true;
+      allow create, update, delete: if isRegisteredUser() || isAdmin();
+    }
+
+    // CATALOG OVERRIDES RULES (edited specs, custom parameters for catalog vehicles)
+    match /catalog_overrides/{overrideId} {
+      allow read: if true;
+      allow create, update, delete: if isRegisteredUser() || isAdmin();
     }
   }
 }

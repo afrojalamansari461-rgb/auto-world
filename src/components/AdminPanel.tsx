@@ -8,6 +8,7 @@ import {
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalogSync";
 import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
@@ -761,8 +762,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       triggerHudAlert("VEHICLE ARCHIVED", `"${title}" was hidden and catalog access has been restricted.`, "hide");
     }
     setHiddenDefaultIds(updated);
-    localStorage.setItem("autoWorld_hidden_defaults", JSON.stringify(updated));
-    window.dispatchEvent(new Event("autoWorld_db_update"));
+    saveAdminSettingsToFirestore({ hiddenDefaultIds: updated });
   };
 
   // Toggle home page featured pinning status
@@ -779,8 +779,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
 
     setHomeFeaturedIds(updated);
-    localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(updated));
-    window.dispatchEvent(new Event("autoWorld_db_update"));
+    saveAdminSettingsToFirestore({ homeFeaturedIds: updated });
   };
 
   // Move home page featured showcase item up or down in list
@@ -797,8 +796,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     updated[targetIndex] = temp;
 
     setHomeFeaturedIds(updated);
-    localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(updated));
-    window.dispatchEvent(new Event("autoWorld_db_update"));
+    saveAdminSettingsToFirestore({ homeFeaturedIds: updated });
     playSynthBeep(direction === "up" ? 600 : 500, 0.1, "sine");
     triggerHudAlert("ORDER MODIFIED", "Homepage featured item sequence rearranged.", "restore");
   };
@@ -816,8 +814,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     updated.splice(newRank - 1, 0, itemToMove);
 
     setHomeFeaturedIds(updated);
-    localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(updated));
-    window.dispatchEvent(new Event("autoWorld_db_update"));
+    saveAdminSettingsToFirestore({ homeFeaturedIds: updated });
     playSynthBeep(700, 0.12, "sine");
     triggerHudAlert("RANK REASSIGNED", `Item moved to Rank #${newRank} in featured catalog.`, "premium");
   };
@@ -836,11 +833,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       onConfirm: () => {
         const updated = [...removedDefaultIds, vehicleId];
         setRemovedDefaultIds(updated);
-        localStorage.setItem("autoWorld_removed_defaults", JSON.stringify(updated));
-        
-        // Also trigger dynamic update across elements
-        window.dispatchEvent(new Event("autoWorld_db_update"));
-
+        saveAdminSettingsToFirestore({ removedDefaultIds: updated });
         triggerHudAlert("ASSET PURGED FOREVER", `"${title}" has been permanently scrubbed from the platform index.`, "delete");
       }
     });
@@ -927,9 +920,8 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     const updated = { ...defaultBadges, [vehicleId]: nextBadge };
     setDefaultBadges(updated);
     
-    // Also mirror to global default badges
-    localStorage.setItem("autoWorld_default_badges", JSON.stringify(updated));
-    window.dispatchEvent(new Event("autoWorld_db_update"));
+    // Mirror to Firestore and local cache
+    saveAdminSettingsToFirestore({ defaultBadges: updated });
 
     const target = DEFAULT_VEHICLES.find(v => v.id === vehicleId);
     const title = target ? target.title : "Default Vehicle";
@@ -1031,13 +1023,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           }
           setListings(prev => prev.map(l => ({ ...l, verified: true })));
 
-          // 2. Verify all default vehicles in localStorage
+          // 2. Verify all default vehicles in Firestore
           const updatedBadges: Record<number, string | null> = {};
           DEFAULT_VEHICLES.forEach(v => {
             updatedBadges[v.id] = "verified";
           });
           setDefaultBadges(updatedBadges);
-          localStorage.setItem("autoWorld_default_badges", JSON.stringify(updatedBadges));
+          await saveAdminSettingsToFirestore({ defaultBadges: updatedBadges });
 
           // Record in Audit Log
           await recordAuditLog(
@@ -1047,7 +1039,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           );
 
           triggerHudAlert("BULK VERIFY ENGAGED", "Platform-wide scanning complete. All vehicles certified.", "verified");
-          window.dispatchEvent(new Event("autoWorld_db_update"));
         } catch (err: any) {
           showToast("Error verifying all listings.", "error");
         } finally {
@@ -1067,13 +1058,17 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       onConfirm: async () => {
         try {
           setIsLoading(true);
-          // Clear local storage overrides
-          localStorage.removeItem("autoWorld_hidden_defaults");
-          localStorage.removeItem("autoWorld_removed_defaults");
-          localStorage.removeItem("autoWorld_default_badges");
+          // Clear Firestore & local storage admin settings
+          await saveAdminSettingsToFirestore({
+            hiddenDefaultIds: [],
+            removedDefaultIds: [],
+            defaultBadges: {},
+            homeFeaturedIds: []
+          });
           setHiddenDefaultIds([]);
           setRemovedDefaultIds([]);
           setDefaultBadges({});
+          setHomeFeaturedIds([]);
 
           // Reset all user listings to standard (remove verified, featured, hot, unapproved) in Firestore
           for (const item of listings) {

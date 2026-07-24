@@ -4,6 +4,7 @@ import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion } from "motion/react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
 
 interface HomeTabProps {
@@ -193,17 +194,101 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
   });
 
   useEffect(() => {
-    const handleUpdate = async () => {
-      try {
-        const vehicles = await getHomeFeaturedVehicles();
-        setFeaturedCars(vehicles);
-      } catch (err) {
-        console.error("Error loading home featured vehicles:", err);
+    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings }) => {
+      let defaults = [...DEFAULT_VEHICLES];
+
+      if (adminSettings.hiddenDefaultIds && adminSettings.hiddenDefaultIds.length > 0) {
+        defaults = defaults.filter(v => !adminSettings.hiddenDefaultIds.includes(v.id));
       }
-    };
-    window.addEventListener("autoWorld_db_update", handleUpdate);
-    handleUpdate();
-    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
+      if (adminSettings.removedDefaultIds && adminSettings.removedDefaultIds.length > 0) {
+        defaults = defaults.filter(v => !adminSettings.removedDefaultIds.includes(v.id));
+      }
+      if (adminSettings.defaultBadges) {
+        defaults = defaults.map(v => {
+          const customBadge = adminSettings.defaultBadges[v.id];
+          return {
+            ...v,
+            badge: (customBadge !== undefined ? customBadge : v.badge) as "verified" | "premium" | "hot" | null
+          };
+        });
+      }
+      defaults = defaults.map(v => {
+        const override = overrides[String(v.id)];
+        return override ? { ...v, ...override } : v;
+      });
+
+      const mappedUserListings: Vehicle[] = userListings
+        .filter(item => item.status === "active" || item.status === undefined)
+        .map((listing, index) => {
+          let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
+          if (listing.type === "car" || listing.type === "suv") {
+            image = listing.photos && listing.photos.length > 0 
+              ? listing.photos[0].src 
+              : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
+          } else if (listing.type === "truck") {
+            image = listing.photos && listing.photos.length > 0 
+              ? listing.photos[0].src 
+              : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
+          } else if (listing.type === "motorcycle") {
+            image = listing.photos && listing.photos.length > 0 
+              ? listing.photos[0].src 
+              : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
+          } else if (listing.type === "bicycle") {
+            image = listing.photos && listing.photos.length > 0 
+              ? listing.photos[0].src 
+              : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
+          }
+
+          return {
+            id: 1000 + index,
+            title: listing.title,
+            price: listing.price,
+            image: image,
+            make: listing.make,
+            model: listing.model,
+            year: parseInt(listing.year) || 2023,
+            mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
+            fuel: listing.fuelType ? (listing.fuelType.charAt(0).toUpperCase() + listing.fuelType.slice(1)) : "Petrol",
+            transmission: listing.transmission ? (listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1)) : "Automatic",
+            badge: (listing.verified ? "verified" : listing.featured ? "premium" : listing.urgent ? "hot" : null) as "verified" | "premium" | "hot" | null,
+            description: listing.description,
+            features: listing.features || [],
+            category: listing.type,
+            isUserListing: true,
+            listingId: listing.id,
+            sellerName: listing.sellerName,
+            sellerEmail: listing.sellerEmail,
+            sellerPhone: listing.sellerPhone,
+            location: listing.location,
+            negotiable: listing.negotiable,
+            status: listing.status
+          };
+        });
+
+      const allVehicles = [
+        ...defaults.map(v => ({ ...v, uniqueKey: `default-${v.id}` })),
+        ...mappedUserListings.map(v => ({ ...v, uniqueKey: `user-${v.listingId}` }))
+      ];
+
+      if (adminSettings.homeFeaturedIds && adminSettings.homeFeaturedIds.length > 0) {
+        const selectedList: Vehicle[] = [];
+        adminSettings.homeFeaturedIds.forEach(key => {
+          const found = allVehicles.find(v => String(v.uniqueKey) === String(key));
+          if (found) {
+            const { uniqueKey, ...cleanVehicle } = found;
+            selectedList.push(cleanVehicle);
+          }
+        });
+        if (selectedList.length > 0) {
+          setFeaturedCars(selectedList);
+          return;
+        }
+      }
+
+      setFeaturedCars(defaults.slice(0, 3));
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

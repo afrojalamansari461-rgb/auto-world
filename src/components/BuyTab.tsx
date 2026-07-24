@@ -5,6 +5,7 @@ import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
 import { db, auth, googleProvider, signInWithPopup, handleFirestoreError, OperationType } from "../firebase";
+import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 import { User as FirebaseUser } from "firebase/auth";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
@@ -238,123 +239,42 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     setCountdownText(`${hours}h ${minutes.toString().padStart(2, "0")}m remaining`);
   };
 
-  // STEP 3: Load listings combining both hardcoded assets & localStorage & Firestore collections
+  // STEP 3: Realtime load listings combining static assets, Firestore overrides & collections
   useEffect(() => {
-    const fetchAllListings = async () => {
-      setIsLoading(true);
+    setIsLoading(true);
+
+    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings }) => {
       let defaultData = [...DEFAULT_VEHICLES];
-      
-      // Fetch showcase vehicles from custom API
-      try {
-        const response = await fetch("/api/vehicles");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && Array.isArray(data.vehicles)) {
-            defaultData = data.vehicles;
-          }
-        }
-      } catch (e) {
-        console.warn("Showcase API fetch failed, falling back to compiled list:", e);
+
+      // Filter hidden/removed
+      if (adminSettings.hiddenDefaultIds && adminSettings.hiddenDefaultIds.length > 0) {
+        defaultData = defaultData.filter(v => !adminSettings.hiddenDefaultIds.includes(v.id));
+      }
+      if (adminSettings.removedDefaultIds && adminSettings.removedDefaultIds.length > 0) {
+        defaultData = defaultData.filter(v => !adminSettings.removedDefaultIds.includes(v.id));
       }
 
-      try {
-        const hiddenStr = localStorage.getItem("autoWorld_hidden_defaults");
-        if (hiddenStr) {
-          const hiddenIds = JSON.parse(hiddenStr);
-          if (Array.isArray(hiddenIds)) {
-            defaultData = defaultData.filter(v => !hiddenIds.includes(v.id));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse hidden default vehicles:", e);
-      }
-
-      try {
-        const removedStr = localStorage.getItem("autoWorld_removed_defaults");
-        if (removedStr) {
-          const removedIds = JSON.parse(removedStr);
-          if (Array.isArray(removedIds)) {
-            defaultData = defaultData.filter(v => !removedIds.includes(v.id));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse removed default vehicles:", e);
-      }
-
-      // Read default vehicle custom badges from local overrides
-      try {
-        const badgesStr = localStorage.getItem("autoWorld_default_badges");
-        if (badgesStr) {
-          const badgesMap = JSON.parse(badgesStr);
-          if (badgesMap && typeof badgesMap === "object") {
-            defaultData = defaultData.map(v => {
-              const customBadge = badgesMap[v.id];
-              return {
-                ...v,
-                badge: customBadge !== undefined ? customBadge : v.badge
-              };
-            });
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse custom default badges:", e);
-      }
-
-      // Read default vehicle spec overrides from local overrides
-      try {
-        const overridesStr = localStorage.getItem("autoWorld_default_overrides");
-        if (overridesStr) {
-          const overridesMap = JSON.parse(overridesStr);
-          if (overridesMap && typeof overridesMap === "object") {
-            defaultData = defaultData.map(v => {
-              const override = overridesMap[v.id];
-              return override ? { ...v, ...override } : v;
-            });
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse custom default overrides in BuyTab:", e);
-      }
-
-      let userListings: UserListing[] = [];
-      
-      // 1. Fetch from Firestore
-      try {
-        let querySnapshot;
-        try {
-          querySnapshot = await getDocs(collection(db, "listings"));
-        } catch (dbErr: any) {
-          handleFirestoreError(dbErr, OperationType.LIST, "listings");
-          throw dbErr;
-        }
-        querySnapshot.forEach((docSnap) => {
-          const lData = docSnap.data() as UserListing;
-          if (lData.status === "active" || lData.status === undefined) {
-            userListings.push(lData);
-          }
+      // Apply default badges from Firestore admin settings
+      if (adminSettings.defaultBadges) {
+        defaultData = defaultData.map(v => {
+          const customBadge = adminSettings.defaultBadges[v.id];
+          return {
+            ...v,
+            badge: (customBadge !== undefined ? customBadge : v.badge) as "verified" | "premium" | "hot" | null
+          };
         });
-      } catch (err) {
-        console.warn("Firestore fetch listings failed, falling back to local list:", err);
       }
 
-      // 2. Fetch from local storage
-      try {
-        const stored = localStorage.getItem("autoWorld_listings");
-        if (stored) {
-          const localListings: UserListing[] = JSON.parse(stored);
-          localListings.forEach((localItem) => {
-            if (!userListings.some(item => item.id === localItem.id)) {
-              if (localItem.status === "active" || localItem.status === undefined) {
-                userListings.push(localItem);
-              }
-            }
-          });
-        }
-      } catch (e) {
-        console.error(e);
-      }
+      // Apply spec overrides from Firestore catalog_overrides
+      defaultData = defaultData.map(v => {
+        const override = overrides[String(v.id)];
+        return override ? { ...v, ...override } : v;
+      });
 
-      const compiledUserVehicles: Vehicle[] = userListings.map((listing, index) => {
+      // Filter active user listings
+      const activeUserListings = userListings.filter(l => l.status === "active" || l.status === undefined);
+
+      const compiledUserVehicles: Vehicle[] = activeUserListings.map((listing, index) => {
         let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
         if (listing.type === "car" || listing.type === "suv") {
           image = listing.photos && listing.photos.length > 0 
@@ -385,7 +305,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           mileage: listing.mileage ? `${parseInt(listing.mileage).toLocaleString()} mi` : "N/A",
           fuel: listing.fuelType ? (listing.fuelType.charAt(0).toUpperCase() + listing.fuelType.slice(1)) : "Petrol",
           transmission: listing.transmission ? (listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1)) : "Automatic",
-          badge: listing.verified ? "verified" : listing.featured ? "premium" : listing.urgent ? "hot" : null,
+          badge: (listing.verified ? "verified" : listing.featured ? "premium" : listing.urgent ? "hot" : null) as "verified" | "premium" | "hot" | null,
           description: listing.description,
           features: listing.features,
           category: listing.type,
@@ -406,15 +326,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
       setInventoryList([...defaultData, ...compiledUserVehicles]);
       setIsLoading(false);
-    };
+    });
 
-    fetchAllListings();
-
-    const handleUpdate = () => {
-      fetchAllListings();
-    };
-    window.addEventListener("autoWorld_db_update", handleUpdate);
-    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
+    return () => unsubscribe();
   }, []);
 
   // Synchronise recent search queries on mount
