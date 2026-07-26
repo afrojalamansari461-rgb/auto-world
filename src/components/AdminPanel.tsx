@@ -5,7 +5,7 @@ import {
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
   Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown
 } from "lucide-react";
-import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalogSync";
@@ -110,6 +110,44 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
   // States for customizable home page featured vehicles
   const [homeFeaturedIds, setHomeFeaturedIds] = useState<string[]>([]);
+
+  // State for global Buy Pass Free ON/OFF mode
+  const [isFreePassEnabled, setIsFreePassEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("autoWorld_is_free_pass") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleToggleFreePass = async () => {
+    const nextVal = !isFreePassEnabled;
+    setIsFreePassEnabled(nextVal);
+    playSynthBeep(nextVal ? 950 : 450, 0.15, "triangle");
+    
+    try {
+      localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(nextVal));
+    } catch (e) {
+      console.warn("Error setting localStorage for autoWorld_is_free_pass:", e);
+    }
+
+    await saveAdminSettingsToFirestore({ isFreePassEnabled: nextVal });
+
+    triggerHudAlert(
+      nextVal ? "BUY PASS IS NOW FREE" : "BUY PASS IS NOW PAID (₹1)",
+      nextVal
+        ? "Global free pass override activated! All buyers have 100% free unlocked access."
+        : "Standard monetization active. Buyers are required to pay ₹1 for daily access pass.",
+      nextVal ? "approve" : "unapprove"
+    );
+
+    showToast(
+      nextVal
+        ? "Buy Pass Free Mode ENABLED — All buyers get free access!"
+        : "Buy Pass Free Mode DISABLED — Standard ₹1 pass required.",
+      nextVal ? "success" : "info"
+    );
+  };
 
   // Customized Interactive Confirmation Modal states
   const [confirmModal, setConfirmModal] = useState<{
@@ -377,6 +415,20 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       }
     }
 
+    // 5. Load Admin Settings (e.g. Buy Pass Free status)
+    try {
+      const adminSnap = await getDoc(doc(db, "admin_settings", "catalog"));
+      if (adminSnap.exists()) {
+        const data = adminSnap.data();
+        if (data.isFreePassEnabled !== undefined) {
+          setIsFreePassEnabled(Boolean(data.isFreePassEnabled));
+          localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(Boolean(data.isFreePassEnabled)));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load admin_settings doc:", e);
+    }
+
     setIsLoading(false);
   };
 
@@ -423,8 +475,26 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       console.error(e);
     }
 
+    // Load isFreePass status on mount
+    try {
+      const isFreeStr = localStorage.getItem("autoWorld_is_free_pass");
+      if (isFreeStr !== null) {
+        setIsFreePassEnabled(JSON.parse(isFreeStr));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     const handleUpdate = () => {
       loadData();
+      try {
+        const isFreeStr = localStorage.getItem("autoWorld_is_free_pass");
+        if (isFreeStr !== null) {
+          setIsFreePassEnabled(JSON.parse(isFreeStr));
+        }
+      } catch (e) {
+        console.error(e);
+      }
       try {
         const stored = localStorage.getItem("autoWorld_hidden_defaults");
         if (stored) {
@@ -1533,6 +1603,67 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             <RefreshCw className={`w-3.5 h-3.5 text-stone-900 ${isLoading ? "animate-spin" : ""}`} />
             Sync Db
           </button>
+        </div>
+
+        {/* GLOBAL BUY PASS ON/OFF CONTROL BAR */}
+        <div className={`mb-8 p-5 sm:p-6 border-2 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
+          isFreePassEnabled
+            ? "bg-emerald-950 text-emerald-50 border-emerald-500 shadow-emerald-900/30"
+            : "bg-[#FAF8F5] text-stone-900 border-stone-900"
+        }`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <Crown className={`w-6 h-6 ${isFreePassEnabled ? "text-emerald-400 animate-bounce" : "text-amber-600"}`} />
+                <h2 className="text-base font-serif font-black uppercase tracking-tight">
+                  Buy Pass Access Mode Control
+                </h2>
+                <span className={`px-2.5 py-0.5 text-[9px] font-mono font-black uppercase tracking-wider border rounded-xs ${
+                  isFreePassEnabled
+                    ? "bg-emerald-500 text-stone-950 border-emerald-300 animate-pulse"
+                    : "bg-stone-200 text-stone-800 border-stone-400"
+                }`}>
+                  {isFreePassEnabled ? "● FREE PASS MODE: ACTIVE" : "● PAID PASS MODE: ₹1 REQUIRED"}
+                </span>
+              </div>
+              <p className={`text-xs font-mono leading-relaxed uppercase ${
+                isFreePassEnabled ? "text-emerald-200 font-medium" : "text-stone-600"
+              }`}>
+                {isFreePassEnabled
+                  ? "Buy Pass is currently 100% FREE for all buyers across the app! Every user automatically gets full access to all vehicle listings, technical specs, and seller contact details without paying."
+                  : "Standard ₹1 monetization mode is active. Buyers are required to activate a ₹1 account pass to view more than 3 listings or unlock seller phone numbers."}
+              </p>
+            </div>
+
+            {/* Interactive ON / OFF Switch Button */}
+            <div className="flex flex-col items-start sm:items-end gap-2 shrink-0 self-stretch sm:self-center bg-stone-900/10 p-3 border border-stone-900/20 rounded-sm">
+              <div className="flex items-center gap-3">
+                <span className={`text-[10px] font-mono font-extrabold uppercase tracking-widest ${
+                  isFreePassEnabled ? "text-emerald-300" : "text-stone-700"
+                }`}>
+                  Buy Pass Status:
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleFreePass}
+                  className={`px-4 py-2 text-xs font-mono font-black uppercase tracking-widest cursor-pointer transition-all duration-200 flex items-center gap-2 border-2 shadow-sm ${
+                    isFreePassEnabled
+                      ? "bg-emerald-500 hover:bg-emerald-400 text-stone-950 border-emerald-300 shadow-emerald-700/50"
+                      : "bg-stone-900 hover:bg-stone-800 text-stone-100 border-stone-950"
+                  }`}
+                  title={isFreePassEnabled ? "Click to TURN OFF Free Buy Pass (Require ₹1)" : "Click to TURN ON Free Buy Pass (Make Free)"}
+                >
+                  <span className={`w-3 h-3 rounded-full ${isFreePassEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                  <span>{isFreePassEnabled ? "[ ON ] FREE PASS" : "[ OFF ] PAID ₹1 PASS"}</span>
+                </button>
+              </div>
+              <span className={`text-[9px] font-mono uppercase tracking-wider font-bold ${
+                isFreePassEnabled ? "text-emerald-400" : "text-stone-500"
+              }`}>
+                {isFreePassEnabled ? "Click button to turn OFF (Require ₹1)" : "Click button to turn ON (Make Free)"}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Analytics widgets */}

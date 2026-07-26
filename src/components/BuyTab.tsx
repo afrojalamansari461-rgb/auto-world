@@ -120,6 +120,13 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // Payment states
   const [hasPaidPass, setHasPaidPass] = useState(false);
+  const [isFreePassMode, setIsFreePassMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("autoWorld_is_free_pass") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [countdownText, setCountdownText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -154,6 +161,13 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // STEP 1: Check Payment Access Status
   useEffect(() => {
+    // If Admin enabled Free Buy Pass mode, bypass completely!
+    const isFreePass = localStorage.getItem("autoWorld_is_free_pass") === "true";
+    if (isFreePass || isFreePassMode) {
+      setHasPaidPass(true);
+      return;
+    }
+
     // If the user is the certified owner, bypass completely!
     if (currentUser?.email === "afrojalamansari461@gmail.com") {
       setHasPaidPass(true);
@@ -243,7 +257,27 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   useEffect(() => {
     setIsLoading(true);
 
+    const handleDbSync = () => {
+      try {
+        const isFree = localStorage.getItem("autoWorld_is_free_pass") === "true";
+        setIsFreePassMode(isFree);
+        if (isFree) {
+          setHasPaidPass(true);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+    window.addEventListener("autoWorld_db_update", handleDbSync);
+
     const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings }) => {
+      if (adminSettings.isFreePassEnabled !== undefined) {
+        setIsFreePassMode(Boolean(adminSettings.isFreePassEnabled));
+        if (adminSettings.isFreePassEnabled) {
+          setHasPaidPass(true);
+        }
+      }
+
       let defaultData = [...DEFAULT_VEHICLES];
 
       // Filter hidden/removed
@@ -328,7 +362,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      window.removeEventListener("autoWorld_db_update", handleDbSync);
+      unsubscribe();
+    };
   }, []);
 
   // Synchronise recent search queries on mount

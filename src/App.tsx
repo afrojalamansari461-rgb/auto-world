@@ -410,6 +410,13 @@ export default function App() {
 
   // Sync hasPaidPass reactively for selectedVehicle modal and custom contacts gating
   useEffect(() => {
+    // If Admin enabled Free Buy Pass mode, bypass completely!
+    const isFreePass = localStorage.getItem("autoWorld_is_free_pass") === "true";
+    if (isFreePass) {
+      setHasPaidPass(true);
+      return;
+    }
+
     if (currentUser?.email === "afrojalamansari461@gmail.com") {
       setHasPaidPass(true);
       return;
@@ -460,6 +467,15 @@ export default function App() {
       setHasPaidPass(false);
     };
     fetchPass();
+
+    const handleGlobalUpdate = () => {
+      const isFree = localStorage.getItem("autoWorld_is_free_pass") === "true";
+      if (isFree) {
+        setHasPaidPass(true);
+      }
+    };
+    window.addEventListener("autoWorld_db_update", handleGlobalUpdate);
+    return () => window.removeEventListener("autoWorld_db_update", handleGlobalUpdate);
   }, [currentUser, subscriptionActive, selectedVehicle]);
 
   // Listen for admin login to trigger grand entrance animation once per session

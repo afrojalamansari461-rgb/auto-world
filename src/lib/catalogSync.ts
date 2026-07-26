@@ -7,6 +7,7 @@ export interface AdminSettingsData {
   removedDefaultIds: number[];
   defaultBadges: Record<string, string | null>;
   homeFeaturedIds: string[];
+  isFreePassEnabled?: boolean;
 }
 
 // 1. Save spec overrides for default catalog items to Firestore
@@ -60,6 +61,9 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       }
       if (settings.homeFeaturedIds) {
         localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(settings.homeFeaturedIds));
+      }
+      if (settings.isFreePassEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(settings.isFreePassEnabled));
       }
     } catch (e) {
       console.warn("Local storage settings sync error:", e);
@@ -142,7 +146,8 @@ export function subscribeToRealtimeCatalog(
           hiddenDefaultIds: Array.isArray(data.hiddenDefaultIds) ? data.hiddenDefaultIds : [],
           removedDefaultIds: Array.isArray(data.removedDefaultIds) ? data.removedDefaultIds : [],
           defaultBadges: data.defaultBadges && typeof data.defaultBadges === "object" ? data.defaultBadges : {},
-          homeFeaturedIds: Array.isArray(data.homeFeaturedIds) ? data.homeFeaturedIds : []
+          homeFeaturedIds: Array.isArray(data.homeFeaturedIds) ? data.homeFeaturedIds : [],
+          isFreePassEnabled: Boolean(data.isFreePassEnabled)
         };
       }
       emit();
