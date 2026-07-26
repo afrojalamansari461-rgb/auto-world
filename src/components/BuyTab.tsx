@@ -244,7 +244,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     checkPass();
     const interval = setInterval(checkPass, 12000); // Poll pass status
     return () => clearInterval(interval);
-  }, [subscriptionActive, currentUser]);
+  }, [subscriptionActive, currentUser, isFreePassMode]);
 
   // STEP 2: Timer calculations
   const updateTimerText = (totalMinutes: number) => {

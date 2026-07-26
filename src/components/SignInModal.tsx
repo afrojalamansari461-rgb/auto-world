@@ -37,6 +37,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSigningInEmail, setIsSigningInEmail] = useState(false);
+  const [authNotice, setAuthNotice] = useState<{ message: string; type: "login" | "register" | "error" } | null>(null);
 
   // Mobile Verification OTP States
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -108,8 +109,12 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
         console.error("Google auth failed:", err);
       }
       const errMsg = err.message || "";
-      setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
-      setShowTroubleshoot(true);
+
+      // Only trigger diagnostic console for true setup issues
+      if (errCode === "auth/operation-not-allowed" || errCode === "auth/configuration-not-found" || errCode === "auth/unauthorized-domain") {
+        setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
+        setShowTroubleshoot(true);
+      }
       
       if (err.code === "auth/unauthorized-domain") {
         setUnauthorizedDomainError(true);
@@ -149,8 +154,10 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
       console.error("Guest session failed:", err);
       const errMsg = err.message || "";
       const errCode = err.code || "auth/unknown";
-      setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
-      setShowTroubleshoot(true);
+      if (errCode === "auth/operation-not-allowed" || errCode === "auth/admin-restricted-operation") {
+        setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
+        setShowTroubleshoot(true);
+      }
       showToast(err.message || "An error occurred creating guest session.", "error");
     } finally {
       setIsSigningInGuest(false);
@@ -221,6 +228,8 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setFirebaseError(null);
+    setAuthNotice(null);
+
     if (!email || !password) {
       showToast("Please enter values for email and password fields.", "error");
       return;
@@ -266,17 +275,43 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
       console.error("Email auth failed:", err);
       const errMsg = err.message || "";
       const errCode = err.code || "auth/unknown";
-      setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
-      setShowTroubleshoot(true);
       
-      let errorMsg = err.message;
-      if (err.code === "auth/wrong-password") {
-        errorMsg = "Incorrect password. Please verify and retry.";
-      } else if (err.code === "auth/user-not-found") {
-        errorMsg = "No account found matching this email address.";
-      } else if (err.code === "auth/email-already-in-use") {
-        errorMsg = "This email is already registered. Please login instead.";
+      // ONLY show diagnostic console if provider disabled or unauthorized project
+      if (errCode === "auth/operation-not-allowed" || errCode === "auth/unauthorized-domain" || errCode === "auth/project-not-found") {
+        setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
+        setShowTroubleshoot(true);
+        showToast("Email/Password provider is disabled in Firebase Console. See setup panel.", "error");
+        return;
       }
+
+      let errorMsg = err.message;
+      if (errCode === "auth/invalid-credential" || errCode === "auth/wrong-password" || errCode === "auth/user-not-found") {
+        if (!isRegistering) {
+          errorMsg = "Incorrect email or password. If you don't have an account yet, please click 'Need an account? Sign Up Free' below to register!";
+          setAuthNotice({
+            message: "Invalid credentials or account does not exist yet. If you are a new user, click 'Switch to Sign Up' to register!",
+            type: "register"
+          });
+        } else {
+          errorMsg = "Registration failed. Please check your email address format and password.";
+          setAuthNotice({
+            message: "Unable to register with these details. If you already have an account, click 'Switch to Log In'.",
+            type: "login"
+          });
+        }
+      } else if (errCode === "auth/email-already-in-use") {
+        errorMsg = "This email is already registered! Switched to Log In mode.";
+        setIsRegistering(false);
+        setAuthNotice({
+          message: "Email is already registered! We switched you to Log In mode. Enter your password to sign in.",
+          type: "login"
+        });
+      } else if (errCode === "auth/invalid-email") {
+        errorMsg = "Please enter a valid email address format (e.g. user@example.com).";
+      } else if (errCode === "auth/weak-password") {
+        errorMsg = "Password must be at least 6 characters long.";
+      }
+
       showToast(errorMsg || "Authentication operation failed.", "error");
     } finally {
       setIsSigningInEmail(false);
@@ -561,6 +596,50 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
                       {isRegistering ? "CREATE SECURE ACCOUNT" : "AUTHENTICATE CREDENTIALS"}
                     </span>
                   </div>
+
+                  {/* Auth Notice Alert Box */}
+                  {authNotice && (
+                    <div className="p-3 bg-amber-50 border-2 border-amber-600 rounded-sm text-xs text-amber-950 font-sans space-y-2 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wide text-amber-900">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        Authentication Guidance
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-stone-800 font-medium">{authNotice.message}</p>
+                      <div className="pt-1 flex items-center gap-2 flex-wrap">
+                        {authNotice.type === "register" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsRegistering(true);
+                              setAuthNotice(null);
+                            }}
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-mono text-[10px] font-bold uppercase tracking-wider rounded cursor-pointer shadow-xs"
+                          >
+                            Switch to Create New Account
+                          </button>
+                        )}
+                        {authNotice.type === "login" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsRegistering(false);
+                              setAuthNotice(null);
+                            }}
+                            className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white font-mono text-[10px] font-bold uppercase tracking-wider rounded cursor-pointer shadow-xs"
+                          >
+                            Switch to Log In Mode
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setAuthNotice(null)}
+                          className="px-2 py-1 text-stone-600 hover:text-stone-900 font-mono text-[9px] uppercase tracking-wider underline cursor-pointer"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Input Email */}
                   <div className="space-y-1">

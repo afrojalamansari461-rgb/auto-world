@@ -83,6 +83,7 @@ export interface UserListing {
   photos: { src: string; alt: string }[];
   datePosted: string;
   status: "pending" | "active" | "sold";
+  userId?: string;
   engine?: string;
   color?: string;
   owners?: string;

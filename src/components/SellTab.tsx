@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert } from "lucide-react";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { User } from "firebase/auth";
-import { motion } from "motion/react";
-import { setDoc, doc, collection, query, where, getDocs } from "firebase/firestore";
+import { motion, AnimatePresence } from "motion/react";
+import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import ListingAIAssistant from "./ListingAIAssistant";
 
@@ -17,39 +17,319 @@ interface SellTabProps {
 
 export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser, onSignInClick }: SellTabProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
+
+  // View Mode: "wizard" (List a Vehicle) vs "my_catalog" (My Vehicle Catalog Control Panel)
+  const [viewMode, setViewMode] = useState<"wizard" | "my_catalog">("wizard");
+
+  // User's own listings state & real-time sync
+  const [userListings, setUserListings] = useState<UserListing[]>([]);
+  const [isLoadingUserListings, setIsLoadingUserListings] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogFilterStatus, setCatalogFilterStatus] = useState<"all" | "active" | "pending" | "sold">("all");
+
+  // Edit Listing Modal States
+  const [editingListing, setEditingListing] = useState<UserListing | null>(null);
+  const [editForm, setEditForm] = useState<Partial<UserListing>>({});
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Manage Photos Modal States
+  const [photoManagingListing, setPhotoManagingListing] = useState<UserListing | null>(null);
+  const [managePhotosList, setManagePhotosList] = useState<{ src: string; alt: string }[]>([]);
+  const [newPhotoUrlInput, setNewPhotoUrlInput] = useState("");
+  const [isSavingPhotos, setIsSavingPhotos] = useState(false);
+
+  // Delete Confirmation Modal States
+  const [deletingListing, setDeletingListing] = useState<UserListing | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Free Tier Listing Limiting
   const [existingListingsCount, setExistingListingsCount] = useState(0);
-  const [checkingCount, setCheckingCount] = useState(false);
 
+  // Real-time listener for current user's listings in Firestore
   useEffect(() => {
     if (!currentUser || currentUser.isAnonymous) {
+      setUserListings([]);
       setExistingListingsCount(0);
       return;
     }
 
-    const checkListingsLimit = async () => {
-      setCheckingCount(true);
-      try {
-        const q = query(collection(db, "listings"), where("userId", "==", currentUser.uid));
-        const snap = await getDocs(q);
-        setExistingListingsCount(snap.size);
-      } catch (e) {
-        console.warn("Failed to check listings count in Firestore:", e);
-        try {
-          const stored = localStorage.getItem("autoWorld_listings");
-          const localListings = stored ? JSON.parse(stored) : [];
-          setExistingListingsCount(localListings.length);
-        } catch (localErr) {
-          console.error(localErr);
-        }
-      } finally {
-        setCheckingCount(false);
-      }
-    };
+    setIsLoadingUserListings(true);
+    const listingsRef = collection(db, "listings");
 
-    checkListingsLimit();
+    const unsub = onSnapshot(listingsRef, (snapshot) => {
+      const allItems: UserListing[] = [];
+      const userUid = currentUser.uid;
+      const userEmail = currentUser.email?.toLowerCase();
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const isOwner = data.userId === userUid || 
+          (data.sellerEmail && userEmail && String(data.sellerEmail).toLowerCase() === userEmail);
+
+        if (isOwner) {
+          allItems.push({
+            id: docSnap.id,
+            ...data
+          } as UserListing);
+        }
+      });
+
+      // Also check local storage for offline / cached items
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const localItems: UserListing[] = JSON.parse(stored);
+          localItems.forEach((localItem) => {
+            const isOwner = localItem.userId === userUid || 
+              (localItem.sellerEmail && userEmail && String(localItem.sellerEmail).toLowerCase() === userEmail);
+            if (isOwner && !allItems.some(item => item.id === localItem.id)) {
+              allItems.push(localItem);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Local storage fallback read error:", e);
+      }
+
+      allItems.sort((a, b) => new Date(b.datePosted || 0).getTime() - new Date(a.datePosted || 0).getTime());
+      setUserListings(allItems);
+      setExistingListingsCount(allItems.length);
+      setIsLoadingUserListings(false);
+    }, (err) => {
+      console.warn("User listings snapshot listener error:", err);
+      // Fallback local storage read
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const localItems: UserListing[] = JSON.parse(stored);
+          const userEmail = currentUser.email?.toLowerCase();
+          const filtered = localItems.filter(l => 
+            l.userId === currentUser.uid || (l.sellerEmail && userEmail && String(l.sellerEmail).toLowerCase() === userEmail)
+          );
+          setUserListings(filtered);
+          setExistingListingsCount(filtered.length);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoadingUserListings(false);
+      }
+    });
+
+    return () => unsub();
   }, [currentUser]);
+
+  // Quick Status Toggle Handler
+  const handleQuickStatusChange = async (listingId: string, newStatus: "active" | "pending" | "sold") => {
+    try {
+      await updateDoc(doc(db, "listings", listingId), {
+        status: newStatus,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Update LocalStorage
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const localListings: UserListing[] = JSON.parse(stored);
+          const updated = localListings.map(l => l.id === listingId ? { ...l, status: newStatus } : l);
+          localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.warn("LocalStorage status update error:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+      showToast(`Listing status updated to ${newStatus.toUpperCase()}`, "success");
+    } catch (err: any) {
+      console.error("Status update error:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `listings/${listingId}`);
+      showToast("Failed to update status.", "error");
+    }
+  };
+
+  // Open Edit Listing Modal
+  const handleOpenEditModal = (listing: UserListing) => {
+    setEditingListing(listing);
+    setEditForm({
+      title: listing.title,
+      price: listing.price,
+      make: listing.make,
+      model: listing.model,
+      year: listing.year,
+      mileage: listing.mileage,
+      fuelType: listing.fuelType,
+      transmission: listing.transmission,
+      description: listing.description,
+      negotiable: listing.negotiable,
+      sellerName: listing.sellerName,
+      sellerPhone: listing.sellerPhone,
+      sellerEmail: listing.sellerEmail,
+      location: listing.location,
+      status: listing.status,
+      featured: listing.featured,
+      urgent: listing.urgent
+    });
+  };
+
+  // Save Edit Listing
+  const handleSaveEditListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingListing) return;
+
+    setIsSavingEdit(true);
+    try {
+      const docRef = doc(db, "listings", editingListing.id);
+      const updatedFields = {
+        ...editingListing,
+        ...editForm,
+        price: typeof editForm.price === "number" ? editForm.price : parseInt(String(editForm.price || editingListing.price)),
+        updatedAt: new Date().toISOString()
+      };
+
+      const cleanFields = Object.fromEntries(
+        Object.entries(updatedFields).filter(([_, v]) => v !== undefined)
+      );
+
+      await setDoc(docRef, cleanFields, { merge: true });
+
+      // Update local storage
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const localListings: UserListing[] = JSON.parse(stored);
+          const idx = localListings.findIndex(l => l.id === editingListing.id);
+          if (idx !== -1) {
+            localListings[idx] = { ...localListings[idx], ...cleanFields };
+            localStorage.setItem("autoWorld_listings", JSON.stringify(localListings));
+          }
+        }
+      } catch (e) {
+        console.warn("Local storage update error:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+      showToast("Vehicle listing details updated successfully!", "success");
+      setEditingListing(null);
+    } catch (err: any) {
+      console.error("Save edit error:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `listings/${editingListing.id}`);
+      showToast("Failed to save changes.", "error");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Open Manage Photos Modal
+  const handleOpenPhotoManager = (listing: UserListing) => {
+    setPhotoManagingListing(listing);
+    setManagePhotosList(listing.photos ? [...listing.photos] : []);
+    setNewPhotoUrlInput("");
+  };
+
+  // Add Photo File Handler (Convert to Base64)
+  const handleAddPhotoFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+
+    files.forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const src = uploadEvent.target?.result as string;
+        if (src) {
+          setManagePhotosList(prev => [...prev, { src, alt: file.name }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  // Add Photo by URL
+  const handleAddPhotoUrl = () => {
+    if (!newPhotoUrlInput.trim()) return;
+    setManagePhotosList(prev => [...prev, { src: newPhotoUrlInput.trim(), alt: "Vehicle Photo" }]);
+    setNewPhotoUrlInput("");
+    showToast("Added new photo URL to gallery list!", "info");
+  };
+
+  // Save Managed Photos
+  const handleSavePhotos = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!photoManagingListing) return;
+
+    if (managePhotosList.length === 0) {
+      showToast("Please keep at least one photo for your vehicle listing.", "error");
+      return;
+    }
+
+    setIsSavingPhotos(true);
+    try {
+      const docRef = doc(db, "listings", photoManagingListing.id);
+      await updateDoc(docRef, {
+        photos: managePhotosList,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Local storage sync
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const localListings: UserListing[] = JSON.parse(stored);
+          const idx = localListings.findIndex(l => l.id === photoManagingListing.id);
+          if (idx !== -1) {
+            localListings[idx].photos = managePhotosList;
+            localStorage.setItem("autoWorld_listings", JSON.stringify(localListings));
+          }
+        }
+      } catch (e) {
+        console.warn("Local storage update error:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+      showToast("Photo gallery updated successfully!", "success");
+      setPhotoManagingListing(null);
+    } catch (err: any) {
+      console.error("Save photos error:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `listings/${photoManagingListing.id}`);
+      showToast("Failed to save photos.", "error");
+    } finally {
+      setIsSavingPhotos(false);
+    }
+  };
+
+  // Confirm Delete Listing
+  const handleConfirmDeleteListing = async () => {
+    if (!deletingListing) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, "listings", deletingListing.id));
+
+      // Local storage sync
+      try {
+        const stored = localStorage.getItem("autoWorld_listings");
+        if (stored) {
+          const localListings: UserListing[] = JSON.parse(stored);
+          const filtered = localListings.filter(l => l.id !== deletingListing.id);
+          localStorage.setItem("autoWorld_listings", JSON.stringify(filtered));
+        }
+      } catch (e) {
+        console.warn("Local storage delete error:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+      showToast(`Listing "${deletingListing.title}" deleted permanently.`, "info");
+      setDeletingListing(null);
+    } catch (err: any) {
+      console.error("Delete listing error:", err);
+      handleFirestoreError(err, OperationType.DELETE, `listings/${deletingListing.id}`);
+      showToast("Failed to delete listing.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // STEP 1: Basic details
   const [vehicleType, setVehicleType] = useState("");
@@ -497,6 +777,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         showToast("Please specify make, model, and manufacturing year.", "error");
         return;
       }
+
+      // Check if user is unauthenticated when continuing to Specifications
+      if (!currentUser || currentUser.isAnonymous) {
+        setShowLoginRequiredModal(true);
+        return;
+      }
     }
 
     if (currentStep === 2) {
@@ -528,8 +814,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     e.preventDefault();
 
     if (!currentUser || currentUser.isAnonymous) {
-      showToast("Authentication required to catalogue listing. Please sign in or create an account to publish.", "info");
-      onSignInClick();
+      setShowLoginRequiredModal(true);
       return;
     }
 
@@ -723,8 +1008,387 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       id="sell-form-wrapper" 
       className="max-w-4xl mx-auto px-4 py-12 bg-[#F4F1EA] text-[#1A1A1A] font-sans"
     >
+      {/* SELLER MODE SWITCHER BAR */}
+      <div className="mb-8 bg-stone-900 p-2 sm:p-2.5 border-2 border-stone-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("wizard")}
+            className={`flex-1 sm:flex-none px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border ${
+              viewMode === "wizard"
+                ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
+                : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>List New Vehicle</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode("my_catalog")}
+            className={`flex-1 sm:flex-none px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border relative ${
+              viewMode === "my_catalog"
+                ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
+                : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
+            }`}
+          >
+            <Tag className="w-4 h-4" />
+            <span>My Vehicles Catalog</span>
+            {userListings.length > 0 && (
+              <span className={`px-2 py-0.5 text-[10px] font-mono font-black rounded-full ${
+                viewMode === "my_catalog" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
+              }`}>
+                {userListings.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {currentUser && !currentUser.isAnonymous ? (
+          <div className="text-[10.5px] font-mono text-stone-300 px-3 py-1.5 bg-stone-800 border border-stone-700 flex items-center gap-2 self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="truncate">Seller: <strong className="text-amber-400">{currentUser.displayName || currentUser.email}</strong></span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onSignInClick}
+            className="text-[10.5px] font-mono text-amber-400 hover:text-amber-300 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span>Sign In to Control Listings</span>
+          </button>
+        )}
+      </div>
       
-      {existingListingsCount >= 2 && !subscriptionActive && (
+      {/* VIEW MODE 1: MY VEHICLE CATALOG CONTROL PANEL */}
+      {viewMode === "my_catalog" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Header Banner */}
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Seller Control Center</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
+                  My Vehicle Catalog
+                </h2>
+                <p className="text-stone-600 text-xs mt-1 font-medium">
+                  Full control center for your uploaded vehicles. Edit vehicle specs, manage photo galleries, update status, or remove listings.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setViewMode("wizard")}
+                className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer shrink-0 transition-transform active:scale-95"
+              >
+                <Plus className="w-4 h-4 text-amber-400" />
+                <span>List New Vehicle</span>
+              </button>
+            </div>
+
+            {/* Unauthenticated State Warning */}
+            {(!currentUser || currentUser.isAnonymous) ? (
+              <div className="p-8 bg-[#F4F1EA] border-2 border-stone-400 text-center space-y-4 my-4">
+                <div className="w-14 h-14 bg-amber-500/15 border-2 border-amber-600/40 rounded-full flex items-center justify-center text-amber-700 mx-auto">
+                  <Lock className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-serif font-bold text-stone-900 uppercase">
+                    Seller Sign In Required
+                  </h3>
+                  <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed font-medium">
+                    Log in or create your free account to view your listed vehicles, edit parameters, update photo galleries, and track buyer inquiries.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onSignInClick}
+                  className="px-6 py-3.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition"
+                >
+                  <LogIn className="w-4 h-4 text-amber-400" />
+                  <span>Log In / Sign Up Now</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Stats Metric Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                  <div className="p-3.5 bg-[#F4F1EA] border border-stone-300">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-500 block">Total Inventory</span>
+                    <span className="text-xl font-serif font-black text-stone-900">{userListings.length} Vehicles</span>
+                  </div>
+
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-600/30">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-800 block">Active Listings</span>
+                    <span className="text-xl font-serif font-black text-emerald-900">
+                      {userListings.filter(l => l.status === "active" || !l.status).length}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 bg-amber-500/10 border border-amber-600/30">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-800 block">Pending / On Hold</span>
+                    <span className="text-xl font-serif font-black text-amber-950">
+                      {userListings.filter(l => l.status === "pending").length}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 bg-stone-200/80 border border-stone-300">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-600 block">Sold Vehicles</span>
+                    <span className="text-xl font-serif font-black text-stone-800">
+                      {userListings.filter(l => l.status === "sold").length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Search & Filter Toolbar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-1 bg-[#F4F1EA] p-1 border border-stone-300 overflow-x-auto">
+                    {(["all", "active", "pending", "sold"] as const).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => setCatalogFilterStatus(st)}
+                        className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider transition cursor-pointer whitespace-nowrap ${
+                          catalogFilterStatus === st
+                            ? "bg-stone-900 text-white shadow-xs"
+                            : "text-stone-600 hover:text-stone-900 hover:bg-stone-200/60"
+                        }`}
+                      >
+                        {st === "all" ? `All (${userListings.length})` : `${st} (${userListings.filter(l => (st === "active" ? (l.status === "active" || !l.status) : l.status === st)).length})`}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Filter my catalog..."
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900 placeholder:text-stone-400"
+                    />
+                    {catalogSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCatalogSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* CATALOG CARDS LIST */}
+          {currentUser && !currentUser.isAnonymous && (
+            <div className="space-y-4">
+              {isLoadingUserListings ? (
+                <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
+                  <RefreshCw className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
+                  <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
+                    Loading your vehicle catalog...
+                  </p>
+                </div>
+              ) : (() => {
+                const filteredListings = userListings.filter((item) => {
+                  const matchStatus = catalogFilterStatus === "all" ||
+                    (catalogFilterStatus === "active" && (item.status === "active" || !item.status)) ||
+                    item.status === catalogFilterStatus;
+
+                  const searchLower = catalogSearch.toLowerCase().trim();
+                  const matchSearch = !searchLower ||
+                    item.title.toLowerCase().includes(searchLower) ||
+                    item.make.toLowerCase().includes(searchLower) ||
+                    item.model.toLowerCase().includes(searchLower) ||
+                    item.year.toString().includes(searchLower);
+
+                  return matchStatus && matchSearch;
+                });
+
+                if (filteredListings.length === 0) {
+                  return (
+                    <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-4">
+                      <div className="w-12 h-12 bg-stone-200 rounded-full flex items-center justify-center text-stone-500 mx-auto">
+                        <Car className="w-6 h-6 text-stone-400" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-base font-serif font-bold uppercase text-stone-900">
+                          {userListings.length === 0 ? "No Vehicles Uploaded Yet" : "No Matching Vehicles Found"}
+                        </h4>
+                        <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                          {userListings.length === 0
+                            ? "You haven't listed any vehicles in your account. Click below to add your first vehicle listing."
+                            : "Try clearing search keywords or choosing 'All' status."}
+                        </p>
+                      </div>
+                      {userListings.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("wizard")}
+                          className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                        >
+                          <Plus className="w-4 h-4 text-amber-400" />
+                          <span>List Your First Vehicle</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {filteredListings.map((listing) => {
+                      const mainPhoto = listing.photos && listing.photos.length > 0 ? listing.photos[0].src : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
+                      const status = listing.status || "active";
+
+                      return (
+                        <motion.div
+                          key={listing.id}
+                          layout
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="bg-[#FAF8F5] border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] flex flex-col justify-between overflow-hidden relative group"
+                        >
+                          {/* Image Thumbnail */}
+                          <div className="relative aspect-video bg-stone-900 overflow-hidden">
+                            <img
+                              src={mainPhoto}
+                              alt={listing.title}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-stone-950/20" />
+
+                            {/* Status Tag */}
+                            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                              <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs ${
+                                status === "active" ? "bg-emerald-500 text-stone-950" :
+                                status === "sold" ? "bg-stone-800 text-stone-200" :
+                                "bg-amber-500 text-stone-950"
+                              }`}>
+                                {status.toUpperCase()}
+                              </span>
+
+                              {listing.featured && (
+                                <span className="px-2 py-0.5 bg-amber-400 text-stone-950 text-[9px] font-mono font-extrabold uppercase tracking-wider flex items-center gap-1 border border-stone-950">
+                                  <Star className="w-3 h-3 fill-stone-950" /> Featured
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Photos Counter */}
+                            <div className="absolute bottom-3 right-3 bg-stone-950/85 text-white text-[10px] font-mono px-2 py-1 flex items-center gap-1.5 backdrop-blur-xs border border-white/20">
+                              <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                              <span>{listing.photos?.length || 0} Photos</span>
+                            </div>
+                          </div>
+
+                          {/* Vehicle Specifications */}
+                          <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-start gap-2">
+                                <h3 className="font-serif font-black text-lg text-stone-950 uppercase leading-snug">
+                                  {listing.title}
+                                </h3>
+                                <span className="font-serif font-black text-base text-amber-900 whitespace-nowrap bg-amber-500/15 px-2 py-0.5 border border-amber-600/30">
+                                  ₹{listing.price?.toLocaleString("en-IN")}
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-mono text-stone-600 font-semibold">
+                                <span>Yr: {listing.year}</span>
+                                <span>•</span>
+                                <span>{listing.fuelType || "Petrol"}</span>
+                                <span>•</span>
+                                <span>{listing.transmission || "Manual"}</span>
+                                <span>•</span>
+                                <span>{listing.mileage} km</span>
+                              </div>
+
+                              {listing.description && (
+                                <p className="text-xs text-stone-600 line-clamp-2 pt-1 font-medium leading-relaxed">
+                                  {listing.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Status Quick Switch Selector */}
+                            <div className="pt-3 border-t border-stone-200 flex items-center justify-between text-xs">
+                              <span className="text-[10px] font-mono font-bold uppercase text-stone-500">
+                                Listing Status:
+                              </span>
+                              <div className="flex gap-1">
+                                {(["active", "pending", "sold"] as const).map((st) => (
+                                  <button
+                                    key={st}
+                                    type="button"
+                                    onClick={() => handleQuickStatusChange(listing.id, st)}
+                                    className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
+                                      status === st
+                                        ? "bg-stone-900 text-white border-stone-950 font-extrabold"
+                                        : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
+                                    }`}
+                                  >
+                                    {st}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Action Control Buttons */}
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(listing)}
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                              >
+                                <Edit className="w-3.5 h-3.5 text-stone-700" />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPhotoManager(listing)}
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                              >
+                                <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
+                                <span>Photos</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setDeletingListing(listing)}
+                                className="py-2 px-2 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW MODE 2: VEHICLE LISTING WIZARD */}
+      {viewMode === "wizard" && (
+        <>
+          {existingListingsCount >= 2 && !subscriptionActive && (
         <div className="mb-6 bg-amber-50 border border-amber-300 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1905,22 +2569,538 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Status Inflow</span> Active &amp; Visible</div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 max-w-sm mx-auto">
+          <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-4 max-w-md mx-auto">
+            <button
+              onClick={() => {
+                setViewMode("my_catalog");
+                setCurrentStep(1);
+              }}
+              className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest border border-amber-600 transition cursor-pointer shadow-xs"
+            >
+              Manage My Listings
+            </button>
             <button
               onClick={() => setActiveTab("buy")}
-              className="flex-1 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest transition cursor-pointer"
+              className="flex-1 py-3 bg-stone-900 hover:bg-stone-850 text-white font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer"
             >
               Look Up Catalog
             </button>
             <button
               onClick={handleResetWizardForm}
-              className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-xs font-bold uppercase tracking-widest transition cursor-pointer"
+              className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer"
             >
               List Another
             </button>
           </div>
         </div>
       )}
+      </>
+      )}
+
+      {/* ADVANCED ANIMATED LOGIN REQUIRED POP-UP MODAL */}
+      <AnimatePresence>
+        {showLoginRequiredModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop with Smooth Blur & Darkening */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              onClick={() => setShowLoginRequiredModal(false)}
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-md cursor-pointer"
+            />
+
+            {/* Modal Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88, y: 32, rotateX: 5 }}
+              animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: "spring", stiffness: 380, damping: 28 }}
+              className="relative w-full max-w-md bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 overflow-hidden z-10 font-sans"
+            >
+              {/* Premium Top Gradient Bar */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-amber-600 to-stone-900" />
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setShowLoginRequiredModal(false)}
+                className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-950 hover:bg-stone-200/80 rounded-full transition-colors cursor-pointer"
+                aria-label="Close dialog"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Header Icon & Branding */}
+              <div className="flex flex-col items-center text-center space-y-3">
+                <motion.div
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 20, delay: 0.08 }}
+                  className="w-16 h-16 rounded-full bg-amber-500/15 border-2 border-amber-600/40 flex items-center justify-center text-amber-700 shadow-inner"
+                >
+                  <Lock className="w-8 h-8" />
+                </motion.div>
+
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-600/30 rounded-full text-amber-900 text-[10px] font-mono font-bold uppercase tracking-widest">
+                    <Sparkles className="w-3 h-3 text-amber-600" />
+                    <span>Login Required to Proceed</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase tracking-tight pt-1">
+                    Sign In Required
+                  </h3>
+                  <p className="text-xs text-stone-600 font-medium leading-relaxed max-w-xs mx-auto">
+                    Please log in or create a free account to enter vehicle specifications, upload media, and publish your listing on AutoWorld.
+                  </p>
+                </div>
+              </div>
+
+              {/* Benefits Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.25 }}
+                className="my-5 p-4 bg-[#F4F1EA] border border-stone-300 space-y-2 rounded-sm"
+              >
+                <span className="text-[9px] font-mono font-extrabold uppercase tracking-widest text-stone-500 block">
+                  Included with your free account:
+                </span>
+                <ul className="space-y-2 text-xs font-semibold text-stone-800">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Cloud synchronization for all vehicle drafts</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Direct WhatsApp &amp; phone buyer leads</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Free listing allocation with verified badge</span>
+                  </li>
+                </ul>
+              </motion.div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2.5 pt-1">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  onClick={() => {
+                    setShowLoginRequiredModal(false);
+                    if (onSignInClick) {
+                      onSignInClick();
+                    }
+                  }}
+                  className="w-full py-3.5 px-5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition-all"
+                >
+                  <LogIn className="w-4 h-4 text-amber-400" />
+                  <span>Log In / Sign Up Now</span>
+                  <ArrowRight className="w-4 h-4" />
+                </motion.button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLoginRequiredModal(false);
+                      setCurrentStep(2);
+                      window.scrollTo({ top: 100, behavior: "smooth" });
+                      showToast("Continuing in Guest Mode. Please sign in before final publication.", "info");
+                    }}
+                    className="flex-1 py-2.5 px-3 bg-[#FAF8F5] hover:bg-stone-200/80 border border-stone-400 text-stone-800 text-[10.5px] font-mono font-bold uppercase tracking-wider text-center cursor-pointer transition-colors"
+                  >
+                    Continue as Guest
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginRequiredModal(false)}
+                    className="py-2.5 px-4 bg-transparent hover:bg-stone-200/50 text-stone-500 hover:text-stone-900 text-[10.5px] font-mono font-bold uppercase tracking-wider cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* EDIT VEHICLE LISTING MODAL */}
+      <AnimatePresence>
+        {editingListing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingListing(null)}
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center border-b border-stone-300 pb-4 mb-6">
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase text-amber-700 tracking-wider block">
+                    Seller Control Panel
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">
+                    Edit Vehicle Listing
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingListing(null)}
+                  className="p-2 text-stone-400 hover:text-stone-900 rounded-full hover:bg-stone-200 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditListing} className="space-y-4 text-xs font-sans">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Listing Title</label>
+                    <input
+                      type="text"
+                      value={editForm.title || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                      required
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Asking Price (₹ INR)</label>
+                    <input
+                      type="number"
+                      value={editForm.price || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                      required
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Make / Brand</label>
+                    <input
+                      type="text"
+                      value={editForm.make || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, make: e.target.value }))}
+                      required
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Model</label>
+                    <input
+                      type="text"
+                      value={editForm.model || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, model: e.target.value }))}
+                      required
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Year</label>
+                    <input
+                      type="text"
+                      value={editForm.year || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, year: e.target.value }))}
+                      required
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Mileage (km)</label>
+                    <input
+                      type="text"
+                      value={editForm.mileage || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, mileage: e.target.value }))}
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Fuel Type</label>
+                    <select
+                      value={editForm.fuelType || "Petrol"}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, fuelType: e.target.value }))}
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    >
+                      <option value="Petrol">Petrol</option>
+                      <option value="Diesel">Diesel</option>
+                      <option value="Electric">Electric</option>
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="CNG">CNG</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Transmission</label>
+                    <select
+                      value={editForm.transmission || "Manual"}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, transmission: e.target.value }))}
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                    >
+                      <option value="Manual">Manual</option>
+                      <option value="Automatic">Automatic</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Description</label>
+                  <textarea
+                    rows={3}
+                    value={editForm.description || ""}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-medium focus:outline-none focus:border-stone-900 text-stone-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Seller Contact Name</label>
+                    <input
+                      type="text"
+                      value={editForm.sellerName || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, sellerName: e.target.value }))}
+                      className="w-full p-2 bg-[#F4F1EA] border border-stone-300 font-semibold text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Seller Phone</label>
+                    <input
+                      type="text"
+                      value={editForm.sellerPhone || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, sellerPhone: e.target.value }))}
+                      className="w-full p-2 bg-[#F4F1EA] border border-stone-300 font-semibold text-stone-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-stone-700 uppercase block">Location City</label>
+                    <input
+                      type="text"
+                      value={editForm.location || ""}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                      className="w-full p-2 bg-[#F4F1EA] border border-stone-300 font-semibold text-stone-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-stone-300">
+                  <button
+                    type="button"
+                    onClick={() => setEditingListing(null)}
+                    className="px-4 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="px-6 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingEdit ? "Saving Listing..." : "Save Vehicle Changes"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MANAGE PHOTOS MODAL */}
+      <AnimatePresence>
+        {photoManagingListing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPhotoManagingListing(null)}
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center border-b border-stone-300 pb-4 mb-4">
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase text-amber-700 tracking-wider block">
+                    Photo Manager
+                  </span>
+                  <h3 className="text-xl font-serif font-black text-stone-900 uppercase">
+                    {photoManagingListing.title} Gallery ({managePhotosList.length})
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPhotoManagingListing(null)}
+                  className="p-2 text-stone-400 hover:text-stone-900 rounded-full hover:bg-stone-200 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePhotos} className="space-y-5">
+                <div className="space-y-2">
+                  <span className="text-[10px] font-mono font-bold uppercase text-stone-600 block">
+                    Current Listing Photos (First image is Cover Photo)
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-2 bg-[#F4F1EA] border border-stone-300">
+                    {managePhotosList.map((photo, idx) => (
+                      <div key={idx} className="relative group aspect-video bg-stone-900 border border-stone-300 overflow-hidden">
+                        <img src={photo.src} alt={photo.alt || "Vehicle"} className="w-full h-full object-cover" />
+                        
+                        {idx === 0 && (
+                          <span className="absolute top-1 left-1 bg-amber-500 text-stone-950 text-[8.5px] font-mono font-black uppercase px-1.5 py-0.5 border border-stone-950">
+                            Cover
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setManagePhotosList(prev => prev.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 bg-stone-950/90 text-white hover:bg-red-600 w-6 h-6 flex items-center justify-center rounded-xs transition cursor-pointer text-xs"
+                          title="Remove Photo"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3 p-4 bg-[#F4F1EA] border border-stone-300">
+                  <span className="text-[10.5px] font-mono font-bold uppercase text-stone-800 block">
+                    Add New Photos to Vehicle
+                  </span>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-stone-600 uppercase block">Option A: Upload Image Files</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleAddPhotoFiles}
+                      className="w-full text-xs text-stone-700 file:mr-3 file:py-2 file:px-3 file:border-0 file:text-xs file:font-mono file:font-bold file:bg-stone-900 file:text-white hover:file:bg-stone-800 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-stone-300">
+                    <label className="text-[10px] font-bold text-stone-600 uppercase block">Option B: Add Image URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://images.unsplash.com/..."
+                        value={newPhotoUrlInput}
+                        onChange={(e) => setNewPhotoUrlInput(e.target.value)}
+                        className="flex-1 p-2 bg-white border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddPhotoUrl}
+                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                      >
+                        Add URL
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-stone-300">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoManagingListing(null)}
+                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingPhotos}
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingPhotos ? "Saving Photos..." : "Save Photo Gallery"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {deletingListing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingListing(null)}
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans text-center space-y-4"
+            >
+              <div className="w-14 h-14 bg-red-100 border-2 border-red-300 rounded-full flex items-center justify-center text-red-600 mx-auto">
+                <Trash2 className="w-7 h-7" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-serif font-black text-stone-900 uppercase">
+                  Remove Listing Permanently?
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed font-medium">
+                  Are you sure you want to delete <strong className="text-stone-950 font-bold">"{deletingListing.title}"</strong>? This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setDeletingListing(null)}
+                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDeleteListing}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-mono font-bold uppercase tracking-widest border border-red-800 cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Confirm Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
      </motion.div>
   );

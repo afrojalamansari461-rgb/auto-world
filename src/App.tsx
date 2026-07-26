@@ -17,7 +17,7 @@ import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
-import { saveCatalogOverride, saveAdminSettingsToFirestore } from "./lib/catalogSync";
+import { saveCatalogOverride, saveAdminSettingsToFirestore, subscribeToRealtimeCatalog } from "./lib/catalogSync";
 import firebaseConfig from "../firebase-applet-config.json";
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
@@ -410,41 +410,41 @@ export default function App() {
 
   // Sync hasPaidPass reactively for selectedVehicle modal and custom contacts gating
   useEffect(() => {
-    // If Admin enabled Free Buy Pass mode, bypass completely!
-    const isFreePass = localStorage.getItem("autoWorld_is_free_pass") === "true";
-    if (isFreePass) {
-      setHasPaidPass(true);
-      return;
-    }
+    let cancelled = false;
 
-    if (currentUser?.email === "afrojalamansari461@gmail.com") {
-      setHasPaidPass(true);
-      return;
-    }
-    if (subscriptionActive) {
-      setHasPaidPass(true);
-      return;
-    }
-    if (!currentUser || currentUser.isAnonymous) {
-      setHasPaidPass(false);
-      return;
-    }
-
-    // Check local fallback
-    const localPass = localStorage.getItem(`autoWorld_buyerPass_${currentUser.uid}`);
-    const localPassDate = localStorage.getItem(`autoWorld_buyerPassDate_${currentUser.uid}`);
-    if (localPass === "true" && localPassDate) {
-      const passDate = new Date(localPassDate);
-      const now = new Date();
-      const diffHours = (now.getTime() - passDate.getTime()) / (1000 * 60 * 60);
-      if (diffHours < 24) {
-        setHasPaidPass(true);
+    const recheckPass = async () => {
+      // 1. Check if Admin enabled Free Buy Pass mode
+      const isFreePass = localStorage.getItem("autoWorld_is_free_pass") === "true";
+      if (isFreePass) {
+        if (!cancelled) setHasPaidPass(true);
         return;
       }
-    }
 
-    // Dynamic firestore check
-    const fetchPass = async () => {
+      // 2. Certified owner or active subscriber bypass
+      if (currentUser?.email === "afrojalamansari461@gmail.com" || subscriptionActive) {
+        if (!cancelled) setHasPaidPass(true);
+        return;
+      }
+
+      if (!currentUser || currentUser.isAnonymous) {
+        if (!cancelled) setHasPaidPass(false);
+        return;
+      }
+
+      // 3. Local storage pass fallback
+      const localPass = localStorage.getItem(`autoWorld_buyerPass_${currentUser.uid}`);
+      const localPassDate = localStorage.getItem(`autoWorld_buyerPassDate_${currentUser.uid}`);
+      if (localPass === "true" && localPassDate) {
+        const passDate = new Date(localPassDate);
+        const now = new Date();
+        const diffHours = (now.getTime() - passDate.getTime()) / (1000 * 60 * 60);
+        if (diffHours < 24) {
+          if (!cancelled) setHasPaidPass(true);
+          return;
+        }
+      }
+
+      // 4. Firestore buyer pass check
       try {
         const { getDoc, doc } = await import("firebase/firestore");
         const docRef = doc(db, "buyer_passes", currentUser.uid);
@@ -456,7 +456,7 @@ export default function App() {
             const now = new Date();
             const diffHours = (now.getTime() - passDate.getTime()) / (1000 * 60 * 60);
             if (diffHours < 24) {
-              setHasPaidPass(true);
+              if (!cancelled) setHasPaidPass(true);
               return;
             }
           }
@@ -464,18 +464,30 @@ export default function App() {
       } catch (err) {
         console.warn("Firestore buyer pass fetch warning inside App.tsx:", err);
       }
-      setHasPaidPass(false);
+
+      if (!cancelled) setHasPaidPass(false);
     };
-    fetchPass();
+
+    recheckPass();
+
+    // Subscribe to catalog/admin settings changes for real-time toggle response
+    const unsub = subscribeToRealtimeCatalog(({ adminSettings }) => {
+      if (adminSettings.isFreePassEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(adminSettings.isFreePassEnabled));
+      }
+      recheckPass();
+    });
 
     const handleGlobalUpdate = () => {
-      const isFree = localStorage.getItem("autoWorld_is_free_pass") === "true";
-      if (isFree) {
-        setHasPaidPass(true);
-      }
+      recheckPass();
     };
     window.addEventListener("autoWorld_db_update", handleGlobalUpdate);
-    return () => window.removeEventListener("autoWorld_db_update", handleGlobalUpdate);
+
+    return () => {
+      cancelled = true;
+      unsub();
+      window.removeEventListener("autoWorld_db_update", handleGlobalUpdate);
+    };
   }, [currentUser, subscriptionActive, selectedVehicle]);
 
   // Listen for admin login to trigger grand entrance animation once per session
