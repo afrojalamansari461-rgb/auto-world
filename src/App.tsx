@@ -1135,19 +1135,21 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-2 sm:p-4"
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            onClick={() => setSelectedVehicle(null)}
+            className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-2 sm:p-4 overflow-hidden"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, y: 52, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 36, scale: 0.98 }}
               transition={{
                 type: "spring",
-                stiffness: 320,
-                damping: 24,
-                mass: 0.9
+                stiffness: 280,
+                damping: 28,
+                mass: 0.85
               }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] max-sm:fixed max-sm:inset-0 max-sm:p-2 max-sm:max-h-full max-sm:h-full flex flex-col border border-stone-300"
             >
             {/* Close trigger */}

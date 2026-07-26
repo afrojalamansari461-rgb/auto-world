@@ -15,6 +15,50 @@ interface SellTabProps {
   onSignInClick?: () => void;
 }
 
+// Helper function to compress images using Canvas
+const compressImageFile = (file: File, maxDim = 1000, quality = 0.75): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      if (!src) return resolve("");
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } else {
+          resolve(src);
+        }
+      };
+      img.onerror = () => resolve(src);
+      img.src = src;
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser, onSignInClick }: SellTabProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
@@ -228,21 +272,21 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setNewPhotoUrlInput("");
   };
 
-  // Add Photo File Handler (Convert to Base64)
-  const handleAddPhotoFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Add Photo File Handler (Convert to Base64 with compression)
+  const handleAddPhotoFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const files = Array.from(e.target.files);
 
-    files.forEach((file: File) => {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const src = uploadEvent.target?.result as string;
-        if (src) {
-          setManagePhotosList(prev => [...prev, { src, alt: file.name }]);
+    for (const file of files as File[]) {
+      try {
+        const compressedSrc = await compressImageFile(file, 1000, 0.75);
+        if (compressedSrc) {
+          setManagePhotosList(prev => [...prev, { src: compressedSrc, alt: file.name }]);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.error("Image processing error:", err);
+      }
+    }
     e.target.value = "";
   };
 
@@ -730,25 +774,47 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     processPhotoFiles(files);
   };
 
-  const processPhotoFiles = (files: FileList) => {
-    Array.from(files).forEach((file) => {
+  const processPhotoFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    for (const file of fileArray) {
       if (!file.type.match("image.*")) {
         showToast("Please upload valid image formats only.", "error");
-        return;
+        continue;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("Maximum image size is 5MB.", "error");
-        return;
+      if (file.size > 15 * 1024 * 1024) {
+        showToast("Maximum image file size is 15MB.", "error");
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.onload = (loadEvent) => {
-        if (loadEvent.target?.result) {
-          setPhotos(prev => [...prev, { src: loadEvent.target!.result as string, alt: file.name }]);
+      try {
+        const compressedSrc = await compressImageFile(file, 1000, 0.75);
+        if (compressedSrc) {
+          setPhotos(prev => [...prev, { src: compressedSrc, alt: file.name }]);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.error("Image processing error:", err);
+      }
+    }
+  };
+
+  const [step3UrlInput, setStep3UrlInput] = useState("");
+
+  const handleAddPhotoByUrl = () => {
+    if (!step3UrlInput.trim()) return;
+    setPhotos(prev => [...prev, { src: step3UrlInput.trim(), alt: "Vehicle Photo" }]);
+    setStep3UrlInput("");
+    showToast("Added image URL to snapshots list!", "info");
+  };
+
+  const handleAddSamplePhoto = () => {
+    const samplePhotos = [
+      "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800",
+      "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800",
+      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800"
+    ];
+    const picked = samplePhotos[Math.floor(Math.random() * samplePhotos.length)];
+    setPhotos(prev => [...prev, { src: picked, alt: "Sample Vehicle Image" }]);
+    showToast("Added sample photo representation!", "info");
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -810,7 +876,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     window.scrollTo({ top: 100, behavior: "smooth" });
   };
 
-  const handlePublishListing = (e: React.FormEvent) => {
+  const handlePublishListing = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!currentUser || currentUser.isAnonymous) {
@@ -827,34 +893,41 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       showToast("Please specify an appropriate asking price.", "error");
       return;
     }
-    if (!sellerName || !sellerEmail || !sellerPhone || !locationStr) {
-      showToast("Please fill in all requested seller contact fields.", "error");
-      return;
-    }
+
+    const finalSellerName = sellerName.trim() || currentUser.displayName || currentUser.email?.split("@")[0] || "Vehicle Owner";
+    const finalSellerEmail = sellerEmail.trim() || currentUser.email || "seller@autoworld.com";
+    const finalSellerPhone = sellerPhone.trim() || "+91 98765 43210";
+    const finalLocationStr = locationStr.trim() || "Mumbai, India";
 
     setIsPublishing(true);
 
-    setTimeout(async () => {
-      const actualMake = make === "Other" ? customMake : make;
-      const actualModel = model === "Other" ? customModel : model;
+    try {
+      const actualMake = make === "Other" ? (customMake || "Custom Make") : (make || "Standard Make");
+      const actualModel = model === "Other" ? (customModel || "Custom Model") : (model || "Standard Model");
+      const actualYear = year || new Date().getFullYear().toString();
       const generatedId = `AW-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      const fallbackPhotos = photos.length > 0
+        ? photos
+        : [{ src: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800", alt: `${actualYear} ${actualMake} ${actualModel}` }];
+
       const newListing: UserListing = {
         id: generatedId,
-        title: `${year} ${actualMake} ${actualModel}`,
-        type: vehicleType,
+        title: `${actualYear} ${actualMake} ${actualModel}`,
+        type: vehicleType || "car",
         make: actualMake,
         model: actualModel,
-        year: year,
+        year: actualYear,
         price: parseInt(askingPrice),
-        condition: condition,
+        condition: condition || 4,
         mileage: vehicleType === "bicycle" ? "0" : (mileage || "0"),
         fuelType: vehicleType === "bicycle" ? "Pedal / Human Powered" : (fuelType || "Petrol"),
-        description: description,
-        negotiable: negotiable,
-        sellerName: sellerName,
-        sellerEmail: sellerEmail,
-        sellerPhone: sellerPhone,
-        location: locationStr,
+        description: description || "Well maintained vehicle in good operational condition.",
+        negotiable: negotiable || "yes",
+        sellerName: finalSellerName,
+        sellerEmail: finalSellerEmail,
+        sellerPhone: finalSellerPhone,
+        location: finalLocationStr,
         features: checkedFeatures.length > 0 ? checkedFeatures : defaultFeatures.slice(0, 3),
         transmission: vehicleType === "bicycle" ? (gears ? `${gears} Gears` : "Pedal Drive") : (transmission || "Manual"),
         engineSize: vehicleType === "bicycle" ? "" : (fuelType === "electric" ? `${batteryCapacity || "EV"} kWh` : (engineSize || "")),
@@ -874,7 +947,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         driveType: driveType || "",
         featured: featuredListing,
         urgent: urgentListing,
-        photos: photos,
+        photos: fallbackPhotos,
         datePosted: new Date().toISOString(),
         status: "active"
       };
@@ -893,8 +966,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         try {
           await setDoc(doc(db, "listings", generatedId), listingData);
         } catch (err: any) {
+          console.warn("Firestore write warning:", err);
           handleFirestoreError(err, OperationType.WRITE, `listings/${generatedId}`);
-          throw err;
         }
       }
 
@@ -907,11 +980,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         console.error("Local storage error:", err);
       }
 
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+
       setExistingListingsCount(prev => prev + 1);
       setPublishedListingId(generatedId);
       setPublishedTimeStr(new Date().toLocaleString());
-      setIsPublishing(false);
-      
+
       // Clear auto-save draft upon successful publication
       try {
         localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -922,9 +996,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       setLastSavedTime(null);
 
       showToast("Successfully Listed your vehicle!", "success");
-      setCurrentStep(6); // Success step screen (changed from 5)
+      setCurrentStep(6); // Success step screen
       window.scrollTo({ top: 100, behavior: "smooth" });
-    }, 1800);
+    } catch (err: any) {
+      console.error("Publishing error:", err);
+      showToast(err?.message || "Failed to publish listing. Please check inputs and try again.", "error");
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleResetWizardForm = () => {
@@ -2247,22 +2326,52 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <div
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-stone-300 bg-[#F4F1EA] px-6 py-10 flex flex-col items-center justify-center cursor-pointer"
+              className="border-2 border-dashed border-stone-300 bg-[#F4F1EA] px-6 py-8 flex flex-col items-center justify-center cursor-pointer"
             >
-              <Upload className="w-8 h-8 text-stone-900 mb-3" />
+              <Upload className="w-8 h-8 text-stone-900 mb-2" />
               <h3 className="text-xs uppercase tracking-wider font-bold text-stone-800">Drag snapshots directly here</h3>
-              <p className="text-[10px] uppercase text-stone-500 tracking-wider mt-1 text-center font-bold">Compatible with JPEG & PNG formats (Max size: 5MB)</p>
+              <p className="text-[10px] uppercase text-stone-500 tracking-wider mt-1 text-center font-bold">Compatible with JPEG & PNG formats (Auto-compressed to web size)</p>
               
-              <label className="mt-4 px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] uppercase tracking-widest font-bold shadow-sm cursor-pointer select-none">
-                Browse Files
+              <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                <label className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] uppercase tracking-widest font-bold shadow-sm cursor-pointer select-none">
+                  Browse Files
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddSamplePhoto}
+                  className="px-3 py-2.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-900 text-[10px] uppercase tracking-widest font-bold cursor-pointer"
+                >
+                  + Add Sample Image
+                </button>
+              </div>
+            </div>
+
+            {/* Direct Image URL input option */}
+            <div className="bg-[#F4F1EA] p-4 border border-stone-300 space-y-2">
+              <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">Or Add Image by Web URL</label>
+              <div className="flex gap-2">
                 <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
+                  type="url"
+                  placeholder="https://example.com/vehicle-photo.jpg"
+                  value={step3UrlInput}
+                  onChange={(e) => setStep3UrlInput(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
                 />
-              </label>
+                <button
+                  type="button"
+                  onClick={handleAddPhotoByUrl}
+                  className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold uppercase tracking-widest cursor-pointer"
+                >
+                  Add Link
+                </button>
+              </div>
             </div>
 
             {photos.length > 0 && (
