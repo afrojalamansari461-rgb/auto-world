@@ -15,48 +15,93 @@ interface SellTabProps {
   onSignInClick?: () => void;
 }
 
+// Helper function to re-compress base64 image data URLs using Canvas
+const compressBase64Url = (dataUrl: string, maxDim = 550, quality = 0.55): Promise<string> => {
+  if (!dataUrl || !dataUrl.startsWith("data:image")) return Promise.resolve(dataUrl);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      } else {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+};
+
 // Helper function to compress images using Canvas
-const compressImageFile = (file: File, maxDim = 1000, quality = 0.75): Promise<string> => {
+const compressImageFile = (file: File, maxDim = 600, quality = 0.60): Promise<string> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const src = e.target?.result as string;
       if (!src) return resolve("");
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", quality));
-        } else {
-          resolve(src);
-        }
-      };
-      img.onerror = () => resolve(src);
-      img.src = src;
+      compressBase64Url(src, maxDim, quality).then(resolve);
     };
     reader.onerror = () => resolve("");
     reader.readAsDataURL(file);
   });
+};
+
+// Ensure photos array is well under Firestore's 1MB payload limit
+const preparePhotosForFirestore = async (
+  photos: { src: string; alt: string }[]
+): Promise<{ src: string; alt: string }[]> => {
+  if (!photos || photos.length === 0) return [];
+
+  // Compress base64 images to max 600px width/height and 0.55 JPEG quality
+  const compressedList = await Promise.all(
+    photos.map(async (p) => {
+      if (p.src && p.src.startsWith("data:image")) {
+        const compressed = await compressBase64Url(p.src, 600, 0.55);
+        return { ...p, src: compressed };
+      }
+      return p;
+    })
+  );
+
+  // Calculate total payload length of all photo source strings
+  let totalSize = compressedList.reduce((sum, p) => sum + (p.src ? p.src.length : 0), 0);
+
+  // If total size exceeds 300,000 characters (~300KB), re-compress further (400px, 0.45 quality)
+  if (totalSize > 300000) {
+    const ultraCompressed = await Promise.all(
+      compressedList.map(async (p) => {
+        if (p.src && p.src.startsWith("data:image")) {
+          const compressed = await compressBase64Url(p.src, 400, 0.45);
+          return { ...p, src: compressed };
+        }
+        return p;
+      })
+    );
+    return ultraCompressed;
+  }
+
+  return compressedList;
 };
 
 export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser, onSignInClick }: SellTabProps) {
@@ -224,10 +269,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
     setIsSavingEdit(true);
     try {
+      const preparedPhotos = editForm.photos ? await preparePhotosForFirestore(editForm.photos) : undefined;
       const docRef = doc(db, "listings", editingListing.id);
       const updatedFields = {
         ...editingListing,
         ...editForm,
+        ...(preparedPhotos ? { photos: preparedPhotos } : {}),
         price: typeof editForm.price === "number" ? editForm.price : parseInt(String(editForm.price || editingListing.price)),
         updatedAt: new Date().toISOString()
       };
@@ -258,8 +305,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       setEditingListing(null);
     } catch (err: any) {
       console.error("Save edit error:", err);
-      handleFirestoreError(err, OperationType.UPDATE, `listings/${editingListing.id}`);
-      showToast("Failed to save changes.", "error");
+      if (!String(err?.message || "").includes("exceeds the maximum allowed size")) {
+        handleFirestoreError(err, OperationType.UPDATE, `listings/${editingListing.id}`);
+      }
+      showToast("Failed to save changes. Document size or data format error.", "error");
     } finally {
       setIsSavingEdit(false);
     }
@@ -279,7 +328,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
     for (const file of files as File[]) {
       try {
-        const compressedSrc = await compressImageFile(file, 1000, 0.75);
+        const compressedSrc = await compressImageFile(file, 600, 0.60);
         if (compressedSrc) {
           setManagePhotosList(prev => [...prev, { src: compressedSrc, alt: file.name }]);
         }
@@ -310,9 +359,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
     setIsSavingPhotos(true);
     try {
+      const preparedPhotos = await preparePhotosForFirestore(managePhotosList);
       const docRef = doc(db, "listings", photoManagingListing.id);
       await updateDoc(docRef, {
-        photos: managePhotosList,
+        photos: preparedPhotos,
         updatedAt: new Date().toISOString()
       });
 
@@ -911,6 +961,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         ? photos
         : [{ src: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800", alt: `${actualYear} ${actualMake} ${actualModel}` }];
 
+      // Compress photos so total payload is well below Firestore's 1MB limit
+      const preparedPhotos = await preparePhotosForFirestore(fallbackPhotos);
+
       const newListing: UserListing = {
         id: generatedId,
         title: `${actualYear} ${actualMake} ${actualModel}`,
@@ -947,7 +1000,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         driveType: driveType || "",
         featured: featuredListing,
         urgent: urgentListing,
-        photos: fallbackPhotos,
+        photos: preparedPhotos,
         datePosted: new Date().toISOString(),
         status: "active"
       };
@@ -966,8 +1019,30 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         try {
           await setDoc(doc(db, "listings", generatedId), listingData);
         } catch (err: any) {
-          console.warn("Firestore write warning:", err);
-          handleFirestoreError(err, OperationType.WRITE, `listings/${generatedId}`);
+          console.warn("Firestore write initial warning:", err);
+          const errMsg = String(err?.message || "");
+          if (errMsg.includes("exceeds the maximum allowed size") || errMsg.includes("1,048,576")) {
+            try {
+              // Ultra-compress photos (300px max, 0.4 quality) to fit in document
+              const emergencyPhotos = await Promise.all(
+                preparedPhotos.map(async (p) => ({
+                  ...p,
+                  src: p.src.startsWith("data:image") ? await compressBase64Url(p.src, 300, 0.4) : p.src
+                }))
+              );
+              const emergencyListingData = {
+                ...listingData,
+                photos: emergencyPhotos
+              };
+              await setDoc(doc(db, "listings", generatedId), emergencyListingData);
+              newListing.photos = emergencyPhotos;
+            } catch (retryErr) {
+              console.error("Emergency Firestore save failed:", retryErr);
+              showToast("Listing saved locally due to remote database image size constraints.", "info");
+            }
+          } else {
+            handleFirestoreError(err, OperationType.WRITE, `listings/${generatedId}`);
+          }
         }
       }
 
