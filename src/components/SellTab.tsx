@@ -311,12 +311,25 @@ function SearchableMakeSelect({
   return (
     <div ref={containerRef} className="relative w-full">
       {/* Trigger Button displaying current selected Make or search prompt */}
-      <div
+      <button
+        type="button"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label="Select Vehicle Make or Manufacturer"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none shadow-2xs hover:border-stone-800 transition"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+            e.preventDefault();
+            setIsOpen(true);
+          } else if (e.key === "Escape") {
+            setIsOpen(false);
+          }
+        }}
+        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-stone-900 cursor-pointer flex items-center justify-between select-none shadow-2xs hover:border-stone-800 transition text-left"
       >
         <div className="flex items-center gap-2 overflow-hidden">
-          <Search className="w-4 h-4 text-stone-500 shrink-0" />
+          <Search className="w-4 h-4 text-stone-500 shrink-0" aria-hidden="true" />
           {make ? (
             <span className="font-bold text-stone-900 truncate">
               {make === "Other" ? (customMake ? `Other: ${customMake}` : "Other / Custom Brand") : make}
@@ -330,23 +343,33 @@ function SearchableMakeSelect({
 
         <div className="flex items-center gap-1.5 shrink-0 ml-2">
           {make && (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Clear selected make"
               onClick={(e) => {
                 e.stopPropagation();
                 setMake("");
                 setModel("");
                 setCustomMake("");
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  setMake("");
+                  setModel("");
+                  setCustomMake("");
+                }
+              }}
               className="p-0.5 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition"
               title="Clear selection"
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+            </span>
           )}
-          {isOpen ? <ChevronUp className="w-4 h-4 text-stone-600" /> : <ChevronDown className="w-4 h-4 text-stone-600" />}
+          {isOpen ? <ChevronUp className="w-4 h-4 text-stone-600" aria-hidden="true" /> : <ChevronDown className="w-4 h-4 text-stone-600" aria-hidden="true" />}
         </div>
-      </div>
+      </button>
 
       {/* Popover Dropdown with Real-Time Search */}
       <AnimatePresence>
@@ -361,33 +384,40 @@ function SearchableMakeSelect({
             {/* Live Search Input Field */}
             <div className="p-2.5 bg-[#F4F1EA] border-b border-stone-300 relative">
               <div className="relative flex items-center">
-                <Search className="w-4 h-4 text-stone-500 absolute left-3 pointer-events-none" />
+                <Search className="w-4 h-4 text-stone-500 absolute left-3 pointer-events-none" aria-hidden="true" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setIsOpen(false);
+                    }
+                  }}
                   placeholder="Type manufacturer name (e.g. Ford, Tesla, Porsche)..."
-                  className="w-full pl-9 pr-8 py-2 bg-white border border-stone-400 text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900"
+                  aria-label="Filter manufacturer list"
+                  className="w-full pl-9 pr-8 py-2 bg-white border border-stone-400 text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-stone-900"
                   autoFocus
                 />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={() => setSearchTerm("")}
+                    aria-label="Clear search input"
                     className="absolute right-2.5 text-stone-400 hover:text-stone-700"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                 )}
               </div>
-              <div className="flex justify-between items-center mt-1.5 px-0.5 text-[10px] font-mono text-stone-500">
+              <div className="flex justify-between items-center mt-1.5 px-0.5 text-[10px] font-mono text-stone-500" aria-live="polite">
                 <span>{isLoadingMakes ? "Fetching from NHTSA API..." : `${totalResultsCount} makes found`}</span>
                 <span>Type to filter</span>
               </div>
             </div>
 
             {/* Scrollable Results List */}
-            <div className="max-h-64 overflow-y-auto divide-y divide-stone-200 font-sans text-xs">
+            <div role="listbox" aria-label="Vehicle makes" className="max-h-64 overflow-y-auto divide-y divide-stone-200 font-sans text-xs">
               {/* Popular Brands Section */}
               {filteredPopular.length > 0 && (
                 <div>
@@ -399,13 +429,22 @@ function SearchableMakeSelect({
                     return (
                       <div
                         key={`pop-${brand}`}
+                        role="option"
+                        tabIndex={0}
+                        aria-selected={isSelected}
                         onClick={() => handleSelectMake(brand)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSelectMake(brand);
+                          }
+                        }}
                         className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between transition ${
-                          isSelected ? "bg-amber-100/80 font-bold text-amber-950" : "hover:bg-amber-50/60 text-stone-900"
+                          isSelected ? "bg-amber-100/80 font-bold text-amber-950" : "hover:bg-amber-50/60 text-stone-900 focus:bg-amber-100 focus:outline-none"
                         }`}
                       >
                         <span className="font-semibold">{brand}</span>
-                        {isSelected && <Check className="w-4 h-4 text-amber-600" />}
+                        {isSelected && <Check className="w-4 h-4 text-amber-600" aria-hidden="true" />}
                       </div>
                     );
                   })}
@@ -423,13 +462,22 @@ function SearchableMakeSelect({
                     return (
                       <div
                         key={`nhtsa-${brand}`}
+                        role="option"
+                        tabIndex={0}
+                        aria-selected={isSelected}
                         onClick={() => handleSelectMake(brand)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSelectMake(brand);
+                          }
+                        }}
                         className={`px-3.5 py-2 cursor-pointer flex items-center justify-between transition ${
-                          isSelected ? "bg-amber-100/80 font-bold text-amber-950" : "hover:bg-amber-50/60 text-stone-800"
+                          isSelected ? "bg-amber-100/80 font-bold text-amber-950" : "hover:bg-amber-50/60 text-stone-800 focus:bg-amber-100 focus:outline-none"
                         }`}
                       >
                         <span>{brand}</span>
-                        {isSelected && <Check className="w-4 h-4 text-amber-600" />}
+                        {isSelected && <Check className="w-4 h-4 text-amber-600" aria-hidden="true" />}
                       </div>
                     );
                   })}
@@ -439,16 +487,25 @@ function SearchableMakeSelect({
               {/* Custom / Other Brand Option */}
               <div>
                 <div
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={make === "Other"}
                   onClick={() => handleSelectMake("Other")}
-                  className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between bg-stone-100/80 hover:bg-stone-200/90 text-stone-900 font-bold transition border-t border-stone-300 ${
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectMake("Other");
+                    }
+                  }}
+                  className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between bg-stone-100/80 hover:bg-stone-200/90 text-stone-900 font-bold transition border-t border-stone-300 focus:bg-amber-100 focus:outline-none ${
                     make === "Other" ? "bg-amber-100 font-bold text-amber-950" : ""
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5 text-stone-600" />
+                    <Plus className="w-3.5 h-3.5 text-stone-600" aria-hidden="true" />
                     {searchTerm ? `Use custom brand: "${searchTerm}"` : "Other / Custom Brand"}
                   </span>
-                  {make === "Other" && <Check className="w-4 h-4 text-amber-600" />}
+                  {make === "Other" && <Check className="w-4 h-4 text-amber-600" aria-hidden="true" />}
                 </div>
               </div>
 
@@ -488,6 +545,11 @@ function SearchableMakeSelect({
 }
 
 export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser, onSignInClick }: SellTabProps) {
+  const isAdmin = Boolean(currentUser?.email && (
+    currentUser.email.toLowerCase() === "afrojalamansari461@gmail.com" ||
+    currentUser.email.toLowerCase().includes("admin")
+  ));
+
   const [currentStep, setCurrentStep] = useState(1);
   const [confettiKey, setConfettiKey] = useState(0);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
@@ -1432,7 +1494,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       return;
     }
 
-    if (existingListingsCount >= 2 && !subscriptionActive) {
+    if (!isAdmin && existingListingsCount >= 2 && !subscriptionActive) {
       showToast("Free tier limit reached. Please upgrade to a Premium plan to list more than 2 vehicles.", "error");
       return;
     }
@@ -2041,7 +2103,27 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       {/* VIEW MODE 2: VEHICLE LISTING WIZARD */}
       {viewMode === "wizard" && (
         <>
-          {existingListingsCount >= 2 && !subscriptionActive && (
+          {/* Admin Authority Banner */}
+          {isAdmin && (
+            <div className="mb-6 bg-stone-900 border-2 border-amber-500 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[4px_4px_0px_0px_rgba(245,158,11,0.3)]">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+                  <Crown className="w-5 h-5 text-amber-400 fill-amber-400" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-mono font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                    <span>Administrator Command Authority</span>
+                    <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-extrabold rounded-xs">UNLIMITED</span>
+                  </h4>
+                  <p className="text-[11px] text-stone-300 font-semibold mt-0.5 leading-relaxed">
+                    All vehicle listing limits bypassed. As an administrator ({currentUser?.email}), you hold full listing privileges, bulk CRM synchronization, priority catalog placement, and complete platform access.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isAdmin && existingListingsCount >= 2 && !subscriptionActive && (
         <div className="mb-6 bg-amber-50 border border-amber-300 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -2069,15 +2151,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           <div>
             <h4 className="text-xs font-bold uppercase tracking-widest text-stone-900">⚡ Dealer Bulk Inventory Sync</h4>
             <p className="text-[11px] text-stone-705 mt-1 leading-relaxed font-semibold">
-              {subscriptionActive 
-                ? "Active Dealership Subscriber! Import 50+ vehicles instantly using bulk CSV or XML dealership feed files." 
+              {(subscriptionActive || isAdmin)
+                ? "Active Dealership / Admin Authority! Import unlimited vehicles instantly using bulk CSV or XML dealership feed files." 
                 : "Import up to 100+ vehicles instantly! Synchronize your dealership's CRM catalog with one-click bulk upload."
               }
             </p>
           </div>
         </div>
         
-        {subscriptionActive ? (
+        {(subscriptionActive || isAdmin) ? (
           <button
             type="button"
             onClick={() => {
@@ -2102,7 +2184,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       </div>
 
       {/* Bulk Importer Container */}
-      {showDealerUpload && subscriptionActive && (
+      {showDealerUpload && (subscriptionActive || isAdmin) && (
         <div className="bg-white border-2 border-stone-900 p-6 space-y-6 mb-10 animate-in fade-in duration-200">
           <div className="border-b border-stone-200 pb-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-stone-900">Dealership CSV / XML Synchronization Hub</h3>
