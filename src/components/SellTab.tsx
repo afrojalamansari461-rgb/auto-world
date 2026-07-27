@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { User } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
@@ -104,8 +104,392 @@ const preparePhotosForFirestore = async (
   return compressedList;
 };
 
+// ==========================================
+// NHTSA vPIC API Interfaces & Response Wrappers
+// Documentation: https://vpic.nhtsa.dot.gov/api/
+// ==========================================
+export interface NhtsaMakeItem {
+  Make_ID: number;
+  Make_Name: string;
+}
+
+export interface NhtsaModelItem {
+  Make_ID: number;
+  Make_Name: string;
+  Model_ID: number;
+  Model_Name: string;
+}
+
+export interface NhtsaResponse<T> {
+  Count: number;
+  Message: string;
+  SearchCriteria?: string;
+  Results: T[];
+}
+
+// Hardcoded years from 1990 up to the current year (2026) in descending order
+const CURRENT_NHTSA_YEAR = 2026;
+const NHTSA_YEARS = Array.from(
+  { length: CURRENT_NHTSA_YEAR - 1990 + 1 },
+  (_, idx) => (CURRENT_NHTSA_YEAR - idx).toString()
+);
+
+// Framer Motion Confetti Particle Shower for Celebration
+const ConfettiExplosion = () => {
+  const [particles, setParticles] = useState<Array<{
+    id: number;
+    x: number;
+    y: number;
+    rotation: number;
+    scale: number;
+    color: string;
+    shape: "square" | "circle" | "strip" | "star";
+    delay: number;
+    duration: number;
+  }>>([]);
+
+  useEffect(() => {
+    const colors = [
+      "#F59E0B", // Gold / Amber
+      "#10B981", // Emerald
+      "#6366F1", // Indigo
+      "#EC4899", // Pink
+      "#3B82F6", // Blue
+      "#1C1917", // Dark Stone
+      "#F43F5E", // Rose
+      "#8B5CF6", // Purple
+    ];
+
+    const newParticles = [];
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.random() * Math.PI * 0.8) - (Math.PI * 0.4); // Spread outward & upward
+      const distance = 180 + Math.random() * 520;
+      const x = Math.sin(angle) * distance + (Math.random() * 80 - 40);
+      const y = Math.cos(angle) * distance + 120 + Math.random() * 250;
+
+      newParticles.push({
+        id: i,
+        x,
+        y,
+        rotation: Math.random() * 720 - 360,
+        scale: 0.6 + Math.random() * 0.8,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        shape: (["square", "circle", "strip", "star"] as const)[Math.floor(Math.random() * 4)],
+        delay: Math.random() * 0.3,
+        duration: 2.2 + Math.random() * 1.6,
+      });
+    }
+    setParticles(newParticles);
+  }, []);
+
+  return (
+    <div className="absolute inset-x-0 -top-12 bottom-0 pointer-events-none overflow-hidden z-30 flex justify-center items-start">
+      <AnimatePresence>
+        {particles.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{
+              opacity: 1,
+              x: 0,
+              y: 0,
+              scale: 0,
+              rotate: 0,
+            }}
+            animate={{
+              opacity: [0, 1, 1, 0],
+              x: p.x,
+              y: p.y,
+              scale: [0, p.scale, p.scale, 0.2],
+              rotate: p.rotation,
+            }}
+            transition={{
+              duration: p.duration,
+              delay: p.delay,
+              ease: [0.22, 1, 0.36, 1],
+              times: [0, 0.15, 0.75, 1],
+            }}
+            style={{
+              position: "absolute",
+              backgroundColor: p.shape !== "star" ? p.color : "transparent",
+              borderRadius: p.shape === "circle" ? "50%" : p.shape === "strip" ? "2px" : "1px",
+              width: p.shape === "strip" ? "6px" : "11px",
+              height: p.shape === "strip" ? "18px" : "11px",
+            }}
+          >
+            {p.shape === "star" && (
+              <Sparkles className="w-5 h-5 text-amber-400 fill-amber-400" />
+            )}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ==========================================
+// Searchable Make / Manufacturer Component
+// Enables real-time search & filter across thousands of NHTSA & popular vehicle makes
+// ==========================================
+interface SearchableMakeSelectProps {
+  make: string;
+  setMake: (make: string) => void;
+  setModel: (model: string) => void;
+  setVehicleType: (type: string) => void;
+  customMake: string;
+  setCustomMake: (val: string) => void;
+  nhtsaMakes: string[];
+  isLoadingMakes: boolean;
+  VEHICLE_MAKES: Record<string, string[]>;
+}
+
+const POPULAR_BRANDS = [
+  "Toyota", "Honda", "Ford", "BMW", "Mercedes-Benz", "Chevrolet", "Audi",
+  "Nissan", "Hyundai", "Kia", "Porsche", "Tesla", "Volkswagen", "Subaru",
+  "Lexus", "Jeep", "Dodge", "GMC", "Mazda", "Ferrari", "Lamborghini",
+  "Aston Martin", "Bentley", "Bugatti", "Cadillac", "Chrysler", "Genesis",
+  "Infiniti", "Jaguar", "Land Rover", "Lincoln", "Lucid", "Maserati",
+  "McLaren", "RAM", "Rivian", "Rolls-Royce", "Volvo"
+];
+
+function SearchableMakeSelect({
+  make,
+  setMake,
+  setModel,
+  setVehicleType,
+  customMake,
+  setCustomMake,
+  nhtsaMakes,
+  isLoadingMakes,
+  VEHICLE_MAKES
+}: SearchableMakeSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectMake = (selectedMake: string) => {
+    setMake(selectedMake);
+    setModel(""); // Automatically reset model state when Make changes
+    if (selectedMake && selectedMake !== "Other") {
+      const inferredCat = Object.keys(VEHICLE_MAKES).find(cat =>
+        VEHICLE_MAKES[cat].some(b => b.toLowerCase() === selectedMake.toLowerCase())
+      );
+      if (inferredCat) {
+        setVehicleType(inferredCat);
+      }
+    }
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  const cleanQuery = searchTerm.trim().toLowerCase();
+
+  // Filter popular brands based on search query
+  const filteredPopular = POPULAR_BRANDS.filter(brand =>
+    brand.toLowerCase().includes(cleanQuery)
+  );
+
+  // Filter NHTSA Makes excluding popular ones to avoid duplication
+  const filteredNhtsa = nhtsaMakes.filter(m =>
+    m.toLowerCase().includes(cleanQuery) &&
+    !POPULAR_BRANDS.some(pb => pb.toLowerCase() === m.toLowerCase())
+  );
+
+  const totalResultsCount = filteredPopular.length + filteredNhtsa.length;
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      {/* Trigger Button displaying current selected Make or search prompt */}
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none shadow-2xs hover:border-stone-800 transition"
+      >
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Search className="w-4 h-4 text-stone-500 shrink-0" />
+          {make ? (
+            <span className="font-bold text-stone-900 truncate">
+              {make === "Other" ? (customMake ? `Other: ${customMake}` : "Other / Custom Brand") : make}
+            </span>
+          ) : (
+            <span className="text-stone-500">
+              {isLoadingMakes ? "Loading Vehicle Makes from NHTSA..." : "Search Make / Manufacturer (e.g. Toyota, Porsche)..."}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {make && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMake("");
+                setModel("");
+                setCustomMake("");
+              }}
+              className="p-0.5 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition"
+              title="Clear selection"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {isOpen ? <ChevronUp className="w-4 h-4 text-stone-600" /> : <ChevronDown className="w-4 h-4 text-stone-600" />}
+        </div>
+      </div>
+
+      {/* Popover Dropdown with Real-Time Search */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 right-0 top-full mt-1 bg-[#FAF8F5] border-2 border-stone-900 shadow-2xl z-40 overflow-hidden"
+          >
+            {/* Live Search Input Field */}
+            <div className="p-2.5 bg-[#F4F1EA] border-b border-stone-300 relative">
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-stone-500 absolute left-3 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Type manufacturer name (e.g. Ford, Tesla, Porsche)..."
+                  className="w-full pl-9 pr-8 py-2 bg-white border border-stone-400 text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900"
+                  autoFocus
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2.5 text-stone-400 hover:text-stone-700"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex justify-between items-center mt-1.5 px-0.5 text-[10px] font-mono text-stone-500">
+                <span>{isLoadingMakes ? "Fetching from NHTSA API..." : `${totalResultsCount} makes found`}</span>
+                <span>Type to filter</span>
+              </div>
+            </div>
+
+            {/* Scrollable Results List */}
+            <div className="max-h-64 overflow-y-auto divide-y divide-stone-200 font-sans text-xs">
+              {/* Popular Brands Section */}
+              {filteredPopular.length > 0 && (
+                <div>
+                  <div className="bg-stone-200/80 px-3 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-stone-700 sticky top-0 z-10 backdrop-blur-xs">
+                    Popular Brands
+                  </div>
+                  {filteredPopular.map((brand) => {
+                    const isSelected = make === brand;
+                    return (
+                      <div
+                        key={`pop-${brand}`}
+                        onClick={() => handleSelectMake(brand)}
+                        className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between transition ${
+                          isSelected ? "bg-amber-100/80 font-bold text-amber-950" : "hover:bg-amber-50/60 text-stone-900"
+                        }`}
+                      >
+                        <span className="font-semibold">{brand}</span>
+                        {isSelected && <Check className="w-4 h-4 text-amber-600" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* All NHTSA Makes Section */}
+              {filteredNhtsa.length > 0 && (
+                <div>
+                  <div className="bg-stone-200/80 px-3 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-stone-700 sticky top-0 z-10 backdrop-blur-xs">
+                    All NHTSA Makes ({filteredNhtsa.length})
+                  </div>
+                  {filteredNhtsa.map((brand) => {
+                    const isSelected = make === brand;
+                    return (
+                      <div
+                        key={`nhtsa-${brand}`}
+                        onClick={() => handleSelectMake(brand)}
+                        className={`px-3.5 py-2 cursor-pointer flex items-center justify-between transition ${
+                          isSelected ? "bg-amber-100/80 font-bold text-amber-950" : "hover:bg-amber-50/60 text-stone-800"
+                        }`}
+                      >
+                        <span>{brand}</span>
+                        {isSelected && <Check className="w-4 h-4 text-amber-600" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Custom / Other Brand Option */}
+              <div>
+                <div
+                  onClick={() => handleSelectMake("Other")}
+                  className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between bg-stone-100/80 hover:bg-stone-200/90 text-stone-900 font-bold transition border-t border-stone-300 ${
+                    make === "Other" ? "bg-amber-100 font-bold text-amber-950" : ""
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-stone-600" />
+                    {searchTerm ? `Use custom brand: "${searchTerm}"` : "Other / Custom Brand"}
+                  </span>
+                  {make === "Other" && <Check className="w-4 h-4 text-amber-600" />}
+                </div>
+              </div>
+
+              {/* No match message */}
+              {totalResultsCount === 0 && (
+                <div className="p-4 text-center text-stone-500 space-y-2">
+                  <p className="text-xs">No vehicle makes found matching &ldquo;<strong>{searchTerm}</strong>&rdquo;.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomMake(searchTerm);
+                      handleSelectMake("Other");
+                    }}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold uppercase tracking-wider border border-amber-600 transition"
+                  >
+                    Add &ldquo;{searchTerm}&rdquo; as Custom Brand
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Input for Custom Brand if "Other" is selected */}
+      {make === "Other" && (
+        <input
+          type="text"
+          placeholder="Enter custom vehicle brand (e.g. Pagani, Koenigsegg, Rivian)"
+          value={customMake}
+          onChange={(e) => setCustomMake(e.target.value)}
+          className="w-full mt-2 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 shadow-2xs"
+        />
+      )}
+    </div>
+  );
+}
+
 export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser, onSignInClick }: SellTabProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [confettiKey, setConfettiKey] = useState(0);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
 
   // View Mode: "wizard" (List a Vehicle) vs "my_catalog" (My Vehicle Catalog Control Panel)
@@ -432,6 +816,120 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [year, setYear] = useState("");
   const [customMake, setCustomMake] = useState("");
   const [customModel, setCustomModel] = useState("");
+
+  // ----------------------------------------------------
+  // NHTSA vPIC API States & Cascading Fetching Logic
+  // ----------------------------------------------------
+  // Local state for storing list of makes fetched from NHTSA API
+  const [nhtsaMakes, setNhtsaMakes] = useState<string[]>([]);
+  const [isLoadingMakes, setIsLoadingMakes] = useState<boolean>(false);
+  const [makesError, setMakesError] = useState<string | null>(null);
+
+  // Local state for storing list of models fetched from NHTSA for selected (Make + Year)
+  const [nhtsaModels, setNhtsaModels] = useState<string[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+
+  /**
+   * Effect 1: Fetch all vehicle makes from NHTSA vPIC API on component mount.
+   * Endpoint: https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=json
+   */
+  useEffect(() => {
+    let isMounted = true;
+    const fetchNhtsaMakes = async () => {
+      setIsLoadingMakes(true);
+      setMakesError(null);
+      try {
+        const response = await fetch("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=json");
+        if (!response.ok) {
+          throw new Error(`NHTSA API HTTP Error: ${response.status}`);
+        }
+        const data: NhtsaResponse<NhtsaMakeItem> = await response.json();
+        if (isMounted && data && Array.isArray(data.Results)) {
+          // Extract Make_Name, trim whitespace, deduplicate, and sort alphabetically
+          const uniqueMakes = new Set<string>();
+          data.Results.forEach((item) => {
+            if (item.Make_Name && item.Make_Name.trim()) {
+              uniqueMakes.add(item.Make_Name.trim());
+            }
+          });
+          const sortedMakes = Array.from(uniqueMakes).sort((a, b) => a.localeCompare(b));
+          setNhtsaMakes(sortedMakes);
+        }
+      } catch (err: any) {
+        console.error("Failed to load vehicle makes from NHTSA API:", err);
+        if (isMounted) {
+          setMakesError("Could not fetch NHTSA makes. Local brand options available.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingMakes(false);
+        }
+      }
+    };
+
+    fetchNhtsaMakes();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /**
+   * Effect 2: Cascading fetch models when both a Make and Year are selected.
+   * Endpoint: https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{make}/modelyear/{year}?format=json
+   * Note: Automatically clears selected model state when Make or Year changes.
+   */
+  useEffect(() => {
+    let isMounted = true;
+
+    // Reset selected model state whenever Make or Year changes
+    setModel("");
+    setNhtsaModels([]);
+    setModelsError(null);
+
+    // Skip fetch if either Make or Year is missing, or if Make is set to custom "Other"
+    if (!make || !year || make === "Other") {
+      setIsLoadingModels(false);
+      return;
+    }
+
+    const fetchNhtsaModels = async () => {
+      setIsLoadingModels(true);
+      try {
+        const url = `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/${encodeURIComponent(make)}/modelyear/${year}?format=json`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`NHTSA API HTTP Error: ${response.status}`);
+        }
+        const data: NhtsaResponse<NhtsaModelItem> = await response.json();
+        if (isMounted && data && Array.isArray(data.Results)) {
+          // Extract Model_Name, trim whitespace, deduplicate, and sort alphabetically
+          const uniqueModels = new Set<string>();
+          data.Results.forEach((item) => {
+            if (item.Model_Name && item.Model_Name.trim()) {
+              uniqueModels.add(item.Model_Name.trim());
+            }
+          });
+          const sortedModels = Array.from(uniqueModels).sort((a, b) => a.localeCompare(b));
+          setNhtsaModels(sortedModels);
+        }
+      } catch (err: any) {
+        console.error(`Failed to fetch models for ${make} (${year}) from NHTSA:`, err);
+        if (isMounted) {
+          setModelsError(`Failed to fetch models for ${make} (${year}).`);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingModels(false);
+        }
+      }
+    };
+
+    fetchNhtsaModels();
+    return () => {
+      isMounted = false;
+    };
+  }, [make, year]);
 
   // STEP 2: Details
   const [condition, setCondition] = useState(3); // 1-5 rating
@@ -1071,6 +1569,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       setLastSavedTime(null);
 
       showToast("Successfully Listed your vehicle!", "success");
+      setConfettiKey(prev => prev + 1);
       setCurrentStep(6); // Success step screen
       window.scrollTo({ top: 100, behavior: "smooth" });
     } catch (err: any) {
@@ -1830,8 +2329,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4">
+            {/* Category Type */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block">Vehicle Category Type <span className="text-stone-400 font-light">(required)</span></label>
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block">
+                Vehicle Category Type <span className="text-stone-400 font-light">(required)</span>
+              </label>
               <select
                 value={vehicleType}
                 onChange={(e) => setVehicleType(e.target.value)}
@@ -1848,92 +2350,108 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               </select>
             </div>
 
+            {/* 1. Year Dropdown (Enabled by default) */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block">Make / Manufacturer <span className="text-stone-400 font-light">(required)</span></label>
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block flex justify-between items-center">
+                <span>1. Manufacturing Year <span className="text-stone-400 font-light">(required)</span></span>
+                <span className="text-[9px] text-stone-400 font-mono font-normal">1990 - 2026</span>
+              </label>
               <select
-                value={make}
+                value={year}
                 onChange={(e) => {
-                  const selectedMake = e.target.value;
-                  setMake(selectedMake);
-                  setModel("");
-                  if (selectedMake && selectedMake !== "Other") {
-                    // Auto-infer category type from selected brand
-                    const inferredCat = Object.keys(VEHICLE_MAKES).find(cat => 
-                      VEHICLE_MAKES[cat].includes(selectedMake)
-                    );
-                    if (inferredCat) {
-                      setVehicleType(inferredCat);
-                    }
-                  }
+                  setYear(e.target.value);
+                  // Selecting new year automatically clears model and triggers model fetch via useEffect
                 }}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
               >
-                <option value="">Select Manufacturer (Any vehicle brand)</option>
-                {vehicleType ? (
-                  VEHICLE_MAKES[vehicleType]?.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))
-                ) : (
-                  Array.from(new Set(Object.values(VEHICLE_MAKES).flat()))
-                    .filter(m => m !== "Other")
-                    .sort()
-                    .map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))
-                )}
-                <option value="Other">Other / Custom Brand</option>
+                <option value="">Select Year (1990 - 2026)</option>
+                {NHTSA_YEARS.map((yr) => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
               </select>
-              {make === "Other" && (
-                <input
-                  type="text"
-                  placeholder="Enter the car brand (e.g. Tesla, Pagani, etc.)"
-                  value={customMake}
-                  onChange={(e) => setCustomMake(e.target.value)}
-                  className="w-full mt-1.5 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
-                />
-              )}
-              {!vehicleType && (
-                <p className="text-[9px] text-stone-500 font-medium italic mt-1 uppercase">★ Pro-Tip: Select any brand first; Auto World will classify the category type automatically.</p>
-              )}
             </div>
 
+            {/* 2. Make / Manufacturer (Searchable Combobox with NHTSA & Popular Brands) */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block">Vehicle Model <span className="text-stone-400 font-light">(required)</span></label>
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block flex justify-between items-center">
+                <span>2. Make / Manufacturer <span className="text-stone-400 font-light">(required)</span></span>
+                {isLoadingMakes && (
+                  <span className="text-[9px] text-amber-600 font-mono flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Loading NHTSA Makes...
+                  </span>
+                )}
+              </label>
+
+              <SearchableMakeSelect
+                make={make}
+                setMake={setMake}
+                setModel={setModel}
+                setVehicleType={setVehicleType}
+                customMake={customMake}
+                setCustomMake={setCustomMake}
+                nhtsaMakes={nhtsaMakes}
+                isLoadingMakes={isLoadingMakes}
+                VEHICLE_MAKES={VEHICLE_MAKES}
+              />
+            </div>
+
+            {/* 3. Vehicle Model Dropdown (DISABLED until both Year & Make are selected) */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block flex justify-between items-center">
+                <span>3. Vehicle Model <span className="text-stone-400 font-light">(required)</span></span>
+                {isLoadingModels && (
+                  <span className="text-[9px] text-amber-600 font-mono flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Fetching NHTSA Models...
+                  </span>
+                )}
+              </label>
+
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                disabled={!make}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 disabled:opacity-50"
+                disabled={!year || !make || isLoadingModels}
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 disabled:opacity-50 disabled:bg-stone-200 disabled:cursor-not-allowed"
               >
-                <option value="">Select Model</option>
-                {make && (VEHICLE_MODELS[make] || Object.values(VEHICLE_MODELS).flat()).map((mod) => (
+                {!year || !make ? (
+                  <option value="">Select Year and Make first to enable models</option>
+                ) : isLoadingModels ? (
+                  <option value="">Loading models for {make} ({year}) from NHTSA vPIC API...</option>
+                ) : (
+                  <option value="">
+                    {nhtsaModels.length > 0
+                      ? `Select Model (${nhtsaModels.length} models found for ${make} ${year})`
+                      : `Select Model for ${make} (${year})`}
+                  </option>
+                )}
+
+                {/* NHTSA Models fetched for selected Year + Make */}
+                {nhtsaModels.map((mod) => (
                   <option key={mod} value={mod}>{mod}</option>
                 ))}
-                {make && <option value="Other">Other Model</option>}
+
+                {/* Static local fallback models if NHTSA returns empty */}
+                {nhtsaModels.length === 0 && !isLoadingModels && make && make !== "Other" && (VEHICLE_MODELS[make] || Object.values(VEHICLE_MODELS).flat()).map((mod) => (
+                  <option key={`fallback-${mod}`} value={mod}>{mod}</option>
+                ))}
+
+                {make && <option value="Other">Other / Custom Model</option>}
               </select>
+
               {(model === "Other" || make === "Other") && (
                 <input
                   type="text"
-                  placeholder="Enter the model name (e.g. Model Y, Huayra, etc.)"
+                  placeholder="Enter model name (e.g. Model S, Supra, GT3 RS)"
                   value={customModel}
                   onChange={(e) => setCustomModel(e.target.value)}
                   className="w-full mt-1.5 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
                 />
               )}
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block">Manufacturing Year <span className="text-stone-400 font-light">(required)</span></label>
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
-              >
-                <option value="">Select Year</option>
-                {Array.from({ length: 35 }, (_, idx) => new Date().getFullYear() - idx).map((yr) => (
-                  <option key={yr} value={yr}>{yr}</option>
-                ))}
-              </select>
+              {(!year || !make) && (
+                <p className="text-[9px] text-stone-500 font-medium italic mt-1 uppercase">
+                  🔒 Model selection is locked. Please select a Manufacturing Year and Make above.
+                </p>
+              )}
             </div>
           </div>
 
@@ -2734,48 +3252,100 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* STEP 6: Successful deploy panel layout page */}
       {currentStep === 6 && (
-        <div className="bg-[#FAF8F5] border-2 border-stone-900 p-8 sm:p-12 text-center space-y-6 animate-in zoom-in-95 duration-200 max-w-2xl mx-auto">
-          <div className="w-16 h-16 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto border border-stone-800">
-            <CheckCircle2 className="w-8 h-8 text-[#FAF8F5]" />
-          </div>
-          
-          <div className="space-y-2">
-            <span className="text-[10px] uppercase font-mono tracking-widest text-stone-500 block">Deploy Success</span>
-            <h2 className="text-2xl font-serif font-black text-stone-950 uppercase tracking-tight">Listing Blueprint Catalogued</h2>
-            <p className="text-stone-605 text-sm leading-relaxed max-w-md mx-auto">
-              Your vehicular dossier for {year} {make} {model} has been safely built and published into the verified registry ledger.
-            </p>
-          </div>
+        <div className="relative max-w-2xl mx-auto py-4">
+          <ConfettiExplosion key={confettiKey} />
 
-          <div className="bg-[#F4F1EA] border border-stone-300 p-5 text-left max-w-sm mx-auto text-xs space-y-1 text-stone-800 font-mono">
-            <div><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Receipt Blueprint ID</span> {publishedListingId}</div>
-            <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Time Catalogued</span> {publishedTimeStr}</div>
-            <div className="pt-2"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px] block">Status Inflow</span> Active &amp; Visible</div>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 280, damping: 22 }}
+            className="bg-[#FAF8F5] border-2 border-stone-900 p-8 sm:p-12 text-center space-y-6 shadow-2xl relative overflow-hidden z-10"
+          >
+            {/* Celebration Icon Badge */}
+            <div className="relative inline-block">
+              <motion.div 
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 350, damping: 18, delay: 0.15 }}
+                className="w-20 h-20 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto border-2 border-amber-500 shadow-xl relative z-10"
+              >
+                <CheckCircle2 className="w-10 h-10 text-amber-400" />
+              </motion.div>
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+                className="absolute -inset-2 border-2 border-dashed border-amber-400/60 rounded-full pointer-events-none"
+              />
+            </div>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="space-y-2"
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                <span className="text-[10px] uppercase font-mono tracking-[0.2em] font-bold text-amber-700 block">Deploy Success • Catalogued</span>
+                <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">Listing Blueprint Catalogued</h2>
+              <p className="text-stone-600 text-sm leading-relaxed max-w-md mx-auto font-sans">
+                Your vehicular dossier for <strong className="text-stone-900">{year} {make} {model}</strong> has been safely built and published into the verified registry ledger.
+              </p>
+            </motion.div>
 
-          <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-4 max-w-md mx-auto">
-            <button
-              onClick={() => {
-                setViewMode("my_catalog");
-                setCurrentStep(1);
-              }}
-              className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest border border-amber-600 transition cursor-pointer shadow-xs"
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="bg-[#F4F1EA] border border-stone-300 p-5 text-left max-w-sm mx-auto text-xs space-y-1.5 text-stone-800 font-mono shadow-inner"
             >
-              Manage My Listings
-            </button>
-            <button
-              onClick={() => setActiveTab("buy")}
-              className="flex-1 py-3 bg-stone-900 hover:bg-stone-850 text-white font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer"
+              <div className="flex justify-between items-center"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px]">Receipt Blueprint ID</span> <span className="font-bold text-stone-900">{publishedListingId}</span></div>
+              <div className="pt-1.5 border-t border-stone-200/80 flex justify-between items-center"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px]">Time Catalogued</span> <span className="text-stone-800 text-[11px]">{publishedTimeStr}</span></div>
+              <div className="pt-1.5 border-t border-stone-200/80 flex justify-between items-center"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px]">Status Inflow</span> <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] uppercase tracking-wider">Active &amp; Visible</span></div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="space-y-3 pt-2"
             >
-              Look Up Catalog
-            </button>
-            <button
-              onClick={handleResetWizardForm}
-              className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer"
-            >
-              List Another
-            </button>
-          </div>
+              <div className="flex flex-col sm:flex-row gap-2.5 justify-center max-w-md mx-auto">
+                <button
+                  onClick={() => {
+                    setViewMode("my_catalog");
+                    setCurrentStep(1);
+                  }}
+                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest border border-amber-600 transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  Manage My Listings
+                </button>
+                <button
+                  onClick={() => setActiveTab("buy")}
+                  className="flex-1 py-3 bg-stone-900 hover:bg-stone-850 text-white font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  Look Up Catalog
+                </button>
+                <button
+                  onClick={handleResetWizardForm}
+                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer"
+                >
+                  List Another
+                </button>
+              </div>
+
+              {/* Replay Confetti celebration button */}
+              <button
+                type="button"
+                onClick={() => setConfettiKey(prev => prev + 1)}
+                className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold text-stone-500 hover:text-stone-900 transition pt-2 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Replay Celebration Confetti 🎉
+              </button>
+            </motion.div>
+          </motion.div>
         </div>
       )}
       </>

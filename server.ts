@@ -67,7 +67,7 @@ Format your output strictly as a JSON array of objects, where each object has:
 Text to analyze: "${text}"`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -171,7 +171,7 @@ Your response must be a JSON object with this exact structure:
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -329,7 +329,7 @@ Format your output STRICTLY as a JSON object, with the following schema:
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
