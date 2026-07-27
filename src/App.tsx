@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles, ArrowUp, Image as ImageIcon, FileText, Layers } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, AlertTriangle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles, ArrowUp, Image as ImageIcon, FileText, Layers } from "lucide-react";
+import { getListingExpirationDetails, run30DayExpirationTask } from "./lib/expirationManager";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
@@ -332,7 +333,9 @@ export default function App() {
               engine: listing.engine,
               color: listing.color,
               owners: listing.owners,
-              regNumber: listing.regNumber
+              regNumber: listing.regNumber,
+              datePosted: listing.datePosted || (listing as any).createdAt,
+              status: listing.status
             };
 
             setSelectedVehicle(mappedVehicle);
@@ -490,6 +493,86 @@ export default function App() {
       window.removeEventListener("autoWorld_db_update", handleGlobalUpdate);
     };
   }, [currentUser, subscriptionActive, selectedVehicle]);
+
+  // Periodic 30-Day Auto-Expiration Background Task & Seller Alerts
+  useEffect(() => {
+    let unmounted = false;
+
+    const triggerExpirationCheck = async () => {
+      try {
+        const result = await run30DayExpirationTask();
+        if (!unmounted && result.expiredCount > 0) {
+          console.log(`[30-Day Expiration Routine] Auto-updated ${result.expiredCount} listing(s) to hidden status.`);
+        }
+
+        // Notify current user if they have listings expiring in <= 3 days or newly auto-hidden
+        if (!unmounted && currentUser && currentUser.email) {
+          let userListings: UserListing[] = [];
+          try {
+            const stored = localStorage.getItem("autoworld_user_listings");
+            if (stored) {
+              userListings = JSON.parse(stored);
+            }
+          } catch (e) {
+            console.warn("Local listings read error:", e);
+          }
+
+          const myEmail = currentUser.email.toLowerCase();
+          const myUserListings = userListings.filter(
+            l => l.sellerEmail && l.sellerEmail.toLowerCase() === myEmail
+          );
+
+          let nearExpiryCount = 0;
+          let hiddenCount = 0;
+
+          myUserListings.forEach((item) => {
+            const isFeatured = Boolean(item.featured || item.urgent || item.verified);
+            if (!isFeatured) {
+              const exp = getListingExpirationDetails(item.datePosted || (item as any).createdAt, false);
+              if (exp.isNearExpiry) {
+                nearExpiryCount++;
+              } else if (exp.isExpired || item.status === "hidden") {
+                hiddenCount++;
+              }
+            }
+          });
+
+          const toastKey = `autoWorld_expiry_toast_${currentUser.uid}_${new Date().toDateString()}`;
+          if (!sessionStorage.getItem(toastKey)) {
+            if (nearExpiryCount > 0) {
+              showToast(
+                `⚠️ ALERT: ${nearExpiryCount} of your listings are expiring in 3 days or less! Upgrade to Premium to keep them active.`,
+                "error"
+              );
+              sessionStorage.setItem(toastKey, "true");
+            } else if (hiddenCount > 0) {
+              showToast(
+                `ℹ️ NOTICE: You have listing(s) automatically hidden after reaching the 30-day free tier limit.`,
+                "error"
+              );
+              sessionStorage.setItem(toastKey, "true");
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Background expiration task error:", err);
+      }
+    };
+
+    triggerExpirationCheck();
+    const interval = setInterval(triggerExpirationCheck, 5 * 60 * 1000); // Re-run every 5 mins
+
+    const handleUpdateEvent = () => {
+      triggerExpirationCheck();
+    };
+    window.addEventListener("autoWorld_db_update", handleUpdateEvent);
+
+    return () => {
+      unmounted = true;
+      clearInterval(interval);
+      window.removeEventListener("autoWorld_db_update", handleUpdateEvent);
+    };
+  }, [currentUser]);
 
   // Listen for admin login to trigger grand entrance animation once per session
   useEffect(() => {
@@ -1147,6 +1230,7 @@ export default function App() {
               initial={{ opacity: 0, y: 52, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 36, scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               transition={{
                 type: "spring",
                 stiffness: 280,
@@ -1154,7 +1238,7 @@ export default function App() {
                 mass: 0.85
               }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] max-sm:fixed max-sm:inset-0 max-sm:p-2 max-sm:max-h-full max-sm:h-full flex flex-col border border-stone-300"
+              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] max-sm:fixed max-sm:inset-0 max-sm:p-2 max-sm:max-h-full max-sm:h-full flex flex-col border border-stone-300 transition-transform duration-300 ease-out hover:scale-[1.02]"
             >
             {/* Close trigger */}
             <button
@@ -1720,6 +1804,80 @@ export default function App() {
                     <span>₹</span>
                     <CountUp to={selectedVehicle.price} />
                   </div>
+
+                  {/* 30-Day Listing Expiration Badge & Info Box */}
+                  {(() => {
+                    const isPremiumOrFeatured = Boolean(
+                      selectedVehicle.badge === "premium" || 
+                      selectedVehicle.badge === "verified" || 
+                      (selectedVehicle as any).featured || 
+                      (selectedVehicle as any).urgent
+                    );
+                    const datePosted = selectedVehicle.datePosted || (selectedVehicle as any).createdAt;
+                    const expDetails = getListingExpirationDetails(datePosted, isPremiumOrFeatured);
+
+                    return (
+                      <div className="mt-3">
+                        {!expDetails.isPremiumOrFeatured ? (
+                          expDetails.isExpired ? (
+                            <div className="bg-red-50 border-2 border-red-600 p-3.5 flex items-start gap-2.5 shadow-xs">
+                              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-mono font-extrabold uppercase tracking-wider">
+                                    EXPIRED (AUTO-HIDDEN)
+                                  </span>
+                                  <span className="text-[10px] text-red-800 font-mono font-bold">
+                                    30-Day Limit Reached
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-red-950 font-semibold mt-1 leading-snug">
+                                  This listing was created on {expDetails.postedDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} and has passed the 30-day free tier window. It is automatically hidden from public catalog search.
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`border p-3 flex items-start justify-between gap-3 ${
+                              expDetails.isNearExpiry
+                                ? "bg-amber-50 border-amber-400 text-amber-950 shadow-xs"
+                                : "bg-stone-100 border-stone-300 text-stone-850"
+                            }`}>
+                              <div className="flex items-start gap-2.5">
+                                <Clock className={`w-4.5 h-4.5 shrink-0 mt-0.5 ${expDetails.isNearExpiry ? "text-amber-600 animate-pulse" : "text-stone-700"}`} />
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`px-2 py-0.5 text-[9.5px] font-mono font-extrabold uppercase tracking-wider border border-stone-900 ${
+                                      expDetails.isNearExpiry ? "bg-amber-400 text-stone-950" : "bg-stone-900 text-amber-400"
+                                    }`}>
+                                      Expires in {expDetails.daysRemaining} {expDetails.daysRemaining === 1 ? "day" : "days"}
+                                    </span>
+                                    <span className="text-[10px] font-mono font-bold text-stone-600">
+                                      Expiry Date: {expDetails.expiryDateStr}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-stone-600 font-medium mt-1 leading-tight">
+                                    Calculated using a 30-day window from the creation date ({expDetails.postedDateObj.toLocaleDateString()}).
+                                    {expDetails.isNearExpiry && (
+                                      <span className="block text-amber-800 font-bold mt-0.5">
+                                        ⚠️ Warning: Less than 3 days remaining before this listing is automatically hidden!
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        ) : (
+                          <div className="bg-emerald-50/80 border border-emerald-300 p-2.5 flex items-center gap-2 text-emerald-950">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wide">
+                              Verified / Premium Listing — Permanent Active Status (No 30-Day Auto-Hide)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {selectedVehicle.description && (
@@ -2462,12 +2620,16 @@ export default function App() {
                       Send Direct Email
                     </a>
                     <a
-                      href={`https://wa.me/${(modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556').replace(/\D/g, '')}?text=${encodeURIComponent(
-                        `Hello, I am inquiring about the listing: "${selectedVehicle.title}" on Auto World.\n` +
-                        `• Ref Code: AW-${selectedVehicle.id}\n` +
-                        `• Valuation: ₹${selectedVehicle.price.toLocaleString("en-IN")}\n` +
+                      href={`https://wa.me/${(() => {
+                        const raw = (modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556').replace(/\D/g, '');
+                        return raw.length === 10 ? `91${raw}` : raw;
+                      })()}?text=${encodeURIComponent(
+                        `Hello! I am inquiring about the vehicle listed on Auto World:\n\n` +
+                        `🚗 *${selectedVehicle.title}*\n` +
+                        `• Price: ₹${selectedVehicle.price.toLocaleString("en-IN")}\n` +
                         `• Mileage: ${selectedVehicle.mileage}\n` +
-                        `• Fuel: ${selectedVehicle.fuel}\n\n` +
+                        `• Specs: ${selectedVehicle.fuel} | ${selectedVehicle.transmission}\n` +
+                        `• Ref Code: AW-${selectedVehicle.id}\n\n` +
                         `Is this vehicle still available for a physical inspection or negotiation?`
                       )}`}
                       target="_blank"
@@ -2476,10 +2638,10 @@ export default function App() {
                         const phone = modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556';
                         triggerSmsLeadAlert(phone, selectedVehicle.title, selectedVehicle.id, "whatsapp");
                       }}
-                      className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 hover:border-emerald-700 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition shadow-sm"
+                      className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 hover:border-emerald-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition shadow-sm"
                     >
                       <MessageCircle className="w-4 h-4 shrink-0 text-white" />
-                      Start WhatsApp Chat
+                      Chat on WhatsApp
                     </a>
                   </div>
                 </div>

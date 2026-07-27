@@ -20,7 +20,8 @@ export interface Vehicle {
   sellerPhone?: string;
   location?: string;
   negotiable?: string;
-  status?: "pending" | "active" | "sold";
+  datePosted?: string;
+  status?: "pending" | "active" | "sold" | "hidden";
   photos?: { src: string; alt: string }[];
   engine?: string;
   color?: string;
@@ -82,7 +83,8 @@ export interface UserListing {
   verified?: boolean;
   photos: { src: string; alt: string }[];
   datePosted: string;
-  status: "pending" | "active" | "sold";
+  createdAt?: string;
+  status: "pending" | "active" | "sold" | "hidden";
   userId?: string;
   engine?: string;
   color?: string;

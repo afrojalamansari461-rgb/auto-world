@@ -305,8 +305,24 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         return override ? { ...v, ...override } : v;
       });
 
-      // Filter active user listings
-      const activeUserListings = userListings.filter(l => l.status === "active" || l.status === undefined);
+      // Filter active user listings (automatically hides non-premium listings after 30 days)
+      const activeUserListings = userListings.filter(l => {
+        if (l.status && l.status !== "active") return false;
+        
+        // Non-premium / non-featured listings auto-expire and hide after 30 days
+        const isPremiumOrFeatured = Boolean(l.featured || l.urgent || l.verified);
+        if (!isPremiumOrFeatured && l.datePosted) {
+          const postedTime = new Date(l.datePosted).getTime();
+          if (!isNaN(postedTime)) {
+            const ageMs = Date.now() - postedTime;
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            if (ageMs > thirtyDaysMs) {
+              return false; // Auto-hidden from public catalog after 30 days
+            }
+          }
+        }
+        return true;
+      });
 
       const compiledUserVehicles: Vehicle[] = activeUserListings.map((listing, index) => {
         let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
@@ -354,7 +370,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           engine: listing.engine,
           color: listing.color,
           owners: listing.owners,
-          regNumber: listing.regNumber
+          regNumber: listing.regNumber,
+          datePosted: listing.datePosted || (listing as any).createdAt,
+          status: listing.status
         };
       });
 
@@ -1687,13 +1705,18 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             </button>
                             {hasPaidPass ? (
                               <a
-                                href={`https://wa.me/${(car.sellerPhone || '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
+                                href={`https://wa.me/${(() => {
+                                  const raw = (car.sellerPhone || '+91 98230 44556').replace(/\D/g, '');
+                                  return raw.length === 10 ? `91${raw}` : raw;
+                                })()}?text=${encodeURIComponent(
                                   `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
                                   `🚗 *${car.title}*\n` +
                                   `• Price: ₹${car.price.toLocaleString("en-IN")}\n` +
                                   `• Mileage: ${car.mileage}\n` +
+                                  `• Specs: ${car.fuel} | ${car.transmission}\n` +
+                                  `• Location: ${car.location || 'India'}\n` +
                                   `• Ref Code: AW-${car.id}\n\n` +
-                                  `Is this still available for direct inspection or purchase discussion?`
+                                  `Is this vehicle still available for direct inspection or purchase discussion?`
                                 )}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -1711,21 +1734,21 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                                     })
                                   }).catch(err => console.error(err));
                                 }}
-                                className="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-emerald-600 hover:border-emerald-700 cursor-pointer shadow-sm"
-                                title="Contact seller instantly via WhatsApp"
+                                className="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-emerald-600 hover:border-emerald-500 cursor-pointer shadow-sm"
+                                title="Chat on WhatsApp with seller"
                               >
                                 <MessageCircle className="w-3.5 h-3.5 shrink-0 text-white" />
-                                WhatsApp
+                                Chat on WhatsApp
                               </a>
                             ) : (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setShowPaymentModal(true);
-                                  showToast("Unlock seller coordinates with our ₹1 verification pass!", "info");
+                                  showToast("Unlock seller coordinates & WhatsApp connect with our ₹1 pass!", "info");
                                 }}
                                 className="px-2.5 py-2 bg-stone-200 text-stone-500 hover:text-stone-700 hover:bg-stone-300 text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-stone-300 cursor-pointer shadow-sm"
-                                title="Contacts locked. Purchase pass to unlock."
+                                title="WhatsApp chat locked. Purchase pass to unlock."
                               >
                                 <Lock className="w-3 h-3 text-amber-500" />
                                 Locked
