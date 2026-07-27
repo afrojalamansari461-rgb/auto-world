@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
@@ -9,6 +9,7 @@ import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 import { User as FirebaseUser } from "firebase/auth";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
+import { EMICalculator } from "./EMICalculator";
 
 interface BuyTabProps {
   favorites: number[];
@@ -149,6 +150,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // Recent Searches state
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // EMI Calculator Modal State
+  const [emiVehicle, setEmiVehicle] = useState<Vehicle | null>(null);
 
   // Smart Matcher States
   const [isVizHubExpanded, setIsVizHubExpanded] = useState(true);
@@ -1703,6 +1707,17 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             >
                               Dossier
                             </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEmiVehicle(car);
+                              }}
+                              className="px-2.5 py-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 text-[10px] font-sans uppercase font-bold tracking-wider transition-all flex items-center gap-1 cursor-pointer"
+                              title="Calculate EMI & apply for bank loan"
+                            >
+                              <Calculator className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              EMI
+                            </button>
                             {hasPaidPass ? (
                               <a
                                 href={`https://wa.me/${(() => {
@@ -1948,6 +1963,34 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         </div>
       )}
 
+      {/* EMI Loan Calculator Popup Modal */}
+      <AnimatePresence>
+        {emiVehicle && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.22 }}
+              className="relative max-w-2xl w-full my-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setEmiVehicle(null)}
+                className="absolute top-4 right-4 z-20 text-stone-400 hover:text-white p-2 bg-stone-900 border border-stone-800 rounded-full cursor-pointer transition"
+                aria-label="Close EMI calculator modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <EMICalculator
+                vehiclePrice={emiVehicle.price}
+                vehicleTitle={emiVehicle.title}
+                vehicleId={emiVehicle.id}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </motion.div>
   );

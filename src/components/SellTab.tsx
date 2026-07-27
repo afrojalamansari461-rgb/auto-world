@@ -265,7 +265,38 @@ function SearchableMakeSelect({
 }: SearchableMakeSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dropUp, setDropUp] = useState(false);
+  const [maxListHeight, setMaxListHeight] = useState(220);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate position and max height when opening or window resizes/scrolls
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const calculatePosition = () => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        // If space below is less than 320px and there is more space above, drop up
+        if (spaceBelow < 320 && spaceAbove > spaceBelow) {
+          setDropUp(true);
+          setMaxListHeight(Math.max(140, Math.min(240, Math.floor(spaceAbove - 100))));
+        } else {
+          setDropUp(false);
+          setMaxListHeight(Math.max(140, Math.min(240, Math.floor(spaceBelow - 100))));
+        }
+      };
+
+      calculatePosition();
+      window.addEventListener("resize", calculatePosition);
+      window.addEventListener("scroll", calculatePosition, true);
+      return () => {
+        window.removeEventListener("resize", calculatePosition);
+        window.removeEventListener("scroll", calculatePosition, true);
+      };
+    }
+  }, [isOpen]);
 
   // Auto-close dropdown when clicking outside
   useEffect(() => {
@@ -375,11 +406,13 @@ function SearchableMakeSelect({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0, y: dropUp ? 4 : -4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
+            exit={{ opacity: 0, y: dropUp ? 4 : -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-stone-900 shadow-xl z-50 overflow-hidden"
+            className={`absolute left-0 right-0 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden ${
+              dropUp ? "bottom-full mb-1" : "top-full mt-1"
+            }`}
           >
             {/* Live Search Input Field */}
             <div className="p-2.5 bg-stone-100 border-b border-stone-200 relative">
@@ -417,7 +450,12 @@ function SearchableMakeSelect({
             </div>
 
             {/* Scrollable Results List */}
-            <div role="listbox" aria-label="Vehicle makes" className="max-h-60 overflow-y-auto divide-y divide-stone-100 font-sans text-xs">
+            <div
+              role="listbox"
+              aria-label="Vehicle makes"
+              style={{ maxHeight: `${maxListHeight}px` }}
+              className="overflow-y-auto divide-y divide-stone-100 font-sans text-xs"
+            >
               {/* Popular Brands Section */}
               {filteredPopular.length > 0 && (
                 <div>

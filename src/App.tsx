@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, AlertTriangle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles, ArrowUp, Image as ImageIcon, FileText, Layers } from "lucide-react";
+import { Car, Star, Lock, Clock, Heart, Eye, Filter, User, Mail, Phone, Info, Award, CheckCircle2, ChevronLeft, ChevronRight, Gauge, AlertCircle, AlertTriangle, Compass, Share2, MessageCircle, Shield, Check, CheckCircle, Trash2, EyeOff, ShieldAlert, Wrench, Sparkles, ArrowUp, Image as ImageIcon, FileText, Layers, Calculator } from "lucide-react";
 import { getListingExpirationDetails, run30DayExpirationTask } from "./lib/expirationManager";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -10,6 +10,7 @@ import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
 import { AnimatedFavoriteHeart } from "./components/AnimatedFavoriteHeart";
+import { EMICalculator } from "./components/EMICalculator";
 import AdminPanel from "./components/AdminPanel";
 import FavoritesTab from "./components/FavoritesTab";
 import SignInModal from "./components/SignInModal";
@@ -1304,6 +1305,19 @@ export default function App() {
                   >
                     <Shield className="w-3.5 h-3.5 text-amber-500" />
                     Seller & Contact
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalSubTab("finance")}
+                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer border ${
+                      activeModalSubTab === "finance"
+                        ? "bg-stone-900 text-[#F4F1EA] border-stone-900 shadow-2xs font-mono ring-1 ring-stone-900"
+                        : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
+                    }`}
+                  >
+                    <Calculator className="w-3.5 h-3.5 text-amber-500" />
+                    Finance & EMI
                   </button>
                 </div>
 
@@ -2719,6 +2733,32 @@ export default function App() {
                   Request Callback
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: FINANCE & EMI (Interactive Loan Calculator & Pre-Approval Lead Capture) */}
+          {activeModalSubTab === "finance" && (
+            <div className="space-y-6 font-sans">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-300 pb-4">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-amber-700 font-bold block">
+                    BANK LOAN & EMI PRE-APPROVAL
+                  </span>
+                  <h2 className="text-xl font-serif font-black text-stone-950">
+                    Vehicle Finance Calculator
+                  </h2>
+                </div>
+
+                <span className="text-xs font-mono text-stone-500 font-bold">
+                  AW-{selectedVehicle.id}
+                </span>
+              </div>
+
+              <EMICalculator
+                vehiclePrice={selectedVehicle.price}
+                vehicleTitle={selectedVehicle.title}
+                vehicleId={selectedVehicle.id}
+              />
             </div>
           )}
         </motion.div>

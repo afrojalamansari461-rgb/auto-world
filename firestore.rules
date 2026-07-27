@@ -155,6 +155,24 @@ service cloud.firestore {
         && data.status is string && (data.status == 'active' || data.status == 'archived' || data.status == 'resolved');
     }
 
+    // LOAN LEADS RULES
+    match /loanLeads/{leadId} {
+      allow create: if isValidLoanLead(incoming());
+      allow read, update, delete: if isAdmin();
+    }
+
+    function isValidLoanLead(data) {
+      return data.fullName is string && data.fullName.size() > 0 && data.fullName.size() <= 150
+        && data.phone is string && data.phone.size() > 0 && data.phone.size() <= 30
+        && data.city is string && data.city.size() > 0 && data.city.size() <= 100
+        && data.monthlyIncome is string && data.monthlyIncome.size() > 0 && data.monthlyIncome.size() <= 100
+        && data.vehiclePrice is int && data.vehiclePrice >= 0
+        && data.downPayment is int && data.downPayment >= 0
+        && data.loanAmount is int && data.loanAmount >= 0
+        && data.tenureYears is int && data.tenureYears >= 1 && data.tenureYears <= 10
+        && data.monthlyEMI is int && data.monthlyEMI >= 0;
+    }
+
     // AUDIT LOGS RULES
     match /audit_logs/{logId} {
       allow read, create: if isAdmin() || isRegisteredUser();

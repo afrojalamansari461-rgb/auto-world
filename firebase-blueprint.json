@@ -111,6 +111,28 @@
         "status": { "type": "string", "enum": ["active", "archived", "resolved"] }
       },
       "required": ["id", "text", "category", "timestamp", "status"]
+    },
+    "LoanLead": {
+      "title": "LoanLead",
+      "description": "Captured buyer loan application details for bank and insurance financing referrals",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "city": { "type": "string" },
+        "monthlyIncome": { "type": "string" },
+        "vehiclePrice": { "type": "integer" },
+        "downPayment": { "type": "integer" },
+        "loanAmount": { "type": "integer" },
+        "tenureYears": { "type": "integer" },
+        "interestRate": { "type": "number" },
+        "monthlyEMI": { "type": "integer" },
+        "vehicleTitle": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["fullName", "phone", "city", "monthlyIncome", "vehiclePrice", "downPayment", "loanAmount", "tenureYears", "monthlyEMI"]
     }
   },
   "firestore": {
@@ -137,6 +159,10 @@
     "feedbacks": {
       "schema": "UserFeedback",
       "description": "Collection tracking user feedback submissions"
+    },
+    "loanLeads": {
+      "schema": "LoanLead",
+      "description": "Collection capturing buyer instant loan application leads for bank financing referrals"
     }
   }
 }
