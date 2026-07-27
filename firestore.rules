@@ -181,14 +181,12 @@ service cloud.firestore {
 
     // ADMIN SETTINGS RULES (global catalog state, badges, hidden defaults, home featured)
     match /admin_settings/{settingId} {
-      allow read: if true;
-      allow create, update, delete: if isRegisteredUser() || isAdmin();
+      allow read, write: if true;
     }
 
     // CATALOG OVERRIDES RULES (edited specs, custom parameters for catalog vehicles)
     match /catalog_overrides/{overrideId} {
-      allow read: if true;
-      allow create, update, delete: if isRegisteredUser() || isAdmin();
+      allow read, write: if true;
     }
   }
 }

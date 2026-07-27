@@ -257,6 +257,42 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     setCountdownText(`${hours}h ${minutes.toString().padStart(2, "0")}m remaining`);
   };
 
+  // WhatsApp Handler & Phone Sanitizer
+  const handleWhatsAppClick = (e: React.MouseEvent, vehicle: Vehicle) => {
+    e.stopPropagation();
+
+    if (!hasPaidPass) {
+      setShowPaymentModal(true);
+      showToast("Unlock seller coordinates & WhatsApp connect with our ₹1 pass!", "info");
+      return;
+    }
+
+    const rawPhone = vehicle.sellerPhone || '919876543210';
+    let cleanPhone = rawPhone.replace(/\D/g, '');
+
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+
+    const textMessage = `Hi, I saw your ${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || vehicle.title || ''} (Ref #AW-${vehicle.id || 'AW01'}) listed on Auto World. Is it still available for a test drive?`;
+    const encodedText = encodeURIComponent(textMessage);
+
+    fetch("/api/send-sms-alert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sellerPhone: vehicle.sellerPhone || '+91 98230 44556',
+        vehicleTitle: vehicle.title,
+        listingId: vehicle.id,
+        buyerName: "A vetted buyer",
+        actionType: "whatsapp"
+      })
+    }).catch(err => console.error(err));
+
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // STEP 3: Realtime load listings combining static assets, Firestore overrides & collections
   useEffect(() => {
     setIsLoading(true);
@@ -1679,97 +1715,87 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2.5 gap-2">
-                          <div>
-                            <span className="text-xs text-stone-400 block uppercase font-light font-sans">Valuation</span>
-                            <span className="text-lg sm:text-xl font-serif font-black text-stone-950 block leading-tight">₹{car.price.toLocaleString("en-IN")}</span>
+                        <div className="pt-3 border-t border-stone-200 mt-auto flex flex-col gap-3">
+                          {/* Valuation & Location Header */}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-[10px] text-stone-400 block uppercase font-mono font-medium tracking-wider">
+                                Valuation
+                              </span>
+                              <span className="text-xl sm:text-2xl font-serif font-black text-stone-950 block leading-tight">
+                                ₹{car.price.toLocaleString("en-IN")}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-stone-600 bg-stone-200/70 px-2 py-0.5 border border-stone-300 uppercase font-bold rounded-xs">
+                              {car.location || "India"}
+                            </span>
                           </div>
-                          <div className="flex gap-1.5 shrink-0 items-center">
+
+                          {/* Row 1 (Secondary Actions): Favorite, Dossier, EMI Calc */}
+                          <div className="flex items-center gap-2 w-full">
+                            {/* Favorite Heart Button */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleFavorite(car.id);
                               }}
-                              className={`p-2 border flex items-center justify-center transition-all duration-300 cursor-pointer ${
+                              className={`px-3 py-2 border flex items-center justify-center transition-all duration-200 cursor-pointer ${
                                 isFav
                                   ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-850"
-                                  : "bg-[#FAF8F5] border-stone-300 text-stone-600 hover:text-stone-950 hover:border-stone-400"
+                                  : "bg-[#FAF8F5] border-stone-300 text-stone-700 hover:text-stone-950 hover:border-stone-400"
                               }`}
                               title={isFav ? "Remove from Favorites" : "Add to Favorites"}
                             >
                               <AnimatedFavoriteHeart isFav={isFav} className="w-3.5 h-3.5" />
                             </button>
+
+                            {/* Dossier Quick View Button */}
                             <button
-                              onClick={() => onQuickView(car)}
-                              className="px-3 py-2 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-[10px] font-sans uppercase font-bold tracking-widest border border-stone-950 transition-all cursor-pointer"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onQuickView(car);
+                              }}
+                              className="flex-1 py-2 px-3 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-[10px] font-sans uppercase font-bold tracking-widest border border-stone-950 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
                               title="View dossier & specifications"
                             >
-                              Dossier
+                              <Eye className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span>Dossier</span>
                             </button>
+
+                            {/* EMI Calculator Trigger Button */}
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEmiVehicle(car);
                               }}
-                              className="px-2.5 py-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 text-[10px] font-sans uppercase font-bold tracking-wider transition-all flex items-center gap-1 cursor-pointer"
+                              className="flex-1 py-2 px-3 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 text-[10px] font-sans uppercase font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                               title="Calculate EMI & apply for bank loan"
                             >
                               <Calculator className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                              EMI
+                              <span>EMI Calc</span>
                             </button>
-                            {hasPaidPass ? (
-                              <a
-                                href={`https://wa.me/${(() => {
-                                  const raw = (car.sellerPhone || '+91 98230 44556').replace(/\D/g, '');
-                                  return raw.length === 10 ? `91${raw}` : raw;
-                                })()}?text=${encodeURIComponent(
-                                  `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
-                                  `🚗 *${car.title}*\n` +
-                                  `• Price: ₹${car.price.toLocaleString("en-IN")}\n` +
-                                  `• Mileage: ${car.mileage}\n` +
-                                  `• Specs: ${car.fuel} | ${car.transmission}\n` +
-                                  `• Location: ${car.location || 'India'}\n` +
-                                  `• Ref Code: AW-${car.id}\n\n` +
-                                  `Is this vehicle still available for direct inspection or purchase discussion?`
-                                )}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  fetch("/api/send-sms-alert", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      sellerPhone: car.sellerPhone || '+91 98230 44556',
-                                      vehicleTitle: car.title,
-                                      listingId: car.id,
-                                      buyerName: "A vetted buyer",
-                                      actionType: "whatsapp"
-                                    })
-                                  }).catch(err => console.error(err));
-                                }}
-                                className="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-emerald-600 hover:border-emerald-500 cursor-pointer shadow-sm"
-                                title="Chat on WhatsApp with seller"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5 shrink-0 text-white" />
-                                Chat on WhatsApp
-                              </a>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowPaymentModal(true);
-                                  showToast("Unlock seller coordinates & WhatsApp connect with our ₹1 pass!", "info");
-                                }}
-                                className="px-2.5 py-2 bg-stone-200 text-stone-500 hover:text-stone-700 hover:bg-stone-300 text-[10px] font-sans uppercase font-bold tracking-widest transition-all flex items-center gap-1 border border-stone-300 cursor-pointer shadow-sm"
-                                title="WhatsApp chat locked. Purchase pass to unlock."
-                              >
-                                <Lock className="w-3 h-3 text-amber-500" />
-                                Locked
-                              </button>
-                            )}
                           </div>
+
+                          {/* Row 2 (Primary Call To Action): Full-Width Chat on WhatsApp */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleWhatsAppClick(e, car)}
+                            className={`w-full py-2.5 px-4 text-[11px] font-sans font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
+                              hasPaidPass
+                                ? "bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white border-emerald-600 hover:border-emerald-500 shadow-xs"
+                                : "bg-stone-900 hover:bg-stone-800 text-white border-stone-900"
+                            }`}
+                            title={hasPaidPass ? "Chat directly on WhatsApp with seller" : "Unlock seller contact via WhatsApp"}
+                          >
+                            <MessageCircle className="w-4 h-4 shrink-0 text-white" />
+                            <span className="whitespace-nowrap font-bold">
+                              {hasPaidPass ? "Chat on WhatsApp" : "Unlock Seller & Chat WhatsApp"}
+                            </span>
+                            {!hasPaidPass && <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-auto" />}
+                          </button>
                         </div>
                       </div>
                     </motion.div>
