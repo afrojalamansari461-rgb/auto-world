@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Crown, Check, X, Shield, Star, Award, ShieldCheck, Sparkles, ChevronDown, CreditCard, Lock, Radio } from "lucide-react";
+import { Crown, Check, X, Shield, Star, Award, ShieldCheck, Sparkles, ChevronDown, CreditCard, Lock, Radio, Film, Volume2, Shuffle } from "lucide-react";
 import { User as FirebaseUser } from "firebase/auth";
 import { setDoc, doc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -10,7 +10,84 @@ interface PremiumTabProps {
   setSubscriptionActive: (active: boolean) => void;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   currentUser: FirebaseUser | null;
+  isSimranFreeModeEnabled?: boolean;
+  setActiveTab?: (tab: string) => void;
 }
+
+const FUNNY_FREE_DIALOGUES = [
+  {
+    quote: "Ja Simran, jee le apni zindagi! Auto World pe sab kuch 100% FREE hai!",
+    movie: "Dilwale Dulhania Le Jayenge (DDLJ)",
+    character: "Amrish Puri (Baoji)",
+    type: "Bollywood Classic 🎬",
+  },
+  {
+    quote: "Yeh VIP Pass humko de de Thakur! ...Arre Baldev, le le, bilkul FREE hai!",
+    movie: "Sholay",
+    character: "Gabbar Singh & Thakur",
+    type: "Bollywood Epic 🤠",
+  },
+  {
+    quote: "All Izz Well! No subscription fee, no payment gateway charges, bas chill karo!",
+    movie: "3 Idiots",
+    character: "Rancho (Aamir Khan)",
+    type: "Bollywood Icon 🎓",
+  },
+  {
+    quote: "Kehte hain agar kisi cheez ko dil se chaho... toh Admin usse website par FREE kar deta hai!",
+    movie: "Om Shanti Om",
+    character: "Om Prakash (SRK)",
+    type: "Bollywood Romance 💖",
+  },
+  {
+    quote: "Baap ka, dada ka, bhai ka, sabka free access milega re tera Auto World pe!",
+    movie: "Gangs of Wasseypur",
+    character: "Ramadhir Singh",
+    type: "Bollywood Cult Legend 🔥",
+  },
+  {
+    quote: "I'm gonna make you an offer you can't refuse... 0 Rupees forever!",
+    movie: "The Godfather",
+    character: "Don Vito Corleone",
+    type: "Hollywood Legend 🕶️",
+  },
+  {
+    quote: "Why so serious? Put a smile on that face, everything here is 100% FREE!",
+    movie: "The Dark Knight",
+    character: "The Joker (Heath Ledger)",
+    type: "Hollywood Masterpiece 🃏",
+  },
+  {
+    quote: "Hasta la vista, paywalls! Money is strictly not allowed here.",
+    movie: "Terminator 2",
+    character: "T-800 (Arnold Schwarzenegger)",
+    type: "Hollywood Action 🤖",
+  },
+  {
+    quote: "Hamari choriyan chhoron se kam hain ke? Aur Auto World ka FREE pass kisi se kam hai ke?",
+    movie: "Dangal",
+    character: "Mahavir Singh Phogat",
+    type: "Bollywood Blockbuster 🏆",
+  },
+  {
+    quote: "Auto World FREE hai... Main jhukega nahi, ek rupaye bhi nahi dega!",
+    movie: "Pushpa: The Rise",
+    character: "Pushpa Raj (Allu Arjun)",
+    type: "Pan-India Swag 🪵",
+  },
+  {
+    quote: "May the FREE Force be with you. Browse all cars without fear!",
+    movie: "Star Wars",
+    character: "Master Yoda",
+    type: "Hollywood Sci-Fi 🌌",
+  },
+  {
+    quote: "Don't underestimate the power of a FREE Website!",
+    movie: "Chennai Express",
+    character: "Rahul (SRK)",
+    type: "Bollywood Comedy 🚂",
+  }
+];
 
 // Custom 3D Tiltable Premium Plan Card
 function PremiumPlanCard({ 
@@ -142,13 +219,47 @@ function PremiumPlanCard({
   );
 }
 
-export default function PremiumTab({ subscriptionActive, setSubscriptionActive, showToast, currentUser }: PremiumTabProps) {
+export default function PremiumTab({ subscriptionActive, setSubscriptionActive, showToast, currentUser, isSimranFreeModeEnabled, setActiveTab }: PremiumTabProps) {
   const isOwner = currentUser?.email === "afrojalamansari461@gmail.com";
   const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"pro" | "business" | "">("");
   const [selectedPrice, setSelectedPrice] = useState(0);
   const [confirmCancel, setConfirmCancel] = useState(false);
+
+  // Simran Mode Free Website & Blur state
+  const [isSimranActive, setIsSimranActive] = useState<boolean>(() => {
+    if (isSimranFreeModeEnabled !== undefined) return isSimranFreeModeEnabled;
+    try {
+      const stored = localStorage.getItem("autoWorld_is_simran_free_mode");
+      return stored !== null ? JSON.parse(stored) : false;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const [dialogueIdx, setDialogueIdx] = useState(0);
+
+  useEffect(() => {
+    if (isSimranFreeModeEnabled !== undefined) {
+      setIsSimranActive(isSimranFreeModeEnabled);
+    }
+  }, [isSimranFreeModeEnabled]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const stored = localStorage.getItem("autoWorld_is_simran_free_mode");
+        if (stored !== null) {
+          setIsSimranActive(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.warn("Error reading simran mode state", e);
+      }
+    };
+    window.addEventListener("autoWorld_db_update", handleUpdate);
+    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
+  }, []);
 
   // Sub-tab selection state with sliding indicators
   const [activeSubTab, setActiveSubTab] = useState<"plans" | "comparison" | "faq">("plans");
@@ -358,9 +469,10 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="bg-[#F4F1EA] py-12 text-[#1A1A1A]"
+      className="bg-[#F4F1EA] py-12 text-[#1A1A1A] relative"
     >
-      {/* Hero Section */}
+      <div className={isSimranActive ? "filter blur-[6px] opacity-25 pointer-events-none select-none transition-all duration-500 scale-[0.99]" : ""}>
+        {/* Hero Section */}
       <motion.section variants={itemVariants} className="text-center max-w-4xl mx-auto px-4 mb-8">
         <div className="inline-flex items-center justify-center w-14 h-14 bg-stone-900/10 text-stone-900 border border-stone-300 mb-5 rounded-full shadow-inner animate-in zoom-in duration-300">
           <Crown className="w-7 h-7 fill-amber-500 text-amber-500 animate-pulse" />
@@ -896,6 +1008,158 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
               )}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+      </div>
+
+      {/* SIMRAN MODE FREE WEBSITE POPUP OVERLAY */}
+      <AnimatePresence>
+        {isSimranActive && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-stone-950/80 backdrop-blur-md overflow-y-auto"
+          >
+            <div className="bg-[#FAF8F5] border-4 border-stone-900 shadow-[12px_12px_0px_0px_rgba(245,158,11,1)] max-w-2xl w-full p-6 sm:p-8 relative overflow-hidden my-auto">
+              {/* Retro Film Ribbon Top Bar */}
+              <div className="absolute top-0 left-0 right-0 h-3.5 bg-amber-400 flex items-center justify-between px-2 overflow-hidden border-b-2 border-stone-900">
+                <div className="flex gap-1.5 w-full">
+                  {[...Array(24)].map((_, i) => (
+                    <div key={i} className="w-2.5 h-2 bg-stone-900 rounded-xs shrink-0" />
+                  ))}
+                </div>
+              </div>
+
+              {/* Header Badge */}
+              <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-2 border-stone-900 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-amber-400 border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <Sparkles className="w-6 h-6 text-stone-950 animate-spin" />
+                  </div>
+                  <div>
+                    <span className="px-2.5 py-0.5 bg-stone-900 text-amber-400 text-[9px] font-mono font-bold uppercase tracking-widest border border-stone-800 inline-block mb-1">
+                      🎬 WEBSITE IS 100% FREE FOR EVERYONE
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-serif font-black uppercase text-stone-900 tracking-tight leading-none">
+                      "JA SIMRAN, JEE LE APNI ZINDAGI!"
+                    </h2>
+                  </div>
+                </div>
+                <span className="px-3 py-1 bg-emerald-500 text-stone-950 text-xs font-mono font-black uppercase tracking-widest border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] animate-bounce shrink-0">
+                  NO PAYMENTS NEEDED!
+                </span>
+              </div>
+
+              {/* Central Dialogue Card */}
+              <div className="my-6 p-5 sm:p-6 bg-stone-900 text-stone-100 border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative space-y-4">
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-amber-400 uppercase tracking-widest pb-2.5 border-b border-stone-800">
+                  <span className="flex items-center gap-1.5">
+                    <Film className="w-4 h-4 text-amber-400" />
+                    {FUNNY_FREE_DIALOGUES[dialogueIdx].type}
+                  </span>
+                  <span className="text-stone-400 text-[10px]">
+                    DIALOGUE {dialogueIdx + 1} OF {FUNNY_FREE_DIALOGUES.length}
+                  </span>
+                </div>
+
+                <div className="space-y-3 py-2">
+                  <p className="text-lg sm:text-2xl font-serif font-black italic text-amber-300 leading-snug tracking-tight">
+                    "{FUNNY_FREE_DIALOGUES[dialogueIdx].quote}"
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-xs font-mono text-stone-300 font-bold">
+                      — {FUNNY_FREE_DIALOGUES[dialogueIdx].character}
+                    </span>
+                    <span className="text-[10px] px-2.5 py-0.5 bg-stone-800 text-amber-400 font-mono font-bold border border-stone-700">
+                      {FUNNY_FREE_DIALOGUES[dialogueIdx].movie}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Shuffle Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextIdx = (dialogueIdx + 1) % FUNNY_FREE_DIALOGUES.length;
+                    setDialogueIdx(nextIdx);
+                    try {
+                      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                      const osc = ctx.createOscillator();
+                      const gain = ctx.createGain();
+                      osc.type = "sine";
+                      osc.frequency.setValueAtTime(550 + nextIdx * 45, ctx.currentTime);
+                      osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.14);
+                      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+                      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.14);
+                      osc.connect(gain);
+                      gain.connect(ctx.destination);
+                      osc.start();
+                      osc.stop(ctx.currentTime + 0.14);
+                    } catch (e) {}
+                  }}
+                  className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(255,255,255,0.9)] hover:translate-x-[1px] hover:translate-y-[1px]"
+                >
+                  <Shuffle className="w-4 h-4 text-stone-950" />
+                  <span>🎲 NEXT FUNNY DIALOGUE!</span>
+                </button>
+              </div>
+
+              {/* Explanatory text */}
+              <div className="bg-amber-50/80 border-2 border-dashed border-amber-500/60 p-4 font-sans space-y-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-amber-600" />
+                  Official Admin Announcement
+                </h4>
+                <p className="text-xs text-stone-700 leading-relaxed font-semibold">
+                  The Admin has enabled <strong className="text-stone-950 font-black">100% FREE ACCESS</strong> for all visitors! The Premium paywall is officially paused so you can view all seller phone numbers, unlock verified vehicle details, and post listings without spending a single rupee.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (setActiveTab) setActiveTab("home");
+                    showToast("Enjoy Auto World! Everything is 100% free!", "success");
+                  }}
+                  className="flex-1 py-3.5 bg-stone-950 hover:bg-stone-850 text-amber-400 text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(245,158,11,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span>🚀 EXPLORE FREE VEHICLES NOW</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                      const notes = [523.25, 659.25, 783.99, 1046.50];
+                      notes.forEach((freq, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = "triangle";
+                        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.1);
+                        gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.1 + 0.25);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(ctx.currentTime + idx * 0.1);
+                        osc.stop(ctx.currentTime + idx * 0.1 + 0.25);
+                      });
+                      showToast("🎉 Victory tune played! Enjoy free access!", "info");
+                    } catch (e) {}
+                  }}
+                  className="py-3.5 px-5 bg-[#FAF8F5] hover:bg-stone-200 text-stone-950 text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                >
+                  <Volume2 className="w-4 h-4 text-stone-800" />
+                  <span>PLAY TUNE</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>

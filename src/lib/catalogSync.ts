@@ -12,6 +12,7 @@ export interface AdminSettingsData {
   isEmiCalculatorEnabled?: boolean;
   isWhatsAppConnectEnabled?: boolean;
   isAiAssistantEnabled?: boolean;
+  isSimranFreeModeEnabled?: boolean;
 }
 
 // 1. Save spec overrides for default catalog items to Firestore
@@ -80,6 +81,9 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       }
       if (settings.isAiAssistantEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_ai_assistant", JSON.stringify(settings.isAiAssistantEnabled));
+      }
+      if (settings.isSimranFreeModeEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(settings.isSimranFreeModeEnabled));
       }
     } catch (e) {
       console.warn("Local storage settings sync error:", e);

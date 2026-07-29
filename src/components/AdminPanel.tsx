@@ -158,6 +158,15 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   });
 
+  const [isSimranFreeModeEnabled, setIsSimranFreeModeEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_simran_free_mode");
+      return stored !== null ? JSON.parse(stored) : false;
+    } catch (e) {
+      return false;
+    }
+  });
+
   const handleToggleFreePass = async () => {
     const nextVal = !isFreePassEnabled;
     setIsFreePassEnabled(nextVal);
@@ -188,7 +197,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   };
 
   const handleToggleFeature = async (
-    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled",
+    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isSimranFreeModeEnabled",
     currentVal: boolean,
     setter: React.Dispatch<React.SetStateAction<boolean>>,
     label: string,
@@ -508,6 +517,10 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         if (data.isAiAssistantEnabled !== undefined) {
           setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
           localStorage.setItem("autoWorld_is_ai_assistant", JSON.stringify(Boolean(data.isAiAssistantEnabled)));
+        }
+        if (data.isSimranFreeModeEnabled !== undefined) {
+          setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
+          localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(Boolean(data.isSimranFreeModeEnabled)));
         }
       }
     } catch (e) {
@@ -1766,7 +1779,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               </div>
             </div>
             <span className="px-2.5 py-1 bg-stone-900 text-amber-400 text-[9px] font-mono font-bold uppercase tracking-widest border border-stone-800">
-              4 ACTIVE CONTROLS
+              5 ACTIVE CONTROLS
             </span>
           </div>
 
@@ -1924,6 +1937,45 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               >
                 <span className={`w-2.5 h-2.5 rounded-full ${isAiAssistantEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
                 <span>{isAiAssistantEnabled ? "[ ON ] AI ASSISTANT ENABLED" : "[ OFF ] AI ASSISTANT DISABLED"}</span>
+              </button>
+            </div>
+
+            {/* 5. Simran Mode: Blur & Disable Premium Tab with Bollywood/Hollywood Pop-up */}
+            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 col-span-1 md:col-span-2 ${
+              isSimranFreeModeEnabled
+                ? "bg-stone-900 text-amber-100 border-amber-400 shadow-lg"
+                : "bg-stone-100 text-stone-600 border-stone-300"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className={`w-4 h-4 ${isSimranFreeModeEnabled ? "text-amber-400 animate-spin" : "text-stone-400"}`} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider font-serif text-amber-400">
+                      "JA SIMRAN JEE LE APNI ZINDAGI" — FREE WEBSITE & BLUR PREMIUM TAB
+                    </h4>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                    isSimranFreeModeEnabled ? "bg-amber-400 text-stone-950 font-black border border-amber-300" : "bg-stone-200 text-stone-500"
+                  }`}>
+                    {isSimranFreeModeEnabled ? "ACTIVE (BLURRED & FREE)" : "STANDARD MONETIZATION"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                  Blurs/closes the Premium tab and overlays a pop-up declaring the website is 100% FREE with funny iconic Bollywood & Hollywood dialogues ("Ja Simran, jee le apni zindagi!")!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleFeature("isSimranFreeModeEnabled", isSimranFreeModeEnabled, setIsSimranFreeModeEnabled, "Simran Free Mode (Blur Premium Tab)", "autoWorld_is_simran_free_mode")}
+                className={`w-full py-3 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                  isSimranFreeModeEnabled
+                    ? "bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-300 shadow-md font-extrabold"
+                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isSimranFreeModeEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                <span>{isSimranFreeModeEnabled ? "🎬 [ ON ] SIMRAN FREE MODE ACTIVE (BLURRED & FREE POP-UP)" : "🎬 [ OFF ] ENABLE SIMRAN FREE MODE"}</span>
               </button>
             </div>
           </div>

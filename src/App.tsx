@@ -96,6 +96,14 @@ export default function App() {
       return true;
     }
   });
+  const [isSimranFreeModeEnabled, setIsSimranFreeModeEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_simran_free_mode");
+      return stored !== null ? JSON.parse(stored) : false;
+    } catch (e) {
+      return false;
+    }
+  });
 
   // Custom Confirmation Modal state for vehicle actions & modal operations
   const [confirmModal, setConfirmModal] = useState<{
@@ -493,6 +501,10 @@ export default function App() {
         setIsSecureShieldEnabled(adminSettings.isSecureShieldEnabled);
         localStorage.setItem("autoWorld_is_secure_shield", JSON.stringify(adminSettings.isSecureShieldEnabled));
       }
+      if (adminSettings.isSimranFreeModeEnabled !== undefined) {
+        setIsSimranFreeModeEnabled(adminSettings.isSimranFreeModeEnabled);
+        localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(adminSettings.isSimranFreeModeEnabled));
+      }
       recheckPass();
     });
 
@@ -502,8 +514,12 @@ export default function App() {
         if (storedShield !== null) {
           setIsSecureShieldEnabled(JSON.parse(storedShield));
         }
+        const storedSimran = localStorage.getItem("autoWorld_is_simran_free_mode");
+        if (storedSimran !== null) {
+          setIsSimranFreeModeEnabled(JSON.parse(storedSimran));
+        }
       } catch (e) {
-        console.warn("Global update error for secure shield", e);
+        console.warn("Global update error for admin settings", e);
       }
       recheckPass();
     };
@@ -1209,6 +1225,8 @@ export default function App() {
                 setSubscriptionActive={setSubscriptionActive}
                 showToast={showToast}
                 currentUser={currentUser}
+                isSimranFreeModeEnabled={isSimranFreeModeEnabled}
+                setActiveTab={setActiveTab}
               />
             )}
 
