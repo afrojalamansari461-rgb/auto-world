@@ -7,7 +7,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // Reuseable global helpers
+    // Global Helper Primitives
     function isSignedIn() {
       return request.auth != null;
     }
@@ -16,9 +16,11 @@ service cloud.firestore {
       return isSignedIn();
     }
 
+    // Admin Verification (Lead Admin UID / Email)
     function isAdmin() {
       return isSignedIn() && 
-             request.auth.token.email == 'afrojalamansari461@gmail.com';
+        (request.auth.token.email == 'afrojalamansari461@gmail.com' ||
+         request.auth.token.admin == true);
     }
 
     function incoming() {
@@ -33,42 +35,49 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Listings RULES
+    // 1. LISTINGS COLLECTION RULES
     match /listings/{listingId} {
+      // Public read access for all visitors
       allow read: if true;
+
+      // Creation restricted to authenticated users matching payload userId
       allow create: if isRegisteredUser() 
         && isValidId(listingId)
         && incoming().userId == request.auth.uid
         && isValidListing(incoming());
+
+      // Updates allowed for document owner or admin with field restrictions
       allow update: if (
         isRegisteredUser()
         && incoming().userId == request.auth.uid
         && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
         && incoming().id == existing().id
         && isValidListing(incoming())
         && incoming().diff(existing()).affectedKeys().hasOnly([
           'title', 'price', 'condition', 'mileage', 'fuelType', 'description', 
           'negotiable', 'status', 'features', 'transmission', 'engineSize', 
           'photos', 'featured', 'urgent', 'doors', 'seats', 'bikeType', 
-          'bikeEngine', 'bikeGears', 'bikeMileage', 'bicycleType', 'frameSize', 'gears'
+          'bikeEngine', 'bikeGears', 'bikeMileage', 'bicycleType', 'frameSize', 'gears',
+          'verified', 'views', 'expiresAt', 'autoRenew', 'updatedAt'
         ])
       ) || isAdmin();
+
+      // Deletion restricted to listing owner or admin
       allow delete: if (
-         isRegisteredUser() && existing().userId == request.auth.uid
+        isRegisteredUser() && existing().userId == request.auth.uid
       ) || isAdmin();
     }
 
     function isValidListing(data) {
       return data.id is string && data.id.size() <= 128
-        && data.title is string && data.title.size() <= 200
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
         && data.type is string && data.type.size() <= 50
         && data.make is string && data.make.size() <= 50
         && data.model is string && data.model.size() <= 50
         && data.year is string && data.year.size() <= 10
         && data.price is int && data.price >= 0
         && data.condition is int && data.condition >= 1 && data.condition <= 5
-        && data.description is string && data.description.size() >= 15 && data.description.size() <= 5000
+        && data.description is string && data.description.size() >= 10 && data.description.size() <= 5000
         && data.sellerName is string && data.sellerName.size() <= 200
         && data.sellerEmail is string && data.sellerEmail.size() <= 200
         && data.location is string && data.location.size() <= 200
@@ -76,10 +85,11 @@ service cloud.firestore {
         && data.userId is string && data.userId.size() <= 128;
     }
 
-    // CONTACT MESSAGES RULES
+    // 2. CONTACT MESSAGES & INQUIRIES (LEADS) RULES
     match /messages/{messageId} {
+      // Anyone (authenticated or guest) can create a contact inquiry
       allow create: if isValidId(messageId) && isValidMessage(incoming());
-      // Client cannot read, list or delete tickets unless they are the Admin
+      // Strictly restrict read, update, and delete access to Admin
       allow read, delete: if isAdmin();
       allow update: if false;
     }
@@ -92,72 +102,11 @@ service cloud.firestore {
         && data.date is string && data.date.size() <= 50;
     }
 
-    // SUBSCRIPTIONS RULES
-    match /subscriptions/{subId} {
-      allow read: if (isRegisteredUser() && request.auth.uid == subId) || isAdmin();
-      allow create, update: if isRegisteredUser() 
-        && request.auth.uid == subId
-        && isValidSubscription(incoming());
-      allow delete: if false;
-    }
-
-    function isValidSubscription(data) {
-      return data.userId is string && data.userId == request.auth.uid
-        && data.plan is string && data.plan.size() <= 50
-        && data.price is int && data.price >= 0
-        && data.period is string && (data.period == 'monthly' || data.period == 'yearly')
-        && data.startDate is string && data.startDate.size() <= 50
-        && data.status is string && (data.status == 'active' || data.status == 'expired');
-    }
-
-    // BUYER PASSES RULES
-    match /buyer_passes/{buyerId} {
-      allow read: if (isRegisteredUser() && request.auth.uid == buyerId) || isAdmin();
-      allow create, update: if isRegisteredUser() 
-        && request.auth.uid == buyerId
-        && isValidBuyerPass(incoming());
-      allow delete: if false;
-    }
-
-    function isValidBuyerPass(data) {
-      return data.userId is string && data.userId == request.auth.uid
-        && data.paid is bool && data.paid == true
-        && data.date is string && data.date.size() <= 50;
-    }
-
-    // USER FAVORITES RULES
-    match /user_favorites/{favId} {
-      allow read: if isRegisteredUser() && request.auth.uid == favId;
-      allow create, update: if isRegisteredUser() 
-        && request.auth.uid == favId
-        && isValidUserFavorites(incoming());
-      allow delete: if false;
-    }
-
-    function isValidUserFavorites(data) {
-      return data.userId is string && data.userId == request.auth.uid
-        && data.favoriteIds is list && data.favoriteIds.size() <= 100;
-    }
-
-    // USER FEEDBACK RULES
-    match /feedbacks/{feedbackId} {
-      allow create: if isValidId(feedbackId) && isValidFeedback(incoming());
-      allow read, update, delete: if isAdmin();
-    }
-
-    function isValidFeedback(data) {
-      return data.id is string && data.id.size() <= 128
-        && data.text is string && data.text.size() > 0 && data.text.size() <= 5000
-        && data.category is string && (data.category == 'bug_report' || data.category == 'suggestion' || data.category == 'question' || data.category == 'praise')
-        && (!('name' in data) || (data.name is string && data.name.size() <= 150))
-        && (!('email' in data) || (data.email is string && data.email.size() <= 150))
-        && data.timestamp is string && data.timestamp.size() <= 50
-        && data.status is string && (data.status == 'active' || data.status == 'archived' || data.status == 'resolved');
-    }
-
-    // LOAN LEADS RULES
+    // 3. LOAN / EMI LEADS RULES
     match /loanLeads/{leadId} {
+      // Anyone can submit a loan inquiry payload
       allow create: if isValidLoanLead(incoming());
+      // Strictly restrict read, update, and delete access to Admin
       allow read, update, delete: if isAdmin();
     }
 
@@ -173,20 +122,91 @@ service cloud.firestore {
         && data.monthlyEMI is int && data.monthlyEMI >= 0;
     }
 
-    // AUDIT LOGS RULES
+    // 4. USER SUBSCRIPTIONS RULES
+    match /subscriptions/{subId} {
+      allow read: if (isRegisteredUser() && request.auth.uid == subId) || isAdmin();
+      allow create, update: if isRegisteredUser() 
+        && request.auth.uid == subId
+        && isValidSubscription(incoming());
+      allow delete: if isAdmin();
+    }
+
+    function isValidSubscription(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.plan is string && data.plan.size() <= 50
+        && data.price is int && data.price >= 0
+        && data.period is string && (data.period == 'monthly' || data.period == 'yearly')
+        && data.startDate is string && data.startDate.size() <= 50
+        && data.status is string && (data.status == 'active' || data.status == 'expired');
+    }
+
+    // 5. BUYER PASSES RULES
+    match /buyer_passes/{buyerId} {
+      allow read: if (isRegisteredUser() && request.auth.uid == buyerId) || isAdmin();
+      allow create, update: if isRegisteredUser() 
+        && request.auth.uid == buyerId
+        && isValidBuyerPass(incoming());
+      allow delete: if isAdmin();
+    }
+
+    function isValidBuyerPass(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.paid is bool && data.paid == true
+        && data.date is string && data.date.size() <= 50;
+    }
+
+    // 6. USER FAVORITES RULES
+    match /user_favorites/{favId} {
+      allow read: if isRegisteredUser() && request.auth.uid == favId;
+      allow create, update: if isRegisteredUser() 
+        && request.auth.uid == favId
+        && isValidUserFavorites(incoming());
+      allow delete: if isRegisteredUser() && request.auth.uid == favId;
+    }
+
+    function isValidUserFavorites(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.favoriteIds is list && data.favoriteIds.size() <= 100;
+    }
+
+    // 7. FEEDBACKS RULES
+    match /feedbacks/{feedbackId} {
+      allow create: if isValidId(feedbackId) && isValidFeedback(incoming());
+      allow read, update, delete: if isAdmin();
+    }
+
+    function isValidFeedback(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 5000
+        && data.category is string && (data.category == 'bug_report' || data.category == 'suggestion' || data.category == 'question' || data.category == 'praise')
+        && (!('name' in data) || (data.name is string && data.name.size() <= 150))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 150))
+        && data.timestamp is string && data.timestamp.size() <= 50
+        && data.status is string && (data.status == 'active' || data.status == 'archived' || data.status == 'resolved');
+    }
+
+    // 8. AUDIT LOGS RULES
     match /audit_logs/{logId} {
       allow read, create: if isAdmin() || isRegisteredUser();
       allow update, delete: if false;
     }
 
-    // ADMIN SETTINGS RULES (global catalog state, badges, hidden defaults, home featured)
+    // 9. ADMIN SETTINGS RULES
     match /admin_settings/{settingId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isRegisteredUser() || isAdmin();
     }
 
-    // CATALOG OVERRIDES RULES (edited specs, custom parameters for catalog vehicles)
+    // 10. CATALOG OVERRIDES RULES
     match /catalog_overrides/{overrideId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isRegisteredUser() || isAdmin();
+    }
+
+    // 11. CONNECTION TEST DOCUMENT
+    match /test/{testId} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

@@ -53,6 +53,15 @@ const compressBase64Url = (dataUrl: string, maxDim = 550, quality = 0.55): Promi
   });
 };
 
+// Input Sanitization helper to strip executable HTML/script tags (preventing basic XSS attacks)
+export const sanitizeInput = (input: string): string => {
+  if (!input) return "";
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<[^>]*>/g, "")
+    .trim();
+};
+
 // Helper function to compress images using Canvas
 const compressImageFile = (file: File, maxDim = 600, quality = 0.60): Promise<string> => {
   return new Promise((resolve) => {
@@ -1873,8 +1882,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const handlePublishListing = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Phase 3 Action Protection: Check authentication state before posting
     if (!currentUser || currentUser.isAnonymous) {
-      setShowLoginRequiredModal(true);
+      showToast("Authentication required. Please sign in to list your vehicle.", "error");
+      if (onSignInClick) {
+        onSignInClick();
+      } else {
+        setShowLoginRequiredModal(true);
+      }
       return;
     }
 
@@ -1888,29 +1903,36 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       return;
     }
 
-    const finalSellerName = sellerName.trim() || currentUser.displayName || currentUser.email?.split("@")[0] || "Vehicle Owner";
-    const finalSellerEmail = sellerEmail.trim() || currentUser.email || "seller@autoworld.com";
-    const finalSellerPhone = sellerPhone.trim() || "+91 98765 43210";
-    const finalLocationStr = locationStr.trim() || "Mumbai, India";
+    // Input Sanitization (stripping XSS scripts/HTML)
+    const sanitizedSellerName = sanitizeInput(sellerName.trim()) || currentUser.displayName || currentUser.email?.split("@")[0] || "Vehicle Owner";
+    const sanitizedSellerEmail = sanitizeInput(sellerEmail.trim()) || currentUser.email || "seller@autoworld.com";
+    const sanitizedSellerPhone = sanitizeInput(sellerPhone.trim()) || "+91 98765 43210";
+    const sanitizedLocationStr = sanitizeInput(locationStr.trim()) || "Mumbai, India";
+    const sanitizedDescription = sanitizeInput(description.trim()) || "Well maintained vehicle in good operational condition.";
 
     setIsPublishing(true);
 
     try {
-      const actualMake = make === "Other" ? (customMake || "Custom Make") : (make || "Standard Make");
-      const actualModel = model === "Other" ? (customModel || "Custom Model") : (model || "Standard Model");
+      const rawMake = make === "Other" ? (customMake || "Custom Make") : (make || "Standard Make");
+      const rawModel = model === "Other" ? (customModel || "Custom Model") : (model || "Standard Model");
+      const actualMake = sanitizeInput(rawMake);
+      const actualModel = sanitizeInput(rawModel);
       const actualYear = year || new Date().getFullYear().toString();
       const generatedId = `AW-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+      const rawTitle = `${actualYear} ${actualMake} ${actualModel}`;
+      const sanitizedTitle = sanitizeInput(rawTitle);
+
       const fallbackPhotos = photos.length > 0
         ? photos
-        : [{ src: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800", alt: `${actualYear} ${actualMake} ${actualModel}` }];
+        : [{ src: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800", alt: sanitizedTitle }];
 
       // Compress photos so total payload is well below Firestore's 1MB limit
       const preparedPhotos = await preparePhotosForFirestore(fallbackPhotos);
 
       const newListing: UserListing = {
         id: generatedId,
-        title: `${actualYear} ${actualMake} ${actualModel}`,
+        title: sanitizedTitle,
         type: vehicleType || "car",
         make: actualMake,
         model: actualModel,
@@ -1919,29 +1941,29 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         condition: condition || 4,
         mileage: vehicleType === "bicycle" ? "0" : (mileage || "0"),
         fuelType: vehicleType === "bicycle" ? "Pedal / Human Powered" : (fuelType || "Petrol"),
-        description: description || "Well maintained vehicle in good operational condition.",
+        description: sanitizedDescription,
         negotiable: negotiable || "yes",
-        sellerName: finalSellerName,
-        sellerEmail: finalSellerEmail,
-        sellerPhone: finalSellerPhone,
-        location: finalLocationStr,
-        features: checkedFeatures.length > 0 ? checkedFeatures : defaultFeatures.slice(0, 3),
+        sellerName: sanitizedSellerName,
+        sellerEmail: sanitizedSellerEmail,
+        sellerPhone: sanitizedSellerPhone,
+        location: sanitizedLocationStr,
+        features: checkedFeatures.length > 0 ? checkedFeatures.map(f => sanitizeInput(f)) : defaultFeatures.slice(0, 3),
         transmission: vehicleType === "bicycle" ? (gears ? `${gears} Gears` : "Pedal Drive") : (transmission || "Manual"),
         engineSize: vehicleType === "bicycle" ? "" : (fuelType === "electric" ? `${batteryCapacity || "EV"} kWh` : (engineSize || "")),
         doors: ["car", "suv", "truck", "van", "commercial"].includes(vehicleType) ? (doors || "4") : "",
         seats: ["car", "suv", "truck", "van", "commercial"].includes(vehicleType) ? (seats || "5") : "",
-        bikeType: bikeType || "",
-        bikeEngine: bikeEngine || "",
-        bikeMileage: bikeMileage || "",
-        bikeGears: bikeGears || "",
-        bicycleType: bicycleType || "",
-        frameSize: frameSize || "",
-        gears: gears || "",
-        brakeType: brakeType || "",
-        frameMaterial: frameMaterial || "",
-        batteryCapacity: batteryCapacity || "",
-        electricRange: electricRange || "",
-        driveType: driveType || "",
+        bikeType: sanitizeInput(bikeType || ""),
+        bikeEngine: sanitizeInput(bikeEngine || ""),
+        bikeMileage: sanitizeInput(bikeMileage || ""),
+        bikeGears: sanitizeInput(bikeGears || ""),
+        bicycleType: sanitizeInput(bicycleType || ""),
+        frameSize: sanitizeInput(frameSize || ""),
+        gears: sanitizeInput(gears || ""),
+        brakeType: sanitizeInput(brakeType || ""),
+        frameMaterial: sanitizeInput(frameMaterial || ""),
+        batteryCapacity: sanitizeInput(batteryCapacity || ""),
+        electricRange: sanitizeInput(electricRange || ""),
+        driveType: sanitizeInput(driveType || ""),
         featured: featuredListing,
         urgent: urgentListing,
         photos: preparedPhotos,

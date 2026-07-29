@@ -84,11 +84,13 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
 
     setIsSending(true);
     
+    const sanitize = (val: string) => val ? val.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<[^>]*>/g, "").trim() : "";
+
     const compiledMsg: Message = {
-      name: fullName,
-      email: emailAddress,
-      subject: subject,
-      message: msgBody,
+      name: sanitize(fullName),
+      email: sanitize(emailAddress),
+      subject: sanitize(subject),
+      message: sanitize(msgBody),
       date: new Date().toISOString()
     };
 
