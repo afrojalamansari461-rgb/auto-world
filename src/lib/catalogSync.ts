@@ -167,7 +167,12 @@ export function subscribeToRealtimeCatalog(
           removedDefaultIds: Array.isArray(data.removedDefaultIds) ? data.removedDefaultIds : [],
           defaultBadges: data.defaultBadges && typeof data.defaultBadges === "object" ? data.defaultBadges : {},
           homeFeaturedIds: Array.isArray(data.homeFeaturedIds) ? data.homeFeaturedIds : [],
-          isFreePassEnabled: Boolean(data.isFreePassEnabled)
+          isFreePassEnabled: data.isFreePassEnabled !== undefined ? Boolean(data.isFreePassEnabled) : true,
+          isSecureShieldEnabled: data.isSecureShieldEnabled !== undefined ? Boolean(data.isSecureShieldEnabled) : true,
+          isEmiCalculatorEnabled: data.isEmiCalculatorEnabled !== undefined ? Boolean(data.isEmiCalculatorEnabled) : true,
+          isWhatsAppConnectEnabled: data.isWhatsAppConnectEnabled !== undefined ? Boolean(data.isWhatsAppConnectEnabled) : true,
+          isAiAssistantEnabled: data.isAiAssistantEnabled !== undefined ? Boolean(data.isAiAssistantEnabled) : true,
+          isSimranFreeModeEnabled: data.isSimranFreeModeEnabled !== undefined ? Boolean(data.isSimranFreeModeEnabled) : false
         };
       }
       emit();

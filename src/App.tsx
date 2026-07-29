@@ -61,6 +61,12 @@ const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => 
   }
 };
 
+const tabViewVariants = {
+  initial: { opacity: 0, x: 16, filter: "blur(4px)" },
+  animate: { opacity: 1, x: 0, filter: "blur(0px)" },
+  exit: { opacity: 0, x: -16, filter: "blur(4px)" },
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("home");
   const [favorites, setFavorites] = useState<number[]>([]);
@@ -935,6 +941,19 @@ export default function App() {
     }
   };
 
+  const handleRequestCallback = () => {
+    const seller = {
+      phoneNumber: modalSellerInfo?.phone || selectedVehicle?.sellerPhone || '+919920155667',
+      name: modalSellerInfo?.name || selectedVehicle?.sellerName || 'Amitabh',
+    };
+    const phoneNumber = seller?.phoneNumber || '+919920155667';
+    const sellerName = seller?.name || 'Amitabh';
+    const message = `Hi ${sellerName}, I am interested in a luxury import from Auto World and would like to request a callback.`;
+    const encodedMessage = encodeURIComponent(message);
+    
+    window.location.href = `sms:${phoneNumber}?body=${encodedMessage}`;
+  };
+
   const handleToggleHotInModal = async () => {
     if (!selectedVehicle) return;
     if (selectedVehicle.isUserListing && selectedVehicle.listingId) {
@@ -1176,14 +1195,15 @@ export default function App() {
       )}
 
       {/* Primary tab views switcher */}
-      <main className="flex-grow overflow-hidden">
+      <main className="flex-grow overflow-hidden pb-16 lg:pb-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, x: 24, filter: "blur(4px)" }}
-            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, x: -24, filter: "blur(4px)" }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            variants={tabViewVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           >
             {activeTab === "home" && (
               <HomeTab
@@ -2208,9 +2228,7 @@ export default function App() {
                     Share Listing
                   </button>
                   <button
-                    onClick={() => {
-                      showToast(`Inflow dispatch formulated for: ${selectedVehicle.title}. Auto World dialer rep will contact you shortly.`, "success");
-                    }}
+                    onClick={handleRequestCallback}
                     className="flex-1 py-3.5 bg-stone-900 border border-stone-900 hover:bg-stone-850 text-white text-[10px] uppercase font-bold tracking-widest transition cursor-pointer"
                   >
                     Request Callback
@@ -2743,9 +2761,7 @@ export default function App() {
                   Share Listing
                 </button>
                 <button
-                  onClick={() => {
-                    showToast(`Inflow dispatch formulated for: ${selectedVehicle.title}. Auto World dialer rep will contact you shortly.`, "success");
-                  }}
+                  onClick={handleRequestCallback}
                   className="flex-1 py-3.5 bg-stone-900 border border-stone-900 hover:bg-stone-850 text-white text-xs uppercase font-bold tracking-widest transition cursor-pointer"
                 >
                   Request Callback

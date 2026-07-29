@@ -321,14 +321,6 @@ function SearchableMakeSelect({
   const handleSelectMake = (selectedMake: string) => {
     setMake(selectedMake);
     setModel(""); // Automatically reset model state when Make changes
-    if (selectedMake && selectedMake !== "Other") {
-      const inferredCat = Object.keys(VEHICLE_MAKES).find(cat =>
-        VEHICLE_MAKES[cat].some(b => b.toLowerCase() === selectedMake.toLowerCase())
-      );
-      if (inferredCat) {
-        setVehicleType(inferredCat);
-      }
-    }
     setIsOpen(false);
     setSearchTerm("");
   };
@@ -1251,6 +1243,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [year, setYear] = useState("");
   const [customMake, setCustomMake] = useState("");
   const [customModel, setCustomModel] = useState("");
+  const [availabilityError, setAvailabilityError] = useState(false);
 
   // ----------------------------------------------------
   // NHTSA vPIC API States & Cascading Fetching Logic
@@ -1365,6 +1358,32 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       isMounted = false;
     };
   }, [make, year]);
+
+  /**
+   * Effect 3: Validate availability of selected vehicle combination (Year + Make/Brand + Vehicle Type).
+   * Sets availabilityError to true if the selected combination yields zero results or is invalid.
+   */
+  useEffect(() => {
+    if (!vehicleType || !make || !year || make === "Other") {
+      setAvailabilityError(false);
+      return;
+    }
+
+    const allowedMakes = VEHICLE_MAKES[vehicleType];
+    const isMakeSupportedInType = allowedMakes
+      ? allowedMakes.some((m) => m.toLowerCase() === make.toLowerCase())
+      : true;
+
+    const hasNhtsaModels = nhtsaModels.length > 0;
+    const hasLocalModels = Boolean(VEHICLE_MODELS[make] && VEHICLE_MODELS[make].length > 0);
+
+    // If make is incompatible with chosen category OR no models exist for this combo
+    if ((allowedMakes && !isMakeSupportedInType) || (!isLoadingModels && !hasNhtsaModels && !hasLocalModels)) {
+      setAvailabilityError(true);
+    } else {
+      setAvailabilityError(false);
+    }
+  }, [vehicleType, make, year, nhtsaModels, isLoadingModels]);
 
   // STEP 2: Details
   const [condition, setCondition] = useState(3); // 1-5 rating
@@ -1816,6 +1835,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
   const handleNextStep = () => {
     if (currentStep === 1) {
+      if (availabilityError) {
+        showToast("Sorry, this specific vehicle combination is not currently available in our system.", "error");
+        return;
+      }
       if (!vehicleType) {
         showToast("Please select the vehicle category type.", "error");
         return;
@@ -3026,6 +3049,18 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               )}
             </div>
           </div>
+
+          {/* Availability Error Alert Message */}
+          {availabilityError && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-md text-xs font-semibold flex items-center gap-2.5 shadow-sm"
+            >
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>Sorry, this specific vehicle combination is not currently available in our system.</span>
+            </motion.div>
+          )}
 
           <div className="flex justify-end pt-5 border-t border-stone-200">
             <button

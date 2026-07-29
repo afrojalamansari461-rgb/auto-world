@@ -6,7 +6,7 @@ import {
   Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown,
   Sliders, Shield, Calculator
 } from "lucide-react";
-import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalogSync";
@@ -532,104 +532,114 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
   useEffect(() => {
     loadData();
+
+    // 1. Real-time subscriber for listings
+    const unsubListings = onSnapshot(collection(db, "listings"), (snapshot) => {
+      const items: UserListing[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push({ ...docSnap.data() as UserListing, id: docSnap.id });
+      });
+      setListings(items);
+    }, (err) => console.warn("Admin listings listener warning:", err));
+
+    // 2. Real-time subscriber for messages
+    const unsubMessages = onSnapshot(collection(db, "messages"), (snapshot) => {
+      const msgs: FirestoreMessage[] = [];
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        msgs.push({
+          id: docSnap.id,
+          name: d.name || "Anonymous",
+          email: d.email || "",
+          subject: d.subject || "No Subject",
+          message: d.message || "",
+          date: d.date || new Date().toISOString()
+        });
+      });
+      msgs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setMessages(msgs);
+    }, (err) => console.warn("Admin messages listener warning:", err));
+
+    // 3. Real-time subscriber for buyer_passes
+    const unsubPasses = onSnapshot(collection(db, "buyer_passes"), (snapshot) => {
+      const pList: FirestoreBuyerPass[] = [];
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        pList.push({
+          id: docSnap.id,
+          userId: d.userId || docSnap.id,
+          paid: d.paid || false,
+          date: d.date || ""
+        });
+      });
+      setPasses(pList);
+    }, (err) => console.warn("Admin passes listener warning:", err));
+
+    // 4. Real-time subscriber for feedbacks
+    const unsubFeedbacks = onSnapshot(collection(db, "feedbacks"), (snapshot) => {
+      const fList: FirestoreFeedback[] = [];
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        fList.push({
+          id: docSnap.id,
+          text: d.text || "",
+          category: d.category || "suggestion",
+          name: d.name || "",
+          email: d.email || "",
+          timestamp: d.timestamp || new Date().toISOString(),
+          status: d.status || "active"
+        });
+      });
+      fList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setFeedbacks(fList);
+    }, (err) => console.warn("Admin feedbacks listener warning:", err));
+
+    // 5. Real-time subscriber for admin_settings/catalog
+    const unsubAdminDoc = onSnapshot(doc(db, "admin_settings", "catalog"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.hiddenDefaultIds) setHiddenDefaultIds(data.hiddenDefaultIds);
+        if (data.removedDefaultIds) setRemovedDefaultIds(data.removedDefaultIds);
+        if (data.defaultBadges) setDefaultBadges(data.defaultBadges);
+        if (data.homeFeaturedIds) setHomeFeaturedIds(data.homeFeaturedIds);
+        if (data.isFreePassEnabled !== undefined) setIsFreePassEnabled(Boolean(data.isFreePassEnabled));
+        if (data.isSecureShieldEnabled !== undefined) setIsSecureShieldEnabled(Boolean(data.isSecureShieldEnabled));
+        if (data.isEmiCalculatorEnabled !== undefined) setIsEmiCalculatorEnabled(Boolean(data.isEmiCalculatorEnabled));
+        if (data.isWhatsAppConnectEnabled !== undefined) setIsWhatsAppConnectEnabled(Boolean(data.isWhatsAppConnectEnabled));
+        if (data.isAiAssistantEnabled !== undefined) setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
+        if (data.isSimranFreeModeEnabled !== undefined) setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
+      }
+    }, (err) => console.warn("Admin settings doc listener warning:", err));
     
-    // Load hidden default IDs on mount
+    // Load local storage fallbacks
     try {
       const stored = localStorage.getItem("autoWorld_hidden_defaults");
-      if (stored) {
-        setHiddenDefaultIds(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    // Load removed default IDs on mount
-    try {
+      if (stored) setHiddenDefaultIds(JSON.parse(stored));
       const removedStr = localStorage.getItem("autoWorld_removed_defaults");
-      if (removedStr) {
-        setRemovedDefaultIds(JSON.parse(removedStr));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    // Load default badges on mount
-    try {
+      if (removedStr) setRemovedDefaultIds(JSON.parse(removedStr));
       const badgesStr = localStorage.getItem("autoWorld_default_badges");
-      if (badgesStr) {
-        setDefaultBadges(JSON.parse(badgesStr));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    // Load home page featured IDs on mount
-    try {
+      if (badgesStr) setDefaultBadges(JSON.parse(badgesStr));
       const storedHome = localStorage.getItem("autoWorld_home_featured_ids");
-      if (storedHome) {
-        setHomeFeaturedIds(JSON.parse(storedHome));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    // Load isFreePass status on mount
-    try {
+      if (storedHome) setHomeFeaturedIds(JSON.parse(storedHome));
       const isFreeStr = localStorage.getItem("autoWorld_is_free_pass");
-      if (isFreeStr !== null) {
-        setIsFreePassEnabled(JSON.parse(isFreeStr));
-      }
+      if (isFreeStr !== null) setIsFreePassEnabled(JSON.parse(isFreeStr));
     } catch (e) {
       console.error(e);
     }
 
     const handleUpdate = () => {
       loadData();
-      try {
-        const isFreeStr = localStorage.getItem("autoWorld_is_free_pass");
-        if (isFreeStr !== null) {
-          setIsFreePassEnabled(JSON.parse(isFreeStr));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      try {
-        const stored = localStorage.getItem("autoWorld_hidden_defaults");
-        if (stored) {
-          setHiddenDefaultIds(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      try {
-        const removedStr = localStorage.getItem("autoWorld_removed_defaults");
-        if (removedStr) {
-          setRemovedDefaultIds(JSON.parse(removedStr));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      try {
-        const badgesStr = localStorage.getItem("autoWorld_default_badges");
-        if (badgesStr) {
-          setDefaultBadges(JSON.parse(badgesStr));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      try {
-        const storedHome = localStorage.getItem("autoWorld_home_featured_ids");
-        if (storedHome) {
-          setHomeFeaturedIds(JSON.parse(storedHome));
-        } else {
-          setHomeFeaturedIds([]);
-        }
-      } catch (e) {
-        console.error(e);
-      }
     };
     window.addEventListener("autoWorld_db_update", handleUpdate);
-    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
+
+    return () => {
+      unsubListings();
+      unsubMessages();
+      unsubPasses();
+      unsubFeedbacks();
+      unsubAdminDoc();
+      window.removeEventListener("autoWorld_db_update", handleUpdate);
+    };
   }, []);
 
   // Delete User Listing from Firestore with premium HUD Custom Confirm Dialog
