@@ -15,6 +15,7 @@ import AdminPanel from "./components/AdminPanel";
 import FavoritesTab from "./components/FavoritesTab";
 import SignInModal from "./components/SignInModal";
 import FeedbackWidget from "./components/FeedbackWidget";
+import { SecureShieldCard } from "./components/SecureShieldCard";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
@@ -87,6 +88,14 @@ export default function App() {
   const [editPhotos, setEditPhotos] = useState<{ src: string; alt: string }[]>([]);
   const [hasPaidPass, setHasPaidPass] = useState<boolean>(false);
   const [showAdminGrandEntry, setShowAdminGrandEntry] = useState<boolean>(false);
+  const [isSecureShieldEnabled, setIsSecureShieldEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_secure_shield");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
 
   // Custom Confirmation Modal state for vehicle actions & modal operations
   const [confirmModal, setConfirmModal] = useState<{
@@ -480,10 +489,22 @@ export default function App() {
       if (adminSettings.isFreePassEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(adminSettings.isFreePassEnabled));
       }
+      if (adminSettings.isSecureShieldEnabled !== undefined) {
+        setIsSecureShieldEnabled(adminSettings.isSecureShieldEnabled);
+        localStorage.setItem("autoWorld_is_secure_shield", JSON.stringify(adminSettings.isSecureShieldEnabled));
+      }
       recheckPass();
     });
 
     const handleGlobalUpdate = () => {
+      try {
+        const storedShield = localStorage.getItem("autoWorld_is_secure_shield");
+        if (storedShield !== null) {
+          setIsSecureShieldEnabled(JSON.parse(storedShield));
+        }
+      } catch (e) {
+        console.warn("Global update error for secure shield", e);
+      }
       recheckPass();
     };
     window.addEventListener("autoWorld_db_update", handleGlobalUpdate);
@@ -2002,29 +2023,19 @@ export default function App() {
                 )}
 
                 {/* Auto World Verified Shield Section */}
-                <div className="p-4 bg-amber-50/45 border-2 border-dashed border-amber-500/40 font-sans space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4.5 h-4.5 text-amber-650 fill-amber-100 shrink-0" />
-                    <div>
-                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest leading-none">Auto World Secure Shield</h4>
-                      <span className="text-[9px] text-amber-800 block font-bold uppercase tracking-widest mt-1">150-Point Certificate Inspection & RC Transfer Guarantee</span>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-stone-600 leading-relaxed font-semibold">
-                    Protect your purchase! For a professional inspection booking fee of <strong className="text-stone-900 font-extrabold">₹1,999</strong>, our certified technician will physically verify this vehicle and secure all ownership paperwork transfers.
-                  </p>
-                  <button
-                    onClick={() => {
+                {isSecureShieldEnabled && (
+                  <SecureShieldCard
+                    vehicleTitle={selectedVehicle.title}
+                    vehicleId={selectedVehicle.id}
+                    sellerPhone={modalSellerInfo?.phone}
+                    isEnabled={isSecureShieldEnabled}
+                    onBookShield={(id, title) => {
                       const phone = modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556';
-                      triggerSmsLeadAlert(phone, selectedVehicle.title, selectedVehicle.id, "inspection");
-                      showToast("Secured Shield booking request logged! An inspector will be assigned to AW-" + selectedVehicle.id + " upon seller feedback.", "success");
+                      triggerSmsLeadAlert(phone, title || selectedVehicle.title, id || selectedVehicle.id, "inspection");
+                      showToast("Secured Shield booking request logged (₹199)! An inspector will be assigned to AW-" + selectedVehicle.id + " upon seller feedback.", "success");
                     }}
-                    className="w-full py-2 bg-stone-950 hover:bg-stone-850 text-[#FAF8F5] text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950"
-                  >
-                    <Award className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0 animate-pulse" />
-                    Secure Inspection Shield (₹1,999)
-                  </button>
-                </div>
+                  />
+                )}
 
                 {/* Seller direct contact info module */}
                 {hasPaidPass ? (
@@ -2556,29 +2567,19 @@ export default function App() {
               </div>
 
               {/* Shield Section */}
-              <div className="p-5 bg-amber-50/60 border-2 border-dashed border-amber-500/60 font-sans space-y-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-amber-600 fill-amber-100 shrink-0" />
-                  <div>
-                    <h4 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Auto World Secure Shield Guarantee</h4>
-                    <span className="text-[10px] text-amber-800 block font-bold uppercase tracking-widest mt-1">150-Point Physical Verification & Registration Paperwork Security</span>
-                  </div>
-                </div>
-                <p className="text-xs text-stone-700 leading-relaxed">
-                  Need zero risk? For a fee of <strong className="text-stone-900 font-black">₹1,999</strong>, an Auto World master technician will perform a live on-site physical check, document testing, and manage title transfer escrow.
-                </p>
-                <button
-                  onClick={() => {
+              {isSecureShieldEnabled && (
+                <SecureShieldCard
+                  vehicleTitle={selectedVehicle.title}
+                  vehicleId={selectedVehicle.id}
+                  sellerPhone={modalSellerInfo?.phone}
+                  isEnabled={isSecureShieldEnabled}
+                  onBookShield={(id, title) => {
                     const phone = modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556';
-                    triggerSmsLeadAlert(phone, selectedVehicle.title, selectedVehicle.id, "inspection");
-                    showToast("Secured Shield booking request logged! An inspector will be assigned to AW-" + selectedVehicle.id + " upon seller feedback.", "success");
+                    triggerSmsLeadAlert(phone, title || selectedVehicle.title, id || selectedVehicle.id, "inspection");
+                    showToast("Secured Shield booking request logged (₹199)! An inspector will be assigned to AW-" + selectedVehicle.id + " upon seller feedback.", "success");
                   }}
-                  className="w-full py-3 bg-stone-950 hover:bg-stone-850 text-[#FAF8F5] text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer border border-stone-950 shadow-sm"
-                >
-                  <Award className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0 animate-pulse" />
-                  Dispatch Inspection Shield Technician (₹1,999)
-                </button>
-              </div>
+                />
+              )}
 
               {/* Seller profile or unlocked contacts */}
               {hasPaidPass ? (

@@ -582,6 +582,332 @@ function SearchableMakeSelect({
   );
 }
 
+// ==========================================
+// Searchable Model Select Component
+// Enables real-time search & filter across NHTSA & fallback vehicle models
+// ==========================================
+interface SearchableModelSelectProps {
+  year: string;
+  make: string;
+  model: string;
+  setModel: (model: string) => void;
+  customModel: string;
+  setCustomModel: (val: string) => void;
+  nhtsaModels: string[];
+  isLoadingModels: boolean;
+  VEHICLE_MODELS: Record<string, string[]>;
+}
+
+function SearchableModelSelect({
+  year,
+  make,
+  model,
+  setModel,
+  customModel,
+  setCustomModel,
+  nhtsaModels,
+  isLoadingModels,
+  VEHICLE_MODELS,
+}: SearchableModelSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dropUp, setDropUp] = useState(false);
+  const [maxListHeight, setMaxListHeight] = useState(220);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const isDisabled = !year || !make || isLoadingModels;
+
+  // Calculate position and max height when opening or window resizes/scrolls
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const calculatePosition = () => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+          setDropUp(true);
+          setMaxListHeight(Math.min(260, Math.max(120, spaceAbove - 20)));
+        } else {
+          setDropUp(false);
+          setMaxListHeight(Math.min(260, Math.max(120, spaceBelow - 20)));
+        }
+      };
+
+      calculatePosition();
+      window.addEventListener("resize", calculatePosition);
+      window.addEventListener("scroll", calculatePosition, true);
+      return () => {
+        window.removeEventListener("resize", calculatePosition);
+        window.removeEventListener("scroll", calculatePosition, true);
+      };
+    }
+  }, [isOpen]);
+
+  // Auto-close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectModel = (selectedModel: string) => {
+    setModel(selectedModel);
+    if (selectedModel !== "Other") {
+      setCustomModel("");
+    }
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  // Derive model list
+  let rawModels: string[] = [];
+  if (nhtsaModels.length > 0) {
+    rawModels = nhtsaModels;
+  } else if (make && make !== "Other") {
+    rawModels = VEHICLE_MODELS[make] || Object.values(VEHICLE_MODELS).flat();
+  }
+
+  // Deduplicate models
+  const uniqueModels = Array.from(new Set(rawModels)).sort((a, b) => a.localeCompare(b));
+
+  const cleanQuery = searchTerm.trim().toLowerCase();
+  const filteredModels = uniqueModels.filter((mod) =>
+    mod.toLowerCase().includes(cleanQuery)
+  );
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      {/* Trigger Button displaying current selected Model or search prompt */}
+      <button
+        type="button"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label="Select Vehicle Model"
+        disabled={isDisabled}
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+            e.preventDefault();
+            if (!isDisabled) setIsOpen(true);
+          } else if (e.key === "Escape") {
+            setIsOpen(false);
+          }
+        }}
+        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none transition text-left disabled:opacity-50 disabled:bg-stone-200 disabled:cursor-not-allowed disabled:hover:border-stone-300"
+      >
+        <div className="flex items-center gap-2 overflow-hidden">
+          {isDisabled && (!year || !make) ? (
+            <Lock className="w-4 h-4 text-stone-400 shrink-0" aria-hidden="true" />
+          ) : (
+            <Car className="w-4 h-4 text-stone-500 shrink-0" aria-hidden="true" />
+          )}
+          {model ? (
+            <span className="font-bold text-stone-900 truncate">
+              {model === "Other" ? (customModel ? `Other: ${customModel}` : "Other / Custom Model") : model}
+            </span>
+          ) : (
+            <span className="text-stone-500 font-normal truncate">
+              {!year || !make
+                ? "Select Year and Make first to enable model search"
+                : isLoadingModels
+                ? `Loading models for ${make} (${year})...`
+                : uniqueModels.length > 0
+                ? `Select or Search Model (${uniqueModels.length} models for ${make})...`
+                : `Select or Search Model for ${make}...`}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {model && !isDisabled && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Clear selected model"
+              onClick={(e) => {
+                e.stopPropagation();
+                setModel("");
+                setCustomModel("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  setModel("");
+                  setCustomModel("");
+                }
+              }}
+              className="p-0.5 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition"
+              title="Clear selection"
+            >
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+            </span>
+          )}
+          {isOpen ? <ChevronUp className="w-4 h-4 text-stone-600" aria-hidden="true" /> : <ChevronDown className="w-4 h-4 text-stone-600" aria-hidden="true" />}
+        </div>
+      </button>
+
+      {/* Popover Dropdown with Real-Time Search */}
+      <AnimatePresence>
+        {isOpen && !isDisabled && (
+          <motion.div
+            initial={{ opacity: 0, y: dropUp ? 4 : -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: dropUp ? 4 : -4 }}
+            transition={{ duration: 0.15 }}
+            className={`absolute left-0 right-0 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden ${
+              dropUp ? "bottom-full mb-1" : "top-full mt-1"
+            }`}
+          >
+            {/* Live Search Input Field */}
+            <div className="p-2.5 bg-stone-100 border-b border-stone-200 relative">
+              <div className="relative flex items-center">
+                <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 pointer-events-none" aria-hidden="true" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setIsOpen(false);
+                    }
+                  }}
+                  placeholder={`Search ${make} models (e.g. Civic, M3, Mustang, 911)...`}
+                  aria-label="Filter vehicle model list"
+                  className="w-full pl-8 pr-7 py-2 bg-white border border-stone-300 text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
+                  autoFocus
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    aria-label="Clear search input"
+                    className="absolute right-2 text-stone-400 hover:text-stone-700 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+              <div className="flex justify-between items-center mt-1.5 px-0.5 text-[9.5px] font-mono text-stone-500" aria-live="polite">
+                <span>
+                  {isLoadingModels
+                    ? "Fetching from NHTSA API..."
+                    : `${filteredModels.length} models found for ${make} ${year ? `(${year})` : ""}`}
+                </span>
+                <span>Type to filter</span>
+              </div>
+            </div>
+
+            {/* Scrollable Results List */}
+            <div
+              role="listbox"
+              aria-label="Vehicle models"
+              style={{ maxHeight: `${maxListHeight}px` }}
+              className="overflow-y-auto divide-y divide-stone-100 font-sans text-xs"
+            >
+              {/* Models List */}
+              {filteredModels.length > 0 && (
+                <div>
+                  <div className="bg-stone-100 px-3 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-stone-700 sticky top-0 z-10 border-b border-stone-200">
+                    {nhtsaModels.length > 0
+                      ? `NHTSA Models (${filteredModels.length})`
+                      : `Suggested Models (${filteredModels.length})`}
+                  </div>
+                  {filteredModels.map((mod) => {
+                    const isSelected = model === mod;
+                    return (
+                      <div
+                        key={`model-${mod}`}
+                        role="option"
+                        tabIndex={0}
+                        aria-selected={isSelected}
+                        onClick={() => handleSelectModel(mod)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSelectModel(mod);
+                          }
+                        }}
+                        className={`px-3.5 py-2 cursor-pointer flex items-center justify-between transition ${
+                          isSelected
+                            ? "bg-stone-900 font-bold text-white"
+                            : "hover:bg-stone-100 text-stone-800 focus:bg-stone-100 focus:outline-none"
+                        }`}
+                      >
+                        <span>{mod}</span>
+                        {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Custom / Other Model Option */}
+              <div>
+                <div
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={model === "Other"}
+                  onClick={() => handleSelectModel("Other")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectModel("Other");
+                    }
+                  }}
+                  className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between bg-stone-50 hover:bg-stone-100 text-stone-900 font-bold transition border-t border-stone-200 focus:bg-stone-100 focus:outline-none ${
+                    model === "Other" ? "bg-stone-900 text-white" : ""
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    {searchTerm ? `Use custom model: "${searchTerm}"` : "Other / Custom Model"}
+                  </span>
+                  {model === "Other" && <Check className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />}
+                </div>
+              </div>
+
+              {/* No match message */}
+              {filteredModels.length === 0 && (
+                <div className="p-4 text-center text-stone-500 space-y-2">
+                  <p className="text-xs">No models found matching &ldquo;<strong>{searchTerm}</strong>&rdquo; for {make}.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomModel(searchTerm);
+                      handleSelectModel("Other");
+                    }}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold uppercase tracking-wider border border-amber-600 transition"
+                  >
+                    Add &ldquo;{searchTerm}&rdquo; as Custom Model
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Input for Custom Model if "Other" is selected */}
+      {(model === "Other" || make === "Other") && (
+        <input
+          type="text"
+          placeholder="Enter custom vehicle model name (e.g. Model S, Supra, GT3 RS)"
+          value={customModel}
+          onChange={(e) => setCustomModel(e.target.value)}
+          className="w-full mt-2 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 shadow-2xs"
+        />
+      )}
+    </div>
+  );
+}
+
 export default function SellTab({ setActiveTab, subscriptionActive, showToast, currentUser, onSignInClick }: SellTabProps) {
   const isAdmin = Boolean(currentUser?.email && (
     currentUser.email.toLowerCase() === "afrojalamansari461@gmail.com" ||
@@ -2648,7 +2974,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               />
             </div>
 
-            {/* 3. Vehicle Model Dropdown (DISABLED until both Year & Make are selected) */}
+            {/* 3. Vehicle Model (Searchable Combobox with NHTSA & Fallbacks) */}
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-[#555555] uppercase tracking-widest block flex justify-between items-center">
                 <span>3. Vehicle Model <span className="text-stone-400 font-light">(required)</span></span>
@@ -2659,46 +2985,17 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 )}
               </label>
 
-              <select
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                disabled={!year || !make || isLoadingModels}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 disabled:opacity-50 disabled:bg-stone-200 disabled:cursor-not-allowed"
-              >
-                {!year || !make ? (
-                  <option value="">Select Year and Make first to enable models</option>
-                ) : isLoadingModels ? (
-                  <option value="">Loading models for {make} ({year}) from NHTSA vPIC API...</option>
-                ) : (
-                  <option value="">
-                    {nhtsaModels.length > 0
-                      ? `Select Model (${nhtsaModels.length} models found for ${make} ${year})`
-                      : `Select Model for ${make} (${year})`}
-                  </option>
-                )}
-
-                {/* NHTSA Models fetched for selected Year + Make */}
-                {nhtsaModels.map((mod) => (
-                  <option key={mod} value={mod}>{mod}</option>
-                ))}
-
-                {/* Static local fallback models if NHTSA returns empty */}
-                {nhtsaModels.length === 0 && !isLoadingModels && make && make !== "Other" && (VEHICLE_MODELS[make] || Object.values(VEHICLE_MODELS).flat()).map((mod) => (
-                  <option key={`fallback-${mod}`} value={mod}>{mod}</option>
-                ))}
-
-                {make && <option value="Other">Other / Custom Model</option>}
-              </select>
-
-              {(model === "Other" || make === "Other") && (
-                <input
-                  type="text"
-                  placeholder="Enter model name (e.g. Model S, Supra, GT3 RS)"
-                  value={customModel}
-                  onChange={(e) => setCustomModel(e.target.value)}
-                  className="w-full mt-1.5 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900"
-                />
-              )}
+              <SearchableModelSelect
+                year={year}
+                make={make}
+                model={model}
+                setModel={setModel}
+                customModel={customModel}
+                setCustomModel={setCustomModel}
+                nhtsaModels={nhtsaModels}
+                isLoadingModels={isLoadingModels}
+                VEHICLE_MODELS={VEHICLE_MODELS}
+              />
 
               {(!year || !make) && (
                 <p className="text-[9px] text-stone-500 font-medium italic mt-1 uppercase">

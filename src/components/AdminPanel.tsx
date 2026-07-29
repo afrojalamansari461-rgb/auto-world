@@ -3,7 +3,8 @@ import {
   ShieldAlert, Database, Trash2, Mail, Phone, Calendar, Heart, 
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
-  Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown
+  Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown,
+  Sliders, Shield, Calculator
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
@@ -120,6 +121,43 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   });
 
+  // Additional Functional Feature Toggles
+  const [isSecureShieldEnabled, setIsSecureShieldEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_secure_shield");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [isEmiCalculatorEnabled, setIsEmiCalculatorEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_emi_calculator");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [isWhatsAppConnectEnabled, setIsWhatsAppConnectEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_whatsapp_connect");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [isAiAssistantEnabled, setIsAiAssistantEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_ai_assistant");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
   const handleToggleFreePass = async () => {
     const nextVal = !isFreePassEnabled;
     setIsFreePassEnabled(nextVal);
@@ -145,6 +183,37 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       nextVal
         ? "Buy Pass Free Mode ENABLED — All buyers get free access!"
         : "Buy Pass Free Mode DISABLED — Standard ₹1 pass required.",
+      nextVal ? "success" : "info"
+    );
+  };
+
+  const handleToggleFeature = async (
+    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled",
+    currentVal: boolean,
+    setter: React.Dispatch<React.SetStateAction<boolean>>,
+    label: string,
+    storageKey: string
+  ) => {
+    const nextVal = !currentVal;
+    setter(nextVal);
+    playSynthBeep(nextVal ? 900 : 400, 0.15, "square");
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(nextVal));
+    } catch (e) {
+      console.warn(`Error setting localStorage for ${storageKey}:`, e);
+    }
+
+    await saveAdminSettingsToFirestore({ [key]: nextVal });
+
+    triggerHudAlert(
+      `${label.toUpperCase()} ${nextVal ? "ENABLED" : "DISABLED"}`,
+      `${label} feature toggle is now ${nextVal ? "ACTIVE" : "DISABLED"} across the platform.`,
+      nextVal ? "approve" : "unapprove"
+    );
+
+    showToast(
+      `${label} is now ${nextVal ? "ENABLED" : "DISABLED"}!`,
       nextVal ? "success" : "info"
     );
   };
@@ -415,7 +484,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       }
     }
 
-    // 5. Load Admin Settings (e.g. Buy Pass Free status)
+    // 5. Load Admin Settings (e.g. Buy Pass Free status & feature toggles)
     try {
       const adminSnap = await getDoc(doc(db, "admin_settings", "catalog"));
       if (adminSnap.exists()) {
@@ -423,6 +492,22 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         if (data.isFreePassEnabled !== undefined) {
           setIsFreePassEnabled(Boolean(data.isFreePassEnabled));
           localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(Boolean(data.isFreePassEnabled)));
+        }
+        if (data.isSecureShieldEnabled !== undefined) {
+          setIsSecureShieldEnabled(Boolean(data.isSecureShieldEnabled));
+          localStorage.setItem("autoWorld_is_secure_shield", JSON.stringify(Boolean(data.isSecureShieldEnabled)));
+        }
+        if (data.isEmiCalculatorEnabled !== undefined) {
+          setIsEmiCalculatorEnabled(Boolean(data.isEmiCalculatorEnabled));
+          localStorage.setItem("autoWorld_is_emi_calculator", JSON.stringify(Boolean(data.isEmiCalculatorEnabled)));
+        }
+        if (data.isWhatsAppConnectEnabled !== undefined) {
+          setIsWhatsAppConnectEnabled(Boolean(data.isWhatsAppConnectEnabled));
+          localStorage.setItem("autoWorld_is_whatsapp_connect", JSON.stringify(Boolean(data.isWhatsAppConnectEnabled)));
+        }
+        if (data.isAiAssistantEnabled !== undefined) {
+          setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
+          localStorage.setItem("autoWorld_is_ai_assistant", JSON.stringify(Boolean(data.isAiAssistantEnabled)));
         }
       }
     } catch (e) {
@@ -1662,6 +1747,184 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               }`}>
                 {isFreePassEnabled ? "Click button to turn OFF (Require ₹1)" : "Click button to turn ON (Make Free)"}
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* SYSTEM FUNCTIONAL FEATURE TOGGLES */}
+        <div className="mb-8 p-5 sm:p-6 bg-[#FAF8F5] border-2 border-stone-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-5 font-sans">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-stone-300">
+            <div className="flex items-center gap-2.5">
+              <Sliders className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <h3 className="text-sm font-serif font-black uppercase tracking-tight text-stone-900">
+                  System Functional Feature Toggles
+                </h3>
+                <p className="text-[10px] text-stone-500 font-mono uppercase tracking-wider">
+                  Enable or disable key platform features live across all user sessions
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 bg-stone-900 text-amber-400 text-[9px] font-mono font-bold uppercase tracking-widest border border-stone-800">
+              4 ACTIVE CONTROLS
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 1. Secure Shield Offer Toggle */}
+            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+              isSecureShieldEnabled
+                ? "bg-stone-900 text-stone-100 border-amber-500/60 shadow-md"
+                : "bg-stone-100 text-stone-600 border-stone-300"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shield className={`w-4 h-4 ${isSecureShieldEnabled ? "text-amber-400" : "text-stone-400"}`} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">
+                      Secure Shield Offer (₹199)
+                    </h4>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                    isSecureShieldEnabled ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-stone-200 text-stone-500"
+                  }`}>
+                    {isSecureShieldEnabled ? "LIVE ON APP" : "PAUSED"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                  Show 150-Point Inspection & RC Transfer Guarantee ₹199 offer card on vehicle detail dossiers.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleFeature("isSecureShieldEnabled", isSecureShieldEnabled, setIsSecureShieldEnabled, "Secure Shield Offer (₹199)", "autoWorld_is_secure_shield")}
+                className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                  isSecureShieldEnabled
+                    ? "bg-amber-500 hover:bg-amber-400 text-stone-950 border-amber-400 shadow-sm"
+                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isSecureShieldEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                <span>{isSecureShieldEnabled ? "[ ON ] SECURE SHIELD ENABLED" : "[ OFF ] SECURE SHIELD DISABLED"}</span>
+              </button>
+            </div>
+
+            {/* 2. EMI Calculator Toggle */}
+            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+              isEmiCalculatorEnabled
+                ? "bg-stone-900 text-stone-100 border-emerald-500/60 shadow-md"
+                : "bg-stone-100 text-stone-600 border-stone-300"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calculator className={`w-4 h-4 ${isEmiCalculatorEnabled ? "text-emerald-400" : "text-stone-400"}`} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">
+                      Vehicle EMI Calculator
+                    </h4>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                    isEmiCalculatorEnabled ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" : "bg-stone-200 text-stone-500"
+                  }`}>
+                    {isEmiCalculatorEnabled ? "LIVE ON APP" : "PAUSED"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                  Interactive monthly EMI loan calculator widget on listing pages.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleFeature("isEmiCalculatorEnabled", isEmiCalculatorEnabled, setIsEmiCalculatorEnabled, "EMI Calculator", "autoWorld_is_emi_calculator")}
+                className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                  isEmiCalculatorEnabled
+                    ? "bg-emerald-500 hover:bg-emerald-400 text-stone-950 border-emerald-400 shadow-sm"
+                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isEmiCalculatorEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                <span>{isEmiCalculatorEnabled ? "[ ON ] EMI CALCULATOR ENABLED" : "[ OFF ] EMI CALCULATOR DISABLED"}</span>
+              </button>
+            </div>
+
+            {/* 3. WhatsApp Seller Connect Toggle */}
+            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+              isWhatsAppConnectEnabled
+                ? "bg-stone-900 text-stone-100 border-emerald-500/60 shadow-md"
+                : "bg-stone-100 text-stone-600 border-stone-300"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className={`w-4 h-4 ${isWhatsAppConnectEnabled ? "text-emerald-400" : "text-stone-400"}`} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">
+                      WhatsApp Direct Seller Connect
+                    </h4>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                    isWhatsAppConnectEnabled ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" : "bg-stone-200 text-stone-500"
+                  }`}>
+                    {isWhatsAppConnectEnabled ? "LIVE ON APP" : "PAUSED"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                  One-click WhatsApp buyer inquiry button with pre-filled vehicle details.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleFeature("isWhatsAppConnectEnabled", isWhatsAppConnectEnabled, setIsWhatsAppConnectEnabled, "WhatsApp Direct Connect", "autoWorld_is_whatsapp_connect")}
+                className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                  isWhatsAppConnectEnabled
+                    ? "bg-emerald-500 hover:bg-emerald-400 text-stone-950 border-emerald-400 shadow-sm"
+                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isWhatsAppConnectEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                <span>{isWhatsAppConnectEnabled ? "[ ON ] WHATSAPP CONNECT ENABLED" : "[ OFF ] WHATSAPP CONNECT DISABLED"}</span>
+              </button>
+            </div>
+
+            {/* 4. AI Listing Valuation Assistant Toggle */}
+            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+              isAiAssistantEnabled
+                ? "bg-stone-900 text-stone-100 border-purple-500/60 shadow-md"
+                : "bg-stone-100 text-stone-600 border-stone-300"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className={`w-4 h-4 ${isAiAssistantEnabled ? "text-purple-400" : "text-stone-400"}`} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">
+                      AI Listing & Valuation Assistant
+                    </h4>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                    isAiAssistantEnabled ? "bg-purple-500/20 text-purple-300 border border-purple-500/40" : "bg-stone-200 text-stone-500"
+                  }`}>
+                    {isAiAssistantEnabled ? "LIVE ON APP" : "PAUSED"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                  Gemini AI smart price estimator and listing optimization assistant.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleFeature("isAiAssistantEnabled", isAiAssistantEnabled, setIsAiAssistantEnabled, "AI Valuation Assistant", "autoWorld_is_ai_assistant")}
+                className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                  isAiAssistantEnabled
+                    ? "bg-purple-500 hover:bg-purple-400 text-stone-950 border-purple-400 shadow-sm"
+                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isAiAssistantEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                <span>{isAiAssistantEnabled ? "[ ON ] AI ASSISTANT ENABLED" : "[ OFF ] AI ASSISTANT DISABLED"}</span>
+              </button>
             </div>
           </div>
         </div>

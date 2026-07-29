@@ -8,6 +8,10 @@ export interface AdminSettingsData {
   defaultBadges: Record<string, string | null>;
   homeFeaturedIds: string[];
   isFreePassEnabled?: boolean;
+  isSecureShieldEnabled?: boolean;
+  isEmiCalculatorEnabled?: boolean;
+  isWhatsAppConnectEnabled?: boolean;
+  isAiAssistantEnabled?: boolean;
 }
 
 // 1. Save spec overrides for default catalog items to Firestore
@@ -64,6 +68,18 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       }
       if (settings.isFreePassEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(settings.isFreePassEnabled));
+      }
+      if (settings.isSecureShieldEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_secure_shield", JSON.stringify(settings.isSecureShieldEnabled));
+      }
+      if (settings.isEmiCalculatorEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_emi_calculator", JSON.stringify(settings.isEmiCalculatorEnabled));
+      }
+      if (settings.isWhatsAppConnectEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_whatsapp_connect", JSON.stringify(settings.isWhatsAppConnectEnabled));
+      }
+      if (settings.isAiAssistantEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_ai_assistant", JSON.stringify(settings.isAiAssistantEnabled));
       }
     } catch (e) {
       console.warn("Local storage settings sync error:", e);
