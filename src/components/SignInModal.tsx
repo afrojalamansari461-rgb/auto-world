@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { X, LogIn, Sparkles, User, AlertTriangle, ShieldCheck, Mail, Lock, ChevronDown, ChevronUp, ExternalLink, Settings, Database, Key, Phone, Check } from "lucide-react";
-import firebaseConfig from "../../firebase-applet-config.json";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
@@ -10,7 +9,8 @@ import {
   auth, 
   googleProvider, 
   signInAnonymously, 
-  updateProfile 
+  updateProfile,
+  firebaseConfig
 } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 

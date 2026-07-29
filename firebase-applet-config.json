@@ -1,10 +1,12 @@
 {
   "apiKey": "AIzaSyDDXQDJ3RGDPWkBbS90oXwrN5sC3ZenGpg",
   "authDomain": "auto-worldd.firebaseapp.com",
+  "databaseURL": "https://auto-worldd-default-rtdb.firebaseio.com",
   "projectId": "auto-worldd",
   "storageBucket": "auto-worldd.firebasestorage.app",
   "messagingSenderId": "534691190568",
-  "appId": "1:534691190568:web:da0586eb3f5065943ce21d",
-  "measurementId": "G-G0W3BKXPQM",
-  "firestoreDatabaseId": "(default)"
+  "appId": "1:534691190568:web:4c75cf6993d00c5b3ce21d",
+  "firestoreDatabaseId": "(default)",
+  "measurementId": "",
+  "recaptchaSiteKey": ""
 }

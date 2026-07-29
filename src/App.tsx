@@ -18,10 +18,9 @@ import FeedbackWidget from "./components/FeedbackWidget";
 import { SecureShieldCard } from "./components/SecureShieldCard";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { auth, db, handleFirestoreError, OperationType } from "./firebase";
+import { auth, db, firebaseConfig, handleFirestoreError, OperationType } from "./firebase";
 import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
 import { saveCatalogOverride, saveAdminSettingsToFirestore, subscribeToRealtimeCatalog } from "./lib/catalogSync";
-import firebaseConfig from "../firebase-applet-config.json";
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
 

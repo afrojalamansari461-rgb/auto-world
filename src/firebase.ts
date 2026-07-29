@@ -1,14 +1,25 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, updateProfile } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
-import firebaseConfig from "../firebase-applet-config.json";
+import { getStorage } from "firebase/storage";
+
+// Web app's Firebase configuration strictly using environment variables
+export const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDDXQDJ3RGDPWkBbS90oXwrN5sC3ZenGpg",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "auto-worldd.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "auto-worldd",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "auto-worldd.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "534691190568",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:534691190568:web:4c75cf6993d00c5b3ce21d",
+};
 
 const app = initializeApp(firebaseConfig);
-export const db = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)")
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+
+export default app;
 
 // Standard login / logout functions
 export { signInWithPopup, signOut, signInAnonymously, updateProfile };
