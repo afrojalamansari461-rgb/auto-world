@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Modal from "./Modal";
 import { 
   ShieldAlert, Database, Trash2, Mail, Phone, Calendar, Heart, 
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
@@ -462,27 +463,56 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       showToast("Access restrictions on Pass Purchases collection.", "info");
     }
 
-    // 4. Load User Feedbacks
+    // 4. Load User Feedbacks (from feedbacks and userFeedback collections)
     try {
-      const feedbacksSnapshot = await getDocs(collection(db, "feedbacks"));
       const loadedFeedbacks: FirestoreFeedback[] = [];
-      feedbacksSnapshot.forEach((docSnap) => {
-        const d = docSnap.data();
-        loadedFeedbacks.push({
-          id: docSnap.id,
-          text: d.text || "",
-          category: d.category || "suggestion",
-          name: d.name || "",
-          email: d.email || "",
-          timestamp: d.timestamp || new Date().toISOString(),
-          status: d.status || "active"
+
+      try {
+        const feedbacksSnapshot = await getDocs(collection(db, "feedbacks"));
+        feedbacksSnapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          loadedFeedbacks.push({
+            id: docSnap.id,
+            text: d.text || d.message || "",
+            category: d.category || "suggestion",
+            name: d.name || "",
+            email: d.email || "",
+            timestamp: d.timestamp || new Date().toISOString(),
+            status: d.status || "active"
+          });
         });
-      });
+      } catch (e) {
+        // Continue to userFeedback
+      }
+
+      try {
+        const userFeedbackSnapshot = await getDocs(collection(db, "userFeedback"));
+        userFeedbackSnapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          let ts = new Date().toISOString();
+          if (d.createdAt) {
+            if (typeof d.createdAt === 'string') ts = d.createdAt;
+            else if (d.createdAt.seconds) ts = new Date(d.createdAt.seconds * 1000).toISOString();
+            else if (d.createdAt instanceof Date) ts = d.createdAt.toISOString();
+          }
+          loadedFeedbacks.push({
+            id: docSnap.id,
+            text: d.message || d.text || "",
+            category: d.category || "SUGGESTION",
+            name: d.name || "",
+            email: d.email || "",
+            timestamp: ts,
+            status: d.status || "unread"
+          });
+        });
+      } catch (e) {
+        // Continue
+      }
+
       loadedFeedbacks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setFeedbacks(loadedFeedbacks);
     } catch (err: any) {
       console.warn("Failed to load feedbacks:", err);
-      // Try to read from localStorage if offline/denied
       try {
         const stored = localStorage.getItem("autoWorld_feedbacks");
         if (stored) {
@@ -3720,20 +3750,17 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       {/* Custom Holographic Confirmer Modal */}
       <AnimatePresence>
         {confirmModal.isOpen && (
-          <div className="fixed inset-0 z-[50] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-              className="absolute inset-0 bg-stone-900/60 backdrop-blur-[2px]"
-            />
-            
+          <Modal 
+            isOpen={confirmModal.isOpen} 
+            onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            containerClassName="w-full max-w-md"
+            overlayClassName="bg-stone-900/60 backdrop-blur-[2px]"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-md bg-[#FAF8F5] border-3 border-stone-900 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] z-10 space-y-6"
+              className="relative w-full max-w-md bg-[#FAF8F5] border-3 border-stone-900 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6"
             >
               <div className="flex items-center gap-2.5 pb-3 border-b-2 border-stone-900">
                 <div className={`w-3 h-3 rounded-none rotate-45 ${confirmModal.danger ? "bg-red-600" : "bg-purple-600"}`} />
@@ -3770,7 +3797,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                 </button>
               </div>
             </motion.div>
-          </div>
+          </Modal>
         )}
       </AnimatePresence>
 

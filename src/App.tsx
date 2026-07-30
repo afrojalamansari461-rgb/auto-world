@@ -15,6 +15,7 @@ import AdminPanel from "./components/AdminPanel";
 import FavoritesTab from "./components/FavoritesTab";
 import SignInModal from "./components/SignInModal";
 import FeedbackWidget from "./components/FeedbackWidget";
+import Modal from "./components/Modal";
 import { SecureShieldCard } from "./components/SecureShieldCard";
 import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
@@ -1277,13 +1278,11 @@ export default function App() {
       {/* Global Interactive detailed vehicle model overlay sheets */}
       <AnimatePresence>
         {selectedVehicle && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            onClick={() => setSelectedVehicle(null)}
-            className="fixed inset-0 bg-stone-950/85 backdrop-blur-sm z-[200] flex items-center justify-center p-2 sm:p-4 overflow-hidden"
+          <Modal
+            isOpen={Boolean(selectedVehicle)}
+            onClose={() => setSelectedVehicle(null)}
+            containerClassName="w-full max-w-4xl max-h-[92vh]"
+            overlayClassName="bg-stone-950/85 backdrop-blur-sm"
           >
             <motion.div
               initial={{ opacity: 0, y: 52, scale: 0.98 }}
@@ -1297,7 +1296,7 @@ export default function App() {
                 mass: 0.85
               }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] max-sm:fixed max-sm:inset-0 max-sm:p-2 max-sm:max-h-full max-sm:h-full flex flex-col border border-stone-300 transition-transform duration-300 ease-out hover:scale-[1.02]"
+              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] flex flex-col border border-stone-300 transition-transform duration-300 ease-out hover:scale-[1.02]"
             >
             {/* Close trigger */}
             <button
@@ -2798,11 +2797,11 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
     )}
-          </div>
-        </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
+  </div>
+</motion.div>
+</Modal>
+)}
+</AnimatePresence>
 
       {/* Toast Notification element with Framer Motion AnimatePresence */}
       <AnimatePresence>
@@ -2813,7 +2812,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(2px)" }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-8 right-8 z-[250] flex items-center justify-between gap-4 px-5 py-4 border shadow-xl bg-stone-950 text-[#F4F1EA] border-stone-800 rounded-sm max-w-sm"
+            className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-[250] flex items-center justify-between gap-4 px-5 py-4 border shadow-xl bg-stone-950 text-[#F4F1EA] border-stone-800 rounded-sm max-w-sm"
           >
             <div className="flex items-center gap-3">
               <motion.div
@@ -2859,9 +2858,15 @@ export default function App() {
       <Footer setActiveTab={setActiveTab} onOpenLegal={setOpenLegalDoc} />
 
       {/* Global Legal & Advisor Support Modal */}
-      {openLegalDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#FAF8F5] text-stone-900 border border-stone-800 w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative font-sans">
+      <AnimatePresence>
+        {openLegalDoc && (
+          <Modal
+            isOpen={Boolean(openLegalDoc)}
+            onClose={() => setOpenLegalDoc(null)}
+            containerClassName="w-full max-w-3xl max-h-[85vh]"
+            overlayClassName="bg-black/80 backdrop-blur-sm"
+          >
+            <div className="bg-[#FAF8F5] text-stone-900 border border-stone-800 w-full max-h-[85vh] flex flex-col shadow-2xl relative font-sans">
             {/* Header / Newspaper Column Header banner */}
             <div className="border-b-4 border-stone-950 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 bg-[#F4F1EA] relative">
               <div className="pr-12 sm:pr-0">
@@ -3020,8 +3025,9 @@ export default function App() {
               <span className="font-black">© 2026 AFROJ ALAM ANSARI</span>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
+    </AnimatePresence>
       {/* Global Slide-Over User Feedback Widget */}
       <FeedbackWidget 
         showToast={showToast} 
@@ -3050,7 +3056,7 @@ export default function App() {
             whileTap={{ scale: 0.95 }}
             onClick={scrollToTop}
             id="scroll-to-top-btn"
-            className="fixed bottom-24 right-6 z-50 flex items-center justify-center w-11 h-11 bg-stone-950 text-white border border-purple-400/85 shadow-[0_0_12px_rgba(192,132,252,0.5)] hover:shadow-[0_0_22px_rgba(192,132,252,0.9)] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:border-purple-300 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950"
+            className="fixed bottom-36 sm:bottom-40 lg:bottom-20 right-4 sm:right-6 z-50 flex items-center justify-center w-11 h-11 bg-stone-950 text-white border border-purple-400/85 shadow-[0_0_12px_rgba(192,132,252,0.5)] hover:shadow-[0_0_22px_rgba(192,132,252,0.9)] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:border-purple-300 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950"
             title="Scroll to Top"
             aria-label="Scroll back to the top of the vehicle catalog"
           >
@@ -3065,20 +3071,17 @@ export default function App() {
       {/* Custom Confirmation Modal for Vehicle Actions */}
       <AnimatePresence>
         {confirmModal.isOpen && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-              className="absolute inset-0 bg-stone-900/60 backdrop-blur-[2px]"
-            />
-            
+          <Modal
+            isOpen={confirmModal.isOpen}
+            onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            containerClassName="w-full max-w-md"
+            overlayClassName="bg-stone-900/60 backdrop-blur-[2px]"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-md bg-[#FAF8F5] border-3 border-stone-900 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] z-10 space-y-6 font-mono"
+              className="relative w-full max-w-md bg-[#FAF8F5] border-3 border-stone-900 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6 font-mono"
             >
               <div className="flex items-center gap-2.5 pb-3 border-b-2 border-stone-900">
                 <div className={`w-3 h-3 rounded-none rotate-45 ${confirmModal.danger ? "bg-red-600" : "bg-purple-600"}`} />
@@ -3114,7 +3117,7 @@ export default function App() {
                 </button>
               </div>
             </motion.div>
-          </div>
+          </Modal>
         )}
       </AnimatePresence>
     </div>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import Modal from "./Modal";
 import { 
   Calculator, 
   ShieldCheck, 
@@ -303,13 +304,13 @@ export const EMICalculator: React.FC<EMICalculatorProps> = ({
       {/* Lead Capture Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <Modal isOpen={isModalOpen} onClose={handleResetModal} containerClassName="w-full max-w-lg">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-stone-900 border border-stone-800 text-stone-100 rounded-xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden"
+              className="bg-stone-900 border border-stone-800 text-stone-100 rounded-xl w-full p-6 shadow-2xl relative overflow-hidden"
             >
               {/* Close Button */}
               <button
@@ -485,7 +486,7 @@ export const EMICalculator: React.FC<EMICalculatorProps> = ({
                 </div>
               )}
             </motion.div>
-          </div>
+          </Modal>
         )}
       </AnimatePresence>
     </div>

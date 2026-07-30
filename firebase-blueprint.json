@@ -160,6 +160,10 @@
       "schema": "UserFeedback",
       "description": "Collection tracking user feedback submissions"
     },
+    "userFeedback": {
+      "schema": "UserFeedback",
+      "description": "User feedback collection tracking submissions"
+    },
     "loanLeads": {
       "schema": "LoanLead",
       "description": "Collection capturing buyer instant loan application leads for bank financing referrals"

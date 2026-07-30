@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Modal from "./Modal";
 import { X, LogIn, Sparkles, User, AlertTriangle, ShieldCheck, Mail, Lock, ChevronDown, ChevronUp, ExternalLink, Settings, Database, Key, Phone, Check } from "lucide-react";
 import { 
   signInWithEmailAndPassword, 
@@ -321,7 +322,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
   // Passcode operations removed under production-grade security architecture.
 
   return (
-    <div className="fixed inset-0 bg-stone-950/90 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in-0 duration-300">
+    <Modal isOpen={isOpen} onClose={onClose} containerClassName="w-full max-w-md" overlayClassName="bg-stone-950/90 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 25 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -930,6 +931,6 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
           </p>
         </div>
       </motion.div>
-    </div>
+    </Modal>
   );
 }

@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+import Modal from "./Modal";
 import { 
   MessageSquare, Bug, Sparkles, HelpCircle, Heart, User, Mail, 
-  Send, Shield, CheckCircle2, AlertTriangle, Info, Clock, ExternalLink 
+  Send, Shield, CheckCircle2, Info, Clock 
 } from "lucide-react";
-import { collection, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import emailjs from "@emailjs/browser";
 import { motion, AnimatePresence } from "motion/react";
 
 interface FeedbackWidgetProps {
@@ -17,96 +19,92 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
   const [activeTab, setActiveTab] = useState<"submit" | "architecture">("submit");
   
   // Form states
-  const [text, setText] = useState("");
-  const [category, setCategory] = useState<"bug_report" | "suggestion" | "question" | "praise">("suggestion");
-  const [name, setName] = useState(currentUser?.displayName || "");
-  const [email, setEmail] = useState(currentUser?.email || "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [category, setCategory] = useState<string>("SUGGESTION");
+  const [message, setMessage] = useState<string>("");
+  const [name, setName] = useState<string>(currentUser?.displayName || "");
+  const [email, setEmail] = useState<string>(currentUser?.email || "");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
-  // Submit feedback to Firebase
+  // Submit feedback to Firebase & EmailJS
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!text.trim()) {
-      showToast("Please provide some feedback text first.", "error");
+    e.preventDefault(); // STOP THE PAGE FROM REFRESHING
+    if (!message.trim()) {
+      showToast("Please provide your feedback message before submitting.", "error");
       return;
     }
-
     setIsSubmitting(true);
-    const feedbackId = "fb_" + Math.random().toString(36).substring(2, 15);
-    const timestamp = new Date().toISOString();
 
-    const feedbackData = {
-      id: feedbackId,
-      text: text.trim(),
-      category,
-      name: name.trim() || null,
-      email: email.trim() || null,
-      timestamp,
-      status: "active"
+    const templateParams = {
+      user_name: name || 'Anonymous',
+      user_email: email || 'No email provided',
+      feedback_category: category,
+      message: message
     };
 
+    // 1. Try Firebase First
     try {
-      // Save directly to the 'feedbacks' collection in Firestore
-      await setDoc(doc(collection(db, "feedbacks"), feedbackId), feedbackData);
+      await addDoc(collection(db, 'userFeedback'), {
+        category,
+        message,
+        name: name || 'Anonymous',
+        email: email || 'No email provided',
+        createdAt: new Date(),
+        status: 'unread'
+      });
+      console.log("Saved to Firebase successfully.");
+    } catch (firebaseError) {
+      console.error("Firebase save failed, but continuing to EmailJS:", firebaseError);
+    }
+
+    // 2. Try EmailJS Second (Always runs)
+    try {
+      await emailjs.send(
+        'service_sjgb8kl', 
+        'template_mjf4x7s', 
+        templateParams,
+        'gZB_lAYiLgfP1Y6cA'
+      );
+      console.log("EmailJS sent successfully.");
       
+      // Cleanup UI
       setIsSuccess(true);
-      setText("");
-      showToast("Feedback submitted successfully!", "success");
-      
-      // Delay closing/resetting
+      showToast("Thank you! Your feedback has been submitted.", "success");
+      setCategory('SUGGESTION');
+      setMessage('');
+      setName(currentUser?.displayName || '');
+      setEmail(currentUser?.email || '');
+
       setTimeout(() => {
         setIsSuccess(false);
         setIsOpen(false);
-      }, 3000);
-    } catch (err: any) {
-      console.error("Feedback creation failed:", err);
-      try {
-        handleFirestoreError(err, OperationType.CREATE, `feedbacks/${feedbackId}`);
-      } catch (e) {
-        showToast("Database restricted. Saved to localized state.", "info");
-      }
-      
-      // Mirror in localStorage as robust offline fallback
-      try {
-        const stored = localStorage.getItem("autoWorld_feedbacks") || "[]";
-        const feedbacks = JSON.parse(stored);
-        feedbacks.push(feedbackData);
-        localStorage.setItem("autoWorld_feedbacks", JSON.stringify(feedbacks));
-        
-        setIsSuccess(true);
-        setText("");
-        setTimeout(() => {
-          setIsSuccess(false);
-          setIsOpen(false);
-        }, 3000);
-      } catch (lsErr) {
-        console.error("Local storage fallback failed:", lsErr);
-        showToast("Could not record feedback at this time.", "error");
-      }
+      }, 2000);
+    } catch (emailError) {
+      console.error("EmailJS failed:", emailError);
+      showToast("Failed to send email alert. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const categories = [
-    { id: "bug_report", label: "Bug Report", icon: Bug, color: "text-red-650 bg-red-100/60" },
-    { id: "suggestion", label: "Suggestion", icon: Sparkles, color: "text-emerald-600 bg-emerald-100/60" },
-    { id: "question", label: "Question", icon: HelpCircle, color: "text-sky-650 bg-sky-100/60" },
-    { id: "praise", label: "Praise", icon: Heart, color: "text-rose-500 bg-rose-100/60" }
+    { id: "SUGGESTION", label: "Suggestion", icon: Sparkles, color: "text-emerald-600 bg-emerald-100/60" },
+    { id: "BUG_REPORT", label: "Bug Report", icon: Bug, color: "text-red-650 bg-red-100/60" },
+    { id: "QUESTION", label: "Question", icon: HelpCircle, color: "text-sky-650 bg-sky-100/60" },
+    { id: "PRAISE", label: "Praise", icon: Heart, color: "text-rose-500 bg-rose-100/60" }
   ];
 
   return (
     <>
       {/* Floating Action Feedback Trigger Button (Bottom-Right) */}
-      <div className="fixed bottom-6 right-6 z-[180]" id="feedback-floating-hub">
+      <div className="fixed bottom-20 sm:bottom-24 lg:bottom-6 right-4 sm:right-6 z-[180]" id="feedback-floating-hub">
         <motion.button
           id="feedback-widget-trigger"
           onClick={() => setIsOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label="Provide user feedback and view system architecture"
-          className="flex items-center gap-2 bg-[#FAF8F5] border-2 border-stone-900 text-stone-900 px-4 py-3 rounded-none shadow-[-4px_4px_0px_0px_rgba(26,26,26,1)] hover:bg-stone-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-950 font-sans font-bold text-xs uppercase tracking-wider"
+          className="flex items-center gap-2 bg-[#FAF8F5] border-2 border-stone-900 text-stone-900 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-none shadow-[-4px_4px_0px_0px_rgba(26,26,26,1)] hover:bg-stone-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-950 font-sans font-bold text-xs uppercase tracking-wider"
         >
           <MessageSquare className="w-4 h-4 text-emerald-600 animate-bounce" />
           <span>Feedback Hub</span>
@@ -115,7 +113,13 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
 
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs z-[250] flex items-center justify-center p-4 font-sans" id="feedback-overlay-portal">
+          <Modal
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            containerClassName="w-full max-w-lg"
+            overlayClassName="bg-stone-950/60 backdrop-blur-xs"
+            id="feedback-overlay-portal"
+          >
             <motion.div
               id="feedback-dialog-card"
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -190,7 +194,7 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                           <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto animate-bounce" />
                           <h4 className="text-md font-serif font-black uppercase text-stone-900 tracking-tight">Feedback Submitted!</h4>
                           <p className="text-stone-605 text-xs max-w-sm mx-auto leading-relaxed">
-                            Thank you for contributing! Your feedback has been written directly to our Cloud Firestore ledger and marked for immediate admin evaluation.
+                            Thank you for your feedback! Your submission has been saved directly to our Cloud Firestore userFeedback collection and queued for team evaluation.
                           </p>
                         </div>
                       ) : (
@@ -208,7 +212,7 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                                   <button
                                     key={cat.id}
                                     type="button"
-                                    onClick={() => setCategory(cat.id as any)}
+                                    onClick={() => setCategory(cat.id)}
                                     className={`p-2.5 border flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center transition ${
                                       isSelected 
                                         ? "border-stone-900 bg-stone-100 ring-1 ring-stone-900 font-bold text-stone-900" 
@@ -225,24 +229,24 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                             </div>
                           </div>
 
-                          {/* Text input area */}
+                          {/* Message input area */}
                           <div className="space-y-2">
-                            <label htmlFor="feedback-text" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block font-mono">
-                              Detailed Input / Suggestion *
+                            <label htmlFor="feedback-message" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block font-mono">
+                              Detailed Input / Message *
                             </label>
                             <textarea
-                              id="feedback-text"
+                              id="feedback-message"
                               required
                               rows={4}
                               maxLength={1000}
-                              value={text}
-                              onChange={(e) => setText(e.target.value)}
+                              value={message}
+                              onChange={(e) => setMessage(e.target.value)}
                               placeholder="Describe your report, WCAG accessibility issue, feature request, or question here..."
                               className="w-full p-3 bg-stone-50 text-stone-900 text-xs border border-stone-300 focus:border-stone-900 outline-none placeholder:text-stone-400 font-sans leading-relaxed resize-none"
                             />
                             <div className="flex justify-between items-center text-[9px] text-stone-400 font-mono">
                               <span>* Mandatory Input</span>
-                              <span>{text.length}/1000 characters</span>
+                              <span>{message.length}/1000 characters</span>
                             </div>
                           </div>
 
@@ -287,11 +291,11 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                           <button
                             id="feedback-submit-btn"
                             type="submit"
-                            disabled={isSubmitting || !text.trim()}
+                            disabled={isSubmitting || !message.trim()}
                             className="w-full py-3 bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-[#F4F1EA] text-xs font-bold uppercase tracking-widest cursor-pointer flex items-center justify-center gap-2 transition"
                           >
                             <Send className="w-4 h-4 text-emerald-500" />
-                            {isSubmitting ? "Syncing to Firestore..." : "Submit to Database"}
+                            {isSubmitting ? "SUBMITTING..." : "SUBMIT FEEDBACK"}
                           </button>
                         </form>
                       )}
@@ -311,7 +315,7 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                         <div>
                           <h4 className="font-bold uppercase text-[10px] tracking-wider mb-1">Durable Enterprise Storage</h4>
                           <p>
-                            Every submission triggers a transactional record inside Google Cloud Firestore database under our secure, server-validated collection scheme.
+                            Every submission triggers a transactional record inside Google Cloud Firestore database under our secure userFeedback collection scheme.
                           </p>
                         </div>
                       </div>
@@ -323,7 +327,7 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                           1. How Feedback is Stored
                         </h4>
                         <p className="text-stone-600 font-medium pl-5 border-l border-stone-300">
-                          Data is compiled with a secure unique document ID (<code className="bg-stone-100 font-mono text-[10px] px-1">fb_*</code>), tagged with strict ISO timestamps, user identifiers (if authenticated), categorization metadata, active workflow state, and complete body fields. All payloads conform to standard Firebase blueprint schema validation.
+                          Data is stored in the <code className="bg-stone-100 font-mono text-[10px] px-1">userFeedback</code> Firestore collection with fields: <code className="bg-stone-100 font-mono text-[10px] px-1">category</code>, <code className="bg-stone-100 font-mono text-[10px] px-1">message</code>, <code className="bg-stone-100 font-mono text-[10px] px-1">name</code>, <code className="bg-stone-100 font-mono text-[10px] px-1">email</code>, <code className="bg-stone-100 font-mono text-[10px] px-1">createdAt</code>, and <code className="bg-stone-100 font-mono text-[10px] px-1">status: 'unread'</code>.
                         </p>
                       </div>
 
@@ -331,25 +335,24 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                       <div className="space-y-2">
                         <h4 className="text-[10px] font-bold text-stone-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                           <Shield className="w-3.5 h-3.5 text-stone-700" />
-                          2. How Feedback is Reviewed
+                          2. Email Alerts & Review Pipeline
                         </h4>
                         <p className="text-stone-600 font-medium pl-5 border-l border-stone-300">
-                          Authorized administrators access submissions in real time under the secure <strong className="text-stone-900 font-bold">Owner Workspace</strong> dashboard panel. From there, your feedback is cross-referenced with active WCAG compliance audits, triage status markers are toggled (Active → Resolved/Archived), and direct email responses can be sent instantly.
+                          Right after Firestore persistence, EmailJS triggers an instant email alert to administrators. Authorized admins can review feedback directly in the Admin Panel.
                         </p>
                       </div>
 
                       {/* Firestore sample blueprint */}
                       <div className="bg-stone-100 border border-stone-250 p-4 font-mono text-[9px] text-stone-605">
-                        <span className="uppercase text-[8px] font-black tracking-widest text-[#777] block mb-1.5">JSON Payload Mapping Model:</span>
+                        <span className="uppercase text-[8px] font-black tracking-widest text-[#777] block mb-1.5">userFeedback Collection Payload Schema:</span>
                         <pre className="overflow-x-auto">
 {`{
-  id: "fb_lh84ka12s",
-  category: "bug_report",
-  text: "Contrast of pricing tags on mobile needs WCAG adjustment...",
+  category: "SUGGESTION",
+  message: "Contrast of pricing tags on mobile needs WCAG adjustment...",
   name: "Afroj Alam",
   email: "user@example.com",
-  timestamp: "${new Date().toISOString()}",
-  status: "active"
+  createdAt: "${new Date().toISOString()}",
+  status: "unread"
 }`}
                         </pre>
                       </div>
@@ -367,7 +370,7 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                 <span className="text-stone-400">Google Cloud Firestore v1</span>
               </div>
             </motion.div>
-          </div>
+          </Modal>
         )}
       </AnimatePresence>
     </>

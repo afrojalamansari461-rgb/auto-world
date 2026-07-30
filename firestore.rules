@@ -185,6 +185,20 @@ service cloud.firestore {
         && data.status is string && (data.status == 'active' || data.status == 'archived' || data.status == 'resolved');
     }
 
+    // 7b. USER FEEDBACK COLLECTION RULES
+    match /userFeedback/{feedbackId} {
+      allow create: if isValidUserFeedback(incoming());
+      allow read, update, delete: if isAdmin();
+    }
+
+    function isValidUserFeedback(data) {
+      return data.message is string && data.message.size() > 0 && data.message.size() <= 5000
+        && data.category is string && data.category.size() <= 50
+        && data.name is string && data.name.size() <= 150
+        && data.email is string && data.email.size() <= 150
+        && data.status is string && data.status.size() <= 50;
+    }
+
     // 8. AUDIT LOGS RULES
     match /audit_logs/{logId} {
       allow read, create: if isAdmin() || isRegisteredUser();
