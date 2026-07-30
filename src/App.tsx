@@ -14,6 +14,8 @@ import { EMICalculator } from "./components/EMICalculator";
 import AdminPanel from "./components/AdminPanel";
 import FavoritesTab from "./components/FavoritesTab";
 import SignInModal from "./components/SignInModal";
+import Login from "./components/Login";
+import SignUp from "./components/SignUp";
 import FeedbackWidget from "./components/FeedbackWidget";
 import Modal from "./components/Modal";
 import { SecureShieldCard } from "./components/SecureShieldCard";
@@ -1162,7 +1164,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         subscriptionActive={subscriptionActive}
         currentUser={currentUser}
-        onSignInClick={() => setIsSignInModalOpen(true)}
+        onSignInClick={() => setActiveTab("login")}
       />
 
       {/* Dynamic Firebase Connectivity Check Alert noticed at the top */}
@@ -1178,7 +1180,7 @@ export default function App() {
             <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
               <button 
                 onClick={() => {
-                  setIsSignInModalOpen(true);
+                  setActiveTab("login");
                 }}
                 className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] font-mono text-[9px] font-bold uppercase tracking-wider shadow-sm cursor-pointer whitespace-nowrap"
               >
@@ -1225,7 +1227,7 @@ export default function App() {
                 subscriptionActive={subscriptionActive}
                 showToast={showToast}
                 currentUser={currentUser}
-                onSignInClick={() => setIsSignInModalOpen(true)}
+                onSignInClick={() => setActiveTab("login")}
               />
             )}
 
@@ -1235,7 +1237,7 @@ export default function App() {
                 subscriptionActive={subscriptionActive}
                 showToast={showToast}
                 currentUser={currentUser}
-                onSignInClick={() => setIsSignInModalOpen(true)}
+                onSignInClick={() => setActiveTab("login")}
               />
             )}
 
@@ -1269,6 +1271,22 @@ export default function App() {
                 currentUser={currentUser} 
                 onQuickView={handleQuickView}
                 setActiveTab={setActiveTab}
+              />
+            )}
+
+            {activeTab === "login" && (
+              <Login 
+                onNavigate={(page) => setActiveTab(page)} 
+                showToast={showToast} 
+                onSuccess={() => setActiveTab("home")}
+              />
+            )}
+
+            {activeTab === "signup" && (
+              <SignUp 
+                onNavigate={(page) => setActiveTab(page)} 
+                showToast={showToast} 
+                onSuccess={() => setActiveTab("home")}
               />
             )}
           </motion.div>
