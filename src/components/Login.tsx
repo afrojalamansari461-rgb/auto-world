@@ -40,6 +40,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -55,6 +56,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
     }
 
     setIsSubmitting(true);
+    setIsTransitioning(true); // Initiate cinematic fade-out transition
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
@@ -75,6 +77,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
 
     } catch (error: any) {
       console.error("Firebase Auth Sign In error:", error);
+      setIsTransitioning(false); // Restore background on auth failure
       
       let friendlyError = "Authentication failed. Please verify your credentials.";
       if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
@@ -95,6 +98,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
   // Google OAuth Handler
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
+    setIsTransitioning(true);
     setErrorMessage(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -110,6 +114,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
       }, 1000);
     } catch (error: any) {
       console.error("Google auth failed:", error);
+      setIsTransitioning(false);
       const msg = "Google sign-in was canceled or encountered an issue.";
       setErrorMessage(msg);
       if (showToast) showToast(msg, "error");
@@ -149,25 +154,46 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
   return (
     <div className="flex min-h-screen bg-[#f4f2ec] text-[#1a1a1a] font-sans selection:bg-[#c5a059]/20 selection:text-[#1a1a1a] overflow-hidden">
       
-      {/* LEFT: The Editorial Image */}
+      {/* LEFT: The Editorial Media with Cinematic Transition */}
       <motion.div 
         initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
+        animate={{ 
+          opacity: 1,
+        }} 
         transition={{ duration: 1 }}
         className="hidden md:flex w-1/2 relative flex-col justify-between overflow-hidden bg-black"
       >
-        {/* IMPORTANT: Place your image file in the 'public' folder of your Next.js / Vite project */}
-        {/* Then update this src to exactly match the filename, e.g., src="/showroom-car.jpg" */}
-        <img 
-          src="/showroom-car.jpg" 
-          alt="Auto World Showroom" 
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none"></div>
+        {/* Background Media with smooth fade-out & scale zoom on Sign In */}
+        <motion.div
+          animate={{
+            opacity: isTransitioning ? 0.05 : 1,
+            scale: isTransitioning ? 1.08 : 1,
+            filter: isTransitioning ? "blur(12px)" : "blur(0px)",
+          }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0 w-full h-full z-0 overflow-hidden"
+        >
+          <img 
+            src="/showroom-car.jpg" 
+            alt="Monochrome Vintage GT Sports Car" 
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover object-center"
+          />
+        </motion.div>
 
-        {/* Top Logo */}
-        <div className="relative z-10 p-10">
+        {/* Subtle overlay ensuring typography contrast while keeping the monochrome studio car reflection crisp */}
+        <motion.div 
+          animate={{ opacity: isTransitioning ? 0.95 : 0.35 }}
+          transition={{ duration: 0.9 }}
+          className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 z-10 pointer-events-none"
+        />
+
+        {/* Top Logo - z-20 floating above overlay */}
+        <motion.div 
+          animate={{ opacity: isTransitioning ? 0.3 : 1, y: isTransitioning ? -10 : 0 }}
+          transition={{ duration: 0.7 }}
+          className="relative z-20 p-10"
+        >
           <Link 
             to="/" 
             onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("home"); } }}
@@ -178,15 +204,19 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
               <p className="text-[#c5a059] text-[8px] tracking-[0.4em] uppercase font-bold mt-1">Est. 1962 • Fine Motors</p>
             </div>
           </Link>
-        </div>
+        </motion.div>
 
-        {/* Bottom Quote */}
-        <div className="relative z-10 p-10 max-w-md">
+        {/* Bottom Quote - z-20 floating above overlay */}
+        <motion.div 
+          animate={{ opacity: isTransitioning ? 0.2 : 1, y: isTransitioning ? 15 : 0 }}
+          transition={{ duration: 0.7 }}
+          className="relative z-20 p-10 max-w-md"
+        >
           <div className="w-12 h-[1px] bg-[#c5a059] mb-6"></div>
           <p className="text-3xl text-gray-200 font-serif italic leading-snug">
             "The pursuit of timeless mechanics, unyielding craftsmanship, and pure..."
           </p>
-        </div>
+        </motion.div>
       </motion.div>
 
       {/* RIGHT: Animated Form & Footer */}

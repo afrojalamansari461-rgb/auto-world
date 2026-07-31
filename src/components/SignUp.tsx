@@ -181,25 +181,25 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
   return (
     <div className="flex min-h-screen bg-[#f4f2ec] text-[#1a1a1a] font-sans selection:bg-[#c5a059]/20 selection:text-[#1a1a1a] overflow-hidden">
       
-      {/* LEFT: The Editorial Image Section */}
+      {/* LEFT: The Editorial Image */}
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         transition={{ duration: 1 }}
         className="hidden md:flex w-1/2 relative flex-col justify-between overflow-hidden bg-black"
       >
-        {/* Editorial Background Image */}
+        {/* IMPORTANT: Place your image file in the 'public' folder of your Next.js or Vite project (e.g. public/hero-car.jpg or public/showroom-car.jpg) */}
+        {/* Then update this src to exactly match the filename, e.g., src="/showroom-car.jpg" */}
         <img 
           src="/showroom-car.jpg" 
           alt="Auto World Showroom" 
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover z-0"
         />
-        {/* Dark Vignette Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/20 pointer-events-none"></div>
+        {/* Dark overlay ensuring image contrast */}
+        <div className="absolute inset-0 bg-black/60 z-10 pointer-events-none"></div>
 
-        {/* Top Logo Header */}
-        <div className="relative z-10 p-10">
+        {/* Top Logo - z-20 floating above overlay */}
+        <div className="relative z-20 p-10">
           <Link 
             to="/" 
             onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("home"); } }}
@@ -219,8 +219,8 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
           </Link>
         </div>
 
-        {/* Bottom Quote */}
-        <div className="relative z-10 p-10 max-w-md">
+        {/* Bottom Quote - z-20 floating above overlay */}
+        <div className="relative z-20 p-10 max-w-md">
           <div className="w-12 h-[1px] bg-[#c5a059] mb-6"></div>
           <p className="text-2xl lg:text-3xl text-gray-200 font-serif italic leading-snug">
             "The pursuit of timeless mechanics, unyielding craftsmanship, and pure..."

@@ -1159,13 +1159,15 @@ export default function App() {
   return (
     <div className="bg-[#F4F1EA] min-h-screen text-[#1A1A1A] flex flex-col justify-between font-sans selection:bg-stone-900 selection:text-[#F4F1EA] overflow-x-hidden">
       {/* Top Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        subscriptionActive={subscriptionActive}
-        currentUser={currentUser}
-        onSignInClick={() => setActiveTab("login")}
-      />
+      {activeTab !== "login" && activeTab !== "signup" && (
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          subscriptionActive={subscriptionActive}
+          currentUser={currentUser}
+          onSignInClick={() => setActiveTab("login")}
+        />
+      )}
 
       {/* Dynamic Firebase Connectivity Check Alert noticed at the top */}
       {firebaseConfigError && (
@@ -1198,7 +1200,7 @@ export default function App() {
       )}
 
       {/* Primary tab views switcher */}
-      <main className="flex-grow overflow-hidden pb-16 lg:pb-0">
+      <main className={`flex-grow overflow-hidden ${activeTab === "login" || activeTab === "signup" ? "" : "pb-16 lg:pb-0"}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -2873,7 +2875,9 @@ export default function App() {
       />
 
       {/* Global Footer */}
-      <Footer setActiveTab={setActiveTab} onOpenLegal={setOpenLegalDoc} />
+      {activeTab !== "login" && activeTab !== "signup" && (
+        <Footer setActiveTab={setActiveTab} onOpenLegal={setOpenLegalDoc} />
+      )}
 
       {/* Global Legal & Advisor Support Modal */}
       <AnimatePresence>
@@ -3047,10 +3051,12 @@ export default function App() {
       )}
     </AnimatePresence>
       {/* Global Slide-Over User Feedback Widget */}
-      <FeedbackWidget 
-        showToast={showToast} 
-        currentUser={currentUser} 
-      />
+      {activeTab !== "login" && activeTab !== "signup" && (
+        <FeedbackWidget 
+          showToast={showToast} 
+          currentUser={currentUser} 
+        />
+      )}
 
       {/* Admin Grand Entrance Premium overlay */}
       <AdminGrandEntry 
