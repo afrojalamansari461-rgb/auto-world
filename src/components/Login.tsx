@@ -41,6 +41,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isLoginSuccess, setIsLoginSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -56,11 +57,13 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
     }
 
     setIsSubmitting(true);
-    setIsTransitioning(true); // Initiate cinematic fade-out transition
+    setIsTransitioning(true); // Initiate cinematic background video fade-out transition immediately on Sign In click
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       console.log("Logged in user:", userCredential.user);
+
+      setIsLoginSuccess(true);
 
       const successMsg = `Welcome back, ${userCredential.user.displayName || userCredential.user.email || 'Connoisseur'}!`;
       setSuccessMessage("Authentication successful. Redirecting to showroom...");
@@ -73,11 +76,12 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         if (onSuccess) onSuccess();
         if (onNavigate) onNavigate("home");
         else navigate("/");
-      }, 1000);
+      }, 1200);
 
     } catch (error: any) {
       console.error("Firebase Auth Sign In error:", error);
       setIsTransitioning(false); // Restore background on auth failure
+      setIsLoginSuccess(false);
       
       let friendlyError = "Authentication failed. Please verify your credentials.";
       if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
@@ -98,10 +102,12 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
   // Google OAuth Handler
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
-    setIsTransitioning(true);
     setErrorMessage(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      setIsLoginSuccess(true);
+      setIsTransitioning(true);
+
       const successMsg = `Welcome, ${result.user.displayName || "Collector"}!`;
       setSuccessMessage("Google authentication successful!");
       
@@ -111,10 +117,11 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         if (onSuccess) onSuccess();
         if (onNavigate) onNavigate("home");
         else navigate("/");
-      }, 1000);
+      }, 1200);
     } catch (error: any) {
       console.error("Google auth failed:", error);
       setIsTransitioning(false);
+      setIsLoginSuccess(false);
       const msg = "Google sign-in was canceled or encountered an issue.";
       setErrorMessage(msg);
       if (showToast) showToast(msg, "error");
@@ -163,23 +170,64 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         transition={{ duration: 1 }}
         className="hidden md:flex w-1/2 relative flex-col justify-between overflow-hidden bg-black"
       >
-        {/* Background Media with smooth fade-out & scale zoom on Sign In */}
-        <motion.div
-          animate={{
-            opacity: isTransitioning ? 0.05 : 1,
-            scale: isTransitioning ? 1.08 : 1,
-            filter: isTransitioning ? "blur(12px)" : "blur(0px)",
-          }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 w-full h-full z-0 overflow-hidden"
-        >
-          <img 
-            src="/showroom-car.jpg" 
-            alt="Monochrome Vintage GT Sports Car" 
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover object-center"
-          />
-        </motion.div>
+        {/* Background Media with AnimatePresence orchestrated exit transition on successful login */}
+        <AnimatePresence mode="wait">
+          {!isLoginSuccess ? (
+            <motion.div
+              key="active-bg-video"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: isTransitioning ? 0 : 1,
+                scale: isTransitioning ? 1.08 : 1,
+                filter: isTransitioning ? "blur(16px)" : "blur(0px)",
+              }}
+              exit={{
+                opacity: 0,
+                scale: 1.15,
+                filter: "blur(24px)",
+                transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] }
+              }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0 w-full h-full z-0 overflow-hidden"
+            >
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                poster="/showroom-car.jpg"
+                className="w-full h-full object-cover object-center"
+              >
+                <source src="https://assets.mixkit.co/videos/preview/mixkit-sports-car-driving-on-a-road-at-sunset-41126-large.mp4" type="video/mp4" />
+                <img 
+                  src="/showroom-car.jpg" 
+                  alt="Monochrome Vintage GT Sports Car" 
+                  className="w-full h-full object-cover object-center"
+                />
+              </video>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="success-bg-unlocked"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0 w-full h-full z-0 bg-[#0d0d0d] flex flex-col items-center justify-center p-8 text-center"
+            >
+              <motion.div
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.6, ease: "backOut" }}
+                className="w-16 h-16 rounded-full border border-[#c5a059] flex items-center justify-center bg-black/60 backdrop-blur-md mb-4 shadow-[0_0_30px_rgba(197,160,89,0.3)]"
+              >
+                <Sparkles className="w-8 h-8 text-[#c5a059] animate-pulse" />
+              </motion.div>
+              <p className="text-[#c5a059] text-[10px] tracking-[0.4em] uppercase font-bold mb-2">Showroom Unlocked</p>
+              <h3 className="text-2xl font-serif text-white font-semibold tracking-wide">Welcome to Auto World</h3>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Subtle overlay ensuring typography contrast while keeping the monochrome studio car reflection crisp */}
         <motion.div 
