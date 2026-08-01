@@ -188,23 +188,14 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
                 transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] }
               }}
               transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute inset-0 w-full h-full z-0 overflow-hidden"
+              className="absolute inset-0 w-full h-full z-0 overflow-hidden bg-black"
             >
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                poster="/showroom-car.jpg"
-                className="w-full h-full object-cover object-center"
-              >
-                <source src="https://assets.mixkit.co/videos/preview/mixkit-sports-car-driving-on-a-road-at-sunset-41126-large.mp4" type="video/mp4" />
-                <img 
-                  src="/showroom-car.jpg" 
-                  alt="Monochrome Vintage GT Sports Car" 
-                  className="w-full h-full object-cover object-center"
-                />
-              </video>
+              <img 
+                src="/monochrome-car.jpg" 
+                alt="Ultra HD silver sports car side profile in dark dusk desert landscape" 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover object-center scale-100"
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -274,6 +265,21 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         <div className="flex-grow flex items-center justify-center">
           <motion.div variants={staggerContainer} initial="hidden" animate="show" className="w-full max-w-sm">
             
+            {/* Mobile Header Image Banner for small screens */}
+            <motion.div variants={fadeUp} className="md:hidden mb-6 rounded border border-stone-800 overflow-hidden relative aspect-[16/9] shadow-md bg-black">
+              <img 
+                src="/monochrome-car.jpg" 
+                alt="Dual-tone monochrome vintage GT sports car side profile reflection" 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3">
+                <span className="text-amber-400 font-serif text-[10px] uppercase font-bold tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-amber-400" /> Auto World Showroom Edition
+                </span>
+              </div>
+            </motion.div>
+
             <motion.div variants={fadeUp} className="mb-8">
               <p className="text-[#c5a059] text-[10px] tracking-[0.2em] font-bold uppercase mb-2">✦ Collector Sign In</p>
               <h1 className="text-5xl font-serif font-bold text-[#1a1a1a] mb-3">Welcome Back.</h1>

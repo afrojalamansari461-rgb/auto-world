@@ -359,16 +359,20 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
 
         {/* Brand Header */}
         <div className="text-center mb-6 relative z-10">
-          <div className="relative w-14 h-14 mx-auto mb-3 flex items-center justify-center">
-            {/* Pulsing neon light ring behind */}
-            <motion.div 
-              className="absolute inset-0 bg-purple-200 rounded-none border border-purple-500 opacity-65"
-              animate={{ scale: [1, 1.15, 1], rotate: [0, 45, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          <div className="relative mb-3.5 rounded border-2 border-stone-900 overflow-hidden shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] bg-black h-28 flex items-center justify-center">
+            <img 
+              src="/monochrome-car.jpg" 
+              alt="Ultra HD silver sports car side profile in dark desert twilight" 
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover object-center"
             />
-            {/* Spinning solid block */}
-            <div className="relative w-11 h-11 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(168,85,247,1)]">
-              <LogIn className="w-5 h-5 text-[#F4F1EA]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex items-end justify-between p-2.5">
+              <span className="text-amber-400 font-serif text-[9px] uppercase font-bold tracking-widest flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-400" /> Auto World Showroom
+              </span>
+              <span className="bg-stone-900/90 text-stone-200 border border-amber-500/50 text-[8px] font-mono px-1.5 py-0.5 uppercase tracking-wider font-bold">
+                Monochrome Edition
+              </span>
             </div>
           </div>
           <h2 className="text-2xl font-serif font-black uppercase tracking-tight text-stone-950">

@@ -2756,17 +2756,19 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 >
                   {isParsingFeed ? "Analyzing Data Structures..." : "Parse Inventory Feed"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const demoCSV = `make,model,title,year,price,mileage,fuel,transmission,description,image\nMahindra,Thar,Thar LX Hard Top,2022,1450000,16500,Diesel,Manual,Single owner dealership certified Thar 4x4. Mint condition.,https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800\nMaruti,Swift,Swift VXI Petrol,2021,650000,32000,Petrol,Manual,Fuel efficient family hatchback. Complete service history.,https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800`;
-                    setRawUploadText(demoCSV);
-                    showToast("Loaded sample dealership CSV data. Click 'Parse Inventory Feed'!", "info");
-                  }}
-                  className="px-3 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-700 text-[10px] uppercase font-bold tracking-wider cursor-pointer"
-                >
-                  Load Sample CSV
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const demoCSV = `make,model,title,year,price,mileage,fuel,transmission,description,image\nMahindra,Thar,Thar LX Hard Top,2022,1450000,16500,Diesel,Manual,Single owner dealership certified Thar 4x4. Mint condition.,https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800\nMaruti,Swift,Swift VXI Petrol,2021,650000,32000,Petrol,Manual,Fuel efficient family hatchback. Complete service history.,https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800`;
+                      setRawUploadText(demoCSV);
+                      showToast("Loaded sample dealership CSV data. Click 'Parse Inventory Feed'!", "info");
+                    }}
+                    className="px-3 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-700 text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+                  >
+                    Load Sample CSV (Admin)
+                  </button>
+                )}
               </div>
             </div>
 
@@ -3541,13 +3543,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     className="hidden"
                   />
                 </label>
-                <button
-                  type="button"
-                  onClick={handleAddSamplePhoto}
-                  className="px-3 py-2.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-900 text-[10px] uppercase tracking-widest font-bold cursor-pointer"
-                >
-                  + Add Sample Image
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleAddSamplePhoto}
+                    className="px-3 py-2.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-900 text-[10px] uppercase tracking-widest font-bold cursor-pointer"
+                  >
+                    + Add Sample Image (Admin Only)
+                  </button>
+                )}
               </div>
             </div>
 
@@ -3677,26 +3681,50 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 onClick={() => setFeaturedListing(!featuredListing)}
                 className={`p-4 border-2 transition-all cursor-pointer select-none flex flex-col justify-between ${
                   featuredListing 
-                    ? "bg-amber-50/50 border-amber-500 shadow-sm" 
+                    ? "bg-amber-50/60 border-amber-500 shadow-md ring-1 ring-amber-400/40" 
                     : "bg-white border-stone-200 hover:border-stone-400"
                 }`}
               >
-                <div className="flex items-start gap-2.5">
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
-                    featuredListing ? "border-amber-500 bg-amber-500 text-white" : "border-stone-300"
-                  }`}>
-                    {featuredListing && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Featured Booster</span>
-                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[8px] font-black uppercase tracking-wider rounded-sm">Premium Spot</span>
+                <div>
+                  <div className="flex items-center justify-between gap-2.5 mb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {/* ON/OFF Toggle Switch Button */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={featuredListing}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFeaturedListing(!featuredListing);
+                        }}
+                        className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          featuredListing ? "bg-amber-500" : "bg-stone-300"
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out flex items-center justify-center text-[7px] font-mono font-black ${
+                            featuredListing ? "translate-x-6 text-amber-600" : "translate-x-0 text-stone-400"
+                          }`}
+                        >
+                          {featuredListing ? "ON" : "OFF"}
+                        </span>
+                      </button>
+
+                      <span className="text-xs font-black text-stone-900 uppercase tracking-wider">Featured Booster</span>
                     </div>
-                    <p className="text-[10px] text-stone-500 mt-1 leading-snug">
-                      Pinned at the absolute top of the buyer catalog feed with a custom gold premium badge.
-                    </p>
+
+                    <span className={`px-2 py-0.5 text-[8.5px] font-mono font-black uppercase tracking-wider rounded-sm ${
+                      featuredListing ? "bg-amber-500 text-stone-950" : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {featuredListing ? "ON" : "PREMIUM SPOT"}
+                    </span>
                   </div>
+
+                  <p className="text-[10px] text-stone-500 leading-snug">
+                    Pinned at the absolute top of the buyer catalog feed with a custom gold premium badge.
+                  </p>
                 </div>
+
                 <div className="pt-3 border-t border-stone-100 mt-3 flex justify-between items-center text-xs font-mono font-bold">
                   <span className="text-stone-400">Add-on Pricing</span>
                   <span className="text-stone-900">
@@ -3714,26 +3742,50 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 onClick={() => setUrgentListing(!urgentListing)}
                 className={`p-4 border-2 transition-all cursor-pointer select-none flex flex-col justify-between ${
                   urgentListing 
-                    ? "bg-red-50/50 border-red-500 shadow-sm" 
+                    ? "bg-red-50/60 border-red-500 shadow-md ring-1 ring-red-400/40" 
                     : "bg-white border-stone-200 hover:border-stone-400"
                 }`}
               >
-                <div className="flex items-start gap-2.5">
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
-                    urgentListing ? "border-red-500 bg-red-500 text-white" : "border-stone-300"
-                  }`}>
-                    {urgentListing && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Urgent Hot Stamp</span>
-                      <span className="px-1.5 py-0.5 bg-red-100 text-red-800 text-[8px] font-black uppercase tracking-wider rounded-sm">Immediate Sale</span>
+                <div>
+                  <div className="flex items-center justify-between gap-2.5 mb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {/* ON/OFF Toggle Switch Button */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={urgentListing}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUrgentListing(!urgentListing);
+                        }}
+                        className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          urgentListing ? "bg-red-600" : "bg-stone-300"
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out flex items-center justify-center text-[7px] font-mono font-black ${
+                            urgentListing ? "translate-x-6 text-red-600" : "translate-x-0 text-stone-400"
+                          }`}
+                        >
+                          {urgentListing ? "ON" : "OFF"}
+                        </span>
+                      </button>
+
+                      <span className="text-xs font-black text-stone-900 uppercase tracking-wider">Urgent Hot Stamp</span>
                     </div>
-                    <p className="text-[10px] text-stone-500 mt-1 leading-snug">
-                      Displays a striking high-contrast crimson tag to capture buyers negotiating immediate transfers.
-                    </p>
+
+                    <span className={`px-2 py-0.5 text-[8.5px] font-mono font-black uppercase tracking-wider rounded-sm ${
+                      urgentListing ? "bg-red-600 text-white" : "bg-red-100 text-red-800"
+                    }`}>
+                      {urgentListing ? "ON" : "IMMEDIATE SALE"}
+                    </span>
                   </div>
+
+                  <p className="text-[10px] text-stone-500 leading-snug">
+                    Displays a striking high-contrast crimson tag to capture buyers negotiating immediate transfers.
+                  </p>
                 </div>
+
                 <div className="pt-3 border-t border-stone-100 mt-3 flex justify-between items-center text-xs font-mono font-bold">
                   <span className="text-stone-400">Add-on Pricing</span>
                   <span className="text-stone-900">

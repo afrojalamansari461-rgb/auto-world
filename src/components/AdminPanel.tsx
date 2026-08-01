@@ -168,6 +168,24 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   });
 
+  const [isFeaturedBoosterEnabled, setIsFeaturedBoosterEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_featured_booster");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [isUrgentHotStampEnabled, setIsUrgentHotStampEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_urgent_hot_stamp");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
   const handleToggleFreePass = async () => {
     const nextVal = !isFreePassEnabled;
     setIsFreePassEnabled(nextVal);
@@ -198,7 +216,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   };
 
   const handleToggleFeature = async (
-    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isSimranFreeModeEnabled",
+    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isSimranFreeModeEnabled" | "isFeaturedBoosterEnabled" | "isUrgentHotStampEnabled",
     currentVal: boolean,
     setter: React.Dispatch<React.SetStateAction<boolean>>,
     label: string,
@@ -551,6 +569,14 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         if (data.isSimranFreeModeEnabled !== undefined) {
           setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
           localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(Boolean(data.isSimranFreeModeEnabled)));
+        }
+        if (data.isFeaturedBoosterEnabled !== undefined) {
+          setIsFeaturedBoosterEnabled(Boolean(data.isFeaturedBoosterEnabled));
+          localStorage.setItem("autoWorld_is_featured_booster", JSON.stringify(Boolean(data.isFeaturedBoosterEnabled)));
+        }
+        if (data.isUrgentHotStampEnabled !== undefined) {
+          setIsUrgentHotStampEnabled(Boolean(data.isUrgentHotStampEnabled));
+          localStorage.setItem("autoWorld_is_urgent_hot_stamp", JSON.stringify(Boolean(data.isUrgentHotStampEnabled)));
         }
       }
     } catch (e) {
@@ -1819,11 +1845,117 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               </div>
             </div>
             <span className="px-2.5 py-1 bg-stone-900 text-amber-400 text-[9px] font-mono font-bold uppercase tracking-widest border border-stone-800">
-              5 ACTIVE CONTROLS
+              7 ACTIVE CONTROLS
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* SEPARATE EDITORIAL CARD FOR PREMIUM PROMOTION ADD-ONS CONTROLS */}
+            <div className="col-span-1 md:col-span-2 p-5 bg-[#FAF8F5] border-2 border-amber-900/30 rounded-none shadow-[3px_3px_0px_0px_rgba(197,160,89,0.25)] space-y-4 my-1">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-stone-300/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0">
+                    <Tag className="w-4 h-4 text-amber-800" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-serif font-black uppercase tracking-wider text-stone-900">
+                        Premium Promotion Add-ons Controls
+                      </h4>
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-900 text-[8px] font-mono font-bold uppercase tracking-widest border border-amber-300">
+                        Sell Tab Add-ons
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 font-mono leading-tight mt-0.5">
+                      Toggle live availability for sellers to opt into Featured Booster and Urgent Hot Stamp tags
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 bg-stone-900 text-amber-400 text-[8.5px] font-mono font-bold uppercase tracking-widest border border-stone-800 shrink-0">
+                  2 PROMOTION CONTROLS
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Featured Booster Add-on Toggle Card */}
+                <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+                  isFeaturedBoosterEnabled
+                    ? "bg-stone-900 text-stone-100 border-amber-500 shadow-md ring-1 ring-amber-400/20"
+                    : "bg-white text-stone-600 border-stone-300"
+                }`}>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Award className={`w-4 h-4 ${isFeaturedBoosterEnabled ? "text-amber-400" : "text-stone-400"}`} />
+                        <h5 className="text-xs font-bold uppercase tracking-wider">
+                          Featured Booster (Premium Spot)
+                        </h5>
+                      </div>
+                      <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                        isFeaturedBoosterEnabled ? "bg-amber-500 text-stone-950 font-black border border-amber-400" : "bg-stone-200 text-stone-500"
+                      }`}>
+                        {isFeaturedBoosterEnabled ? "LIVE ON APP" : "PAUSED"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                      Pins listing at absolute top of buyer catalog feed with a custom gold badge.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFeature("isFeaturedBoosterEnabled", isFeaturedBoosterEnabled, setIsFeaturedBoosterEnabled, "Featured Booster Add-on", "autoWorld_is_featured_booster")}
+                    className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                      isFeaturedBoosterEnabled
+                        ? "bg-amber-500 hover:bg-amber-400 text-stone-950 border-amber-400 shadow-sm"
+                        : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                    }`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${isFeaturedBoosterEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                    <span>{isFeaturedBoosterEnabled ? "[ ON ] FEATURED BOOSTER ENABLED" : "[ OFF ] FEATURED BOOSTER DISABLED"}</span>
+                  </button>
+                </div>
+
+                {/* Urgent Hot Stamp Add-on Toggle Card */}
+                <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+                  isUrgentHotStampEnabled
+                    ? "bg-stone-900 text-stone-100 border-red-500 shadow-md ring-1 ring-red-400/20"
+                    : "bg-white text-stone-600 border-stone-300"
+                }`}>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className={`w-4 h-4 ${isUrgentHotStampEnabled ? "text-red-400" : "text-stone-400"}`} />
+                        <h5 className="text-xs font-bold uppercase tracking-wider">
+                          Urgent Hot Stamp (Immediate Sale)
+                        </h5>
+                      </div>
+                      <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                        isUrgentHotStampEnabled ? "bg-red-600 text-white font-black border border-red-400" : "bg-stone-200 text-stone-500"
+                      }`}>
+                        {isUrgentHotStampEnabled ? "LIVE ON APP" : "PAUSED"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                      Displays a high-contrast crimson tag to capture buyers negotiating immediate transfers.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFeature("isUrgentHotStampEnabled", isUrgentHotStampEnabled, setIsUrgentHotStampEnabled, "Urgent Hot Stamp Add-on", "autoWorld_is_urgent_hot_stamp")}
+                    className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                      isUrgentHotStampEnabled
+                        ? "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-sm"
+                        : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                    }`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${isUrgentHotStampEnabled ? "bg-white animate-ping" : "bg-stone-500"}`} />
+                    <span>{isUrgentHotStampEnabled ? "[ ON ] URGENT HOT STAMP ENABLED" : "[ OFF ] URGENT HOT STAMP DISABLED"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
             {/* 1. Secure Shield Offer Toggle */}
             <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
               isSecureShieldEnabled
