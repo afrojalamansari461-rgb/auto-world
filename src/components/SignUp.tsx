@@ -12,7 +12,8 @@ import {
   Sparkles, 
   CheckCircle2, 
   AlertCircle,
-  Check
+  Check,
+  Car
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -157,24 +158,28 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
     }
   };
 
-  // Advanced Animation Variants
+  // Advanced Animation Variants for Subtle Entrance
   const staggerContainer = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 0, y: 22, scale: 0.98 },
     show: {
       opacity: 1,
+      y: 0,
+      scale: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.15
+        duration: 0.65,
+        ease: [0.16, 1, 0.3, 1],
+        staggerChildren: 0.08,
+        delayChildren: 0.1
       }
     }
   };
 
   const fadeUp = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 16, opacity: 0 },
     show: { 
       y: 0, 
       opacity: 1, 
-      transition: { type: "spring", stiffness: 300, damping: 24 } 
+      transition: { type: "spring", stiffness: 280, damping: 22 } 
     }
   };
 
@@ -183,40 +188,72 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
       
       {/* LEFT: The Editorial Image */}
       <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        transition={{ duration: 1 }}
+        initial={{ opacity: 0, x: -20 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="hidden md:flex w-1/2 relative flex-col justify-between overflow-hidden bg-black"
       >
-        {/* IMPORTANT: Place your image file in the 'public' folder of your Next.js or Vite project (e.g. public/hero-car.jpg or public/showroom-car.jpg) */}
-        {/* Then update this src to exactly match the filename, e.g., src="/showroom-car.jpg" */}
         <img 
-          src="/showroom-car.jpg" 
+          src="/monochrome-car.jpg" 
           alt="Auto World Showroom" 
-          className="absolute inset-0 w-full h-full object-cover z-0"
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-80"
         />
         {/* Dark overlay ensuring image contrast */}
         <div className="absolute inset-0 bg-black/60 z-10 pointer-events-none"></div>
 
-        {/* Top Logo - z-20 floating above overlay */}
+        {/* Top Logo - z-20 floating above overlay with interactive hover */}
         <div className="relative z-20 p-10">
-          <Link 
-            to="/" 
-            onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("home"); } }}
-            className="flex items-center gap-3 group cursor-pointer inline-flex"
+          <motion.button 
+            initial="rest"
+            whileHover="hover"
+            whileTap="tap"
+            onClick={(e) => { e.preventDefault(); if (onNavigate) onNavigate("home"); else navigate("/"); }}
+            className="flex items-center gap-3 group cursor-pointer focus:outline-none select-none text-left"
           >
-            <div className="w-9 h-9 rounded-full border border-[#c5a059]/80 flex items-center justify-center bg-black/50 backdrop-blur-md group-hover:border-[#c5a059] group-hover:scale-105 transition-all duration-300">
-              <Crown className="w-4 h-4 text-[#c5a059]" />
+            <motion.div 
+              variants={{
+                rest: { scale: 1, rotate: 0, backgroundColor: "#1c1917" },
+                hover: { scale: 1.12, rotate: 6, backgroundColor: "#c5a059" },
+                tap: { scale: 0.92 }
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 16 }}
+              className="w-10 h-10 bg-stone-900 border border-stone-700 rounded-lg flex items-center justify-center text-white shadow-md group-hover:shadow-amber-500/20"
+            >
+              <Car className="w-5 h-5 text-[#F4F1EA] group-hover:text-stone-950 transition-colors" />
+            </motion.div>
+
+            <div className="relative flex flex-col justify-center">
+              <span className="text-2xl font-black font-serif uppercase tracking-tight text-white flex items-center">
+                <motion.span
+                  className="inline-block"
+                  variants={{
+                    rest: { y: 0, color: "#ffffff" },
+                    hover: { y: -2, color: "#ffffff", transition: { type: "spring", stiffness: 400, damping: 14 } }
+                  }}
+                >
+                  Auto
+                </motion.span>
+                <motion.span
+                  className="inline-block font-serif font-normal italic ml-0.5 text-stone-300"
+                  variants={{
+                    rest: { x: 0, rotate: 0, color: "#d6d3d1" },
+                    hover: { x: 4, rotate: -3, color: "#c5a059", transition: { type: "spring", stiffness: 350, damping: 12 } }
+                  }}
+                >
+                  World
+                </motion.span>
+              </span>
+              <p className="text-[#c5a059] text-[8px] tracking-[0.3em] uppercase font-bold">Est. 1962 • Fine Motors</p>
+
+              <motion.span 
+                className="absolute -bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 rounded-full origin-left"
+                variants={{
+                  rest: { scaleX: 0, opacity: 0 },
+                  hover: { scaleX: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
+                }}
+              />
             </div>
-            <div>
-              <h2 className="text-white font-bold tracking-[0.3em] uppercase text-lg leading-none">
-                Auto World
-              </h2>
-              <p className="text-[#c5a059] text-[8px] tracking-[0.4em] uppercase font-bold mt-1">
-                Est. 1962 • Fine Motors
-              </p>
-            </div>
-          </Link>
+          </motion.button>
         </div>
 
         {/* Bottom Quote - z-20 floating above overlay */}
@@ -232,12 +269,72 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
       </motion.div>
 
       {/* RIGHT: Animated Form & Footer */}
-      <div className="w-full md:w-1/2 h-screen flex flex-col p-8 lg:p-16 overflow-y-auto">
+      <div className="w-full md:w-1/2 h-screen flex flex-col p-6 sm:p-8 lg:p-16 overflow-y-auto">
         
         {/* Center Form Area */}
         <div className="flex-grow flex items-center justify-center">
           <motion.div variants={staggerContainer} initial="hidden" animate="show" className="w-full max-w-sm my-auto py-4">
             
+            {/* Mobile Website Logo Header - Responsive replacing car image with identical website hover animation */}
+            <motion.div variants={fadeUp} className="md:hidden mb-6">
+              <motion.button
+                initial="rest"
+                whileHover="hover"
+                whileTap="tap"
+                onClick={() => {
+                  if (onNavigate) onNavigate("home");
+                  else navigate("/");
+                }}
+                className="w-full flex items-center gap-3.5 group cursor-pointer py-3 px-4 bg-[#FAF8F5] border-2 border-stone-300 rounded-xl shadow-sm hover:border-stone-900 transition-all select-none text-left"
+              >
+                <motion.div 
+                  variants={{
+                    rest: { scale: 1, rotate: 0, backgroundColor: "#1c1917" },
+                    hover: { scale: 1.12, rotate: 6, backgroundColor: "#0c0a09" },
+                    tap: { scale: 0.92 }
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 16 }}
+                  className="w-11 h-11 bg-stone-900 rounded-lg flex items-center justify-center text-white transition-shadow shadow-md group-hover:shadow-lg group-hover:shadow-stone-900/20 shrink-0"
+                >
+                  <Car className="w-6 h-6 text-[#F4F1EA] transition-transform duration-300 group-hover:scale-110" />
+                </motion.div>
+
+                <div className="relative flex flex-col justify-center">
+                  <span className="text-2xl font-black font-serif uppercase tracking-tight text-stone-900 flex items-center">
+                    <motion.span
+                      className="inline-block"
+                      variants={{
+                        rest: { y: 0, color: "#1c1917" },
+                        hover: { y: -2, color: "#000000", transition: { type: "spring", stiffness: 400, damping: 14 } }
+                      }}
+                    >
+                      Auto
+                    </motion.span>
+                    <motion.span
+                      className="inline-block font-serif font-normal italic ml-0.5 text-stone-600"
+                      variants={{
+                        rest: { x: 0, rotate: 0, color: "#525252" },
+                        hover: { x: 4, rotate: -3, color: "#d97706", transition: { type: "spring", stiffness: 350, damping: 12 } }
+                      }}
+                    >
+                      World
+                    </motion.span>
+                  </span>
+
+                  <p className="text-[#c5a059] text-[8px] tracking-[0.25em] uppercase font-bold mt-0.5">Est. 1962 • Fine Motors</p>
+
+                  {/* Kinetic Underline Indicator */}
+                  <motion.span 
+                    className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-gradient-to-r from-stone-900 via-amber-500 to-stone-900 rounded-full origin-left"
+                    variants={{
+                      rest: { scaleX: 0, opacity: 0 },
+                      hover: { scaleX: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
+                    }}
+                  />
+                </div>
+              </motion.button>
+            </motion.div>
+
             <motion.div variants={fadeUp} className="mb-6">
               <p className="text-[#c5a059] text-[10px] tracking-[0.2em] font-bold uppercase mb-2">✦ Collector Registration</p>
               <h1 className="text-4xl sm:text-5xl font-serif font-bold text-[#1a1a1a] mb-2 leading-tight">Initiate Access.</h1>

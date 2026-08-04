@@ -137,24 +137,28 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
     }
   };
 
-  // Advanced Animation Variants
+  // Advanced Animation Variants for Subtle Entrance
   const staggerContainer = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 0, y: 22, scale: 0.98 },
     show: {
       opacity: 1,
+      y: 0,
+      scale: 1,
       transition: {
-        staggerChildren: 0.12,
-        delayChildren: 0.15
+        duration: 0.65,
+        ease: [0.16, 1, 0.3, 1],
+        staggerChildren: 0.08,
+        delayChildren: 0.1
       }
     }
   };
 
   const fadeUp = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 16, opacity: 0 },
     show: { 
       y: 0, 
       opacity: 1, 
-      transition: { type: "spring", stiffness: 300, damping: 24 } 
+      transition: { type: "spring", stiffness: 280, damping: 22 } 
     }
   };
 
@@ -163,11 +167,12 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
       
       {/* LEFT: The Editorial Media with Cinematic Transition */}
       <motion.div 
-        initial={{ opacity: 0 }} 
+        initial={{ opacity: 0, x: -20 }} 
         animate={{ 
           opacity: 1,
+          x: 0
         }} 
-        transition={{ duration: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="hidden md:flex w-1/2 relative flex-col justify-between overflow-hidden bg-black"
       >
         {/* Background Media with AnimatePresence orchestrated exit transition on successful login */}
@@ -227,22 +232,63 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
           className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 z-10 pointer-events-none"
         />
 
-        {/* Top Logo - z-20 floating above overlay */}
+        {/* Top Logo - z-20 floating above overlay with interactive hover */}
         <motion.div 
           animate={{ opacity: isTransitioning ? 0.3 : 1, y: isTransitioning ? -10 : 0 }}
           transition={{ duration: 0.7 }}
           className="relative z-20 p-10"
         >
-          <Link 
-            to="/" 
-            onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("home"); } }}
-            className="flex items-center gap-3 group cursor-pointer inline-flex"
+          <motion.button 
+            initial="rest"
+            whileHover="hover"
+            whileTap="tap"
+            onClick={(e) => { e.preventDefault(); if (onNavigate) onNavigate("home"); else navigate("/"); }}
+            className="flex items-center gap-3 group cursor-pointer focus:outline-none select-none text-left"
           >
-            <div>
-              <h2 className="text-white font-bold tracking-[0.3em] uppercase text-lg leading-none">Auto World</h2>
-              <p className="text-[#c5a059] text-[8px] tracking-[0.4em] uppercase font-bold mt-1">Est. 1962 • Fine Motors</p>
+            <motion.div 
+              variants={{
+                rest: { scale: 1, rotate: 0, backgroundColor: "#1c1917" },
+                hover: { scale: 1.12, rotate: 6, backgroundColor: "#c5a059" },
+                tap: { scale: 0.92 }
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 16 }}
+              className="w-10 h-10 bg-stone-900 border border-stone-700 rounded-lg flex items-center justify-center text-white shadow-md group-hover:shadow-amber-500/20"
+            >
+              <Car className="w-5 h-5 text-[#F4F1EA] group-hover:text-stone-950 transition-colors" />
+            </motion.div>
+
+            <div className="relative flex flex-col justify-center">
+              <span className="text-2xl font-black font-serif uppercase tracking-tight text-white flex items-center">
+                <motion.span
+                  className="inline-block"
+                  variants={{
+                    rest: { y: 0, color: "#ffffff" },
+                    hover: { y: -2, color: "#ffffff", transition: { type: "spring", stiffness: 400, damping: 14 } }
+                  }}
+                >
+                  Auto
+                </motion.span>
+                <motion.span
+                  className="inline-block font-serif font-normal italic ml-0.5 text-stone-300"
+                  variants={{
+                    rest: { x: 0, rotate: 0, color: "#d6d3d1" },
+                    hover: { x: 4, rotate: -3, color: "#c5a059", transition: { type: "spring", stiffness: 350, damping: 12 } }
+                  }}
+                >
+                  World
+                </motion.span>
+              </span>
+              <p className="text-[#c5a059] text-[8px] tracking-[0.3em] uppercase font-bold">Est. 1962 • Fine Motors</p>
+
+              <motion.span 
+                className="absolute -bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 rounded-full origin-left"
+                variants={{
+                  rest: { scaleX: 0, opacity: 0 },
+                  hover: { scaleX: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
+                }}
+              />
             </div>
-          </Link>
+          </motion.button>
         </motion.div>
 
         {/* Bottom Quote - z-20 floating above overlay */}
@@ -259,25 +305,70 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
       </motion.div>
 
       {/* RIGHT: Animated Form & Footer */}
-      <div className="w-full md:w-1/2 h-screen flex flex-col p-8 lg:p-16 overflow-y-auto">
+      <div className="w-full md:w-1/2 h-screen flex flex-col p-6 sm:p-8 lg:p-16 overflow-y-auto">
         
         {/* Center Form Area */}
         <div className="flex-grow flex items-center justify-center">
           <motion.div variants={staggerContainer} initial="hidden" animate="show" className="w-full max-w-sm">
             
-            {/* Mobile Header Image Banner for small screens */}
-            <motion.div variants={fadeUp} className="md:hidden mb-6 rounded border border-stone-800 overflow-hidden relative aspect-[16/9] shadow-md bg-black">
-              <img 
-                src="/monochrome-car.jpg" 
-                alt="Dual-tone monochrome vintage GT sports car side profile reflection" 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover object-center"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3">
-                <span className="text-amber-400 font-serif text-[10px] uppercase font-bold tracking-widest flex items-center gap-1.5">
-                  <Sparkles className="w-3 h-3 text-amber-400" /> Auto World Showroom Edition
-                </span>
-              </div>
+            {/* Mobile Website Logo Header - Responsive replacing car image with identical website hover animation */}
+            <motion.div variants={fadeUp} className="md:hidden mb-6">
+              <motion.button
+                initial="rest"
+                whileHover="hover"
+                whileTap="tap"
+                onClick={() => {
+                  if (onNavigate) onNavigate("home");
+                  else navigate("/");
+                }}
+                className="w-full flex items-center gap-3.5 group cursor-pointer py-3 px-4 bg-[#FAF8F5] border-2 border-stone-300 rounded-xl shadow-sm hover:border-stone-900 transition-all select-none text-left"
+              >
+                <motion.div 
+                  variants={{
+                    rest: { scale: 1, rotate: 0, backgroundColor: "#1c1917" },
+                    hover: { scale: 1.12, rotate: 6, backgroundColor: "#0c0a09" },
+                    tap: { scale: 0.92 }
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 16 }}
+                  className="w-11 h-11 bg-stone-900 rounded-lg flex items-center justify-center text-white transition-shadow shadow-md group-hover:shadow-lg group-hover:shadow-stone-900/20 shrink-0"
+                >
+                  <Car className="w-6 h-6 text-[#F4F1EA] transition-transform duration-300 group-hover:scale-110" />
+                </motion.div>
+
+                <div className="relative flex flex-col justify-center">
+                  <span className="text-2xl font-black font-serif uppercase tracking-tight text-stone-900 flex items-center">
+                    <motion.span
+                      className="inline-block"
+                      variants={{
+                        rest: { y: 0, color: "#1c1917" },
+                        hover: { y: -2, color: "#000000", transition: { type: "spring", stiffness: 400, damping: 14 } }
+                      }}
+                    >
+                      Auto
+                    </motion.span>
+                    <motion.span
+                      className="inline-block font-serif font-normal italic ml-0.5 text-stone-600"
+                      variants={{
+                        rest: { x: 0, rotate: 0, color: "#525252" },
+                        hover: { x: 4, rotate: -3, color: "#d97706", transition: { type: "spring", stiffness: 350, damping: 12 } }
+                      }}
+                    >
+                      World
+                    </motion.span>
+                  </span>
+
+                  <p className="text-[#c5a059] text-[8px] tracking-[0.25em] uppercase font-bold mt-0.5">Est. 1962 • Fine Motors</p>
+
+                  {/* Kinetic Underline Indicator */}
+                  <motion.span 
+                    className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-gradient-to-r from-stone-900 via-amber-500 to-stone-900 rounded-full origin-left"
+                    variants={{
+                      rest: { scaleX: 0, opacity: 0 },
+                      hover: { scaleX: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
+                    }}
+                  />
+                </div>
+              </motion.button>
             </motion.div>
 
             <motion.div variants={fadeUp} className="mb-8">
@@ -384,10 +475,12 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
               </motion.div>
 
               <motion.div variants={fadeUp} className="pt-4">
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full bg-[#1a1a1a] text-[#f4f2ec] text-[11px] tracking-[0.2em] uppercase font-bold py-4 rounded hover:bg-black transition-colors flex justify-center items-center gap-2 shadow-lg cursor-pointer"
+                  className="w-full bg-[#1a1a1a] text-[#f4f2ec] text-[11px] tracking-[0.2em] uppercase font-bold py-4 rounded hover:bg-black transition-all flex justify-center items-center gap-2 shadow-lg cursor-pointer"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
@@ -399,7 +492,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
                       <span>Sign In To Showroom</span> <span className="text-[#c5a059]">→</span>
                     </>
                   )}
-                </button>
+                </motion.button>
               </motion.div>
             </form>
 
@@ -410,7 +503,9 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
                 <div className="flex-grow border-t border-gray-300"></div>
               </div>
               
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.015, backgroundColor: "#fafafa" }}
+                whileTap={{ scale: 0.985 }}
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isGoogleSigningIn}
@@ -418,7 +513,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
               >
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-4 h-4" />
                 <span>{isGoogleSigningIn ? "Connecting Google..." : "Google Account"}</span>
-              </button>
+              </motion.button>
 
               <div className="mt-6 text-center text-[10px] tracking-widest uppercase font-bold text-gray-500">
                 <p>Do not have an account? <Link to="/signup" onClick={handleToggleToSignUp} className="text-black hover:text-[#c5a059] border-b border-black hover:border-[#c5a059] transition-colors pb-0.5">Create One Here</Link></p>
