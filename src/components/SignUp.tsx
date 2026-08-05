@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   User, 
@@ -13,7 +13,9 @@ import {
   CheckCircle2, 
   AlertCircle,
   Check,
-  Car
+  Car,
+  FolderPlus,
+  Upload
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -22,6 +24,8 @@ import {
   googleProvider 
 } from "../firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { subscribeToRealtimeCatalog, saveAdminSettingsToFirestore } from "../lib/catalogSync";
+import AuthPolicyModal from "./AuthPolicyModal";
 
 interface SignUpProps {
   onNavigate?: (page: string) => void;
@@ -31,6 +35,38 @@ interface SignUpProps {
 
 export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps) {
   const navigate = useNavigate();
+
+  // Dynamic Site Customization State for Register Mode
+  const [registerQuote, setRegisterQuote] = useState(() => {
+    return localStorage.getItem("autoWorld_register_quote") || "Join an elite global registry of automobile connoisseurs, verified collectors, and fine motor enthusiasts.";
+  });
+  const [registerCarImage, setRegisterCarImage] = useState(() => {
+    return localStorage.getItem("autoWorld_register_car_image") || "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=80";
+  });
+
+  // Modal Policy State
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const [policyTab, setPolicyTab] = useState<"terms" | "privacy" | "support">("terms");
+
+  useEffect(() => {
+    const unsub = subscribeToRealtimeCatalog(({ adminSettings }) => {
+      if (adminSettings.registerQuote) setRegisterQuote(adminSettings.registerQuote);
+      if (adminSettings.registerCarImage) setRegisterCarImage(adminSettings.registerCarImage);
+    });
+
+    const handleLocalUpdate = () => {
+      const storedQuote = localStorage.getItem("autoWorld_register_quote");
+      if (storedQuote) setRegisterQuote(storedQuote);
+      const storedImage = localStorage.getItem("autoWorld_register_car_image");
+      if (storedImage) setRegisterCarImage(storedImage);
+    };
+    window.addEventListener("autoWorld_db_update", handleLocalUpdate);
+
+    return () => {
+      unsub();
+      window.removeEventListener("autoWorld_db_update", handleLocalUpdate);
+    };
+  }, []);
 
   // Form State
   const [fullName, setFullName] = useState("");
@@ -47,6 +83,29 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleDirectImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      if (showToast) showToast("Please select a valid image file (PNG, JPG, WEBP, etc.)", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        const dataUrl = reader.result;
+        setRegisterCarImage(dataUrl);
+        try {
+          localStorage.setItem("autoWorld_register_car_image", dataUrl);
+        } catch (err) {}
+        saveAdminSettingsToFirestore({ registerCarImage: dataUrl });
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+        if (showToast) showToast(`Register background updated from file "${file.name}"!`, "success");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Form Failsafe & Submission Logic
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,15 +253,17 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
         className="hidden md:flex w-1/2 relative flex-col justify-between overflow-hidden bg-black"
       >
         <img 
-          src="/monochrome-car.jpg" 
-          alt="Auto World Showroom" 
+          src={registerCarImage} 
+          alt="Auto World Showroom Registry" 
+          referrerPolicy="no-referrer"
           className="absolute inset-0 w-full h-full object-cover z-0 opacity-80"
+          onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=80"; }}
         />
         {/* Dark overlay ensuring image contrast */}
         <div className="absolute inset-0 bg-black/60 z-10 pointer-events-none"></div>
 
         {/* Top Logo - z-20 floating above overlay with interactive hover */}
-        <div className="relative z-20 p-10">
+        <div className="relative z-20 p-10 flex items-center justify-between gap-4">
           <motion.button 
             initial="rest"
             whileHover="hover"
@@ -254,16 +315,29 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
               />
             </div>
           </motion.button>
+
+          {/* Quick Upload Background Image From My Files */}
+          <label className="px-3 py-1.5 bg-stone-950/80 hover:bg-black text-amber-400 border border-amber-500/60 hover:border-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer shadow-lg flex items-center gap-1.5 backdrop-blur-md transition-all hover:scale-105 active:scale-95 shrink-0">
+            <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Upload Image from File</span>
+            <span className="sm:hidden">Change Image</span>
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={handleDirectImageUpload}
+            />
+          </label>
         </div>
 
         {/* Bottom Quote - z-20 floating above overlay */}
         <div className="relative z-20 p-10 max-w-md">
           <div className="w-12 h-[1px] bg-[#c5a059] mb-6"></div>
           <p className="text-2xl lg:text-3xl text-gray-200 font-serif italic leading-snug">
-            "The pursuit of timeless mechanics, unyielding craftsmanship, and pure..."
+            "{registerQuote}"
           </p>
           <p className="text-[10px] font-mono tracking-[0.25em] uppercase text-[#c5a059] mt-4">
-            — The Collector Series
+            — Collector Registry Charter
           </p>
         </div>
       </motion.div>
@@ -503,7 +577,20 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="w-3.5 h-3.5 accent-black cursor-pointer" 
                 />
-                <span className="text-xs text-gray-500 group-hover:text-black transition-colors">I agree to the Collector Registry Terms</span>
+                <span className="text-xs text-gray-500 group-hover:text-black transition-colors">
+                  I agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPolicyTab("terms");
+                      setPolicyModalOpen(true);
+                    }}
+                    className="underline text-stone-900 font-bold hover:text-[#c5a059] cursor-pointer"
+                  >
+                    Collector Registry Terms
+                  </button>
+                </span>
               </label>
             </motion.div>
 
@@ -593,13 +680,40 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
         >
           <span>© 2026 Auto World</span>
           <div className="flex gap-4">
-            <Link to="#" onClick={(e) => { e.preventDefault(); if (showToast) showToast("Terms of Service viewed", "info"); }} className="hover:text-black transition-colors">Terms</Link>
-            <Link to="#" onClick={(e) => { e.preventDefault(); if (showToast) showToast("Privacy Policy viewed", "info"); }} className="hover:text-black transition-colors">Privacy</Link>
-            <a href="mailto:concierge@autoworld.com" className="hover:text-black transition-colors">Support</a>
+            <button 
+              type="button" 
+              onClick={() => { setPolicyTab("terms"); setPolicyModalOpen(true); }} 
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Terms
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setPolicyTab("privacy"); setPolicyModalOpen(true); }} 
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Privacy
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setPolicyTab("support"); setPolicyModalOpen(true); }} 
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Support
+            </button>
           </div>
         </motion.footer>
 
       </div>
+
+      {/* Policy & Support Modal */}
+      <AuthPolicyModal
+        isOpen={policyModalOpen}
+        activeTab={policyTab}
+        onClose={() => setPolicyModalOpen(false)}
+        onSelectTab={(tab) => setPolicyTab(tab)}
+        showToast={showToast}
+      />
     </div>
-);
+  );
 }

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Car, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, Check, Heart, ShieldCheck, Sparkles } from "lucide-react";
+import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 
 interface FooterProps {
   setActiveTab: (tab: string) => void;
@@ -12,6 +13,45 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
     return localStorage.getItem("autoWorld_newsletter_subscribed") === "true";
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [footerEmail, setFooterEmail] = useState(() => {
+    return localStorage.getItem("autoWorld_footer_email") || "afrojalamansari461@gmail.com";
+  });
+  const [footerPhone, setFooterPhone] = useState(() => {
+    return localStorage.getItem("autoWorld_footer_phone") || "+91 7666232753";
+  });
+  const [showroomAddress, setShowroomAddress] = useState(() => {
+    return localStorage.getItem("autoWorld_showroom_address") || "123 Auto Avenue, Corporate Square, Mumbai, Maharashtra 400001";
+  });
+
+  useEffect(() => {
+    const unsub = subscribeToRealtimeCatalog(({ adminSettings }) => {
+      if (adminSettings.footerEmail) {
+        setFooterEmail(adminSettings.footerEmail);
+      }
+      if (adminSettings.footerPhone) {
+        setFooterPhone(adminSettings.footerPhone);
+      }
+      if (adminSettings.showroomAddress) {
+        setShowroomAddress(adminSettings.showroomAddress);
+      }
+    });
+
+    const handleLocalUpdate = () => {
+      const storedEmail = localStorage.getItem("autoWorld_footer_email");
+      if (storedEmail) setFooterEmail(storedEmail);
+      const storedPhone = localStorage.getItem("autoWorld_footer_phone");
+      if (storedPhone) setFooterPhone(storedPhone);
+      const storedAddress = localStorage.getItem("autoWorld_showroom_address");
+      if (storedAddress) setShowroomAddress(storedAddress);
+    };
+    window.addEventListener("autoWorld_db_update", handleLocalUpdate);
+
+    return () => {
+      unsub();
+      window.removeEventListener("autoWorld_db_update", handleLocalUpdate);
+    };
+  }, []);
 
   const handleLinkClick = (tabId: string) => {
     setActiveTab(tabId);
@@ -210,19 +250,18 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
             <ul className="space-y-4 text-xs text-stone-400">
               <li className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 text-stone-500 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">
-                  123 Auto Avenue, Corporate Square,<br />
-                  Mumbai, Maharashtra 400001
+                <span className="leading-relaxed font-mono">
+                  {showroomAddress}
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-4 h-4 text-stone-500 shrink-0" />
-                <span className="font-mono">+91 7666232753</span>
+                <span className="font-mono">{footerPhone}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-stone-500 shrink-0" />
-                <a href="mailto:afrojalamansari461@gmail.com" className="font-mono text-stone-300 hover:text-white transition hover:underline">
-                  afrojalamansari461@gmail.com
+                <a href={`mailto:${footerEmail}`} className="font-mono text-stone-300 hover:text-white transition hover:underline">
+                  {footerEmail}
                 </a>
               </li>
             </ul>

@@ -205,19 +205,26 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // 9. ADMIN SETTINGS RULES
+    // 9. USER PROFILES & ROLE SYSTEM RULES
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if isRegisteredUser() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 10. ADMIN SETTINGS RULES
     match /admin_settings/{settingId} {
       allow read: if true;
       allow write: if isRegisteredUser() || isAdmin();
     }
 
-    // 10. CATALOG OVERRIDES RULES
+    // 11. CATALOG OVERRIDES RULES
     match /catalog_overrides/{overrideId} {
       allow read: if true;
       allow write: if isRegisteredUser() || isAdmin();
     }
 
-    // 11. CONNECTION TEST DOCUMENT
+    // 12. CONNECTION TEST DOCUMENT
     match /test/{testId} {
       allow read: if true;
       allow write: if false;

@@ -133,9 +133,29 @@
         "status": { "type": "string" }
       },
       "required": ["fullName", "phone", "city", "monthlyIncome", "vehiclePrice", "downPayment", "loanAmount", "tenureYears", "monthlyEMI"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered platform user identity and assigned role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["Owner", "Super Admin", "Inventory Manager", "Sales & Leads Specialist", "Support Agent", "Content Moderator", "Finance Specialist", "User"] },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "createdAt": { "type": "string" },
+        "lastLogin": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
     }
   },
   "firestore": {
+    "users": {
+      "schema": "UserProfile",
+      "description": "Live directory of registered platform users and assigned staff access roles"
+    },
     "listings": {
       "schema": "UserListing",
       "description": "A global collection containing all pre-owned vehicle listing briefs posted by verified users"

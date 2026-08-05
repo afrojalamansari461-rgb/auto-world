@@ -12,6 +12,7 @@ import ContactTab from "./components/ContactTab";
 import { AnimatedFavoriteHeart } from "./components/AnimatedFavoriteHeart";
 import { EMICalculator } from "./components/EMICalculator";
 import AdminPanel from "./components/AdminPanel";
+import OfficeRoom from "./components/OfficeRoom";
 import FavoritesTab from "./components/FavoritesTab";
 import SignInModal from "./components/SignInModal";
 import Login from "./components/Login";
@@ -26,6 +27,8 @@ import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, 
 import { saveCatalogOverride, saveAdminSettingsToFirestore, subscribeToRealtimeCatalog } from "./lib/catalogSync";
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
+import { SpecGrid } from "./components/SpecGrid";
+import { syncUserToFirestore, subscribeToCurrentRole, UserRole } from "./lib/userRoles";
 
 const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
   if (vehicle.photos && vehicle.photos.length > 0) {
@@ -77,12 +80,13 @@ export default function App() {
   const [subscriptionActive, setSubscriptionActive] = useState<boolean>(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
-  const [activeModalSubTab, setActiveModalSubTab] = useState<"overview" | "gallery" | "specs" | "contact">("overview");
+  const [activeModalSubTab, setActiveModalSubTab] = useState<"overview" | "gallery" | "specs" | "contact" | "finance">("overview");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState<boolean>(false);
   const [openLegalDoc, setOpenLegalDoc] = useState<"privacy" | "terms" | "fraud" | "support" | null>(null);
   
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>("User");
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [firebaseConfigError, setFirebaseConfigError] = useState<boolean>(false);
 
@@ -378,9 +382,24 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (usr) => {
       setCurrentUser(usr);
       setAuthLoading(false);
+      if (usr) {
+        syncUserToFirestore(usr);
+      }
     });
     return () => unsubscribe();
   }, []);
+
+  // Listen for current user role changes from Firestore
+  useEffect(() => {
+    if (currentUser) {
+      const unsub = subscribeToCurrentRole(currentUser.uid, (role) => {
+        setUserRole(role);
+      });
+      return () => unsub();
+    } else {
+      setUserRole("User");
+    }
+  }, [currentUser]);
 
   // Check custom subscription details from database on checkout startup
   useEffect(() => {
@@ -1165,6 +1184,7 @@ export default function App() {
           setActiveTab={setActiveTab}
           subscriptionActive={subscriptionActive}
           currentUser={currentUser}
+          userRole={userRole}
           onSignInClick={() => setActiveTab("login")}
         />
       )}
@@ -1276,6 +1296,16 @@ export default function App() {
               />
             )}
 
+            {activeTab === "office" && (
+              <OfficeRoom
+                currentUser={currentUser}
+                userRole={userRole}
+                showToast={showToast}
+                setActiveTab={setActiveTab}
+                onQuickView={handleQuickView}
+              />
+            )}
+
             {activeTab === "login" && (
               <Login 
                 onNavigate={(page) => setActiveTab(page)} 
@@ -1331,71 +1361,42 @@ export default function App() {
             {/* Modal Sub-navigation Bar for tab view transitions */}
             {!isAdminEditMode && (
               <div className="bg-[#EFECE6] border-b border-stone-300 px-3 sm:px-6 pt-3 pb-2.5 flex items-center justify-between gap-2 overflow-x-auto shrink-0 select-none pr-14 z-20">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveModalSubTab("overview")}
-                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer border ${
-                      activeModalSubTab === "overview"
-                        ? "bg-stone-900 text-[#F4F1EA] border-stone-900 shadow-2xs font-mono ring-1 ring-stone-900"
-                        : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5 text-amber-500" />
-                    Overview
-                  </button>
+                <div className="flex items-center gap-1 sm:gap-2 relative">
+                  {[
+                    { id: "overview", label: "Overview", icon: Layers },
+                    { id: "gallery", label: "Image Gallery", icon: ImageIcon },
+                    { id: "specs", label: "Technical Specs", icon: FileText },
+                    { id: "contact", label: "Seller & Contact", icon: Shield },
+                    { id: "finance", label: "Finance & EMI", icon: Calculator },
+                  ].map((tab) => {
+                    const isActive = activeModalSubTab === tab.id;
+                    const IconComponent = tab.icon;
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveModalSubTab("gallery")}
-                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer border ${
-                      activeModalSubTab === "gallery"
-                        ? "bg-stone-900 text-[#F4F1EA] border-stone-900 shadow-2xs font-mono ring-1 ring-stone-900"
-                        : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
-                    }`}
-                  >
-                    <ImageIcon className="w-3.5 h-3.5 text-amber-500" />
-                    Image Gallery
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveModalSubTab("specs")}
-                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer border ${
-                      activeModalSubTab === "specs"
-                        ? "bg-stone-900 text-[#F4F1EA] border-stone-900 shadow-2xs font-mono ring-1 ring-stone-900"
-                        : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5 text-amber-500" />
-                    Technical Specs
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveModalSubTab("contact")}
-                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer border ${
-                      activeModalSubTab === "contact"
-                        ? "bg-stone-900 text-[#F4F1EA] border-stone-900 shadow-2xs font-mono ring-1 ring-stone-900"
-                        : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
-                    }`}
-                  >
-                    <Shield className="w-3.5 h-3.5 text-amber-500" />
-                    Seller & Contact
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveModalSubTab("finance")}
-                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer border ${
-                      activeModalSubTab === "finance"
-                        ? "bg-stone-900 text-[#F4F1EA] border-stone-900 shadow-2xs font-mono ring-1 ring-stone-900"
-                        : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
-                    }`}
-                  >
-                    <Calculator className="w-3.5 h-3.5 text-amber-500" />
-                    Finance & EMI
-                  </button>
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveModalSubTab(tab.id as any)}
+                        className={`relative px-3 sm:px-3.5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer border transition-colors duration-200 z-10 ${
+                          isActive
+                            ? "text-[#F4F1EA] border-stone-900 font-mono"
+                            : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
+                        }`}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="modalSubTabActivePill"
+                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                            className="absolute inset-0 bg-stone-900 border border-stone-900 shadow-sm z-0"
+                          />
+                        )}
+                        <span className="relative z-10 flex items-center gap-1.5">
+                          <IconComponent className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : "text-amber-600"}`} />
+                          {tab.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <span className="text-[9px] font-mono text-stone-500 font-bold uppercase tracking-widest hidden md:inline-block">
@@ -1980,88 +1981,13 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Technical specifications dashboard */}
+                {/* Technical specifications dashboard with hover states and tooltips */}
                 <div className="space-y-2">
-                  <h3 className="text-[10px] uppercase tracking-widest font-bold text-stone-400">Technical specs</h3>
-                  <div className="grid grid-cols-2 gap-3 text-xs text-stone-700">
-                    {selectedVehicle.category === "bicycle" || selectedVehicle.fuel?.toLowerCase().includes("human") || selectedVehicle.fuel?.toLowerCase().includes("pedal") ? (
-                      <>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Frame Size</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.frameSize || "Standard"}</span>
-                        </div>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Cycle Style</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.bicycleType || selectedVehicle.make || "Bicycle"}</span>
-                        </div>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Drivetrain / Gears</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.gears || selectedVehicle.transmission || "Pedal Drive"}</span>
-                        </div>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Model Year</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.year}</span>
-                        </div>
-                        {selectedVehicle.frameMaterial && (
-                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Frame Material</span>
-                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] font-mono leading-none">{selectedVehicle.frameMaterial}</span>
-                          </div>
-                        )}
-                        {selectedVehicle.brakeType && (
-                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Brake System</span>
-                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.brakeType}</span>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Mileage run</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">
-                            <CountUp to={selectedVehicle.mileage} />
-                          </span>
-                        </div>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Power / Fuel</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.fuel}</span>
-                        </div>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Transmission</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.transmission}</span>
-                        </div>
-                        <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Production Year</span>
-                          <span className="text-stone-900 font-bold mt-0.5 block">{selectedVehicle.year}</span>
-                        </div>
-                        {selectedVehicle.engine && (
-                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Engine / Battery</span>
-                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] font-mono leading-none">{selectedVehicle.engine}</span>
-                          </div>
-                        )}
-                        {selectedVehicle.color && (
-                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Exterior Color</span>
-                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.color}</span>
-                          </div>
-                        )}
-                        {selectedVehicle.owners && (
-                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Owner Count</span>
-                            <span className="text-stone-900 font-bold mt-0.5 block text-[11px] leading-none">{selectedVehicle.owners}</span>
-                          </div>
-                        )}
-                        {selectedVehicle.regNumber && (
-                          <div className="p-3 bg-[#FAF8F5] border border-stone-300">
-                            <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Reg Number / Plate</span>
-                            <span className="text-stone-900 font-bold mt-0.5 block font-mono text-[11px] leading-none">{selectedVehicle.regNumber}</span>
-                          </div>
-                        )}
-                      </>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold text-stone-400">Technical Specs</h3>
+                    <span className="text-[9px] font-mono text-stone-500 uppercase">Hover cards for metric guide</span>
                   </div>
+                  <SpecGrid vehicle={selectedVehicle} columnsClassName="grid-cols-2 gap-2.5" isCompact />
                 </div>
 
                 {/* Feature tags */}
@@ -2468,90 +2394,15 @@ export default function App() {
 
               {/* Detailed Spec Grid */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900 flex items-center gap-1.5">
-                  <Gauge className="w-4 h-4 text-amber-600" />
-                  Engineering & Spec Breakdown
-                </h3>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-stone-700">
-                  {selectedVehicle.category === "bicycle" || selectedVehicle.fuel?.toLowerCase().includes("human") || selectedVehicle.fuel?.toLowerCase().includes("pedal") ? (
-                    <>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Frame Size</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">{selectedVehicle.frameSize || "Standard"}</span>
-                      </div>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Cycle Style</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">{selectedVehicle.bicycleType || selectedVehicle.make || "Bicycle"}</span>
-                      </div>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Drivetrain / Gears</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">{selectedVehicle.gears || selectedVehicle.transmission || "Pedal Drive"}</span>
-                      </div>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Model Year</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">{selectedVehicle.year}</span>
-                      </div>
-                      {selectedVehicle.frameMaterial && (
-                        <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Frame Material</span>
-                          <span className="text-stone-950 font-bold mt-0.5 block text-xs font-mono">{selectedVehicle.frameMaterial}</span>
-                        </div>
-                      )}
-                      {selectedVehicle.brakeType && (
-                        <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Brake System</span>
-                          <span className="text-stone-950 font-bold mt-0.5 block text-xs">{selectedVehicle.brakeType}</span>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Mileage run</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">
-                          <CountUp to={selectedVehicle.mileage} />
-                        </span>
-                      </div>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Power / Fuel Type</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">{selectedVehicle.fuel}</span>
-                      </div>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-stone-400 block text-[9px] font-bold uppercase tracking-widest">Transmission</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">{selectedVehicle.transmission}</span>
-                      </div>
-                      <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                        <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Production Year</span>
-                        <span className="text-stone-950 font-bold text-sm mt-0.5 block">{selectedVehicle.year}</span>
-                      </div>
-                      {selectedVehicle.engine && (
-                        <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Engine / Displacement</span>
-                          <span className="text-stone-950 font-bold mt-0.5 block text-xs font-mono">{selectedVehicle.engine}</span>
-                        </div>
-                      )}
-                      {selectedVehicle.color && (
-                        <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Exterior Paint Finish</span>
-                          <span className="text-stone-950 font-bold mt-0.5 block text-xs">{selectedVehicle.color}</span>
-                        </div>
-                      )}
-                      {selectedVehicle.owners && (
-                        <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Owner Count</span>
-                          <span className="text-stone-950 font-bold mt-0.5 block text-xs">{selectedVehicle.owners}</span>
-                        </div>
-                      )}
-                      {selectedVehicle.regNumber && (
-                        <div className="p-3.5 bg-[#FAF8F5] border border-stone-300">
-                          <span className="text-[#999999] block text-[9px] font-bold uppercase tracking-widest">Reg Number / Plate</span>
-                          <span className="text-stone-950 font-bold mt-0.5 block font-mono text-xs">{selectedVehicle.regNumber}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900 flex items-center gap-1.5">
+                    <Gauge className="w-4 h-4 text-amber-600" />
+                    Engineering & Spec Breakdown
+                  </h3>
+                  <span className="text-[10px] font-mono text-stone-500 uppercase">Hover cards for metric description</span>
                 </div>
+
+                <SpecGrid vehicle={selectedVehicle} columnsClassName="grid-cols-2 sm:grid-cols-3 gap-3" />
               </div>
 
               {/* Extra Options Checklist */}

@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { Car, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert, ShieldCheck, Heart } from "lucide-react";
+import { Car, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert, ShieldCheck, Heart, Building2 } from "lucide-react";
 import { User } from "firebase/auth";
 import { auth, signOut } from "../firebase";
 import { motion } from "motion/react";
+import { UserRole, OWNER_EMAIL } from "../lib/userRoles";
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   subscriptionActive: boolean;
   currentUser: User | null;
+  userRole?: UserRole;
   onSignInClick: () => void;
 }
 
-export default function Navbar({ activeTab, setActiveTab, subscriptionActive, currentUser, onSignInClick }: NavbarProps) {
+export default function Navbar({ activeTab, setActiveTab, subscriptionActive, currentUser, userRole, onSignInClick }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoadingTabs, setIsLoadingTabs] = useState(true);
 
@@ -39,7 +41,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const isUserAdmin = currentUser?.email === "afrojalamansari461@gmail.com";
+  const isUserOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || userRole === "Owner";
+  const isStaffMember = userRole && userRole !== "User";
 
   const navItems = [
     { id: "home", label: "Home", icon: Home },
@@ -50,8 +53,11 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     { id: "contact", label: "Contact", icon: Mail },
   ];
 
-  if (isUserAdmin) {
+  if (isUserOwner) {
     navItems.push({ id: "admin", label: "Admin Panel", icon: ShieldAlert });
+    navItems.push({ id: "office", label: "Office Room", icon: Building2 });
+  } else if (currentUser && isStaffMember) {
+    navItems.push({ id: "office", label: "Office Room", icon: Building2 });
   }
 
   const mobileNavItems = [
@@ -62,8 +68,11 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     { id: "favorites", label: "FAVORITES", icon: Heart },
   ];
 
-  if (isUserAdmin) {
+  if (isUserOwner) {
     mobileNavItems.push({ id: "admin", label: "ADMIN", icon: ShieldCheck });
+    mobileNavItems.push({ id: "office", label: "OFFICE", icon: Building2 });
+  } else if (currentUser && isStaffMember) {
+    mobileNavItems.push({ id: "office", label: "OFFICE", icon: Building2 });
   }
 
   const handleTabClick = (tabId: string) => {

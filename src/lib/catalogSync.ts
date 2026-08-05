@@ -13,6 +13,22 @@ export interface AdminSettingsData {
   isWhatsAppConnectEnabled?: boolean;
   isAiAssistantEnabled?: boolean;
   isSimranFreeModeEnabled?: boolean;
+  footerEmail?: string;
+  footerPhone?: string;
+  loginQuote?: string;
+  loginAuthor?: string;
+  loginCarImage?: string;
+  registerQuote?: string;
+  registerAuthor?: string;
+  registerCarImage?: string;
+  customDialogues?: Array<{ quote: string; movie: string; character: string; type: string }>;
+  customFaqs?: Array<{ q: string; a: string }>;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroBadge?: string;
+  announcementText?: string;
+  isAnnouncementEnabled?: boolean;
+  showroomAddress?: string;
 }
 
 // 1. Save spec overrides for default catalog items to Firestore
@@ -84,6 +100,54 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       }
       if (settings.isSimranFreeModeEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(settings.isSimranFreeModeEnabled));
+      }
+      if (settings.footerEmail !== undefined) {
+        localStorage.setItem("autoWorld_footer_email", settings.footerEmail);
+      }
+      if (settings.footerPhone !== undefined) {
+        localStorage.setItem("autoWorld_footer_phone", settings.footerPhone);
+      }
+      if (settings.loginQuote !== undefined) {
+        localStorage.setItem("autoWorld_login_quote", settings.loginQuote);
+      }
+      if (settings.loginAuthor !== undefined) {
+        localStorage.setItem("autoWorld_login_author", settings.loginAuthor);
+      }
+      if (settings.loginCarImage !== undefined) {
+        localStorage.setItem("autoWorld_login_car_image", settings.loginCarImage);
+      }
+      if (settings.registerQuote !== undefined) {
+        localStorage.setItem("autoWorld_register_quote", settings.registerQuote);
+      }
+      if (settings.registerAuthor !== undefined) {
+        localStorage.setItem("autoWorld_register_author", settings.registerAuthor);
+      }
+      if (settings.registerCarImage !== undefined) {
+        localStorage.setItem("autoWorld_register_car_image", settings.registerCarImage);
+      }
+      if (settings.customDialogues !== undefined) {
+        localStorage.setItem("autoWorld_custom_dialogues", JSON.stringify(settings.customDialogues));
+      }
+      if (settings.customFaqs !== undefined) {
+        localStorage.setItem("autoWorld_custom_faqs", JSON.stringify(settings.customFaqs));
+      }
+      if (settings.heroTitle !== undefined) {
+        localStorage.setItem("autoWorld_hero_title", settings.heroTitle);
+      }
+      if (settings.heroSubtitle !== undefined) {
+        localStorage.setItem("autoWorld_hero_subtitle", settings.heroSubtitle);
+      }
+      if (settings.heroBadge !== undefined) {
+        localStorage.setItem("autoWorld_hero_badge", settings.heroBadge);
+      }
+      if (settings.announcementText !== undefined) {
+        localStorage.setItem("autoWorld_announcement_text", settings.announcementText);
+      }
+      if (settings.isAnnouncementEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_announcement_enabled", JSON.stringify(settings.isAnnouncementEnabled));
+      }
+      if (settings.showroomAddress !== undefined) {
+        localStorage.setItem("autoWorld_showroom_address", settings.showroomAddress);
       }
     } catch (e) {
       console.warn("Local storage settings sync error:", e);
@@ -172,7 +236,20 @@ export function subscribeToRealtimeCatalog(
           isEmiCalculatorEnabled: data.isEmiCalculatorEnabled !== undefined ? Boolean(data.isEmiCalculatorEnabled) : true,
           isWhatsAppConnectEnabled: data.isWhatsAppConnectEnabled !== undefined ? Boolean(data.isWhatsAppConnectEnabled) : true,
           isAiAssistantEnabled: data.isAiAssistantEnabled !== undefined ? Boolean(data.isAiAssistantEnabled) : true,
-          isSimranFreeModeEnabled: data.isSimranFreeModeEnabled !== undefined ? Boolean(data.isSimranFreeModeEnabled) : false
+          isSimranFreeModeEnabled: data.isSimranFreeModeEnabled !== undefined ? Boolean(data.isSimranFreeModeEnabled) : false,
+          footerEmail: data.footerEmail || undefined,
+          footerPhone: data.footerPhone || undefined,
+          loginQuote: data.loginQuote || undefined,
+          loginAuthor: data.loginAuthor || undefined,
+          loginCarImage: data.loginCarImage || undefined,
+          customDialogues: Array.isArray(data.customDialogues) ? data.customDialogues : undefined,
+          customFaqs: Array.isArray(data.customFaqs) ? data.customFaqs : undefined,
+          heroTitle: data.heroTitle || undefined,
+          heroSubtitle: data.heroSubtitle || undefined,
+          heroBadge: data.heroBadge || undefined,
+          announcementText: data.announcementText || undefined,
+          isAnnouncementEnabled: data.isAnnouncementEnabled !== undefined ? Boolean(data.isAnnouncementEnabled) : false,
+          showroomAddress: data.showroomAddress || undefined
         };
       }
       emit();

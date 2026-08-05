@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Mail, 
@@ -11,7 +11,9 @@ import {
   Sparkles, 
   CheckCircle2, 
   AlertCircle,
-  Car
+  Car,
+  FolderPlus,
+  Upload
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -20,6 +22,9 @@ import {
   googleProvider 
 } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { subscribeToRealtimeCatalog, saveAdminSettingsToFirestore } from "../lib/catalogSync";
+import { OWNER_EMAIL } from "../lib/userRoles";
+import AuthPolicyModal from "./AuthPolicyModal";
 
 interface LoginProps {
   onNavigate?: (page: string) => void;
@@ -29,6 +34,43 @@ interface LoginProps {
 
 export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) {
   const navigate = useNavigate();
+  const isOwner = auth.currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
+
+  // Dynamic Site Customization State
+  const [loginQuote, setLoginQuote] = useState(() => {
+    return localStorage.getItem("autoWorld_login_quote") || "The pursuit of timeless mechanics, unyielding craftsmanship, and pure motorcar majesty.";
+  });
+  const [loginCarImage, setLoginCarImage] = useState(() => {
+    return localStorage.getItem("autoWorld_login_car_image") || "/monochrome-car.jpg";
+  });
+
+  // Modal Policy State
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const [policyTab, setPolicyTab] = useState<"terms" | "privacy" | "support">("terms");
+
+  useEffect(() => {
+    const unsub = subscribeToRealtimeCatalog(({ adminSettings }) => {
+      if (adminSettings.loginQuote) {
+        setLoginQuote(adminSettings.loginQuote);
+      }
+      if (adminSettings.loginCarImage) {
+        setLoginCarImage(adminSettings.loginCarImage);
+      }
+    });
+
+    const handleLocalUpdate = () => {
+      const storedQuote = localStorage.getItem("autoWorld_login_quote");
+      if (storedQuote) setLoginQuote(storedQuote);
+      const storedImage = localStorage.getItem("autoWorld_login_car_image");
+      if (storedImage) setLoginCarImage(storedImage);
+    };
+    window.addEventListener("autoWorld_db_update", handleLocalUpdate);
+
+    return () => {
+      unsub();
+      window.removeEventListener("autoWorld_db_update", handleLocalUpdate);
+    };
+  }, []);
 
   // Form State
   const [email, setEmail] = useState("");
@@ -43,6 +85,29 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoginSuccess, setIsLoginSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleDirectImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      if (showToast) showToast("Please select a valid image file (PNG, JPG, WEBP, etc.)", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        const dataUrl = reader.result;
+        setLoginCarImage(dataUrl);
+        try {
+          localStorage.setItem("autoWorld_login_car_image", dataUrl);
+        } catch (err) {}
+        saveAdminSettingsToFirestore({ loginCarImage: dataUrl });
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+        if (showToast) showToast(`Login background updated from file "${file.name}"!`, "success");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Form Failsafe & Submission Logic
@@ -196,8 +261,8 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
               className="absolute inset-0 w-full h-full z-0 overflow-hidden bg-black"
             >
               <img 
-                src="/monochrome-car.jpg" 
-                alt="Ultra HD silver sports car side profile in dark dusk desert landscape" 
+                src={loginCarImage || "/monochrome-car.jpg"} 
+                alt="Ultra HD sports car side profile" 
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover object-center scale-100"
               />
@@ -236,7 +301,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         <motion.div 
           animate={{ opacity: isTransitioning ? 0.3 : 1, y: isTransitioning ? -10 : 0 }}
           transition={{ duration: 0.7 }}
-          className="relative z-20 p-10"
+          className="relative z-20 p-10 flex items-center justify-between gap-4"
         >
           <motion.button 
             initial="rest"
@@ -289,6 +354,21 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
               />
             </div>
           </motion.button>
+
+          {/* Quick Upload Background Image From My Files (Owner Only) */}
+          {isOwner && (
+            <label className="px-3 py-1.5 bg-stone-950/80 hover:bg-black text-amber-400 border border-amber-500/60 hover:border-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer shadow-lg flex items-center gap-1.5 backdrop-blur-md transition-all hover:scale-105 active:scale-95 shrink-0">
+              <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Upload Image from File</span>
+              <span className="sm:hidden">Change Image</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleDirectImageUpload}
+              />
+            </label>
+          )}
         </motion.div>
 
         {/* Bottom Quote - z-20 floating above overlay */}
@@ -299,7 +379,7 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         >
           <div className="w-12 h-[1px] bg-[#c5a059] mb-6"></div>
           <p className="text-3xl text-gray-200 font-serif italic leading-snug">
-            "The pursuit of timeless mechanics, unyielding craftsmanship, and pure..."
+            "{loginQuote}"
           </p>
         </motion.div>
       </motion.div>
@@ -532,13 +612,40 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         >
           <span>© 2026 Auto World</span>
           <div className="flex gap-4">
-            <Link to="#" onClick={(e) => { e.preventDefault(); if (showToast) showToast("Terms of Service viewed", "info"); }} className="hover:text-black transition-colors">Terms</Link>
-            <Link to="#" onClick={(e) => { e.preventDefault(); if (showToast) showToast("Privacy Policy viewed", "info"); }} className="hover:text-black transition-colors">Privacy</Link>
-            <a href="mailto:concierge@autoworld.com" className="hover:text-black transition-colors">Support</a>
+            <button 
+              type="button" 
+              onClick={() => { setPolicyTab("terms"); setPolicyModalOpen(true); }} 
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Terms
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setPolicyTab("privacy"); setPolicyModalOpen(true); }} 
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Privacy
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setPolicyTab("support"); setPolicyModalOpen(true); }} 
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Support
+            </button>
           </div>
         </motion.footer>
 
       </div>
+
+      {/* Policy & Support Modal */}
+      <AuthPolicyModal
+        isOpen={policyModalOpen}
+        activeTab={policyTab}
+        onClose={() => setPolicyModalOpen(false)}
+        onSelectTab={(tab) => setPolicyTab(tab)}
+        showToast={showToast}
+      />
     </div>
-);
+  );
 }

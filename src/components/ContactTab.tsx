@@ -4,6 +4,7 @@ import { Message } from "../types";
 import { User } from "firebase/auth";
 import { collection, addDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 import { motion } from "motion/react";
 
 interface ContactTabProps {
@@ -29,6 +30,34 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
   // Real-time grammar & spellcheck states
   const [corrections, setCorrections] = useState<any[]>([]);
   const [isSpellchecking, setIsSpellchecking] = useState(false);
+
+  // Contact info states
+  const [contactEmail, setContactEmail] = useState(() => localStorage.getItem("autoWorld_footer_email") || "afrojalamansari461@gmail.com");
+  const [contactPhone, setContactPhone] = useState(() => localStorage.getItem("autoWorld_footer_phone") || "+91 7666232753");
+  const [contactAddress, setContactAddress] = useState(() => localStorage.getItem("autoWorld_showroom_address") || "123 Auto Avenue, Corporate Square, Mumbai, Maharashtra 400001");
+
+  useEffect(() => {
+    const unsub = subscribeToRealtimeCatalog(({ adminSettings }) => {
+      if (adminSettings.footerEmail) setContactEmail(adminSettings.footerEmail);
+      if (adminSettings.footerPhone) setContactPhone(adminSettings.footerPhone);
+      if (adminSettings.showroomAddress) setContactAddress(adminSettings.showroomAddress);
+    });
+
+    const handleLocalUpdate = () => {
+      const storedE = localStorage.getItem("autoWorld_footer_email");
+      if (storedE) setContactEmail(storedE);
+      const storedP = localStorage.getItem("autoWorld_footer_phone");
+      if (storedP) setContactPhone(storedP);
+      const storedA = localStorage.getItem("autoWorld_showroom_address");
+      if (storedA) setContactAddress(storedA);
+    };
+    window.addEventListener("autoWorld_db_update", handleLocalUpdate);
+
+    return () => {
+      unsub();
+      window.removeEventListener("autoWorld_db_update", handleLocalUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (!msgBody || msgBody.trim().length < 10) {
@@ -185,9 +214,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Visit Office</h3>
-                  <p className="text-xs text-stone-500 leading-relaxed font-semibold">
-                    123 Auto Avenue, Corporate Square<br />
-                    Mumbai, Maharashtra 400001
+                  <p className="text-xs text-stone-500 leading-relaxed font-semibold font-mono">
+                    {contactAddress}
                   </p>
                 </div>
               </div>
@@ -200,12 +228,11 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <div className="space-y-1 w-full">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Call support</h3>
                   <p className="text-xs text-stone-500 font-semibold leading-relaxed font-mono">
-                    Direct: +91 7666232753<br />
-                    Toll-Free: +91 1805 123 4567
+                    Direct: {contactPhone}
                   </p>
                   <div className="pt-2">
                     <a
-                      href="https://wa.me/917666232753?text=Hi%20AutoWorld%20Support,%20I%20have%20an%20inquiry%20regarding%20vehicle%20trading."
+                      href={`https://wa.me/${contactPhone.replace(/[^0-9]/g, "")}?text=Hi%20AutoWorld%20Support,%20I%20have%20an%20inquiry%20regarding%20vehicle%20trading.`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-[#FAF8F5] text-[10px] font-sans font-bold uppercase tracking-wider transition-all shadow-sm rounded-none border border-emerald-600 hover:border-emerald-700"
@@ -225,8 +252,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Email coordinates</h3>
                   <p className="text-xs text-stone-505 font-mono">
-                    afrojalamansari461@gmail.com<br />
-                    support@autoworld.com
+                    {contactEmail}
                   </p>
                 </div>
               </div>

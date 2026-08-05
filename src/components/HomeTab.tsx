@@ -193,8 +193,35 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
     return getOverriddenVehicles().slice(0, 3);
   });
 
+  // Dynamic Site Content States
+  const [heroTitle, setHeroTitle] = useState(() => {
+    return localStorage.getItem("autoWorld_hero_title") || "The Aesthetic of Fine Motors.";
+  });
+  const [heroSubtitle, setHeroSubtitle] = useState(() => {
+    return localStorage.getItem("autoWorld_hero_subtitle") || "Refining the pre-owned vehicular trade network through uncompromised mechanical verification, pure high-fidelity listing specifications, and classical typographic clarity.";
+  });
+  const [heroBadge, setHeroBadge] = useState(() => {
+    return localStorage.getItem("autoWorld_hero_badge") || "Volume IV • Issue 12 • Established MMXXVI";
+  });
+  const [announcementText, setAnnouncementText] = useState(() => {
+    return localStorage.getItem("autoWorld_announcement_text") || "🔥 EXCLUSIVE PROMO: Unlimited verified listings and 0% buyer pass markup for all new users this week!";
+  });
+  const [isAnnouncementEnabled, setIsAnnouncementEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_announcement_enabled");
+      if (stored !== null) return JSON.parse(stored);
+    } catch (e) {}
+    return true;
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings }) => {
+      if (adminSettings.heroTitle) setHeroTitle(adminSettings.heroTitle);
+      if (adminSettings.heroSubtitle) setHeroSubtitle(adminSettings.heroSubtitle);
+      if (adminSettings.heroBadge) setHeroBadge(adminSettings.heroBadge);
+      if (adminSettings.announcementText) setAnnouncementText(adminSettings.announcementText);
+      if (adminSettings.isAnnouncementEnabled !== undefined) setIsAnnouncementEnabled(adminSettings.isAnnouncementEnabled);
+
       let defaults = [...DEFAULT_VEHICLES];
 
       if (adminSettings.hiddenDefaultIds && adminSettings.hiddenDefaultIds.length > 0) {
@@ -288,7 +315,26 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
       setFeaturedCars(defaults.slice(0, 3));
     });
 
-    return () => unsubscribe();
+    const handleLocalUpdate = () => {
+      const storedT = localStorage.getItem("autoWorld_hero_title");
+      if (storedT) setHeroTitle(storedT);
+      const storedS = localStorage.getItem("autoWorld_hero_subtitle");
+      if (storedS) setHeroSubtitle(storedS);
+      const storedB = localStorage.getItem("autoWorld_hero_badge");
+      if (storedB) setHeroBadge(storedB);
+      const storedA = localStorage.getItem("autoWorld_announcement_text");
+      if (storedA) setAnnouncementText(storedA);
+      const storedE = localStorage.getItem("autoWorld_is_announcement_enabled");
+      if (storedE !== null) {
+        try { setIsAnnouncementEnabled(JSON.parse(storedE)); } catch (e) {}
+      }
+    };
+    window.addEventListener("autoWorld_db_update", handleLocalUpdate);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("autoWorld_db_update", handleLocalUpdate);
+    };
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -329,7 +375,14 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
       variants={containerVariants}
       className="bg-[#F4F1EA] text-[#1A1A1A] font-sans overflow-hidden animate-in fade-in duration-300"
     >
-      
+      {/* Dynamic Announcement Banner */}
+      {isAnnouncementEnabled && announcementText && (
+        <div className="bg-stone-900 text-amber-300 px-4 py-2 text-xs font-mono font-bold tracking-wider text-center border-b border-stone-800 flex items-center justify-center gap-2 shadow-inner">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+          <span className="truncate">{announcementText}</span>
+        </div>
+      )}
+
       {/* Editorial Split Hero Section */}
       <motion.section variants={itemVariants} className="relative border-b border-[#1A1A1A]/10">
         <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12">
@@ -343,14 +396,13 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
           >
             <div>
               <span className="text-[10px] font-sans uppercase tracking-[0.25em] text-stone-700 mb-6 block font-extrabold">
-                Volume IV • Issue 12 • Established MMXXVI
+                {heroBadge}
               </span>
-              <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-black tracking-tight leading-[0.95] text-stone-900 mb-8 select-none">
-                The <span className="italic font-light text-stone-700">Aesthetic</span> <br/>
-                of Fine Motors.
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-serif font-black tracking-tight leading-[0.95] text-stone-900 mb-8 select-none">
+                {heroTitle}
               </h1>
               <p className="text-base sm:text-lg leading-relaxed text-stone-700 max-w-lg font-sans mb-10">
-                Refining the pre-owned vehicular trade network through uncompromised mechanical verification, pure high-fidelity listing specifications, and classical typographic clarity.
+                {heroSubtitle}
               </p>
             </div>
             

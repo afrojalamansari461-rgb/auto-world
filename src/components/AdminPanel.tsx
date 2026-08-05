@@ -5,7 +5,8 @@ import {
   Search, CheckCircle, RefreshCw, BarChart3, Tag, MessageSquare, 
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
   Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown,
-  Sliders, Shield, Calculator
+  Sliders, Shield, ShieldCheck, Calculator, HelpCircle, Info,
+  Upload, FolderPlus, UploadCloud, Image, Users, UserCheck, Briefcase
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { User } from "firebase/auth";
@@ -16,6 +17,15 @@ import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { 
+  subscribeToUserRoles, 
+  updateUserRole, 
+  UserProfile, 
+  UserRole, 
+  THE_7_ASSIGNABLE_ROLES, 
+  ALL_ROLES, 
+  OWNER_EMAIL 
+} from "../lib/userRoles";
 
 interface AdminPanelProps {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -72,8 +82,82 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const [messages, setMessages] = useState<FirestoreMessage[]>([]);
   const [passes, setPasses] = useState<FirestoreBuyerPass[]>([]);
   const [feedbacks, setFeedbacks] = useState<FirestoreFeedback[]>([]);
+  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [roleSearch, setRoleSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [pendingRoleChange, setPendingRoleChange] = useState<{
+    uid: string;
+    userName: string;
+    targetRole: UserRole;
+    currentRole: UserRole;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit">("inventory");
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles">("inventory");
+
+  // Content Customizer (Edit Mode) States
+  const [footerEmail, setFooterEmail] = useState<string>(() => localStorage.getItem("autoWorld_footer_email") || "afrojalamansari461@gmail.com");
+  const [footerPhone, setFooterPhone] = useState<string>(() => localStorage.getItem("autoWorld_footer_phone") || "+91 98765 43210");
+  const [showroomAddress, setShowroomAddress] = useState<string>(() => localStorage.getItem("autoWorld_showroom_address") || "123 Auto Avenue, Corporate Square, Mumbai, Maharashtra 400001");
+  const [loginQuote, setLoginQuote] = useState<string>(() => localStorage.getItem("autoWorld_login_quote") || "The pursuit of timeless mechanics, unyielding craftsmanship, and pure automotive art.");
+  const [loginCarImage, setLoginCarImage] = useState<string>(() => localStorage.getItem("autoWorld_login_car_image") || "/monochrome-car.jpg");
+  const [registerQuote, setRegisterQuote] = useState<string>(() => localStorage.getItem("autoWorld_register_quote") || "Join an elite global registry of automobile connoisseurs, verified collectors, and fine motor enthusiasts.");
+  const [registerCarImage, setRegisterCarImage] = useState<string>(() => localStorage.getItem("autoWorld_register_car_image") || "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=80");
+  const [heroTitle, setHeroTitle] = useState<string>(() => localStorage.getItem("autoWorld_hero_title") || "The Aesthetic of Fine Motors.");
+  const [heroSubtitle, setHeroSubtitle] = useState<string>(() => localStorage.getItem("autoWorld_hero_subtitle") || "Refining the pre-owned vehicular trade network through uncompromised mechanical verification, pure high-fidelity listing specifications, and classical typographic clarity.");
+  const [heroBadge, setHeroBadge] = useState<string>(() => localStorage.getItem("autoWorld_hero_badge") || "Volume IV • Issue 12 • Established MMXXVI");
+  const [announcementText, setAnnouncementText] = useState<string>(() => localStorage.getItem("autoWorld_announcement_text") || "🔥 EXCLUSIVE PROMO: Unlimited verified listings and 0% buyer pass markup for all new users this week!");
+  const [isAnnouncementEnabled, setIsAnnouncementEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_announcement_enabled");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const defaultDialogues = [
+    { quote: "Ja Simran, jee le apni zindagi!", character: "Amrish Puri (Baldev Singh)", movie: "Dilwale Dulhania Le Jayenge (1995)", type: "Iconic DDLJ Classic" },
+    { quote: "Aapke paon dekhe, bahut haseen hain. Inhein zameen par mat rakhiyega... maile ho jayenge.", character: "Raj Kumar", movie: "Pakeezah (1972)", type: "Romantic Dialogue" },
+    { quote: "Mogambo khush hua!", character: "Amrish Puri (Mogambo)", movie: "Mr. India (1987)", type: "Villain Dialogue" },
+    { quote: "Kitne aadmi the?", character: "Amjad Khan (Gabbar Singh)", movie: "Sholay (1975)", type: "Legendary Dialogue" },
+    { quote: "Don ko pakadna mushkil hi nahi... namumkin hai!", character: "Amitabh Bachchan", movie: "Don (1978)", type: "Action Classic" },
+    { quote: "Bade bade deshon mein aisi chhoti chhoti baatein hoti rehti hain, Senorita.", character: "Shah Rukh Khan (Raj)", movie: "DDLJ (1995)", type: "Romance Classic" },
+    { quote: "Parampara, Pratishtha, Anushasan... Yeh is gurukul ke teen stambh hain.", character: "Amitabh Bachchan", movie: "Mohabbatein (2000)", type: "Discipline Quote" },
+    { quote: "All IZZ WELL! Aah, tension lene ka nahi, sirf lene ka!", character: "Aamir Khan (Ranchoddas)", movie: "3 Idiots (2009)", type: "Youth Anthem" }
+  ];
+
+  const defaultFaqs = [
+    { q: "Can I cancel my premium plan anytime?", a: "Yes, you hold full autonomy to pause, downgrade, or cancel subscription parameters at any time inside your dashboard. No contract locks!" },
+    { q: "What payment forms do you authorize?", a: "We support major credit cards (Visa, Mastercard, American Express), securely monitored and protected." },
+    { q: "How long does a listed car stay visible?", a: "Basic free accounts can list a car for 30 days. Pro members hold 60-day visibility, and Business listings stay up to 90 days." },
+    { q: "Do you offer refunds if my vehicle sells before cycle ends?", a: "Because we activate immediate ad distribution tools and priority rankings upon upgrades, we don't offer prorated refunds, but you can cancel next term billings securely." }
+  ];
+
+  const [customDialogues, setCustomDialogues] = useState<Array<{ quote: string; character: string; movie: string; type: string }>>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_custom_dialogues");
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return defaultDialogues;
+  });
+
+  const [customFaqs, setCustomFaqs] = useState<Array<{ q: string; a: string }>>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_custom_faqs");
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return defaultFaqs;
+  });
+
+  // State for Editing Dialogues Modal/Form
+  const [editingDialogueIdx, setEditingDialogueIdx] = useState<number | null>(null);
+  const [dialogueForm, setDialogueForm] = useState<{ quote: string; character: string; movie: string; type: string }>({
+    quote: "", character: "", movie: "", type: "Simran Special"
+  });
+
+  // State for Editing FAQ Modal/Form
+  const [editingFaqIdx, setEditingFaqIdx] = useState<number | null>(null);
+  const [faqForm, setFaqForm] = useState<{ q: string; a: string }>({ q: "", a: "" });
   
   // Custom states for spectacular welcome intro sequence and floating animations
   const [isIntroActive, setIsIntroActive] = useState(false);
@@ -578,6 +662,62 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           setIsUrgentHotStampEnabled(Boolean(data.isUrgentHotStampEnabled));
           localStorage.setItem("autoWorld_is_urgent_hot_stamp", JSON.stringify(Boolean(data.isUrgentHotStampEnabled)));
         }
+        if (data.footerEmail) {
+          setFooterEmail(data.footerEmail);
+          localStorage.setItem("autoWorld_footer_email", data.footerEmail);
+        }
+        if (data.footerPhone) {
+          setFooterPhone(data.footerPhone);
+          localStorage.setItem("autoWorld_footer_phone", data.footerPhone);
+        }
+        if (data.showroomAddress) {
+          setShowroomAddress(data.showroomAddress);
+          localStorage.setItem("autoWorld_showroom_address", data.showroomAddress);
+        }
+        if (data.loginQuote) {
+          setLoginQuote(data.loginQuote);
+          localStorage.setItem("autoWorld_login_quote", data.loginQuote);
+        }
+        if (data.loginCarImage) {
+          setLoginCarImage(data.loginCarImage);
+          localStorage.setItem("autoWorld_login_car_image", data.loginCarImage);
+        }
+        if (data.registerQuote) {
+          setRegisterQuote(data.registerQuote);
+          localStorage.setItem("autoWorld_register_quote", data.registerQuote);
+        }
+        if (data.registerCarImage) {
+          setRegisterCarImage(data.registerCarImage);
+          localStorage.setItem("autoWorld_register_car_image", data.registerCarImage);
+        }
+        if (data.heroTitle) {
+          setHeroTitle(data.heroTitle);
+          localStorage.setItem("autoWorld_hero_title", data.heroTitle);
+        }
+        if (data.heroSubtitle) {
+          setHeroSubtitle(data.heroSubtitle);
+          localStorage.setItem("autoWorld_hero_subtitle", data.heroSubtitle);
+        }
+        if (data.heroBadge) {
+          setHeroBadge(data.heroBadge);
+          localStorage.setItem("autoWorld_hero_badge", data.heroBadge);
+        }
+        if (data.announcementText) {
+          setAnnouncementText(data.announcementText);
+          localStorage.setItem("autoWorld_announcement_text", data.announcementText);
+        }
+        if (data.isAnnouncementEnabled !== undefined) {
+          setIsAnnouncementEnabled(Boolean(data.isAnnouncementEnabled));
+          localStorage.setItem("autoWorld_is_announcement_enabled", JSON.stringify(Boolean(data.isAnnouncementEnabled)));
+        }
+        if (data.customDialogues && data.customDialogues.length > 0) {
+          setCustomDialogues(data.customDialogues);
+          localStorage.setItem("autoWorld_custom_dialogues", JSON.stringify(data.customDialogues));
+        }
+        if (data.customFaqs && data.customFaqs.length > 0) {
+          setCustomFaqs(data.customFaqs);
+          localStorage.setItem("autoWorld_custom_faqs", JSON.stringify(data.customFaqs));
+        }
       }
     } catch (e) {
       console.warn("Could not load admin_settings doc:", e);
@@ -664,9 +804,26 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         if (data.isWhatsAppConnectEnabled !== undefined) setIsWhatsAppConnectEnabled(Boolean(data.isWhatsAppConnectEnabled));
         if (data.isAiAssistantEnabled !== undefined) setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
         if (data.isSimranFreeModeEnabled !== undefined) setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
+        if (data.footerEmail) setFooterEmail(data.footerEmail);
+        if (data.footerPhone) setFooterPhone(data.footerPhone);
+        if (data.showroomAddress) setShowroomAddress(data.showroomAddress);
+        if (data.loginQuote) setLoginQuote(data.loginQuote);
+        if (data.loginCarImage) setLoginCarImage(data.loginCarImage);
+        if (data.heroTitle) setHeroTitle(data.heroTitle);
+        if (data.heroSubtitle) setHeroSubtitle(data.heroSubtitle);
+        if (data.heroBadge) setHeroBadge(data.heroBadge);
+        if (data.announcementText) setAnnouncementText(data.announcementText);
+        if (data.isAnnouncementEnabled !== undefined) setIsAnnouncementEnabled(Boolean(data.isAnnouncementEnabled));
+        if (data.customDialogues && data.customDialogues.length > 0) setCustomDialogues(data.customDialogues);
+        if (data.customFaqs && data.customFaqs.length > 0) setCustomFaqs(data.customFaqs);
       }
     }, (err) => console.warn("Admin settings doc listener warning:", err));
     
+    // 6. Real-time subscriber for users & role management
+    const unsubRoles = subscribeToUserRoles((users) => {
+      setUsersList(users);
+    });
+
     // Load local storage fallbacks
     try {
       const stored = localStorage.getItem("autoWorld_hidden_defaults");
@@ -694,6 +851,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       unsubPasses();
       unsubFeedbacks();
       unsubAdminDoc();
+      unsubRoles();
       window.removeEventListener("autoWorld_db_update", handleUpdate);
     };
   }, []);
@@ -1506,6 +1664,177 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         }
       }
     });
+  };
+
+  // Content Customizer Handlers
+  const handleSaveFooterSettings = async (emailVal: string, phoneVal: string) => {
+    setFooterEmail(emailVal);
+    setFooterPhone(phoneVal);
+    try {
+      localStorage.setItem("autoWorld_footer_email", emailVal);
+      localStorage.setItem("autoWorld_footer_phone", phoneVal);
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ footerEmail: emailVal, footerPhone: phoneVal });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Footer contact details saved & updated live!", "success");
+    triggerHudAlert("FOOTER UPDATED", `Email: ${emailVal}, Phone: ${phoneVal}`, "verified");
+  };
+
+  const handleSaveShowroomAddress = async (addrVal: string) => {
+    setShowroomAddress(addrVal);
+    try {
+      localStorage.setItem("autoWorld_showroom_address", addrVal);
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ showroomAddress: addrVal });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Showroom address saved & updated live across site!", "success");
+    triggerHudAlert("ADDRESS UPDATED", addrVal, "verified");
+  };
+
+  const handleSaveHeroSettings = async (titleVal: string, subtitleVal: string, badgeVal: string) => {
+    setHeroTitle(titleVal);
+    setHeroSubtitle(subtitleVal);
+    setHeroBadge(badgeVal);
+    try {
+      localStorage.setItem("autoWorld_hero_title", titleVal);
+      localStorage.setItem("autoWorld_hero_subtitle", subtitleVal);
+      localStorage.setItem("autoWorld_hero_badge", badgeVal);
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ heroTitle: titleVal, heroSubtitle: subtitleVal, heroBadge: badgeVal });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Hero section headlines saved & updated live!", "success");
+    triggerHudAlert("HERO UPDATED", titleVal, "verified");
+  };
+
+  const handleSaveAnnouncementSettings = async (textVal: string, enabledVal: boolean) => {
+    setAnnouncementText(textVal);
+    setIsAnnouncementEnabled(enabledVal);
+    try {
+      localStorage.setItem("autoWorld_announcement_text", textVal);
+      localStorage.setItem("autoWorld_is_announcement_enabled", JSON.stringify(enabledVal));
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ announcementText: textVal, isAnnouncementEnabled: enabledVal });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Announcement banner saved & updated live!", "success");
+    triggerHudAlert("ANNOUNCEMENT UPDATED", enabledVal ? "Banner Enabled" : "Banner Hidden", enabledVal ? "approve" : "unapprove");
+  };
+
+  const handleSaveLoginSettings = async (quoteVal: string, carImgVal: string) => {
+    setLoginQuote(quoteVal);
+    setLoginCarImage(carImgVal);
+    try {
+      localStorage.setItem("autoWorld_login_quote", quoteVal);
+      localStorage.setItem("autoWorld_login_car_image", carImgVal);
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ loginQuote: quoteVal, loginCarImage: carImgVal });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Login quote & image updated live!", "success");
+    triggerHudAlert("LOGIN PAGE UPDATED", "Login page quote and background car image saved.", "verified");
+  };
+
+  const handleSaveRegisterSettings = async (quoteVal: string, carImgVal: string) => {
+    setRegisterQuote(quoteVal);
+    setRegisterCarImage(carImgVal);
+    try {
+      localStorage.setItem("autoWorld_register_quote", quoteVal);
+      localStorage.setItem("autoWorld_register_car_image", carImgVal);
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ registerQuote: quoteVal, registerCarImage: carImgVal });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Register page quote & image updated live!", "success");
+    triggerHudAlert("REGISTER PAGE UPDATED", "Create Account page quote and background saved.", "verified");
+  };
+
+  const handleAddOrUpdateDialogue = async () => {
+    if (!dialogueForm.quote.trim() || !dialogueForm.character.trim() || !dialogueForm.movie.trim()) {
+      showToast("Please fill in Quote, Character, and Movie fields.", "error");
+      return;
+    }
+
+    let updated: typeof customDialogues;
+    if (editingDialogueIdx !== null) {
+      updated = customDialogues.map((item, i) => i === editingDialogueIdx ? dialogueForm : item);
+    } else {
+      updated = [...customDialogues, dialogueForm];
+    }
+
+    setCustomDialogues(updated);
+    try {
+      localStorage.setItem("autoWorld_custom_dialogues", JSON.stringify(updated));
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ customDialogues: updated });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+
+    showToast(editingDialogueIdx !== null ? "Dialogue updated!" : "New dialogue added!", "success");
+    setEditingDialogueIdx(null);
+    setDialogueForm({ quote: "", character: "", movie: "", type: "Simran Special" });
+  };
+
+  const handleDeleteDialogue = async (idx: number) => {
+    const updated = customDialogues.filter((_, i) => i !== idx);
+    setCustomDialogues(updated);
+    try {
+      localStorage.setItem("autoWorld_custom_dialogues", JSON.stringify(updated));
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ customDialogues: updated });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Dialogue removed.", "info");
+  };
+
+  const handleResetDialogues = async () => {
+    setCustomDialogues(defaultDialogues);
+    try {
+      localStorage.setItem("autoWorld_custom_dialogues", JSON.stringify(defaultDialogues));
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ customDialogues: defaultDialogues });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("Dialogues restored to default Bollywood classics!", "success");
+  };
+
+  const handleAddOrUpdateFaq = async () => {
+    if (!faqForm.q.trim() || !faqForm.a.trim()) {
+      showToast("Please enter both Question and Answer fields.", "error");
+      return;
+    }
+
+    let updated: typeof customFaqs;
+    if (editingFaqIdx !== null) {
+      updated = customFaqs.map((item, i) => i === editingFaqIdx ? faqForm : item);
+    } else {
+      updated = [...customFaqs, faqForm];
+    }
+
+    setCustomFaqs(updated);
+    try {
+      localStorage.setItem("autoWorld_custom_faqs", JSON.stringify(updated));
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ customFaqs: updated });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+
+    showToast(editingFaqIdx !== null ? "FAQ item updated!" : "New FAQ item added!", "success");
+    setEditingFaqIdx(null);
+    setFaqForm({ q: "", a: "" });
+  };
+
+  const handleDeleteFaq = async (idx: number) => {
+    const updated = customFaqs.filter((_, i) => i !== idx);
+    setCustomFaqs(updated);
+    try {
+      localStorage.setItem("autoWorld_custom_faqs", JSON.stringify(updated));
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ customFaqs: updated });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("FAQ item removed.", "info");
+  };
+
+  const handleResetFaqs = async () => {
+    setCustomFaqs(defaultFaqs);
+    try {
+      localStorage.setItem("autoWorld_custom_faqs", JSON.stringify(defaultFaqs));
+    } catch (e) {}
+    await saveAdminSettingsToFirestore({ customFaqs: defaultFaqs });
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+    showToast("FAQs restored to platform defaults!", "success");
   };
 
   // Load default overrides from local storage
@@ -2411,6 +2740,30 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           >
             <History className="w-4 h-4 shrink-0 text-amber-600" />
             Audit Logs
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("roles")}
+            className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              activeSubSection === "roles"
+                ? "bg-amber-600 text-stone-950 shadow-md font-black border-b-2 border-amber-300"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+          >
+            <Users className="w-4 h-4 shrink-0 text-stone-900" />
+            User Roles ({usersList.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("content")}
+            className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              activeSubSection === "content"
+                ? "bg-purple-900 text-white shadow-md border-b-2 border-amber-400"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+          >
+            <Sliders className="w-4 h-4 shrink-0 text-amber-400" />
+            Edit Mode (Content)
           </button>
         </div>
 
@@ -3841,9 +4194,1074 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                 showToast={showToast}
               />
             )}
+
+            {/* SUBSECTION 6: SITE CONTENT MANAGEMENT (EDIT MODE) */}
+            {activeSubSection === "content" && (
+              <div className="space-y-8">
+                {/* Header Banner */}
+                <div className="bg-[#FAF8F5] border-2 border-purple-900/30 p-5 shadow-[4px_4px_0px_0px_rgba(147,51,234,0.15)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Sliders className="w-5 h-5 text-purple-700" />
+                      <h2 className="text-base font-serif font-black uppercase text-stone-900 tracking-tight">
+                        Site Content Customizer (Edit Mode)
+                      </h2>
+                    </div>
+                    <p className="text-stone-500 text-xs font-mono mt-1">
+                      Modify global footer contact info, login page quotes & car images, Simran Mode dialogues, and FAQs in real time.
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-purple-900 text-white text-[10px] font-mono font-bold uppercase tracking-widest border border-purple-800 shrink-0">
+                    REAL-TIME FIRESTORE SYNC
+                  </span>
+                </div>
+
+                {/* 1. FOOTER & HEADQUARTERS CONTACT DETAILS CARD */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-300 pb-3">
+                    <h3 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-purple-600" />
+                      1. Footer & Headquarters Contact Details
+                    </h3>
+                    <span className="text-[10px] text-stone-500 font-mono">Synced on Footer & Contact page</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Footer Email Address:
+                      </label>
+                      <input
+                        type="email"
+                        value={footerEmail}
+                        onChange={(e) => setFooterEmail(e.target.value)}
+                        placeholder="e.g. support@autoworld.com"
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Footer Phone Number:
+                      </label>
+                      <input
+                        type="text"
+                        value={footerPhone}
+                        onChange={(e) => setFooterPhone(e.target.value)}
+                        placeholder="e.g. +91 98765 43210"
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                      Showroom / Headquarters Office Address:
+                    </label>
+                    <input
+                      type="text"
+                      value={showroomAddress}
+                      onChange={(e) => setShowroomAddress(e.target.value)}
+                      placeholder="e.g. 123 Auto Avenue, Corporate Square, Mumbai..."
+                      className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSaveFooterSettings(footerEmail, footerPhone);
+                        handleSaveShowroomAddress(showroomAddress);
+                      }}
+                      className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Save Contact & Address Info
+                    </button>
+                  </div>
+                </div>
+
+                {/* HERO SECTION HEADLINES CUSTOMIZER CARD */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-300 pb-3">
+                    <h3 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      Hero Section Headlines & Tagline
+                    </h3>
+                    <span className="text-[10px] text-stone-500 font-mono">Main Homepage Banner</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Top Badge / Editorial Subtitle:
+                      </label>
+                      <input
+                        type="text"
+                        value={heroBadge}
+                        onChange={(e) => setHeroBadge(e.target.value)}
+                        placeholder="e.g. Volume IV • Issue 12 • Established MMXXVI"
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Main Hero Title Heading:
+                      </label>
+                      <input
+                        type="text"
+                        value={heroTitle}
+                        onChange={(e) => setHeroTitle(e.target.value)}
+                        placeholder="e.g. The Aesthetic of Fine Motors."
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-serif font-bold text-stone-900 focus:bg-stone-50 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Hero Description Paragraph:
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={heroSubtitle}
+                        onChange={(e) => setHeroSubtitle(e.target.value)}
+                        placeholder="e.g. Refining the pre-owned vehicular trade network..."
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-sans text-stone-900 focus:bg-stone-50 outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveHeroSettings(heroTitle, heroSubtitle, heroBadge)}
+                      className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Save Hero Headlines
+                    </button>
+                  </div>
+                </div>
+
+                {/* ANNOUNCEMENT BANNER CUSTOMIZER CARD */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-300 pb-3">
+                    <h3 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      Top Announcement / Promo Alert Banner
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-stone-600">
+                        {isAnnouncementEnabled ? "ENABLED" : "DISABLED"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsAnnouncementEnabled(!isAnnouncementEnabled)}
+                        className={`w-10 h-5 rounded-full p-0.5 transition ${isAnnouncementEnabled ? "bg-emerald-600" : "bg-stone-400"}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full bg-white transition transform ${isAnnouncementEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                      Announcement Banner Message Text:
+                    </label>
+                    <input
+                      type="text"
+                      value={announcementText}
+                      onChange={(e) => setAnnouncementText(e.target.value)}
+                      placeholder="e.g. 🔥 EXCLUSIVE PROMO: Unlimited verified listings..."
+                      className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveAnnouncementSettings(announcementText, isAnnouncementEnabled)}
+                      className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Save Announcement Banner
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. LOGIN PAGE CUSTOMIZER CARD */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-5">
+                  <div className="flex items-center justify-between border-b border-stone-300 pb-3">
+                    <h3 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-purple-600" />
+                      2. Login Page Quote & Car Background
+                    </h3>
+                    <span className="text-[10px] text-stone-500 font-mono">Desktop & Mobile Login</span>
+                  </div>
+
+                  {/* Quote Editor */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                      Inspirational Quote Text:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={loginQuote}
+                      onChange={(e) => setLoginQuote(e.target.value)}
+                      placeholder="Enter quote shown on login left showcase panel..."
+                      className="w-full p-3 bg-white border-2 border-stone-900 text-xs font-serif italic text-stone-900 focus:bg-stone-50 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Car Image Editor & Presets */}
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Login Car Image Background:
+                      </label>
+                      <span className="text-[10px] font-mono text-stone-500">Upload file, select preset, or paste URL</span>
+                    </div>
+
+                    {/* Local File Uploader Dropzone */}
+                    <div className="p-3 bg-white border-2 border-dashed border-purple-800/40 hover:border-purple-800 transition space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-xs font-mono font-bold text-stone-900 uppercase">
+                          <Upload className="w-4 h-4 text-purple-600 shrink-0" />
+                          <span>Upload From Device Files:</span>
+                        </div>
+                        <label className="px-3 py-1.5 bg-purple-900 hover:bg-purple-950 text-white text-[10px] font-mono font-bold uppercase tracking-wider border border-purple-950 cursor-pointer transition flex items-center justify-center gap-1.5 shadow-xs">
+                          <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Browse My Files...</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (!file.type.startsWith("image/")) {
+                                showToast("Please select a valid image file (PNG, JPG, WEBP, etc.)", "error");
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (typeof reader.result === "string") {
+                                  setLoginCarImage(reader.result);
+                                  showToast(`Loaded ${file.name} for Login background!`, "success");
+                                  triggerHudAlert("FILE LOADED", `Set local file "${file.name}" as Login image.`, "verified");
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-[10px] font-mono text-stone-500">
+                        Supports local PNG, JPG, SVG, WEBP files from your computer or phone.
+                      </p>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { label: "Default Monochrome", url: "/monochrome-car.jpg" },
+                        { label: "HD Silver Sports Car", url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&q=80&w=1600" },
+                        { label: "Red Supercar", url: "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&q=80&w=1600" },
+                        { label: "Luxury Vintage Coupe", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=1600" }
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setLoginCarImage(preset.url)}
+                          className={`p-2 text-[10px] font-mono font-bold uppercase tracking-wider border text-left transition cursor-pointer flex flex-col gap-1 ${
+                            loginCarImage === preset.url
+                              ? "bg-purple-900 text-white border-purple-950 font-black shadow-sm"
+                              : "bg-white text-stone-700 border-stone-300 hover:bg-stone-100"
+                          }`}
+                        >
+                          <span>{preset.label}</span>
+                          <span className="text-[8px] opacity-70 truncate">{preset.url}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        value={loginCarImage}
+                        onChange={(e) => setLoginCarImage(e.target.value)}
+                        placeholder="https://... or data:image/..."
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                      />
+                      {loginCarImage.startsWith("data:") && (
+                        <span className="px-2 py-1 bg-emerald-800 text-white text-[9px] font-mono font-bold uppercase shrink-0">
+                          Custom File Uploaded
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Live Preview Box */}
+                  <div className="p-4 bg-stone-950 text-white border-2 border-stone-900 space-y-2 relative overflow-hidden rounded-none">
+                    <div className="flex items-center justify-between text-[9px] font-mono text-amber-400 font-bold uppercase tracking-widest pb-1 border-b border-stone-800">
+                      <span>LIVE PREVIEW: LOGIN SHOWCASE</span>
+                      <span>16:9 RATIO</span>
+                    </div>
+                    <div className="relative h-40 w-full overflow-hidden border border-stone-800 bg-black flex items-end p-4">
+                      <img 
+                        src={loginCarImage || "/monochrome-car.jpg"} 
+                        alt="Preview" 
+                        className="absolute inset-0 w-full h-full object-cover opacity-60"
+                        onError={(e) => { (e.target as any).src = "/monochrome-car.jpg"; }}
+                      />
+                      <div className="relative z-10 max-w-sm space-y-2">
+                        <div className="w-8 h-[1px] bg-amber-400" />
+                        <p className="text-xs font-serif italic text-stone-200 line-clamp-3">
+                          "{loginQuote}"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveLoginSettings(loginQuote, loginCarImage)}
+                      className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Save Login Quote & Image
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. REGISTER / CREATE ACCOUNT PAGE CUSTOMIZER CARD */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-5">
+                  <div className="flex items-center justify-between border-b border-stone-300 pb-3">
+                    <h3 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#c5a059]" />
+                      3. Register / Create Account Page Quote & Car Background
+                    </h3>
+                    <span className="text-[10px] text-stone-500 font-mono">Sign Up Mode Customizer</span>
+                  </div>
+
+                  {/* Quote Editor */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                      Register Page Quote Text:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={registerQuote}
+                      onChange={(e) => setRegisterQuote(e.target.value)}
+                      placeholder="Enter quote shown on register left showcase panel..."
+                      className="w-full p-3 bg-white border-2 border-stone-900 text-xs font-serif italic text-stone-900 focus:bg-stone-50 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Car Image Editor & Presets */}
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Register Page Car Image Background:
+                      </label>
+                      <span className="text-[10px] font-mono text-stone-500">Upload file, select preset, or paste URL</span>
+                    </div>
+
+                    {/* Local File Uploader Dropzone */}
+                    <div className="p-3 bg-white border-2 border-dashed border-amber-800/40 hover:border-amber-700 transition space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-xs font-mono font-bold text-stone-900 uppercase">
+                          <Upload className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>Upload From Device Files:</span>
+                        </div>
+                        <label className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-mono font-bold uppercase tracking-wider border border-stone-950 cursor-pointer transition flex items-center justify-center gap-1.5 shadow-xs">
+                          <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Browse My Files...</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (!file.type.startsWith("image/")) {
+                                showToast("Please select a valid image file (PNG, JPG, WEBP, etc.)", "error");
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (typeof reader.result === "string") {
+                                  setRegisterCarImage(reader.result);
+                                  showToast(`Loaded ${file.name} for Register background!`, "success");
+                                  triggerHudAlert("FILE LOADED", `Set local file "${file.name}" as Register image.`, "verified");
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-[10px] font-mono text-stone-500">
+                        Supports local PNG, JPG, SVG, WEBP files from your computer or phone.
+                      </p>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { label: "Luxury Vintage Coupe", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=1600" },
+                        { label: "Porsche 911 GT3", url: "https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?auto=format&fit=crop&w=1600" },
+                        { label: "Studio Supercar", url: "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=1600" },
+                        { label: "Monochrome Classic", url: "/monochrome-car.jpg" }
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setRegisterCarImage(preset.url)}
+                          className={`p-2 text-[10px] font-mono font-bold uppercase tracking-wider border text-left transition cursor-pointer flex flex-col gap-1 ${
+                            registerCarImage === preset.url
+                              ? "bg-stone-900 text-amber-400 border-stone-950 font-black shadow-sm"
+                              : "bg-white text-stone-700 border-stone-300 hover:bg-stone-100"
+                          }`}
+                        >
+                          <span>{preset.label}</span>
+                          <span className="text-[8px] opacity-70 truncate">{preset.url}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        value={registerCarImage}
+                        onChange={(e) => setRegisterCarImage(e.target.value)}
+                        placeholder="https://... or data:image/..."
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                      />
+                      {registerCarImage.startsWith("data:") && (
+                        <span className="px-2 py-1 bg-emerald-800 text-white text-[9px] font-mono font-bold uppercase shrink-0">
+                          Custom File Uploaded
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Live Preview Box */}
+                  <div className="p-4 bg-stone-950 text-white border-2 border-stone-900 space-y-2 relative overflow-hidden rounded-none">
+                    <div className="flex items-center justify-between text-[9px] font-mono text-amber-400 font-bold uppercase tracking-widest pb-1 border-b border-stone-800">
+                      <span>LIVE PREVIEW: REGISTER SHOWCASE</span>
+                      <span>16:9 RATIO</span>
+                    </div>
+                    <div className="relative h-40 w-full overflow-hidden border border-stone-800 bg-black flex items-end p-4">
+                      <img 
+                        src={registerCarImage || "/monochrome-car.jpg"} 
+                        alt="Register Preview" 
+                        className="absolute inset-0 w-full h-full object-cover opacity-60"
+                        onError={(e) => { (e.target as any).src = "/monochrome-car.jpg"; }}
+                      />
+                      <div className="relative z-10 max-w-sm space-y-2">
+                        <div className="w-8 h-[1px] bg-amber-400" />
+                        <p className="text-xs font-serif italic text-stone-200 line-clamp-3">
+                          "{registerQuote}"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveRegisterSettings(registerQuote, registerCarImage)}
+                      className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Save Register Quote & Image
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. SIMRAN MODE DIALOGUES CUSTOMIZER CARD */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-6">
+                  <div className="flex items-center justify-between border-b border-stone-300 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      <h3 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900">
+                        3. Simran Mode Dialogues ({customDialogues.length})
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetDialogues}
+                      className="px-3 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 text-[10px] font-mono font-bold uppercase tracking-wider border border-stone-400 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3 text-stone-600" />
+                      Restore Default Dialogues
+                    </button>
+                  </div>
+
+                  {/* Add / Edit Form */}
+                  <div className="p-4 bg-white border-2 border-stone-900 space-y-4 shadow-sm">
+                    <h4 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
+                      {editingDialogueIdx !== null ? <Wrench className="w-4 h-4 text-amber-600" /> : <Plus className="w-4 h-4 text-purple-600" />}
+                      {editingDialogueIdx !== null ? `Editing Dialogue #${editingDialogueIdx + 1}` : "Add New Dialogue to Showcase"}
+                    </h4>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] font-mono font-bold uppercase text-stone-600 block mb-1">
+                          Dialogue Quote:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={dialogueForm.quote}
+                          onChange={(e) => setDialogueForm({ ...dialogueForm, quote: e.target.value })}
+                          placeholder="e.g. Ja Simran, jee le apni zindagi!"
+                          className="w-full p-2.5 bg-stone-50 border border-stone-400 text-xs font-serif italic text-stone-900 focus:bg-white outline-none resize-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[10px] font-mono font-bold uppercase text-stone-600 block mb-1">
+                            Character Name:
+                          </label>
+                          <input
+                            type="text"
+                            value={dialogueForm.character}
+                            onChange={(e) => setDialogueForm({ ...dialogueForm, character: e.target.value })}
+                            placeholder="e.g. Amrish Puri"
+                            className="w-full p-2 bg-stone-50 border border-stone-400 text-xs font-mono focus:bg-white outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono font-bold uppercase text-stone-600 block mb-1">
+                            Movie Title (Year):
+                          </label>
+                          <input
+                            type="text"
+                            value={dialogueForm.movie}
+                            onChange={(e) => setDialogueForm({ ...dialogueForm, movie: e.target.value })}
+                            placeholder="e.g. DDLJ (1995)"
+                            className="w-full p-2 bg-stone-50 border border-stone-400 text-xs font-mono focus:bg-white outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono font-bold uppercase text-stone-600 block mb-1">
+                            Tag / Category:
+                          </label>
+                          <input
+                            type="text"
+                            value={dialogueForm.type}
+                            onChange={(e) => setDialogueForm({ ...dialogueForm, type: e.target.value })}
+                            placeholder="e.g. Simran Special"
+                            className="w-full p-2 bg-stone-50 border border-stone-400 text-xs font-mono focus:bg-white outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        {editingDialogueIdx !== null && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDialogueIdx(null);
+                              setDialogueForm({ quote: "", character: "", movie: "", type: "Simran Special" });
+                            }}
+                            className="px-3 py-1.5 bg-stone-200 text-stone-700 text-xs font-mono font-bold uppercase cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleAddOrUpdateDialogue}
+                          className="px-4 py-2 bg-purple-900 hover:bg-purple-800 text-white text-xs font-mono font-bold uppercase tracking-widest border border-purple-950 cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Check className="w-4 h-4 text-amber-400" />
+                          {editingDialogueIdx !== null ? "Update Dialogue" : "Add Dialogue Item"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List of Active Dialogues */}
+                  <div className="space-y-2.5">
+                    {customDialogues.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 bg-stone-900 text-stone-100 border border-stone-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 bg-amber-400 text-stone-950 font-mono text-[9px] font-black uppercase">
+                              #{idx + 1} {item.type}
+                            </span>
+                            <span className="text-[10px] font-mono text-stone-400">— {item.character} ({item.movie})</span>
+                          </div>
+                          <p className="text-xs font-serif italic text-amber-200">
+                            "{item.quote}"
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDialogueIdx(idx);
+                              setDialogueForm(item);
+                            }}
+                            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-amber-400 text-[10px] font-mono font-bold uppercase border border-stone-700 cursor-pointer flex items-center gap-1"
+                          >
+                            <Wrench className="w-3 h-3" /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDialogue(idx)}
+                            className="px-2.5 py-1 bg-red-950/80 hover:bg-red-900 text-red-300 text-[10px] font-mono font-bold uppercase border border-red-800 cursor-pointer flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3 h-3" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. MEMBERSHIP FAQs CUSTOMIZER CARD */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-6">
+                  <div className="flex items-center justify-between border-b border-stone-300 pb-3">
+                    <div className="flex items-center gap-2">
+                      <HelpCircle className="w-4 h-4 text-purple-600" />
+                      <h3 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900">
+                        4. Membership FAQs Management ({customFaqs.length})
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetFaqs}
+                      className="px-3 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 text-[10px] font-mono font-bold uppercase tracking-wider border border-stone-400 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3 text-stone-600" />
+                      Restore Default FAQs
+                    </button>
+                  </div>
+
+                  {/* Add / Edit FAQ Form */}
+                  <div className="p-4 bg-white border-2 border-stone-900 space-y-3 shadow-sm">
+                    <h4 className="text-xs font-mono font-black uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
+                      {editingFaqIdx !== null ? <Wrench className="w-4 h-4 text-amber-600" /> : <Plus className="w-4 h-4 text-purple-600" />}
+                      {editingFaqIdx !== null ? `Editing FAQ Item #${editingFaqIdx + 1}` : "Add New Question & Answer"}
+                    </h4>
+
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="text-[10px] font-mono font-bold uppercase text-stone-600 block mb-1">
+                          Question:
+                        </label>
+                        <input
+                          type="text"
+                          value={faqForm.q}
+                          onChange={(e) => setFaqForm({ ...faqForm, q: e.target.value })}
+                          placeholder="e.g. Can I list a car for free?"
+                          className="w-full p-2 bg-stone-50 border border-stone-400 text-xs font-mono focus:bg-white outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-mono font-bold uppercase text-stone-600 block mb-1">
+                          Answer:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={faqForm.a}
+                          onChange={(e) => setFaqForm({ ...faqForm, a: e.target.value })}
+                          placeholder="Enter clear answer..."
+                          className="w-full p-2.5 bg-stone-50 border border-stone-400 text-xs font-mono text-stone-800 focus:bg-white outline-none resize-none leading-relaxed"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        {editingFaqIdx !== null && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingFaqIdx(null);
+                              setFaqForm({ q: "", a: "" });
+                            }}
+                            className="px-3 py-1.5 bg-stone-200 text-stone-700 text-xs font-mono font-bold uppercase cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleAddOrUpdateFaq}
+                          className="px-4 py-2 bg-purple-900 hover:bg-purple-800 text-white text-xs font-mono font-bold uppercase tracking-widest border border-purple-950 cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Check className="w-4 h-4 text-amber-400" />
+                          {editingFaqIdx !== null ? "Update FAQ Item" : "Add FAQ Item"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List of Active FAQs */}
+                  <div className="space-y-3">
+                    {customFaqs.map((faq, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 bg-white border border-stone-300 shadow-sm space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-mono font-bold uppercase text-purple-700 bg-purple-100 px-2 py-0.5 border border-purple-200">
+                              FAQ #{idx + 1}
+                            </span>
+                            <h5 className="text-xs font-bold text-stone-900 font-mono leading-snug">
+                              Q: {faq.q}
+                            </h5>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingFaqIdx(idx);
+                                setFaqForm(faq);
+                              }}
+                              className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 text-[10px] font-mono font-bold uppercase border border-stone-300 cursor-pointer flex items-center gap-1"
+                            >
+                              <Wrench className="w-3 h-3 text-amber-600" /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFaq(idx)}
+                              className="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-[10px] font-mono font-bold uppercase border border-red-300 cursor-pointer flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3" /> Delete
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-stone-600 font-mono leading-relaxed pl-2 border-l-2 border-stone-300">
+                          A: {faq.a}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUBSECTION 7: USER ROLES MANAGEMENT & DISPATCH CENTER */}
+            {activeSubSection === "roles" && (
+              <div className="space-y-6">
+                {/* ROLE DISPATCH CENTER HEADER */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4 font-sans">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-300">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-none bg-stone-900 text-amber-400 flex items-center justify-center border border-stone-950 shrink-0">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-lg font-serif font-black uppercase tracking-tight text-stone-900">
+                            User Registry & Live Role Dispatch Center
+                          </h2>
+                          <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-800 text-[9px] font-mono font-bold uppercase tracking-widest border border-emerald-400 animate-pulse">
+                            ● Live Firestore Sync Active
+                          </span>
+                        </div>
+                        <p className="text-xs text-stone-600 font-mono leading-relaxed mt-0.5">
+                          Manage website accounts, view live online/registered users, and assign any of the 7 staff operational roles. Changes reflect immediately in real time for users.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-mono font-bold bg-stone-900 text-stone-100 px-3.5 py-2 shrink-0 border border-stone-950">
+                      <UserCheck className="w-4 h-4 text-amber-400" />
+                      <span>{usersList.length} Registered Accounts</span>
+                    </div>
+                  </div>
+
+                  {/* SEARCH AND FILTER BAR */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="relative flex-grow">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="text"
+                        value={roleSearch}
+                        onChange={(e) => setRoleSearch(e.target.value)}
+                        placeholder="Search users by name, email, or UID..."
+                        className="w-full pl-9 pr-4 py-2 bg-white border border-stone-300 text-xs font-mono placeholder:text-stone-400 focus:outline-none focus:border-stone-900"
+                      />
+                    </div>
+                    
+                    {/* Role Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                      <button
+                        onClick={() => setRoleFilter("all")}
+                        className={`px-3 py-1.5 text-[10px] font-mono uppercase font-bold tracking-wider border cursor-pointer whitespace-nowrap ${
+                          roleFilter === "all"
+                            ? "bg-stone-900 text-white border-stone-900"
+                            : "bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200"
+                        }`}
+                      >
+                        All Users ({usersList.length})
+                      </button>
+                      {ALL_ROLES.map((r) => {
+                        const count = usersList.filter(u => u.role === r.id).length;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => setRoleFilter(r.id)}
+                            className={`px-2.5 py-1.5 text-[9.5px] font-mono uppercase font-bold tracking-wider border cursor-pointer whitespace-nowrap ${
+                              roleFilter === r.id
+                                ? "bg-stone-900 text-amber-400 border-stone-900"
+                                : "bg-white text-stone-700 border-stone-300 hover:bg-stone-100"
+                            }`}
+                          >
+                            {r.label}: {count}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* USER CARDS GRID / LIST */}
+                {(() => {
+                  const filtered = usersList.filter(u => {
+                    const matchesSearch = !roleSearch || 
+                      (u.displayName || "").toLowerCase().includes(roleSearch.toLowerCase()) ||
+                      (u.email || "").toLowerCase().includes(roleSearch.toLowerCase()) ||
+                      (u.uid || "").toLowerCase().includes(roleSearch.toLowerCase());
+                    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+                    return matchesSearch && matchesRole;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="bg-[#FAF8F5] border-2 border-stone-900 p-12 text-center space-y-3 font-mono">
+                        <Users className="w-10 h-10 text-stone-400 mx-auto" />
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-stone-800">No matching user accounts found</h3>
+                        <p className="text-xs text-stone-500">Try clearing your search query or role filter.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {filtered.map((user) => {
+                        const isOwner = user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || user.role === "Owner";
+                        return (
+                          <div
+                            key={user.uid}
+                            className="bg-[#FAF8F5] border-2 border-stone-900 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col lg:flex-row lg:items-center justify-between gap-5 font-sans"
+                          >
+                            {/* User Info Column */}
+                            <div className="space-y-2 max-w-xl">
+                              <div className="flex items-center gap-3">
+                                {user.photoURL ? (
+                                  <img src={user.photoURL} alt={user.displayName || user.email || "User"} className="w-10 h-10 rounded-full object-cover border-2 border-stone-900 shrink-0" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-stone-900 text-amber-400 flex items-center justify-center font-bold text-sm border-2 border-stone-950 shrink-0">
+                                    {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-sm font-serif font-black uppercase tracking-tight text-stone-900">
+                                      {user.displayName || "Registered User"}
+                                    </h3>
+                                    {/* Status Badge */}
+                                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 text-[8.5px] font-mono font-black uppercase tracking-widest">
+                                      ● Live User
+                                    </span>
+                                    {/* Role Badge */}
+                                    <span className={`px-2.5 py-0.5 text-[9px] font-mono font-black uppercase tracking-widest border ${
+                                      isOwner 
+                                        ? "bg-amber-500 text-stone-950 border-amber-400 shadow-xs" 
+                                        : user.role === "Super Admin" 
+                                        ? "bg-purple-900 text-purple-100 border-purple-700" 
+                                        : user.role === "User"
+                                        ? "bg-stone-200 text-stone-800 border-stone-400"
+                                        : "bg-stone-900 text-amber-400 border-stone-950"
+                                    }`}>
+                                      Role: {user.role || "User"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-stone-600 font-mono mt-0.5">{user.email || "No email provided"}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-4 text-[9.5px] text-stone-500 font-mono uppercase tracking-wider pt-1 border-t border-stone-200">
+                                <span>UID: <strong className="text-stone-700">{user.uid.slice(0, 16)}...</strong></span>
+                                <span>Joined: <strong className="text-stone-700">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Recent"}</strong></span>
+                                <span>Last Login: <strong className="text-stone-700">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Active"}</strong></span>
+                              </div>
+                            </div>
+
+                            {/* Role Assignment Buttons */}
+                            <div className="space-y-2 shrink-0">
+                              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-500 block">
+                                {isOwner ? "Owner Role (Permanent Root Access)" : "Assign Role (7 Options):"}
+                              </span>
+                              {isOwner ? (
+                                <div className="px-4 py-2 bg-amber-500 text-stone-950 font-mono font-black text-xs uppercase tracking-widest border border-amber-600 flex items-center gap-2">
+                                  <ShieldCheck className="w-4 h-4 text-stone-950" />
+                                  <span>OWNER (SYSTEM PROPRIETOR)</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap items-center gap-1.5 max-w-md">
+                                    {THE_7_ASSIGNABLE_ROLES.map((r) => {
+                                      const isCurrentRole = user.role === r;
+                                      const meta = ALL_ROLES.find(roleObj => roleObj.id === r);
+                                      return (
+                                        <button
+                                          key={r}
+                                          onClick={() => {
+                                            if (r !== (user.role || "User")) {
+                                              setPendingRoleChange({
+                                                uid: user.uid,
+                                                userName: user.displayName || user.email || "User",
+                                                targetRole: r,
+                                                currentRole: (user.role || "User") as UserRole
+                                              });
+                                            }
+                                          }}
+                                          className={`px-2.5 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition-all ${
+                                            isCurrentRole
+                                              ? "bg-stone-900 text-amber-400 border-amber-500 shadow-sm font-black scale-105"
+                                              : "bg-white text-stone-700 border-stone-300 hover:bg-stone-100 hover:border-stone-900"
+                                          }`}
+                                          title={`${r}: ${meta?.description}`}
+                                        >
+                                          {isCurrentRole && "✓ "}
+                                          {r}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Tooltip Description Guidance Box */}
+                                  {(() => {
+                                    const meta = ALL_ROLES.find(roleObj => roleObj.id === (user.role || "User"));
+                                    return (
+                                      <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[10px] font-mono text-stone-700 max-w-md flex items-start gap-1.5">
+                                        <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                        <div>
+                                          <strong className="text-amber-950 font-bold block">{meta?.label || user.role}:</strong>
+                                          <span>{meta?.description}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Role Change Confirmation Dialog Modal */}
+      <AnimatePresence>
+        {pendingRoleChange && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 font-sans"
+            onClick={() => setPendingRoleChange(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 10, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border-2 border-stone-900 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-5"
+            >
+              <div className="flex items-center gap-3 text-amber-600">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center border border-amber-300 shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-stone-950 font-serif">Confirm Role Assignment</h3>
+                  <p className="text-xs text-stone-500 font-mono">Verify permission modification</p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-stone-50 border border-stone-200 rounded-lg text-xs font-mono space-y-2 text-stone-800">
+                <p>
+                  Are you sure you want to change operational role for:
+                </p>
+                <div className="p-2.5 bg-white border border-stone-300 rounded font-bold text-stone-900">
+                  {pendingRoleChange.userName}
+                </div>
+                <div className="flex items-center justify-between text-[11px] pt-1">
+                  <span className="text-stone-500">Current Role:</span>
+                  <span className="font-bold text-stone-700 bg-stone-200 px-2 py-0.5 rounded">{pendingRoleChange.currentRole}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-amber-700 font-bold">New Target Role:</span>
+                  <span className="font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded border border-amber-300">{pendingRoleChange.targetRole}</span>
+                </div>
+                {(() => {
+                  const targetMeta = ALL_ROLES.find(r => r.id === pendingRoleChange.targetRole);
+                  return targetMeta ? (
+                    <p className="text-[10px] text-stone-600 italic pt-1 border-t border-stone-200 leading-relaxed">
+                      "{targetMeta.description}"
+                    </p>
+                  ) : null;
+                })()}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button
+                  onClick={() => setPendingRoleChange(null)}
+                  className="px-4 py-2 bg-stone-100 text-stone-700 font-mono text-xs font-bold rounded-lg border border-stone-300 hover:bg-stone-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!pendingRoleChange) return;
+                    try {
+                      await updateUserRole(pendingRoleChange.uid, pendingRoleChange.targetRole);
+                      recordAuditLog(
+                        currentUser?.email || "Admin",
+                        "Role Change",
+                        `Assigned ${pendingRoleChange.targetRole} role to user ${pendingRoleChange.userName}`
+                      );
+                      showToast(`Assigned "${pendingRoleChange.targetRole}" role to ${pendingRoleChange.userName}!`, "success");
+                    } catch (err) {
+                      showToast("Failed to update user role", "error");
+                    } finally {
+                      setPendingRoleChange(null);
+                    }
+                  }}
+                  className="px-4 py-2 bg-amber-500 text-stone-950 font-mono text-xs font-black rounded-lg border border-amber-600 hover:bg-amber-400 shadow-sm cursor-pointer"
+                >
+                  Confirm & Apply Role
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Holographic HUD Alert Overlay */}
       <AnimatePresence>

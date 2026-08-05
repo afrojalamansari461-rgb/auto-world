@@ -4,6 +4,7 @@ import { User as FirebaseUser } from "firebase/auth";
 import { setDoc, doc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
+import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 
 interface PremiumTabProps {
   subscriptionActive: boolean;
@@ -246,19 +247,54 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
     }
   }, [isSimranFreeModeEnabled]);
 
+  // Dynamic Dialogues & FAQs state
+  const [activeDialogues, setActiveDialogues] = useState<typeof FUNNY_FREE_DIALOGUES>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_custom_dialogues");
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return FUNNY_FREE_DIALOGUES;
+  });
+
+  const defaultFaqs = [
+    { q: "Can I cancel my premium plan anytime?", a: "Yes, you hold full autonomy to pause, downgrade, or cancel subscription parameters at any time inside your dashboard. No contract locks!" },
+    { q: "What payment forms do you authorize?", a: "We support major credit cards (Visa, Mastercard, American Express), securely monitored and protected." },
+    { q: "How long does a listed car stay visible?", a: "Basic free accounts can list a car for 30 days. Pro members hold 60-day visibility, and Business listings stay up to 90 days." },
+    { q: "Do you offer refunds if my vehicle sells before cycle ends?", a: "Because we activate immediate ad distribution tools and priority rankings upon upgrades, we don't offer prorated refunds, but you can cancel next term billings securely." },
+  ];
+
+  const [activeFaqs, setActiveFaqs] = useState<Array<{ q: string; a: string }>>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_custom_faqs");
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return defaultFaqs;
+  });
+
   useEffect(() => {
-    const handleUpdate = () => {
-      try {
-        const stored = localStorage.getItem("autoWorld_is_simran_free_mode");
-        if (stored !== null) {
-          setIsSimranActive(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.warn("Error reading simran mode state", e);
+    const unsub = subscribeToRealtimeCatalog(({ adminSettings }) => {
+      if (adminSettings.customDialogues && adminSettings.customDialogues.length > 0) {
+        setActiveDialogues(adminSettings.customDialogues);
       }
+      if (adminSettings.customFaqs && adminSettings.customFaqs.length > 0) {
+        setActiveFaqs(adminSettings.customFaqs);
+      }
+    });
+
+    const handleLocalUpdate = () => {
+      try {
+        const storedD = localStorage.getItem("autoWorld_custom_dialogues");
+        if (storedD) setActiveDialogues(JSON.parse(storedD));
+        const storedF = localStorage.getItem("autoWorld_custom_faqs");
+        if (storedF) setActiveFaqs(JSON.parse(storedF));
+      } catch (e) {}
     };
-    window.addEventListener("autoWorld_db_update", handleUpdate);
-    return () => window.removeEventListener("autoWorld_db_update", handleUpdate);
+    window.addEventListener("autoWorld_db_update", handleLocalUpdate);
+
+    return () => {
+      unsub();
+      window.removeEventListener("autoWorld_db_update", handleLocalUpdate);
+    };
   }, []);
 
   // Sub-tab selection state with sliding indicators
@@ -746,7 +782,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
           </div>
 
           <div className="space-y-4">
-            {faqs.map((faq, idx) => {
+            {activeFaqs.map((faq, idx) => {
               const isOpen = openFAQIndex === idx;
               return (
                 <div key={idx} className="bg-[#FAF8F5] border-2 border-stone-950 overflow-hidden shadow-sm">
@@ -1053,58 +1089,60 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
               </div>
 
               {/* Central Dialogue Card */}
-              <div className="my-6 p-5 sm:p-6 bg-stone-900 text-stone-100 border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative space-y-4">
-                <div className="flex items-center justify-between text-xs font-mono font-bold text-amber-400 uppercase tracking-widest pb-2.5 border-b border-stone-800">
-                  <span className="flex items-center gap-1.5">
-                    <Film className="w-4 h-4 text-amber-400" />
-                    {FUNNY_FREE_DIALOGUES[dialogueIdx].type}
-                  </span>
-                  <span className="text-stone-400 text-[10px]">
-                    DIALOGUE {dialogueIdx + 1} OF {FUNNY_FREE_DIALOGUES.length}
-                  </span>
-                </div>
-
-                <div className="space-y-3 py-2">
-                  <p className="text-lg sm:text-2xl font-serif font-black italic text-amber-300 leading-snug tracking-tight">
-                    "{FUNNY_FREE_DIALOGUES[dialogueIdx].quote}"
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="text-xs font-mono text-stone-300 font-bold">
-                      — {FUNNY_FREE_DIALOGUES[dialogueIdx].character}
+              {activeDialogues.length > 0 && (
+                <div className="my-6 p-5 sm:p-6 bg-stone-900 text-stone-100 border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative space-y-4">
+                  <div className="flex items-center justify-between text-xs font-mono font-bold text-amber-400 uppercase tracking-widest pb-2.5 border-b border-stone-800">
+                    <span className="flex items-center gap-1.5">
+                      <Film className="w-4 h-4 text-amber-400" />
+                      {activeDialogues[dialogueIdx % activeDialogues.length].type}
                     </span>
-                    <span className="text-[10px] px-2.5 py-0.5 bg-stone-800 text-amber-400 font-mono font-bold border border-stone-700">
-                      {FUNNY_FREE_DIALOGUES[dialogueIdx].movie}
+                    <span className="text-stone-400 text-[10px]">
+                      DIALOGUE {(dialogueIdx % activeDialogues.length) + 1} OF {activeDialogues.length}
                     </span>
                   </div>
-                </div>
 
-                {/* Shuffle Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextIdx = (dialogueIdx + 1) % FUNNY_FREE_DIALOGUES.length;
-                    setDialogueIdx(nextIdx);
-                    try {
-                      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                      const osc = ctx.createOscillator();
-                      const gain = ctx.createGain();
-                      osc.type = "sine";
-                      osc.frequency.setValueAtTime(550 + nextIdx * 45, ctx.currentTime);
-                      osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.14);
-                      gain.gain.setValueAtTime(0.18, ctx.currentTime);
-                      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.14);
-                      osc.connect(gain);
-                      gain.connect(ctx.destination);
-                      osc.start();
-                      osc.stop(ctx.currentTime + 0.14);
-                    } catch (e) {}
-                  }}
+                  <div className="space-y-3 py-2">
+                    <p className="text-lg sm:text-2xl font-serif font-black italic text-amber-300 leading-snug tracking-tight">
+                      "{activeDialogues[dialogueIdx % activeDialogues.length].quote}"
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-xs font-mono text-stone-300 font-bold">
+                        — {activeDialogues[dialogueIdx % activeDialogues.length].character}
+                      </span>
+                      <span className="text-[10px] px-2.5 py-0.5 bg-stone-800 text-amber-400 font-mono font-bold border border-stone-700">
+                        {activeDialogues[dialogueIdx % activeDialogues.length].movie}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Shuffle Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextIdx = (dialogueIdx + 1) % activeDialogues.length;
+                      setDialogueIdx(nextIdx);
+                      try {
+                        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = "sine";
+                        osc.frequency.setValueAtTime(550 + nextIdx * 45, ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.14);
+                        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.14);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.14);
+                      } catch (e) {}
+                    }}
                   className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(255,255,255,0.9)] hover:translate-x-[1px] hover:translate-y-[1px]"
                 >
                   <Shuffle className="w-4 h-4 text-stone-950" />
                   <span>🎲 NEXT FUNNY DIALOGUE!</span>
                 </button>
               </div>
+              )}
 
               {/* Explanatory text */}
               <div className="bg-amber-50/80 border-2 border-dashed border-amber-500/60 p-4 font-sans space-y-2">
