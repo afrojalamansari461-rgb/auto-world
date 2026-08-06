@@ -28,7 +28,7 @@ import { saveCatalogOverride, saveAdminSettingsToFirestore, subscribeToRealtimeC
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
 import { SpecGrid } from "./components/SpecGrid";
-import { syncUserToFirestore, subscribeToCurrentRole, UserRole } from "./lib/userRoles";
+import { syncUserToFirestore, subscribeToCurrentRole, UserRole, OWNER_EMAIL } from "./lib/userRoles";
 
 const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
   if (vehicle.photos && vehicle.photos.length > 0) {
@@ -400,6 +400,26 @@ export default function App() {
       setUserRole("User");
     }
   }, [currentUser]);
+
+  // Access control & Role revocation enforcement
+  useEffect(() => {
+    const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || userRole === "Owner";
+    const isCoOwner = userRole === "Co-Owner";
+    const isSuperAdmin = userRole === "Super Admin";
+    const isStaff = userRole && userRole !== "User";
+
+    if (activeTab === "admin") {
+      if (!isOwner && !isCoOwner && !isSuperAdmin) {
+        setActiveTab("home");
+        showToast("Access Restricted: Admin Panel access requires Owner or Co-Owner privileges.", "error");
+      }
+    } else if (activeTab === "office") {
+      if (!isOwner && !isStaff) {
+        setActiveTab("home");
+        showToast("Access Restricted: Office Room access requires an assigned staff operational role.", "error");
+      }
+    }
+  }, [userRole, currentUser, activeTab]);
 
   // Check custom subscription details from database on checkout startup
   useEffect(() => {

@@ -4,6 +4,7 @@ import { User } from "firebase/auth";
 
 export type UserRole = 
   | "Owner"
+  | "Co-Owner"
   | "Super Admin"
   | "Inventory Manager"
   | "Sales & Leads Specialist"
@@ -34,6 +35,14 @@ export const ALL_ROLES: { id: UserRole; label: string; description: string; badg
     badgeBg: "bg-amber-500/15",
     textColor: "text-amber-500",
     borderColor: "border-amber-500/40"
+  },
+  {
+    id: "Co-Owner",
+    label: "Co-Owner",
+    description: "Executive Partner. Accesses Admin Panel operations (inventory, leads, content, audit), but restricted from reassigning user roles or global system resets.",
+    badgeBg: "bg-amber-600/15",
+    textColor: "text-amber-400",
+    borderColor: "border-amber-600/40"
   },
   {
     id: "Super Admin",
@@ -101,7 +110,8 @@ export const ALL_ROLES: { id: UserRole; label: string; description: string; badg
   }
 ];
 
-export const THE_7_ASSIGNABLE_ROLES: UserRole[] = [
+export const ALL_ASSIGNABLE_ROLES: UserRole[] = [
+  "Co-Owner",
   "Super Admin",
   "Inventory Manager",
   "Sales & Leads Specialist",
@@ -111,6 +121,8 @@ export const THE_7_ASSIGNABLE_ROLES: UserRole[] = [
   "Marketing & Social Media Lead",
   "User"
 ];
+
+export const THE_7_ASSIGNABLE_ROLES = ALL_ASSIGNABLE_ROLES;
 
 // Synchronize authenticated user to Firestore 'users' collection
 export async function syncUserToFirestore(user: User): Promise<UserRole> {

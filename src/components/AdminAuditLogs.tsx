@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy, limit, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { History, RefreshCw, Search, Filter, Clock, User, FileText, ChevronDown } from "lucide-react";
+import { History, RefreshCw, Search, Filter, Clock, User, FileText, ChevronDown, Shield, ShieldAlert, ShieldCheck, Lock, UserCheck, Crown, Tag, AlertTriangle } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { OWNER_EMAIL, UserRole } from "../lib/userRoles";
 
 export interface AuditLogEntry {
   id: string;
@@ -27,23 +29,28 @@ export async function recordAuditLog(adminEmail: string, action: string, descrip
 
 interface AdminAuditLogsProps {
   currentUserEmail: string;
+  currentUserRole?: UserRole;
   showToast: (message: string, type: "success" | "error" | "info") => void;
 }
 
-export default function AdminAuditLogs({ currentUserEmail, showToast }: AdminAuditLogsProps) {
+export default function AdminAuditLogs({ currentUserEmail, currentUserRole, showToast }: AdminAuditLogsProps) {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedActionFilter, setSelectedActionFilter] = useState("ALL");
   const [actionTypes, setActionTypes] = useState<string[]>([]);
 
+  const userEmailLower = currentUserEmail.toLowerCase();
+  const isOwner = userEmailLower === OWNER_EMAIL.toLowerCase() || currentUserRole === "Owner";
+  const isHighAdmin = isOwner || currentUserRole === "Co-Owner" || currentUserRole === "Super Admin";
+
   // Main fetch function
   const fetchLogs = async (isManualRefresh = false) => {
     setLoading(true);
     try {
       const logsRef = collection(db, "audit_logs");
-      // Query recent 100 entries ordered by timestamp descending
-      const q = query(logsRef, orderBy("timestamp", "desc"), limit(100));
+      // Query recent 120 entries ordered by timestamp descending
+      const q = query(logsRef, orderBy("timestamp", "desc"), limit(120));
       const querySnapshot = await getDocs(q);
       
       const fetchedLogs: AuditLogEntry[] = [];
@@ -82,8 +89,20 @@ export default function AdminAuditLogs({ currentUserEmail, showToast }: AdminAud
     fetchLogs();
   }, []);
 
-  // Filter logs based on search and selected action category
+  // Filter logs based on search, selected action category, and ROLE-BASED PRIVACY
   const filteredLogs = logs.filter((log) => {
+    const logEmailLower = log.adminEmail.toLowerCase();
+    const isLogFromOwner = logEmailLower === OWNER_EMAIL.toLowerCase() || logEmailLower.includes("owner");
+
+    // 1. Role-based Log Scope Rules:
+    // - System Owner sees EVERYONE'S logs.
+    // - All non-owner roles (Co-Owner, Super Admin, staff) can ONLY see THEIR OWN activity logs.
+    // - No one can see the System Owner's activity logs except the System Owner.
+    if (!isOwner) {
+      if (logEmailLower !== userEmailLower) return false;
+    }
+
+    // 2. Search & Action Category filter:
     const matchesSearch =
       log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,17 +136,28 @@ export default function AdminAuditLogs({ currentUserEmail, showToast }: AdminAud
 
   return (
     <div className="space-y-6" id="admin-audit-logs-tab">
-      {/* Header Panel */}
+      {/* Header Panel with Role Clearance Info */}
       <div className="bg-[#FAF8F5] border border-stone-300 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <History className="w-5 h-5 text-amber-600 shrink-0" />
             <h2 className="text-xs uppercase font-extrabold text-stone-900 tracking-wider font-mono">
-              Admin Activity Audit Ledger
+              Activity Audit Ledger & Timeline
             </h2>
+            {isOwner ? (
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold uppercase tracking-widest rounded border border-emerald-300 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" /> System Owner Clearance (Viewing All Activities)
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] font-mono font-bold uppercase tracking-widest rounded border border-blue-300 flex items-center gap-1">
+                <UserCheck className="w-3 h-3 text-blue-600" /> Personal Activity Ledger (Restricted to Your Activity)
+              </span>
+            )}
           </div>
           <p className="text-[11px] text-stone-500 font-mono mt-1">
-            Tamper-proof real-time logging of critical system operations and stock updates.
+            {isOwner 
+              ? "Full system audit ledger displaying all operational logs, staff activities, and administrative actions across all accounts."
+              : "Personal activity log displaying actions recorded for your account. System Owner and other account activities are private and protected."}
           </p>
         </div>
         
@@ -163,7 +193,7 @@ export default function AdminAuditLogs({ currentUserEmail, showToast }: AdminAud
             onChange={(e) => setSelectedActionFilter(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-white border border-stone-300 focus:border-stone-900 focus:outline-none text-xs font-mono text-stone-800 appearance-none cursor-pointer"
           >
-            <option value="ALL">All Actions ({logs.length})</option>
+            <option value="ALL">All Actions ({filteredLogs.length})</option>
             {actionTypes.map((type) => (
               <option key={type} value={type}>
                 {type}
@@ -179,7 +209,7 @@ export default function AdminAuditLogs({ currentUserEmail, showToast }: AdminAud
         </div>
       </div>
 
-      {/* Main Table View */}
+      {/* Main Timeline View */}
       {loading && logs.length === 0 ? (
         <div className="bg-[#FAF8F5] border border-stone-300 py-20 text-center">
           <RefreshCw className="w-10 h-10 text-stone-400 mx-auto mb-3 animate-spin" />
@@ -200,63 +230,113 @@ export default function AdminAuditLogs({ currentUserEmail, showToast }: AdminAud
           <table className="w-full text-left border-collapse font-mono text-xs">
             <thead>
               <tr className="bg-stone-900 text-white uppercase text-[10px] tracking-wider border-b border-stone-800">
-                <th className="py-3 px-4 font-extrabold w-1/4">
+                <th className="py-3 px-4 font-extrabold w-1/5">
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" /> Timestamp (IST)
                   </span>
                 </th>
-                <th className="py-3 px-4 font-extrabold w-1/4">
+                <th className="py-3 px-4 font-extrabold w-1/5">
+                  <span className="flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5" /> Severity & Tag
+                  </span>
+                </th>
+                <th className="py-3 px-4 font-extrabold w-1/5">
                   <span className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" /> Action Category
                   </span>
                 </th>
-                <th className="py-3 px-4 font-extrabold w-2/4">Description & Affected Item</th>
+                <th className="py-3 px-4 font-extrabold w-2/5">Description & Executed By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200">
-              {filteredLogs.map((log) => {
-                // Color scheme according to the category of action
-                let badgeStyle = "bg-stone-100 text-stone-800 border-stone-200";
-                const act = log.action.toUpperCase();
-                
-                if (act.includes("CREATE") || act.includes("PUBLISH") || act.includes("ADD") || act.includes("INTAKE")) {
-                  badgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200";
-                } else if (act.includes("DELETE") || act.includes("PURGE") || act.includes("REMOVE")) {
-                  badgeStyle = "bg-red-50 text-red-800 border-red-200";
-                } else if (act.includes("TOGGLE") || act.includes("UPDATE") || act.includes("EDIT")) {
-                  badgeStyle = "bg-purple-50 text-purple-800 border-purple-200";
-                } else if (act.includes("RESOLVE") || act.includes("APPROVE")) {
-                  badgeStyle = "bg-sky-50 text-sky-800 border-sky-200";
-                }
+              <AnimatePresence mode="popLayout">
+                {filteredLogs.map((log, index) => {
+                  const logEmailLower = log.adminEmail.toLowerCase();
+                  const isLogFromOwner = logEmailLower === OWNER_EMAIL.toLowerCase() || logEmailLower.includes("owner");
+                  
+                  // Calculate Severity and Action Tag
+                  const text = (log.action + " " + log.description).toUpperCase();
+                  let severity = "ROUTINE";
+                  let actionTag = "AUDIT LOGGED";
+                  let severityPill = "bg-emerald-100 text-emerald-900 border-emerald-300";
+                  let badgeStyle = "bg-stone-100 text-stone-800 border-stone-300";
 
-                return (
-                  <tr
-                    key={log.id}
-                    className="hover:bg-stone-50/50 transition duration-150 align-top"
-                  >
-                    {/* Timestamp */}
-                    <td className="py-3.5 px-4 text-stone-500 whitespace-nowrap font-medium border-r border-stone-200">
-                      {formatDateTime(log.timestamp)}
-                    </td>
+                  if (text.includes("REVOKE") || text.includes("DELETE") || text.includes("PURGE") || text.includes("REMOVE ROLE") || text.includes("UNASSIGN") || text.includes("RESET")) {
+                    severity = "CRITICAL";
+                    actionTag = "REVOCATION / DELETE";
+                    severityPill = "bg-red-600 text-white border-red-700 font-extrabold";
+                    badgeStyle = "bg-red-50 text-red-900 border-red-300 font-bold";
+                  } else if (text.includes("ROLE") || text.includes("ASSIGN") || text.includes("PROMOTE") || text.includes("PERMISSION")) {
+                    severity = "HIGH";
+                    actionTag = "ROLE ASSIGNMENT";
+                    severityPill = "bg-purple-600 text-white border-purple-800 font-extrabold";
+                    badgeStyle = "bg-purple-50 text-purple-900 border-purple-300 font-bold";
+                  } else if (text.includes("INTAKE") || text.includes("CREATE") || text.includes("PUBLISH") || text.includes("ADD") || text.includes("NEW")) {
+                    severity = "INFO";
+                    actionTag = "STOCK INTAKE";
+                    severityPill = "bg-sky-600 text-white border-sky-800 font-extrabold";
+                    badgeStyle = "bg-sky-50 text-sky-900 border-sky-300 font-bold";
+                  } else if (text.includes("UPDATE") || text.includes("EDIT") || text.includes("FEATURE") || text.includes("TOGGLE") || text.includes("MODIFY")) {
+                    severity = "MEDIUM";
+                    actionTag = "SYSTEM UPDATE";
+                    severityPill = "bg-amber-500 text-stone-950 border-amber-600 font-extrabold";
+                    badgeStyle = "bg-amber-50 text-amber-900 border-amber-300 font-bold";
+                  }
 
-                    {/* Action */}
-                    <td className="py-3.5 px-4 font-semibold border-r border-stone-200">
-                      <span className={`inline-block text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 border ${badgeStyle}`}>
-                        {log.action}
-                      </span>
-                      <div className="text-[9px] text-stone-400 mt-1 flex items-center gap-1">
-                        <User className="w-2.5 h-2.5" />
-                        {log.adminEmail.split("@")[0]}
-                      </div>
-                    </td>
+                  return (
+                    <motion.tr
+                      key={log.id}
+                      initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.3) }}
+                      className="hover:bg-stone-50/80 transition duration-150 align-top group"
+                    >
+                      {/* Timestamp */}
+                      <td className="py-3.5 px-4 text-stone-500 whitespace-nowrap font-medium border-r border-stone-200 group-hover:text-stone-900">
+                        {formatDateTime(log.timestamp)}
+                      </td>
 
-                    {/* Description */}
-                    <td className="py-3.5 px-4 text-stone-700 leading-relaxed">
-                      {log.description}
-                    </td>
-                  </tr>
-                );
-              })}
+                      {/* Severity & Action Tag */}
+                      <td className="py-3.5 px-4 border-r border-stone-200">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`text-[8.5px] uppercase tracking-widest px-2 py-0.5 rounded border ${severityPill}`}>
+                            {severity}
+                          </span>
+                          <span className="text-[9px] font-bold text-stone-600 uppercase font-mono tracking-tight">
+                            [{actionTag}]
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Action Category */}
+                      <td className="py-3.5 px-4 font-semibold border-r border-stone-200">
+                        <span className={`inline-block text-[9.5px] uppercase tracking-wider font-extrabold px-2 py-0.5 border rounded ${badgeStyle}`}>
+                          {log.action}
+                        </span>
+                        <div className="text-[9.5px] text-stone-500 mt-1.5 flex items-center gap-1 font-mono">
+                          {isLogFromOwner ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-300 rounded text-[8.5px] font-extrabold">
+                              <Crown className="w-3 h-3 text-amber-500 fill-amber-400/40 shrink-0" />
+                              System Owner
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-stone-500">
+                              <User className="w-3 h-3 text-stone-400 shrink-0" />
+                              {log.adminEmail.split("@")[0]}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Description */}
+                      <td className="py-3.5 px-4 text-stone-700 leading-relaxed font-sans text-xs">
+                        {log.description}
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </AnimatePresence>
             </tbody>
           </table>
         </div>
@@ -264,3 +344,4 @@ export default function AdminAuditLogs({ currentUserEmail, showToast }: AdminAud
     </div>
   );
 }
+

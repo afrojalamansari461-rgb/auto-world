@@ -15,6 +15,7 @@ import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalo
 import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
+import RoleBadge from "./RoleBadge";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { 
@@ -22,6 +23,7 @@ import {
   updateUserRole, 
   UserProfile, 
   UserRole, 
+  ALL_ASSIGNABLE_ROLES,
   THE_7_ASSIGNABLE_ROLES, 
   ALL_ROLES, 
   OWNER_EMAIL 
@@ -271,6 +273,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   });
 
   const handleToggleFreePass = async () => {
+    const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
+    if (!isOwner) {
+      showToast("Global Buy Pass monetization controls are reserved for the System Owner.", "error");
+      return;
+    }
+
     const nextVal = !isFreePassEnabled;
     setIsFreePassEnabled(nextVal);
     playSynthBeep(nextVal ? 950 : 450, 0.15, "triangle");
@@ -1932,7 +1940,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
   const totalRevenueEstimates = passes.length * 1; // ₹1 per pass
 
-  const isAuthorized = currentUser?.email === "afrojalamansari461@gmail.com";
+  const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
+  const loggedInUserObj = usersList.find(u => u.uid === currentUser?.uid || u.email?.toLowerCase() === currentUser?.email?.toLowerCase());
+  const currentUserRole: UserRole = isOwner ? "Owner" : (loggedInUserObj?.role || "User");
+  const isCoOwner = currentUserRole === "Co-Owner";
+  const isSuperAdmin = currentUserRole === "Super Admin";
+
+  const isAuthorized = isOwner || isCoOwner || isSuperAdmin;
 
   if (!isAuthorized) {
     return (
@@ -1940,7 +1954,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         <ShieldAlert className="w-12 h-12 text-red-650 mx-auto" id="restricted-shield" />
         <h2 className="text-xl font-serif font-black uppercase text-stone-900 tracking-tight" id="restricted-heading">Access Restricted</h2>
         <p className="text-xs text-stone-600 font-sans leading-relaxed" id="restricted-paragraph">
-          The Owner Administrative Workspace is locked. Only the certified owner account (<strong className="font-bold text-stone-950 text-xs">afrojalamansari461@gmail.com</strong>) is authorized to access and utilize these production system controls.
+          The Administrative Workspace is locked. Only certified Owner, Co-Owner, or Super Admin accounts are authorized to access and utilize these production controls.
         </p>
         <button
           id="restricted-return-home"
@@ -2079,13 +2093,23 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         {/* Header Block */}
         <div className="bg-stone-900 text-[#F4F1EA] p-6 sm:p-8 border-2 border-stone-950 shadow-md mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <ShieldAlert className="w-6 h-6 text-amber-500" />
-              <span className="font-mono text-xs text-amber-500 font-bold uppercase tracking-widest">[ SECURITY: ADMINISTRATOR DESK CONTROL ACTIVE ]</span>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <RoleBadge role={currentUserRole} size="lg" />
+              <span className="font-mono text-xs text-amber-500 font-bold uppercase tracking-widest">
+                {isOwner 
+                  ? "[ SECURITY: OWNER DESK CONTROL ACTIVE ]" 
+                  : isCoOwner 
+                  ? "[ SECURITY: CO-OWNER EXECUTIVE DESK ACTIVE ]" 
+                  : "[ SECURITY: ADMIN DESK ACTIVE ]"}
+              </span>
             </div>
-            <h1 className="text-3xl font-serif font-black tracking-tight uppercase">Owner Administrative Workspace</h1>
+            <h1 className="text-3xl font-serif font-black tracking-tight uppercase">
+              {isOwner ? "Owner Administrative Workspace" : isCoOwner ? "Co-Owner Executive Desk" : "Administrative Workspace"}
+            </h1>
             <p className="text-stone-300 text-xs sm:text-sm max-w-xl font-medium leading-relaxed">
-              Verify customer inquiries, manage inventory directly in production, add featured flags, or delete/restore listings across the system instantly.
+              {isCoOwner 
+                ? "Executive dashboard for managing vehicle inventory, buyer leads, customer feedback, and website content."
+                : "Verify customer inquiries, manage inventory directly in production, add featured flags, or delete/restore listings across the system instantly."}
             </p>
           </div>
           <button
@@ -4191,6 +4215,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             {activeSubSection === "audit" && (
               <AdminAuditLogs
                 currentUserEmail={currentUser?.email || "Admin"}
+                currentUserRole={currentUserRole}
                 showToast={showToast}
               />
             )}
@@ -4961,6 +4986,17 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             {/* SUBSECTION 7: USER ROLES MANAGEMENT & DISPATCH CENTER */}
             {activeSubSection === "roles" && (
               <div className="space-y-6">
+                {/* CO-OWNER RESTRICTION BANNER */}
+                {isCoOwner && (
+                  <div className="p-4 bg-amber-500/10 border-2 border-amber-500/40 text-amber-900 text-xs font-mono font-bold shadow-xs flex items-center gap-3">
+                    <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <span className="font-black block text-amber-950 uppercase">Co-Owner Restricted Clearance Active:</span>
+                      <span>You have full executive access to manage vehicle listings, leads, feedback, and content customizers. However, reassigning staff roles and modifying administrative privileges are restricted exclusively to the System Owner.</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* ROLE DISPATCH CENTER HEADER */}
                 <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4 font-sans">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-300">
@@ -5057,7 +5093,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                   return (
                     <div className="space-y-4">
                       {filtered.map((user) => {
-                        const isOwner = user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || user.role === "Owner";
+                        const isTargetUserOwner = user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || user.role === "Owner";
                         return (
                           <div
                             key={user.uid}
@@ -5083,17 +5119,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                       ● Live User
                                     </span>
                                     {/* Role Badge */}
-                                    <span className={`px-2.5 py-0.5 text-[9px] font-mono font-black uppercase tracking-widest border ${
-                                      isOwner 
-                                        ? "bg-amber-500 text-stone-950 border-amber-400 shadow-xs" 
-                                        : user.role === "Super Admin" 
-                                        ? "bg-purple-900 text-purple-100 border-purple-700" 
-                                        : user.role === "User"
-                                        ? "bg-stone-200 text-stone-800 border-stone-400"
-                                        : "bg-stone-900 text-amber-400 border-stone-950"
-                                    }`}>
-                                      Role: {user.role || "User"}
-                                    </span>
+                                    <RoleBadge role={isTargetUserOwner ? "Owner" : user.role || "User"} size="sm" />
                                   </div>
                                   <p className="text-xs text-stone-600 font-mono mt-0.5">{user.email || "No email provided"}</p>
                                 </div>
@@ -5109,17 +5135,29 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                             {/* Role Assignment Buttons */}
                             <div className="space-y-2 shrink-0">
                               <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-500 block">
-                                {isOwner ? "Owner Role (Permanent Root Access)" : "Assign Role (7 Options):"}
+                                {isTargetUserOwner ? "Owner Role (Permanent Root Access)" : "Assign Operational Role:"}
                               </span>
-                              {isOwner ? (
+                              {isTargetUserOwner ? (
                                 <div className="px-4 py-2 bg-amber-500 text-stone-950 font-mono font-black text-xs uppercase tracking-widest border border-amber-600 flex items-center gap-2">
                                   <ShieldCheck className="w-4 h-4 text-stone-950" />
                                   <span>OWNER (SYSTEM PROPRIETOR)</span>
                                 </div>
+                              ) : !isOwner ? (
+                                <div className="space-y-1.5 max-w-md">
+                                  <div className="px-3.5 py-2 bg-stone-100 border border-stone-300 rounded text-xs font-mono font-bold text-stone-800 flex items-center justify-between gap-3">
+                                    <span>Role: <strong>{user.role || "User"}</strong></span>
+                                    <span className="text-[9px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 border border-amber-300 uppercase">
+                                      System Owner Only
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] font-mono text-stone-500">
+                                    Role assignments are restricted exclusively to the System Owner.
+                                  </p>
+                                </div>
                               ) : (
                                 <div className="space-y-2">
                                   <div className="flex flex-wrap items-center gap-1.5 max-w-md">
-                                    {THE_7_ASSIGNABLE_ROLES.map((r) => {
+                                    {ALL_ASSIGNABLE_ROLES.map((r) => {
                                       const isCurrentRole = user.role === r;
                                       const meta = ALL_ROLES.find(roleObj => roleObj.id === r);
                                       return (

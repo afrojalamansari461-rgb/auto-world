@@ -10,6 +10,7 @@ import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firesto
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { UserRole, ALL_ROLES, OWNER_EMAIL, subscribeToUserRoles, updateUserRole, UserProfile, THE_7_ASSIGNABLE_ROLES } from "../lib/userRoles";
+import RoleBadge from "./RoleBadge";
 import { Vehicle, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
@@ -80,13 +81,13 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
   const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || userRole === "Owner";
   const isStaffUser = isOwner || (userRole && userRole !== "User");
 
-  const canAccessStaffRoles = isOwner || userRole === "Super Admin";
-  const canAccessInventory = isOwner || userRole === "Super Admin" || userRole === "Inventory Manager";
-  const canAccessSales = isOwner || userRole === "Super Admin" || userRole === "Sales & Leads Specialist";
-  const canAccessSupport = isOwner || userRole === "Super Admin" || userRole === "Support Agent";
-  const canAccessModeration = isOwner || userRole === "Super Admin" || userRole === "Content Moderator";
-  const canAccessFinance = isOwner || userRole === "Super Admin" || userRole === "Finance Specialist";
-  const canAccessMarketing = isOwner || userRole === "Super Admin" || userRole === "Marketing & Social Media Lead";
+  const canAccessStaffRoles = isOwner;
+  const canAccessInventory = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Inventory Manager";
+  const canAccessSales = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Sales & Leads Specialist";
+  const canAccessSupport = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Support Agent";
+  const canAccessModeration = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Content Moderator";
+  const canAccessFinance = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Finance Specialist";
+  const canAccessMarketing = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Marketing & Social Media Lead";
 
   // Auto-set initial active desk based on assigned user role
   useEffect(() => {
@@ -275,10 +276,8 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
                 </div>
                 <p className="text-[11px] text-stone-400 truncate">{currentUser?.email}</p>
                 <div className="mt-1 flex items-center gap-1.5">
-                  <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase rounded border ${roleMeta.badgeBg} ${roleMeta.textColor} ${roleMeta.borderColor}`}>
-                    {roleMeta.label}
-                  </span>
-                  <span className="text-[9px] text-stone-500 uppercase font-mono tracking-wider">• Granted by Owner</span>
+                  <RoleBadge role={userRole} size="sm" />
+                  <span className="text-[9px] text-stone-500 uppercase font-mono tracking-wider">• Verified Clearance</span>
                 </div>
               </div>
             </div>
@@ -1204,7 +1203,7 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
               return (
                 <div className="space-y-4">
                   {filtered.map((user) => {
-                    const isOwner = user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || user.role === "Owner";
+                    const isTargetUserOwner = user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || user.role === "Owner";
                     const currentRoleMeta = ALL_ROLES.find(r => r.id === user.role) || ALL_ROLES[ALL_ROLES.length - 1];
 
                     return (
@@ -1227,9 +1226,7 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
                                 <h3 className="text-sm font-bold text-stone-950">
                                   {user.displayName || "Registered User"}
                                 </h3>
-                                <span className={`px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded border ${currentRoleMeta.badgeBg} ${currentRoleMeta.textColor} ${currentRoleMeta.borderColor}`}>
-                                  {currentRoleMeta.label}
-                                </span>
+                                <RoleBadge role={user.role || "User"} size="sm" />
                               </div>
                               <p className="text-xs text-stone-500 font-mono mt-0.5">{user.email || "No email"}</p>
                             </div>
@@ -1250,10 +1247,17 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
                             </label>
                           </div>
 
-                          {isOwner ? (
+                          {isTargetUserOwner ? (
                             <div className="px-4 py-2 bg-amber-500/20 text-amber-900 border border-amber-400/50 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
                               <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
                               <span>Owner (Permanent Root Privilege)</span>
+                            </div>
+                          ) : !isOwner ? (
+                            <div className="p-3 bg-stone-100 border border-stone-300 rounded-lg text-xs font-mono text-stone-700 flex items-center justify-between gap-2">
+                              <span className="font-bold">{user.role || "User"}</span>
+                              <span className="text-[9px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 uppercase">
+                                System Owner Only
+                              </span>
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -1332,6 +1336,7 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
 
             <AdminAuditLogs
               currentUserEmail={currentUser?.email || "staff@autoworld.com"}
+              currentUserRole={userRole}
               showToast={showToast}
             />
           </div>

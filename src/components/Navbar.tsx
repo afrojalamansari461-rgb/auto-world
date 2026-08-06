@@ -42,6 +42,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
   }, []);
 
   const isUserOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || userRole === "Owner";
+  const isCoOwner = userRole === "Co-Owner";
+  const isSuperAdmin = userRole === "Super Admin";
   const isStaffMember = userRole && userRole !== "User";
 
   const navItems = [
@@ -56,6 +58,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
   if (isUserOwner) {
     navItems.push({ id: "admin", label: "Admin Panel", icon: ShieldAlert });
     navItems.push({ id: "office", label: "Office Room", icon: Building2 });
+  } else if (isCoOwner || isSuperAdmin) {
+    navItems.push({ id: "admin", label: "Admin Panel", icon: ShieldAlert });
   } else if (currentUser && isStaffMember) {
     navItems.push({ id: "office", label: "Office Room", icon: Building2 });
   }
@@ -71,6 +75,8 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
   if (isUserOwner) {
     mobileNavItems.push({ id: "admin", label: "ADMIN", icon: ShieldCheck });
     mobileNavItems.push({ id: "office", label: "OFFICE", icon: Building2 });
+  } else if (isCoOwner || isSuperAdmin) {
+    mobileNavItems.push({ id: "admin", label: "ADMIN", icon: ShieldCheck });
   } else if (currentUser && isStaffMember) {
     mobileNavItems.push({ id: "office", label: "OFFICE", icon: Building2 });
   }
@@ -92,14 +98,14 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
       <nav
         id="main-navbar"
         aria-label="Primary website navigation"
-        className={`sticky top-0 z-[100] transition-all duration-300 ${
+        className={`sticky top-0 z-[100] transition-all duration-300 w-full max-w-full overflow-x-clip ${
           isScrolled
-            ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-md py-2.5 border-b border-stone-900/15"
-            : "bg-[#F4F1EA]/90 backdrop-blur-sm border-b border-stone-900/10 py-3.5"
+            ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-md py-2 border-b border-stone-900/15"
+            : "bg-[#F4F1EA]/90 backdrop-blur-sm border-b border-stone-900/10 py-2.5"
         }`}
       >
-        <div className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-10">
-          <div className="flex justify-between items-center gap-2 lg:gap-6">
+        <div className="max-w-[1650px] mx-auto px-2.5 sm:px-4 lg:px-6">
+          <div className="flex justify-between items-center gap-1.5 md:gap-3 lg:gap-4">
             {/* Logo with Advanced Animated "AutoWorld" */}
             <motion.button
               id="nav-logo"
@@ -108,7 +114,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               initial="rest"
               whileHover="hover"
               whileTap="tap"
-              className="flex items-center gap-3 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 py-1 select-none shrink-0"
+              className="flex items-center gap-2 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 py-1 select-none shrink-0"
             >
               <motion.div 
                 variants={{
@@ -117,13 +123,13 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                   tap: { scale: 0.92 }
                 }}
                 transition={{ type: "spring", stiffness: 400, damping: 16 }}
-                className="w-10 h-10 bg-stone-900 rounded-lg flex items-center justify-center text-white transition-shadow shadow-md group-hover:shadow-lg group-hover:shadow-stone-900/20"
+                className="w-8 h-8 sm:w-9 sm:h-9 bg-stone-900 rounded-lg flex items-center justify-center text-white transition-shadow shadow-md group-hover:shadow-lg group-hover:shadow-stone-900/20 shrink-0"
               >
-                <Car className="w-5 h-5 text-[#F4F1EA] transition-transform duration-300 group-hover:scale-110" />
+                <Car className="w-4 h-4 sm:w-5 sm:h-5 text-[#F4F1EA] transition-transform duration-300 group-hover:scale-110" />
               </motion.div>
 
               <div className="relative flex flex-col justify-center">
-                <span className="text-xl lg:text-2xl font-black font-serif uppercase tracking-tight text-stone-900 flex items-center">
+                <span className="text-lg sm:text-xl lg:text-2xl font-black font-serif uppercase tracking-tight text-stone-900 flex items-center">
                   <motion.span
                     className="inline-block"
                     variants={{
@@ -146,7 +152,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
 
                 {/* Advanced Kinetic Underline Indicator */}
                 <motion.span 
-                  className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-gradient-to-r from-stone-900 via-amber-500 to-stone-900 rounded-full origin-left"
+                  className="absolute -bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-stone-900 via-amber-500 to-stone-900 rounded-full origin-left"
                   variants={{
                     rest: { scaleX: 0, opacity: 0 },
                     hover: { scaleX: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
@@ -156,12 +162,12 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             </motion.button>
 
             {/* Desktop Navigation Links - Shown on laptop/desktop (lg+) */}
-            <div className="hidden lg:flex items-center gap-1 xl:gap-2 mx-auto" role="tablist" aria-label="Main navigation tabs">
+            <div className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 mx-auto min-w-0" role="tablist" aria-label="Main navigation tabs">
               {isLoadingTabs ? (
                 navItems.map((item, idx) => (
                   <div 
                     key={`shimmer-${item.id}`} 
-                    className="w-20 lg:w-24 h-8 bg-stone-200/60 rounded-full relative overflow-hidden flex items-center justify-center"
+                    className="w-16 lg:w-20 h-7 bg-stone-200/60 rounded-full relative overflow-hidden flex items-center justify-center"
                   >
                     <motion.div 
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
@@ -169,7 +175,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                       animate={{ x: "100%" }}
                       transition={{ repeat: Infinity, duration: 1.2, ease: "linear", delay: idx * 0.1 }}
                     />
-                    <div className="w-12 h-2.5 bg-stone-300/50 rounded-full" />
+                    <div className="w-10 h-2 bg-stone-300/50 rounded-full" />
                   </div>
                 ))
               ) : (
@@ -184,17 +190,17 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                       aria-selected={isActive}
                       aria-controls={`tabpanel-${item.id}`}
                       tabIndex={0}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleTabClick(item.id)}
                       onKeyDown={(e) => handleKeyDown(e, item.id)}
-                      className={`relative flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 py-1.5 text-xs lg:text-[13px] font-sans uppercase tracking-wider transition-all duration-200 cursor-pointer rounded-full whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 ${
+                      className={`relative flex items-center gap-1 lg:gap-1.5 px-2.5 xl:px-3 py-1.5 text-[11px] xl:text-xs font-sans uppercase tracking-wider transition-all duration-200 cursor-pointer rounded-full whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 ${
                         isActive
                           ? "text-stone-950 font-black"
                           : "text-stone-600 hover:text-stone-950 hover:bg-stone-900/5 font-semibold"
                       }`}
                     >
-                      <Icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 transition-colors ${isActive ? "text-stone-900" : "text-stone-500"}`} />
+                      <Icon className={`w-3.5 h-3.5 transition-colors ${isActive ? "text-stone-900" : "text-stone-500"}`} />
                       <span className="relative z-10 whitespace-nowrap">{item.label}</span>
                       {isActive && (
                         <motion.div
@@ -210,31 +216,33 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             </div>
 
             {/* Right Actions Section - Shown on laptop/desktop (lg+) */}
-            <div className="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0">
+            <div className="hidden lg:flex items-center gap-1.5 xl:gap-2.5 shrink-0">
               {currentUser ? (
                 <motion.div 
                   id="user-profile-menu" 
                   layout
-                  className="flex items-center gap-2 p-1 pl-2.5 bg-stone-100 hover:bg-stone-200/70 rounded-full border border-stone-200/90 transition shadow-2xs shrink-0"
+                  className="flex items-center gap-1.5 p-1 pl-2 bg-stone-100 hover:bg-stone-200/70 rounded-full border border-stone-200/90 transition shadow-2xs shrink-0 max-w-[200px] xl:max-w-none"
                 >
                   {currentUser.photoURL ? (
-                    <img src={currentUser.photoURL} alt={currentUser.displayName || "User Avatar"} className="w-5.5 h-5.5 rounded-full border border-stone-300 object-cover" referrerPolicy="no-referrer" />
+                    <img src={currentUser.photoURL} alt={currentUser.displayName || "User Avatar"} className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full border border-stone-300 object-cover shrink-0" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="w-5.5 h-5.5 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center text-[10px] font-bold shrink-0">
+                    <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center text-[10px] font-bold shrink-0">
                       {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}
                     </div>
                   )}
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[80px] xl:max-w-[110px]">
-                    {currentUser.displayName || "User"}
-                  </span>
+                  <div className="flex items-center min-w-0">
+                    <span className="text-[10px] xl:text-[11px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[65px] lg:max-w-[80px] xl:max-w-[120px]">
+                      {currentUser.displayName || "User"}
+                    </span>
+                  </div>
                   <button 
                     onClick={handleSignOut} 
                     title="Sign Out"
                     aria-label="Sign out of AutoWorld account" 
-                    className="flex items-center gap-1 px-2.5 py-1 bg-red-100/90 hover:bg-red-600 hover:text-white text-red-700 font-bold text-[10px] uppercase tracking-wider rounded-full transition cursor-pointer shrink-0"
+                    className="flex items-center gap-1 px-2 xl:px-2.5 py-1 bg-red-100/90 hover:bg-red-600 hover:text-white text-red-700 font-bold text-[9.5px] xl:text-[10px] uppercase tracking-wider rounded-full transition cursor-pointer shrink-0"
                   >
-                    <LogOut className="w-3 h-3" />
-                    <span>Sign Out</span>
+                    <LogOut className="w-3 h-3 shrink-0" />
+                    <span className="hidden xl:inline">Sign Out</span>
                   </button>
                 </motion.div>
               ) : (
@@ -243,31 +251,10 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                   whileTap={{ scale: 0.97 }}
                   onClick={onSignInClick}
                   aria-label="Sign in to your account"
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-stone-800 hover:text-stone-950 hover:bg-stone-900/5 rounded-full transition-all cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-stone-800 hover:text-stone-950 hover:bg-stone-900/5 rounded-full transition-all cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
                 >
                   <LogIn className="w-3.5 h-3.5 text-stone-600" />
                   Sign In
-                </motion.button>
-              )}
-
-              {subscriptionActive ? (
-                <motion.div 
-                  layout
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-900 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-full border border-amber-500/40 shadow-sm whitespace-nowrap shrink-0"
-                >
-                  <Crown className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  Premium
-                </motion.div>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => handleTabClick("premium")}
-                  aria-label="Upgrade to AutoWorld Premium Plan"
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full border border-amber-600/35 bg-amber-500/10 text-amber-950 hover:bg-amber-500/20 transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
-                >
-                  <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-400" />
-                  Go Premium
                 </motion.button>
               )}
             </div>
@@ -275,7 +262,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             {/* Mobile Right-Side Action (Sign In Only) */}
             <button
               onClick={currentUser ? handleSignOut : onSignInClick}
-              className="lg:hidden text-[10px] md:text-xs font-bold uppercase tracking-widest border border-black px-4 py-2 rounded-full hover:bg-black hover:text-[#f4f2ec] transition-colors duration-200 shrink-0 cursor-pointer"
+              className="lg:hidden text-[10px] font-bold uppercase tracking-widest border border-stone-800 px-3 py-1.5 rounded-full hover:bg-stone-900 hover:text-[#f4f2ec] transition-colors duration-200 shrink-0 cursor-pointer"
             >
               {currentUser ? "Sign Out" : "Sign In"}
             </button>
