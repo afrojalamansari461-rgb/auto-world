@@ -395,13 +395,24 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
             className="lg:col-span-7 p-8 sm:p-12 md:p-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#1A1A1A]/10"
           >
             <div>
-              <span className="text-[10px] font-sans uppercase tracking-[0.25em] text-stone-700 mb-6 block font-extrabold">
+              <span className="text-xs sm:text-sm font-sans uppercase tracking-[0.28em] text-stone-800 font-bold mb-6 block">
                 {heroBadge}
               </span>
-              <h1 className="text-4xl sm:text-6xl md:text-7xl font-serif font-black tracking-tight leading-[0.95] text-stone-900 mb-8 select-none">
-                {heroTitle}
+              <h1 className="text-5xl sm:text-7xl md:text-8xl font-serif font-black tracking-tight leading-[0.92] text-stone-950 mb-8 select-none">
+                {heroTitle === "The Aesthetic of Fine Motors." ? (
+                  <>
+                    <span className="font-serif font-black">The </span>
+                    <span className="italic font-normal text-stone-800 pr-1 font-editorial-serif" style={{ fontFamily: '"Instrument Serif", Fraunces, Georgia, serif', fontStyle: 'italic' }}>
+                      Aesthetic
+                    </span>
+                    <br />
+                    <span className="font-serif font-black">of Fine Motors.</span>
+                  </>
+                ) : (
+                  heroTitle
+                )}
               </h1>
-              <p className="text-base sm:text-lg leading-relaxed text-stone-700 max-w-lg font-sans mb-10">
+              <p className="text-lg sm:text-xl leading-relaxed text-stone-800 max-w-xl font-sans font-normal mb-10 tracking-tight">
                 {heroSubtitle}
               </p>
             </div>

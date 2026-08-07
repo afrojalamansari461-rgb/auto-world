@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
@@ -155,6 +155,33 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   const [emiVehicle, setEmiVehicle] = useState<Vehicle | null>(null);
 
   // Smart Matcher States
+  const [isSmartMatcherEnabled, setIsSmartMatcherEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_smart_matcher");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const syncSmartMatcherToggle = () => {
+      try {
+        const stored = localStorage.getItem("autoWorld_is_smart_matcher");
+        if (stored !== null) {
+          setIsSmartMatcherEnabled(JSON.parse(stored));
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener("storage", syncSmartMatcherToggle);
+    const interval = setInterval(syncSmartMatcherToggle, 1000);
+    return () => {
+      window.removeEventListener("storage", syncSmartMatcherToggle);
+      clearInterval(interval);
+    };
+  }, []);
+
   const [isVizHubExpanded, setIsVizHubExpanded] = useState(true);
   const [userBudget, setUserBudget] = useState<number>(15); // Budget in Lakhs
   const [selectedPreference, setSelectedPreference] = useState<string>("All"); // All, SUV, Hatchback, Sedan, Luxury, Motorcycle
@@ -565,33 +592,41 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // Live match calculator based on budget, body style preference, and usage priority
   const getSmartRecommendations = () => {
-    const list = inventoryList.length > 0 ? inventoryList : DEFAULT_VEHICLES;
+    const list = inventoryList;
+    if (!list || list.length === 0) return [];
     
     const scoredList = list.map(car => {
-      // 1. Budget Score (price is in actual INR, so convert budget from Lakhs to actual value)
       const carPriceLakhs = car.price / 100000;
-      let budgetScore = 100;
       
-      if (carPriceLakhs > userBudget) {
-        // Car is more expensive than budget
-        const overPercent = (carPriceLakhs - userBudget) / userBudget;
-        if (overPercent <= 0.15) {
-          budgetScore = 100 - (overPercent / 0.15) * 40; // scale down to 60
-        } else if (overPercent <= 0.4) {
-          budgetScore = 60 - ((overPercent - 0.15) / 0.25) * 40; // scale down to 20
+      // 1. Budget Score Calculation
+      let budgetScore = 0;
+      let isBudgetMatch = false;
+
+      if (carPriceLakhs <= userBudget) {
+        // Fits within or under budget
+        isBudgetMatch = true;
+        const underPercent = (userBudget - carPriceLakhs) / userBudget;
+        if (underPercent <= 0.4) {
+          budgetScore = 100;
         } else {
-          budgetScore = Math.max(0, 20 - ((overPercent - 0.4) / 0.6) * 20); // scale down to 0
+          budgetScore = Math.max(70, 100 - Math.round(underPercent * 40));
         }
       } else {
-        // Car is cheaper than budget (under budget)
-        const underPercent = (userBudget - carPriceLakhs) / userBudget;
-        if (underPercent > 0.6) {
-          budgetScore = 80; // easily affordable but maybe too small for this high budget
+        // Exceeds user budget
+        const overPercent = (carPriceLakhs - userBudget) / userBudget;
+        if (overPercent <= 0.18) { // Allow up to 18% negotiation stretch
+          isBudgetMatch = true;
+          budgetScore = Math.round(75 - (overPercent / 0.18) * 35); // 75 down to 40
+        } else {
+          isBudgetMatch = false;
+          budgetScore = Math.max(0, 30 - Math.round(overPercent * 40));
         }
       }
       
       // 2. Category/Preference Score
       let categoryScore = 100;
+      let isCategoryMatch = true;
+
       if (selectedPreference !== "All") {
         const titleL = car.title.toLowerCase();
         const makeL = car.make.toLowerCase();
@@ -600,68 +635,75 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         
         let matchesType = false;
         if (selectedPreference === "SUV") {
-          matchesType = titleL.includes("suv") || catL.includes("suv") || titleL.includes("thar") || titleL.includes("fortuner") || titleL.includes("nexon") || titleL.includes("creta");
+          matchesType = titleL.includes("suv") || catL.includes("suv") || titleL.includes("thar") || titleL.includes("fortuner") || titleL.includes("nexon") || titleL.includes("creta") || titleL.includes("brezza") || titleL.includes("harrier") || titleL.includes("safari") || titleL.includes("xuv") || titleL.includes("compass") || titleL.includes("duster") || titleL.includes("scorpio") || titleL.includes("seltos") || titleL.includes("venue") || titleL.includes("punch");
         } else if (selectedPreference === "Hatchback") {
-          matchesType = titleL.includes("hatchback") || catL.includes("hatchback") || titleL.includes("swift") || titleL.includes("baleno") || titleL.includes("i20") || titleL.includes("polo");
+          matchesType = titleL.includes("hatchback") || catL.includes("hatchback") || titleL.includes("swift") || titleL.includes("baleno") || titleL.includes("i20") || titleL.includes("polo") || titleL.includes("tiago") || titleL.includes("alto") || titleL.includes("kwid") || titleL.includes("wagonr") || titleL.includes("ignis") || titleL.includes("altroz") || titleL.includes("celerio") || titleL.includes("glanza");
         } else if (selectedPreference === "Sedan") {
-          matchesType = titleL.includes("sedan") || catL.includes("sedan") || titleL.includes("city") || titleL.includes("verna") || titleL.includes("slavia") || titleL.includes("civic");
+          matchesType = titleL.includes("sedan") || catL.includes("sedan") || titleL.includes("city") || titleL.includes("verna") || titleL.includes("slavia") || titleL.includes("virtus") || titleL.includes("ciaz") || titleL.includes("civic") || titleL.includes("octavia") || titleL.includes("superb") || titleL.includes("elantra") || titleL.includes("amaze") || titleL.includes("aura") || titleL.includes("dzire") || titleL.includes("camry") || titleL.includes("accord");
         } else if (selectedPreference === "Luxury") {
-          matchesType = carPriceLakhs > 22 || titleL.includes("audi") || titleL.includes("bmw") || titleL.includes("mercedes") || titleL.includes("fortuner");
+          matchesType = carPriceLakhs > 20 || makeL.includes("audi") || makeL.includes("bmw") || makeL.includes("mercedes") || titleL.includes("audi") || titleL.includes("bmw") || titleL.includes("mercedes") || titleL.includes("fortuner") || makeL.includes("jaguar") || makeL.includes("porsche") || makeL.includes("volvo") || makeL.includes("lexus");
         } else if (selectedPreference === "Motorcycle") {
-          matchesType = catL.includes("motorcycle") || catL.includes("bike") || titleL.includes("classic") || titleL.includes("bullet") || titleL.includes("royal enfield") || titleL.includes("triumph");
+          matchesType = catL.includes("motorcycle") || catL.includes("bike") || titleL.includes("classic") || titleL.includes("bullet") || titleL.includes("royal enfield") || titleL.includes("triumph") || titleL.includes("duke") || titleL.includes("ktm") || titleL.includes("harley") || titleL.includes("ninja") || titleL.includes("yamaha");
         }
-        
-        categoryScore = matchesType ? 100 : 25;
+
+        isCategoryMatch = matchesType;
+        categoryScore = matchesType ? 100 : 0;
       }
       
       // 3. Usage Priority Score
-      let usageScore = 100;
+      let usageScore = 80;
       const titleLower = car.title.toLowerCase();
       const fuelLower = car.fuel.toLowerCase();
       const featuresStr = (car.features || []).join(" ").toLowerCase();
       
       if (usagePriority === "economy") {
         const isManual = car.transmission.toLowerCase().includes("manual");
-        const isGoodFuel = fuelLower.includes("petrol") || fuelLower.includes("cng") || fuelLower.includes("hybrid");
-        let score = 100;
-        if (carPriceLakhs > 15) score -= 40;
-        if (!isManual) score -= 15;
+        const isGoodFuel = fuelLower.includes("petrol") || fuelLower.includes("cng") || fuelLower.includes("hybrid") || fuelLower.includes("electric") || fuelLower.includes("ev");
+        let score = 90;
+        if (carPriceLakhs > 15) score -= 30;
+        if (!isManual) score -= 10;
         if (!isGoodFuel) score -= 15;
-        usageScore = Math.max(30, score);
+        usageScore = Math.max(40, score);
       } else if (usagePriority === "family") {
-        const isBig = titleLower.includes("suv") || titleLower.includes("sedan") || titleLower.includes("fortuner") || titleLower.includes("nexon") || titleLower.includes("thar") || car.transmission.toLowerCase().includes("automatic");
-        const hasSafety = featuresStr.includes("airbag") || featuresStr.includes("safety") || featuresStr.includes("sensor") || featuresStr.includes("camera") || featuresStr.includes("control");
-        let score = 70;
+        const isBig = titleLower.includes("suv") || titleLower.includes("sedan") || titleLower.includes("fortuner") || titleLower.includes("nexon") || titleLower.includes("creta") || titleLower.includes("city") || car.transmission.toLowerCase().includes("automatic");
+        const hasSafety = featuresStr.includes("airbag") || featuresStr.includes("safety") || featuresStr.includes("sensor") || featuresStr.includes("camera") || featuresStr.includes("control") || car.seating >= 5;
+        let score = 75;
         if (isBig) score += 15;
-        if (hasSafety) score += 15;
-        usageScore = score;
+        if (hasSafety) score += 10;
+        usageScore = Math.min(100, score);
       } else if (usagePriority === "performance") {
         const isAutomatic = car.transmission.toLowerCase().includes("automatic");
-        const isPremium = carPriceLakhs > 15 || titleLower.includes("audi") || titleLower.includes("bmw") || titleLower.includes("mercedes") || titleLower.includes("fortuner") || titleLower.includes("thar");
-        let score = 60;
-        if (isAutomatic) score += 20;
+        const isPremium = carPriceLakhs > 15 || titleLower.includes("audi") || titleLower.includes("bmw") || titleLower.includes("mercedes") || titleLower.includes("fortuner") || titleLower.includes("thar") || titleLower.includes("v6") || titleLower.includes("turbo");
+        let score = 65;
+        if (isAutomatic) score += 15;
         if (isPremium) score += 20;
-        usageScore = score;
+        usageScore = Math.min(100, score);
       } else if (usagePriority === "adventure") {
-        const isAdventurous = titleLower.includes("4x4") || titleLower.includes("thar") || titleLower.includes("off-road") || titleLower.includes("fortuner") || titleLower.includes("suv") || titleLower.includes("adventure");
+        const isAdventurous = titleLower.includes("4x4") || titleLower.includes("thar") || titleLower.includes("off-road") || titleLower.includes("fortuner") || titleLower.includes("suv") || titleLower.includes("adventure") || titleLower.includes("all-wheel");
         const isDiesel = fuelLower.includes("diesel");
         let score = 60;
         if (isAdventurous) score += 25;
         if (isDiesel) score += 15;
-        usageScore = score;
+        usageScore = Math.min(100, score);
       }
       
-      // Calculate weighted combination
-      const totalScore = Math.round((budgetScore * 0.5) + (categoryScore * 0.3) + (usageScore * 0.2));
+      // Total weighted score
+      const totalScore = Math.round((budgetScore * 0.50) + (categoryScore * 0.30) + (usageScore * 0.20));
       
+      // Strict validity check: Must pass budget flex and category preference
+      const isValidMatch = isBudgetMatch && isCategoryMatch && totalScore >= 45;
+
       return {
         car,
         score: totalScore,
+        isBudgetMatch,
+        isCategoryMatch,
+        isValidMatch,
         reasons: {
           budget: carPriceLakhs <= userBudget 
             ? `Fits easily in budget (₹${(userBudget - carPriceLakhs).toFixed(1)}L spare)` 
             : `₹${(carPriceLakhs - userBudget).toFixed(1)}L stretch over budget`,
-          preference: categoryScore === 100 ? `Matches ${selectedPreference} preference` : `Fallback selection`,
+          preference: isCategoryMatch ? `Matches ${selectedPreference} preference` : `Mismatched body style`,
           usage: usagePriority === "economy" && carPriceLakhs < 15 ? "High Fuel-Efficiency Value"
                  : usagePriority === "family" && (titleLower.includes("suv") || titleLower.includes("sedan")) ? "Spacious Family Cruiser"
                  : usagePriority === "performance" && car.transmission.toLowerCase().includes("automatic") ? "Smooth Automatic Performance"
@@ -671,8 +713,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       };
     });
     
-    // Sort recommendations: highest compatibility score first, then cheaper first (as tie-breaker)
-    return scoredList
+    // Only return valid matches
+    const validMatches = scoredList.filter(item => item.isValidMatch);
+
+    return validMatches
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.car.price - b.car.price;
@@ -1111,6 +1155,30 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               </div>
             </div>
           </div>
+        ) : !isSmartMatcherEnabled ? (
+          <div className="mb-12 bg-stone-900 text-[#FAF8F5] border-2 border-amber-500/40 p-6 sm:p-8 rounded-xs shadow-md space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center rounded shrink-0">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-sm font-sans uppercase tracking-[0.2em] font-black text-amber-400">
+                    Smart Matcher Engine Paused
+                  </h2>
+                  <p className="text-[10px] text-stone-400 font-mono tracking-widest uppercase">
+                    Disabled in Administrator Settings
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-auto px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-widest bg-stone-800 text-stone-400 border border-stone-700">
+                PAUSED BY ADMIN
+              </span>
+            </div>
+            <p className="text-xs text-stone-300 font-mono leading-relaxed">
+              The real-time buyer recommendation wizard is currently turned off by platform management. You can explore all available vehicle listings in our verified catalog below.
+            </p>
+          </div>
         ) : (
           <div className="mb-12 bg-[#FAF8F5] border border-stone-300 shadow-sm overflow-hidden">
             <div className="bg-stone-900 text-[#FAF8F5] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-850">
@@ -1386,72 +1454,117 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             transition={{ type: "spring", stiffness: 300, damping: 24 }}
                             className="space-y-3.5"
                           >
-                            {getSmartRecommendations().map((item, idx) => (
-                              <div
-                                key={item.car.id}
-                                className="bg-white p-3 border border-stone-250 shadow-xs hover:shadow-sm hover:border-stone-400 transition-all rounded-xs space-y-2 relative overflow-hidden group"
-                              >
-                                <div className="flex justify-between items-center">
-                                  <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest rounded-xs ${
-                                    item.score >= 85 ? "bg-emerald-100 text-emerald-900 border border-emerald-200" :
-                                    item.score >= 60 ? "bg-amber-100 text-amber-900 border border-amber-200" :
-                                    "bg-stone-100 text-stone-705 border border-stone-200"
-                                  }`}>
-                                    {item.score}% Match
-                                  </span>
-                                  <span className="text-xs font-serif font-black text-stone-900">
-                                    {item.car.price === 0 ? "Negotiable" : item.car.price < 10000 ? `₹${item.car.price.toLocaleString()}` : item.car.price < 100000 ? `₹${(item.car.price / 1000).toFixed(1)} K` : `₹${(item.car.price / 100000).toFixed(2)} Lakhs`}
-                                  </span>
-                                </div>
-
-                                <div className="flex gap-3 items-center">
-                                  <div className="w-14 h-11 bg-stone-100 border border-stone-250 overflow-hidden shrink-0">
-                                    <img
-                                      src={item.car.image}
-                                      alt={item.car.title}
-                                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
-                                      }}
-                                    />
+                            {getSmartRecommendations().length > 0 ? (
+                              getSmartRecommendations().map((item) => (
+                                <div
+                                  key={item.car.id}
+                                  className="bg-white p-3 border border-stone-250 shadow-xs hover:shadow-sm hover:border-stone-400 transition-all rounded-xs space-y-2 relative overflow-hidden group"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest rounded-xs ${
+                                      item.score >= 85 ? "bg-emerald-100 text-emerald-900 border border-emerald-200" :
+                                      item.score >= 60 ? "bg-amber-100 text-amber-900 border border-amber-200" :
+                                      "bg-stone-100 text-stone-705 border border-stone-200"
+                                    }`}>
+                                      {item.score}% Match
+                                    </span>
+                                    <span className="text-xs font-serif font-black text-stone-900">
+                                      {item.car.price === 0 ? "Negotiable" : item.car.price < 10000 ? `₹${item.car.price.toLocaleString()}` : item.car.price < 100000 ? `₹${(item.car.price / 1000).toFixed(1)} K` : `₹${(item.car.price / 100000).toFixed(2)} Lakhs`}
+                                    </span>
                                   </div>
-                                  <div className="min-w-0">
-                                    <h4 className="text-xs font-serif font-black text-stone-950 uppercase truncate leading-none mb-1">
-                                      {item.car.title}
+
+                                  <div className="flex gap-3 items-center">
+                                    <div className="w-14 h-11 bg-stone-100 border border-stone-250 overflow-hidden shrink-0">
+                                      <img
+                                        src={item.car.image}
+                                        alt={item.car.title}
+                                        className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs font-serif font-black text-stone-950 uppercase truncate leading-none mb-1">
+                                        {item.car.title}
+                                      </h4>
+                                      <p className="text-[10px] font-mono text-stone-500 uppercase tracking-wider leading-none">
+                                        {item.car.make} • {item.car.year} • {item.car.transmission}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-[10px] space-y-1 bg-stone-50 border border-stone-150 p-2 rounded-xs">
+                                    <div className="text-stone-700 flex items-start gap-1 font-semibold leading-tight">
+                                      <span className="text-emerald-600 shrink-0 select-none">✓</span>
+                                      <span>{item.reasons.budget}</span>
+                                    </div>
+                                    <div className="text-stone-700 flex items-start gap-1 font-semibold leading-tight">
+                                      <span className="text-amber-600 shrink-0 select-none">⚡</span>
+                                      <span>{item.reasons.usage}</span>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSearchQuery(item.car.title);
+                                      showToast(`Filter locked onto ${item.car.title}!`, "success");
+                                      setTimeout(() => {
+                                        document.getElementById("inventory-catalog-start")?.scrollIntoView({ behavior: 'smooth' });
+                                      }, 100);
+                                    }}
+                                    className="w-full py-1.5 bg-stone-900 hover:bg-stone-850 text-white text-[9px] uppercase font-bold tracking-widest rounded-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  >
+                                    <span>Focus Listing Specimen</span>
+                                    <ArrowUp className="w-3 h-3 rotate-90 shrink-0" />
+                                  </button>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="bg-white border-2 border-stone-800 p-4 rounded-xs space-y-3 shadow-xs font-sans text-stone-900">
+                                <div className="flex items-start gap-2.5">
+                                  <div className="p-1.5 bg-amber-500/20 text-amber-900 border border-amber-400 rounded shrink-0">
+                                    <AlertTriangle className="w-4 h-4 text-amber-700" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <h4 className="text-xs font-serif font-black uppercase text-stone-950 tracking-wide">
+                                      No Vehicles Match Choice
                                     </h4>
-                                    <p className="text-[10px] font-mono text-stone-500 uppercase tracking-wider leading-none">
-                                      {item.car.make} • {item.car.year} • {item.car.transmission}
+                                    <p className="text-[10px] font-mono text-stone-600 leading-relaxed">
+                                      No {selectedPreference !== "All" ? <strong className="text-stone-900 font-bold">{selectedPreference}</strong> : "vehicle"} in active stock under <strong className="text-stone-900 font-bold">₹{userBudget} Lakhs</strong>.
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className="text-[10px] space-y-1 bg-stone-50 border border-stone-150 p-2 rounded-xs">
-                                  <div className="text-stone-700 flex items-start gap-1 font-semibold leading-tight">
-                                    <span className="text-emerald-600 shrink-0 select-none">✓</span>
-                                    <span>{item.reasons.budget}</span>
-                                  </div>
-                                  <div className="text-stone-700 flex items-start gap-1 font-semibold leading-tight">
-                                    <span className="text-amber-605 shrink-0 select-none">⚡</span>
-                                    <span>{item.reasons.usage}</span>
+                                <div className="bg-stone-50 border border-stone-200 p-3 space-y-2 rounded-xs">
+                                  <span className="text-[9px] font-mono uppercase font-bold text-stone-500 block">
+                                    Quick Filter Adjustments:
+                                  </span>
+                                  <div className="flex flex-col gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setUserBudget(25);
+                                        setSelectedPreference("All");
+                                      }}
+                                      className="w-full py-1.5 px-2 bg-stone-900 hover:bg-stone-800 text-white text-[9px] font-mono font-bold uppercase tracking-wider rounded-xs transition text-center cursor-pointer"
+                                    >
+                                      Auto-Expand Budget to ₹25L
+                                    </button>
+                                    {selectedPreference !== "All" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedPreference("All")}
+                                        className="w-full py-1.5 px-2 bg-stone-200 hover:bg-stone-300 text-stone-900 text-[9px] font-mono font-bold uppercase tracking-wider rounded-xs transition text-center cursor-pointer"
+                                      >
+                                        Show All Body Styles
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSearchQuery(item.car.title);
-                                    showToast(`Filter locked onto ${item.car.title}!`, "success");
-                                    setTimeout(() => {
-                                      document.getElementById("inventory-catalog-start")?.scrollIntoView({ behavior: 'smooth' });
-                                    }, 100);
-                                  }}
-                                  className="w-full py-1.5 bg-stone-900 hover:bg-stone-850 text-white text-[9px] uppercase font-bold tracking-widest rounded-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                >
-                                  <span>Focus Listing Specimen</span>
-                                  <ArrowUp className="w-3 h-3 rotate-90 shrink-0" />
-                                </button>
                               </div>
-                            ))}
+                            )}
                           </motion.div>
                         </AnimatePresence>
 

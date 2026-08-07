@@ -272,6 +272,15 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   });
 
+  const [isSmartMatcherEnabled, setIsSmartMatcherEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_smart_matcher");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
   const handleToggleFreePass = async () => {
     const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
     if (!isOwner) {
@@ -308,7 +317,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   };
 
   const handleToggleFeature = async (
-    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isSimranFreeModeEnabled" | "isFeaturedBoosterEnabled" | "isUrgentHotStampEnabled",
+    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isSimranFreeModeEnabled" | "isFeaturedBoosterEnabled" | "isUrgentHotStampEnabled" | "isSmartMatcherEnabled",
     currentVal: boolean,
     setter: React.Dispatch<React.SetStateAction<boolean>>,
     label: string,
@@ -670,6 +679,10 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           setIsUrgentHotStampEnabled(Boolean(data.isUrgentHotStampEnabled));
           localStorage.setItem("autoWorld_is_urgent_hot_stamp", JSON.stringify(Boolean(data.isUrgentHotStampEnabled)));
         }
+        if (data.isSmartMatcherEnabled !== undefined) {
+          setIsSmartMatcherEnabled(Boolean(data.isSmartMatcherEnabled));
+          localStorage.setItem("autoWorld_is_smart_matcher", JSON.stringify(Boolean(data.isSmartMatcherEnabled)));
+        }
         if (data.footerEmail) {
           setFooterEmail(data.footerEmail);
           localStorage.setItem("autoWorld_footer_email", data.footerEmail);
@@ -812,6 +825,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         if (data.isWhatsAppConnectEnabled !== undefined) setIsWhatsAppConnectEnabled(Boolean(data.isWhatsAppConnectEnabled));
         if (data.isAiAssistantEnabled !== undefined) setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
         if (data.isSimranFreeModeEnabled !== undefined) setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
+        if (data.isSmartMatcherEnabled !== undefined) setIsSmartMatcherEnabled(Boolean(data.isSmartMatcherEnabled));
         if (data.footerEmail) setFooterEmail(data.footerEmail);
         if (data.footerPhone) setFooterPhone(data.footerPhone);
         if (data.showroomAddress) setShowroomAddress(data.showroomAddress);
@@ -2462,6 +2476,45 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               >
                 <span className={`w-2.5 h-2.5 rounded-full ${isAiAssistantEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
                 <span>{isAiAssistantEnabled ? "[ ON ] AI ASSISTANT ENABLED" : "[ OFF ] AI ASSISTANT DISABLED"}</span>
+              </button>
+            </div>
+
+            {/* 5. Smart Matcher Engine Toggle */}
+            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+              isSmartMatcherEnabled
+                ? "bg-stone-900 text-stone-100 border-amber-500/60 shadow-md"
+                : "bg-stone-100 text-stone-600 border-stone-300"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sliders className={`w-4 h-4 ${isSmartMatcherEnabled ? "text-amber-400" : "text-stone-400"}`} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">
+                      Smart Matcher Engine V2.1
+                    </h4>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                    isSmartMatcherEnabled ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-stone-200 text-stone-500"
+                  }`}>
+                    {isSmartMatcherEnabled ? "LIVE ON APP" : "PAUSED"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                  Real-time budget & style buyer recommendation engine on the Buy catalog tab.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleFeature("isSmartMatcherEnabled", isSmartMatcherEnabled, setIsSmartMatcherEnabled, "Smart Matcher Engine", "autoWorld_is_smart_matcher")}
+                className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                  isSmartMatcherEnabled
+                    ? "bg-amber-500 hover:bg-amber-400 text-stone-950 border-amber-400 shadow-sm"
+                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isSmartMatcherEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                <span>{isSmartMatcherEnabled ? "[ ON ] SMART MATCHER ENABLED" : "[ OFF ] SMART MATCHER DISABLED"}</span>
               </button>
             </div>
 
