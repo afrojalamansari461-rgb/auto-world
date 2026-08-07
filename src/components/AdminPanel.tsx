@@ -2766,17 +2766,19 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             Audit Logs
           </button>
 
-          <button
-            onClick={() => setActiveSubSection("roles")}
-            className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
-              activeSubSection === "roles"
-                ? "bg-amber-600 text-stone-950 shadow-md font-black border-b-2 border-amber-300"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
-            }`}
-          >
-            <Users className="w-4 h-4 shrink-0 text-stone-900" />
-            User Roles ({usersList.length})
-          </button>
+          {isOwner && (
+            <button
+              onClick={() => setActiveSubSection("roles")}
+              className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+                activeSubSection === "roles"
+                  ? "bg-amber-600 text-stone-950 shadow-md font-black border-b-2 border-amber-300"
+                  : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+              }`}
+            >
+              <Users className="w-4 h-4 shrink-0 text-stone-900" />
+              User Roles ({usersList.length})
+            </button>
+          )}
 
           <button
             onClick={() => setActiveSubSection("content")}
@@ -4986,18 +4988,28 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             {/* SUBSECTION 7: USER ROLES MANAGEMENT & DISPATCH CENTER */}
             {activeSubSection === "roles" && (
               <div className="space-y-6">
-                {/* CO-OWNER RESTRICTION BANNER */}
-                {isCoOwner && (
-                  <div className="p-4 bg-amber-500/10 border-2 border-amber-500/40 text-amber-900 text-xs font-mono font-bold shadow-xs flex items-center gap-3">
-                    <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
-                    <div>
-                      <span className="font-black block text-amber-950 uppercase">Co-Owner Restricted Clearance Active:</span>
-                      <span>You have full executive access to manage vehicle listings, leads, feedback, and content customizers. However, reassigning staff roles and modifying administrative privileges are restricted exclusively to the System Owner.</span>
+                {!isOwner ? (
+                  <div className="p-8 bg-[#FAF8F5] border-2 border-stone-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-stone-900 space-y-4 font-sans">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-amber-500 text-stone-950 flex items-center justify-center border border-stone-900 shrink-0 font-bold">
+                        <ShieldAlert className="w-6 h-6 text-stone-950" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-serif font-black uppercase tracking-tight text-stone-950">
+                          User Registry & Role Dispatch Restricted
+                        </h3>
+                        <p className="text-xs text-stone-600 font-mono mt-0.5">
+                          Privileged Directory Clearance Required
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-amber-50 border border-amber-300 text-stone-800 text-xs font-mono leading-relaxed">
+                      <strong>Restricted Clearance:</strong> Viewing registered user accounts, user counts, and user list registries is restricted exclusively to the <strong>System Owner</strong>. Co-Owners and operational staff members do not have permission to access user account lists or modify operational roles.
                     </div>
                   </div>
-                )}
-
-                {/* ROLE DISPATCH CENTER HEADER */}
+                ) : (
+                  <>
+                    {/* ROLE DISPATCH CENTER HEADER */}
                 <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4 font-sans">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-300">
                     <div className="flex items-center gap-3">
@@ -5209,6 +5221,8 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                     </div>
                   );
                 })()}
+                  </>
+                )}
               </div>
             )}
           </div>
