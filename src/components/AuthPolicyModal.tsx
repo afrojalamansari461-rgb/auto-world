@@ -229,45 +229,77 @@ export default function AuthPolicyModal({
                     </div>
                   </div>
 
-                  <div className="space-y-4 text-xs text-stone-300 leading-relaxed font-sans">
-                    <section className="space-y-2">
+                  <div className="space-y-4 text-xs text-stone-200 leading-relaxed font-sans">
+                    <section className="space-y-2 bg-stone-900/60 p-3.5 border border-stone-800 rounded-lg">
                       <h4 className="text-sm font-serif font-bold text-white flex items-center gap-2">
                         <span className="text-[#c5a059] font-mono text-xs">01.</span>
                         Collector Pass & Zero Buyer Fee Policy
                       </h4>
-                      <p className="text-stone-400">
-                        Registered users on Auto World enjoy direct access to private seller channels with 0% buyer markup pass privilege. All vehicular listings are presented with transparent pricing and mechanical history logs.
-                      </p>
+                      <ul className="space-y-1.5 text-stone-300 text-xs pl-2">
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Direct Access:</strong> Registered collectors get direct communication channels with verified private sellers.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Zero Buyer Markup:</strong> 0% transaction fee or commission added to buyer purchase prices.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Complete Transparency:</strong> Full access to mechanical inspection records and valuation metrics.</span>
+                        </li>
+                      </ul>
                     </section>
 
-                    <section className="space-y-2">
+                    <section className="space-y-2 bg-stone-900/60 p-3.5 border border-stone-800 rounded-lg">
                       <h4 className="text-sm font-serif font-bold text-white flex items-center gap-2">
                         <span className="text-[#c5a059] font-mono text-xs">02.</span>
-                        Listing Authenticity & 150-Point Inspection
+                        Listing Authenticity & Inspection Audit
                       </h4>
-                      <p className="text-stone-400">
-                        Every vehicle offered on the platform is subject to chassis verification and documentation audit. Sellers warrant that vehicle specifications, mileage logs, and structural condition reports are accurate and free of encumbrance.
-                      </p>
+                      <ul className="space-y-1.5 text-stone-300 text-xs pl-2">
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Chassis Verification:</strong> Every catalogued vehicle undergoes structural and documentation checks.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Accuracy Warranties:</strong> Sellers warrant accurate mileage, title legitimacy, and clear ownership records.</span>
+                        </li>
+                      </ul>
                     </section>
 
-                    <section className="space-y-2">
+                    <section className="space-y-2 bg-stone-900/60 p-3.5 border border-stone-800 rounded-lg">
                       <h4 className="text-sm font-serif font-bold text-white flex items-center gap-2">
                         <span className="text-[#c5a059] font-mono text-xs">03.</span>
-                        Bidding, Trade & Reservation Protocols
+                        Bidding & Transaction Safeguards
                       </h4>
-                      <p className="text-stone-400">
-                        Offers placed on verified vehicles represent serious trade intent. Upon offer confirmation, sellers and buyers receive direct concierge oversight to facilitate title transfer and physical vehicle inspection.
-                      </p>
+                      <ul className="space-y-1.5 text-stone-300 text-xs pl-2">
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Verified Trade Intent:</strong> Offers represent formal interest backed by collector verification.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Concierge Facilitation:</strong> Dedicated assistance for physical inspection and title transfers.</span>
+                        </li>
+                      </ul>
                     </section>
 
-                    <section className="space-y-2">
+                    <section className="space-y-2 bg-stone-900/60 p-3.5 border border-stone-800 rounded-lg">
                       <h4 className="text-sm font-serif font-bold text-white flex items-center gap-2">
                         <span className="text-[#c5a059] font-mono text-xs">04.</span>
-                        Account Safety & Platform Rules
+                        Account Safety & Integrity Rules
                       </h4>
-                      <p className="text-stone-400">
-                        Members are responsible for maintaining secret credentials. Fraudulent listings, misrepresentation of vehicle ownership, or unauthorized automated access will result in immediate registry termination.
-                      </p>
+                      <ul className="space-y-1.5 text-stone-300 text-xs pl-2">
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Credential Protection:</strong> Members maintain strict confidentiality for account keys.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-[#c5a059] font-bold">•</span>
+                          <span><strong>Zero Misrepresentation:</strong> Fraudulent or deceptive listings result in immediate account termination.</span>
+                        </li>
+                      </ul>
                     </section>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, updateProfile } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, updateProfile } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -15,6 +15,11 @@ export const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Keep user logged in across page reloads and browser sessions until explicit sign out
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.warn("[Firebase Auth Persistence Error]:", err);
+});
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();

@@ -452,9 +452,9 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
             </motion.div>
 
             <motion.div variants={fadeUp} className="mb-8">
-              <p className="text-[#c5a059] text-[10px] tracking-[0.2em] font-bold uppercase mb-2">✦ Collector Sign In</p>
+              <p className="text-[#c5a059] text-[10px] tracking-[0.2em] font-bold uppercase mb-2">✦ Member Sign In</p>
               <h1 className="text-5xl font-serif font-bold text-[#1a1a1a] mb-3">Welcome Back.</h1>
-              <p className="text-sm text-gray-500 pr-4">Enter your credentials to manage your garage, monitor active bids, and view curated acquisitions.</p>
+              <p className="text-sm text-gray-500 pr-4">Sign in to view saved cars, post listings, and contact car sellers.</p>
             </motion.div>
 
             {/* Error State Banner */}

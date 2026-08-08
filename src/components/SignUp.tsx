@@ -410,9 +410,9 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
             </motion.div>
 
             <motion.div variants={fadeUp} className="mb-6">
-              <p className="text-[#c5a059] text-[10px] tracking-[0.2em] font-bold uppercase mb-2">✦ Collector Registration</p>
-              <h1 className="text-4xl sm:text-5xl font-serif font-bold text-[#1a1a1a] mb-2 leading-tight">Initiate Access.</h1>
-              <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">Register your collector credentials to manage your garage, monitor active bids, and view curated acquisitions.</p>
+              <p className="text-[#c5a059] text-[10px] tracking-[0.2em] font-bold uppercase mb-2">✦ Create Account</p>
+              <h1 className="text-4xl sm:text-5xl font-serif font-bold text-[#1a1a1a] mb-2 leading-tight">Create Account.</h1>
+              <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">Create a free account to save favorite cars, post listings, and contact sellers.</p>
             </motion.div>
 
           {/* Notifications */}
@@ -465,7 +465,7 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
                     : "top-4 text-xs text-gray-400 font-sans"
                 }`}
               >
-                Full Name / Collector Name
+                Full Name
               </label>
               <User className={`absolute right-0 top-4 w-4 h-4 transition-colors duration-300 pointer-events-none ${
                 focusedInput === "fullName" ? "text-black" : "text-gray-400"

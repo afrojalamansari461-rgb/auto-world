@@ -766,17 +766,49 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
       {/* Section 3: Process Steps */}
       <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
         <div className="text-center max-w-xl mx-auto mb-16">
-          <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-400 block mb-1.5 font-bold">Verification Workflow</span>
-          <h2 className="text-3xl font-serif font-black text-stone-900">How Auto World Operates</h2>
-          <p className="text-stone-500 text-sm italic font-serif">We provide an physical print-grade framework safeguarding buyers and publishers.</p>
+          <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-600 block mb-1.5 font-bold">How It Works</span>
+          <h2 className="text-3xl font-serif font-black text-stone-950">Simple Steps to Buy or Sell</h2>
+          <p className="text-stone-700 text-sm font-sans mt-1">A safe and easy way to connect buyers and sellers.</p>
         </div>
 
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {[
-            { step: "01", title: "Browse Listings", desc: "Utilize clean typographic filter matrices to identify models. Examine mechanical checklists and high resolution photo documents." },
-            { step: "02", title: "Inspect Metrics", desc: "Receive transparent reports holding exact engine conditions, structural health ratings, and estimated broker parameters." },
-            { step: "03", title: "Direct Contact", desc: "Establish direct contacts with vetted owners over safe, verified email and phone coordinates, supported with standardized template forms." },
-            { step: "04", title: "Authentic Handover", desc: "Complete registration state processes, verify mechanical identification, and confidently sign trade deeds." }
+            { 
+              step: "01", 
+              title: "Browse Cars", 
+              points: [
+                "Filter by price, model, or style",
+                "Check vehicle details and features",
+                "View clear HD photos"
+              ] 
+            },
+            { 
+              step: "02", 
+              title: "Check Details", 
+              points: [
+                "See real engine & mileage specs",
+                "Check ownership & condition",
+                "Compare fair market prices"
+              ] 
+            },
+            { 
+              step: "03", 
+              title: "Contact Owner", 
+              points: [
+                "Connect with real car owners",
+                "Call or message via WhatsApp",
+                "Ask questions directly"
+              ] 
+            },
+            { 
+              step: "04", 
+              title: "Buy & Drive", 
+              points: [
+                "Verify paper registration",
+                "Take a test drive in person",
+                "Complete the purchase safely"
+              ] 
+            }
           ].map((item, idx) => (
             <motion.div 
               key={idx} 
@@ -785,16 +817,23 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
               viewport={{ once: true }}
               transition={{ delay: idx * 0.1, type: "spring", stiffness: 90, damping: 15 }}
               whileHover={{ scale: 1.03, y: -4 }}
-              className="bg-[#FAF8F5] p-8 border border-stone-900/15 transition-all shadow-sm hover:shadow-md cursor-pointer"
+              className="bg-[#FAF8F5] p-8 border border-stone-900/20 transition-all shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between"
             >
-              <div className="text-3xl font-serif font-light text-stone-400 border-b border-stone-200 pb-3 mb-4 flex justify-between items-baseline">
-                <span>{item.step}</span>
-                <span className="text-[10px] uppercase font-sans tracking-widest text-stone-400 font-bold">Chapter</span>
+              <div>
+                <div className="text-3xl font-serif font-light text-stone-600 border-b border-stone-300 pb-3 mb-4 flex justify-between items-baseline">
+                  <span>{item.step}</span>
+                  <span className="text-[10px] uppercase font-sans tracking-widest text-stone-600 font-bold">Step</span>
+                </div>
+                <h3 className="text-sm uppercase tracking-wider font-bold text-stone-950 mb-3">{item.title}</h3>
+                <ul className="space-y-2 text-stone-800 text-xs font-sans font-medium">
+                  {item.points.map((pt, pIdx) => (
+                    <li key={pIdx} className="flex items-start gap-2">
+                      <span className="text-stone-950 font-bold">•</span>
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <h3 className="text-sm uppercase tracking-wider font-bold text-stone-950 mb-2">{item.title}</h3>
-              <p className="text-stone-605 text-sm md:text-xs leading-relaxed font-sans font-semibold">
-                {item.desc}
-              </p>
             </motion.div>
           ))}
         </div>
@@ -805,20 +844,20 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-stone-800">
             <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light">10k+</div>
-              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Motors Catalogued</p>
+              <div className="text-4xl sm:text-5xl font-serif font-light text-white">10k+</div>
+              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Cars Listed</p>
             </div>
             <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light">50k+</div>
-              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Inspected Transfers</p>
+              <div className="text-4xl sm:text-5xl font-serif font-light text-white">50k+</div>
+              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Successful Deals</p>
             </div>
             <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light">100%</div>
-              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Secure Vetting</p>
+              <div className="text-4xl sm:text-5xl font-serif font-light text-white">100%</div>
+              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Verified Listings</p>
             </div>
             <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light">4.9/5</div>
-              <p className="text-stone-400 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Broker Satisfaction</p>
+              <div className="text-4xl sm:text-5xl font-serif font-light text-white">4.9/5</div>
+              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">User Rating</p>
             </div>
           </div>
         </div>
@@ -827,18 +866,35 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
       {/* Section 5: Premium Promo */}
       <motion.section variants={itemVariants} className="py-24 bg-[#E0DBCF] text-[#1A1A1A] relative overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 relative z-10 text-center space-y-6">
-          <Crown className="w-12 h-12 text-stone-900 mx-auto" />
-          <span className="text-[10px] tracking-[0.3em] font-sans font-bold uppercase block text-stone-600">The Editorial Index Plus</span>
-          <h2 className="text-4xl md:text-5xl font-serif font-black tracking-tight text-stone-950">Unlock Premium Syndicate Placement</h2>
-          <p className="text-stone-700 text-sm max-w-lg mx-auto font-sans leading-relaxed">
-            Gain immediate access to full owner phone metrics, broker correspondence archives, active listings priority displays, and custom certified badges.
-          </p>
-          <div className="pt-4">
+          <Crown className="w-12 h-12 text-stone-950 mx-auto" />
+          <span className="text-[10px] tracking-[0.3em] font-sans font-bold uppercase block text-stone-800">Auto World Premium</span>
+          <h2 className="text-4xl md:text-5xl font-serif font-black tracking-tight text-stone-950">Upgrade to Premium Membership</h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left text-xs font-sans font-semibold text-stone-900 bg-[#F4F1EA]/80 p-5 border border-stone-400 rounded-sm shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-stone-900 text-amber-300 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+              <span>Direct Phone & WhatsApp Numbers</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-stone-900 text-amber-300 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+              <span>Saved Message & Inquiry History</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-stone-900 text-amber-300 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+              <span>Featured Car Placement on Home Page</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-stone-900 text-amber-300 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+              <span>Verified Gold Seller Badge</span>
+            </div>
+          </div>
+
+          <div className="pt-2">
             <button
               onClick={() => setActiveTab("premium")}
-              className="px-8 py-4 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest transition cursor-pointer"
+              className="px-8 py-4 bg-stone-950 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest transition cursor-pointer shadow-md"
             >
-              Examine Syndicate Membership Matrix
+              View Premium Plans
             </button>
           </div>
         </div>

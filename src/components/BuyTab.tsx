@@ -1164,10 +1164,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 </div>
                 <div>
                   <h2 className="text-xs sm:text-sm font-sans uppercase tracking-[0.2em] font-black text-amber-400">
-                    Smart Matcher Engine Paused
+                    Smart Car Matcher Paused
                   </h2>
                   <p className="text-[10px] text-stone-400 font-mono tracking-widest uppercase">
-                    Disabled in Administrator Settings
+                    Disabled in Admin Settings
                   </p>
                 </div>
               </div>
@@ -1176,7 +1176,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               </span>
             </div>
             <p className="text-xs text-stone-300 font-mono leading-relaxed">
-              The real-time buyer recommendation wizard is currently turned off by platform management. You can explore all available vehicle listings in our verified catalog below.
+              The car recommendation tool is currently turned off by the admin. You can browse all available vehicles in our car list below.
             </p>
           </div>
         ) : (
@@ -1187,15 +1187,15 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                   <Zap className="w-5 h-5 animate-pulse text-amber-400" />
                 </div>
                 <div>
-                  <h2 className="text-xs sm:text-sm font-sans uppercase tracking-[0.2em] font-black text-[#FAF8F5]">Smart Matcher Engine</h2>
-                  <p className="text-[9px] text-stone-400 font-mono tracking-widest uppercase">Input your target criteria for real-time model recommendations</p>
+                  <h2 className="text-xs sm:text-sm font-sans uppercase tracking-[0.2em] font-black text-[#FAF8F5]">Smart Car Matcher</h2>
+                  <p className="text-[9px] text-stone-400 font-mono tracking-widest uppercase">Choose your budget and style to get instant car suggestions</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsVizHubExpanded(!isVizHubExpanded)}
                 className="text-xs font-mono py-1.5 px-3 bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-300 font-bold uppercase transition select-none cursor-pointer"
               >
-                {isVizHubExpanded ? "[−] Minimize Engine" : "[+] Reveal Engine"}
+                {isVizHubExpanded ? "[−] Hide Tool" : "[+] Show Tool"}
               </button>
             </div>
 
@@ -1516,7 +1516,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                                     }}
                                     className="w-full py-1.5 bg-stone-900 hover:bg-stone-850 text-white text-[9px] uppercase font-bold tracking-widest rounded-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
                                   >
-                                    <span>Focus Listing Specimen</span>
+                                    <span>View This Car</span>
                                     <ArrowUp className="w-3 h-3 rotate-90 shrink-0" />
                                   </button>
                                 </div>

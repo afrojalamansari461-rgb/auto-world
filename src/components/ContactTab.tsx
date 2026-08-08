@@ -213,8 +213,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Visit Office</h3>
-                  <p className="text-xs text-stone-500 leading-relaxed font-semibold font-mono">
+                  <h3 className="text-sm font-bold text-stone-950 uppercase tracking-widest leading-none">Visit Office</h3>
+                  <p className="text-xs text-stone-800 leading-relaxed font-semibold font-mono">
                     {contactAddress}
                   </p>
                 </div>
@@ -226,8 +226,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                   <Phone className="w-5 h-5" />
                 </div>
                 <div className="space-y-1 w-full">
-                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Call support</h3>
-                  <p className="text-xs text-stone-500 font-semibold leading-relaxed font-mono">
+                  <h3 className="text-sm font-bold text-stone-950 uppercase tracking-widest leading-none">Call support</h3>
+                  <p className="text-xs text-stone-800 font-semibold leading-relaxed font-mono">
                     Direct: {contactPhone}
                   </p>
                   <div className="pt-2">
@@ -250,8 +250,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                   <Mail className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest leading-none">Email coordinates</h3>
-                  <p className="text-xs text-stone-505 font-mono">
+                  <h3 className="text-sm font-bold text-stone-950 uppercase tracking-widest leading-none">Email coordinates</h3>
+                  <p className="text-xs text-stone-800 font-semibold font-mono">
                     {contactEmail}
                   </p>
                 </div>
