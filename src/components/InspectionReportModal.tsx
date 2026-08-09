@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, ShieldCheck, CheckCircle2, Download, Award, FileText, Wrench, Zap, Cpu } from "lucide-react";
 import { Vehicle } from "../types";
 
@@ -13,6 +14,18 @@ export const InspectionReportModal: React.FC<InspectionReportModalProps> = ({
   onClose,
   vehicle,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
+
   if (!isOpen || !vehicle) return null;
 
   const categories = [
@@ -70,7 +83,7 @@ export const InspectionReportModal: React.FC<InspectionReportModalProps> = ({
     alert(`Downloading AutoWorld 100-Point Inspection Report PDF for AW-${vehicle.id} (${vehicle.title})...`);
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[#FAF8F5] border border-stone-300 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
         {/* Header */}
@@ -184,6 +197,7 @@ export const InspectionReportModal: React.FC<InspectionReportModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

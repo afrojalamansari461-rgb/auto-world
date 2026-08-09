@@ -1911,8 +1911,24 @@ export default function App() {
                     <CountUp to={selectedVehicle.price} />
                   </div>
 
-                  {/* 30-Day Listing Expiration Badge & Info Box */}
+                  {/* 30-Day Listing Expiration Badge & Info Box - ONLY shown to car uploader and admin */}
                   {(() => {
+                    const isAdminUser = userRole === "Admin" || currentUser?.email === OWNER_EMAIL || currentUser?.email === "afrojalamansari461@gmail.com";
+                    
+                    const isUploader = Boolean(
+                      currentUser &&
+                        (
+                          (selectedVehicle as any).userId === currentUser.uid ||
+                          (selectedVehicle as any).sellerUserId === currentUser.uid ||
+                          ((selectedVehicle as any).userEmail && currentUser.email && (selectedVehicle as any).userEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+                          ((selectedVehicle as any).sellerEmail && currentUser.email && (selectedVehicle as any).sellerEmail.toLowerCase() === currentUser.email.toLowerCase())
+                        )
+                    );
+
+                    const canSeeExpiration = isAdminUser || isUploader;
+
+                    if (!canSeeExpiration) return null;
+
                     const isPremiumOrFeatured = Boolean(
                       selectedVehicle.badge === "premium" || 
                       selectedVehicle.badge === "verified" || 

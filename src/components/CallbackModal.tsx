@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, PhoneCall, CheckCircle2, Clock, Calendar, MessageSquare, ShieldCheck, User, Phone } from "lucide-react";
 import { Vehicle } from "../types";
 import { db } from "../firebase";
@@ -22,7 +23,17 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
   currentUser,
   showToast,
 }) => {
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
 
   const targetSellerName = sellerInfo?.name || vehicle?.sellerName || "AutoWorld Concierge Desk";
   const targetSellerPhone = sellerInfo?.phone || vehicle?.sellerPhone || "+919920155667";
@@ -36,6 +47,8 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
   const [note, setNote] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedData, setSubmittedData] = useState<any | null>(null);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +106,7 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
     window.open(`https://wa.me/${targetSellerPhone.replace(/[^0-9]/g, "")}?text=${text}`, "_blank");
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[#FAF8F5] border border-stone-300 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
@@ -261,6 +274,7 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

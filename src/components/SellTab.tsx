@@ -1022,6 +1022,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
   // Quick Status Toggle Handler
   const handleQuickStatusChange = async (listingId: string, newStatus: "active" | "pending" | "sold") => {
+    const targetListing = userListings.find(l => l.id === listingId);
+    if (targetListing?.status === "hidden" && !isAdmin) {
+      showToast("This car listing was hidden by Admin. You cannot unhide or change its status.", "error");
+      return;
+    }
+
     try {
       await updateDoc(doc(db, "listings", listingId), {
         status: newStatus,
@@ -1082,9 +1088,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     try {
       const preparedPhotos = editForm.photos ? await preparePhotosForFirestore(editForm.photos) : undefined;
       const docRef = doc(db, "listings", editingListing.id);
+      const safeStatus = (editingListing.status === "hidden" && !isAdmin) ? "hidden" : (editForm.status || editingListing.status || "active");
       const updatedFields = {
         ...editingListing,
         ...editForm,
+        status: safeStatus,
         ...(preparedPhotos ? { photos: preparedPhotos } : {}),
         price: typeof editForm.price === "number" ? editForm.price : parseInt(String(editForm.price || editingListing.price)),
         updatedAt: new Date().toISOString()
@@ -2607,22 +2615,31 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               <span className="text-[10px] font-mono font-bold uppercase text-stone-500">
                                 Listing Status:
                               </span>
-                              <div className="flex gap-1">
-                                {(["active", "pending", "sold"] as const).map((st) => (
-                                  <button
-                                    key={st}
-                                    type="button"
-                                    onClick={() => handleQuickStatusChange(listing.id, st)}
-                                    className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
-                                      status === st
-                                        ? "bg-stone-900 text-white border-stone-950 font-extrabold"
-                                        : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
-                                    }`}
-                                  >
-                                    {st}
-                                  </button>
-                                ))}
-                              </div>
+                              {status === "hidden" && !isAdmin ? (
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 border border-red-400 text-red-950 rounded-xs">
+                                  <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                                  <span className="text-[9.5px] font-mono font-black uppercase tracking-wider">
+                                    LOCKED BY ADMIN (CANNOT UNHIDE)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {(["active", "pending", "sold"] as const).map((st) => (
+                                    <button
+                                      key={st}
+                                      type="button"
+                                      onClick={() => handleQuickStatusChange(listing.id, st)}
+                                      className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
+                                        status === st
+                                          ? "bg-stone-900 text-white border-stone-950 font-extrabold"
+                                          : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
+                                      }`}
+                                    >
+                                      {st}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
 
                             {/* Action Control Buttons */}

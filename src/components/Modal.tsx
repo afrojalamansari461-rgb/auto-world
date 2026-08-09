@@ -21,7 +21,8 @@ export const Modal = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Safely prevent background scroll
+    // Safely prevent background scroll while capturing scroll position
+    const scrollY = window.scrollY;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -35,6 +36,7 @@ export const Modal = ({
     return () => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
+      window.scrollTo(0, scrollY);
     };
   }, [isOpen, onClose]);
 

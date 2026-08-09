@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Info, Gauge, Zap, Cog, Calendar, Cpu, Palette, User, Shield, Bike, Activity, Layers, HelpCircle } from "lucide-react";
+import React from "react";
+import { Gauge, Zap, Cog, Calendar, Cpu, Palette, User, Shield, Bike, Activity, Layers } from "lucide-react";
 import { Vehicle } from "../types";
 import { CountUp } from "./CountUp";
 
@@ -25,9 +24,6 @@ export const SpecGrid: React.FC<SpecGridProps> = ({
   columnsClassName = "grid-cols-2 sm:grid-cols-3 gap-3",
   isCompact = false
 }) => {
-  const [hoveredSpecId, setHoveredSpecId] = useState<string | null>(null);
-  const [selectedSpecId, setSelectedSpecId] = useState<string | null>(null);
-
   const isBicycle =
     vehicle.category === "bicycle" ||
     vehicle.fuel?.toLowerCase().includes("human") ||
@@ -177,128 +173,42 @@ export const SpecGrid: React.FC<SpecGridProps> = ({
           : [])
       ];
 
-  const activeSpec = metrics.find((m) => m.id === (hoveredSpecId || selectedSpecId)) || null;
-
   return (
     <div className="space-y-3 font-sans">
       {/* Spec Grid */}
       <div className={`grid ${columnsClassName} text-xs text-stone-800`}>
         {metrics.map((item) => {
-          const isHovered = hoveredSpecId === item.id;
-          const isSelected = selectedSpecId === item.id;
-          const isActive = isHovered || isSelected;
-
           const IconComponent = item.icon;
 
           return (
-            <motion.div
+            <div
               key={item.id}
-              onClick={() => setSelectedSpecId(isSelected ? null : item.id)}
-              onMouseEnter={() => setHoveredSpecId(item.id)}
-              onMouseLeave={() => setHoveredSpecId(null)}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className={`relative p-3.5 border transition-all duration-200 cursor-pointer select-none group flex flex-col justify-between ${
-                isActive
-                  ? "bg-stone-900 text-white border-stone-950 shadow-md ring-2 ring-amber-500/80 z-20"
-                  : "bg-[#FAF8F5] text-stone-900 border-stone-300 hover:bg-stone-100 hover:border-stone-800"
-              }`}
+              className="relative p-3.5 border border-stone-300 bg-[#FAF8F5] text-stone-900 flex flex-col justify-between"
             >
-              {/* Category Header with Icon and Tooltip Badge */}
+              {/* Category Header with Icon and Badge */}
               <div className="flex items-center justify-between gap-1 pb-1">
-                <span
-                  className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 transition-colors ${
-                    isActive ? "text-amber-400 font-mono" : "text-stone-500 group-hover:text-stone-900"
-                  }`}
-                >
-                  <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-amber-400" : "text-amber-600"}`} />
+                <span className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-stone-500">
+                  <IconComponent className="w-3.5 h-3.5 shrink-0 text-amber-600" />
                   {item.category}
                 </span>
 
-                <div className="flex items-center gap-1">
-                  {item.badge && (
-                    <span
-                      className={`text-[8px] font-mono px-1.5 py-0.2 rounded-none uppercase tracking-wider ${
-                        isActive ? "bg-amber-400 text-stone-950 font-bold" : "bg-stone-200 text-stone-600 group-hover:bg-stone-300"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                  <HelpCircle
-                    className={`w-3 h-3 transition-opacity ${
-                      isActive ? "text-amber-400 opacity-100" : "text-stone-400 opacity-0 group-hover:opacity-100"
-                    }`}
-                  />
-                </div>
+                {item.badge && (
+                  <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-none uppercase tracking-wider bg-stone-200 text-stone-600">
+                    {item.badge}
+                  </span>
+                )}
               </div>
 
               {/* Spec Value */}
               <div className="pt-1">
-                <span
-                  className={`font-bold block text-sm sm:text-base leading-tight ${
-                    isActive ? "text-white font-serif" : "text-stone-950 font-sans"
-                  }`}
-                >
+                <span className="font-bold block text-sm sm:text-base leading-tight text-stone-950 font-sans">
                   {item.value}
                 </span>
               </div>
-
-              {/* Mini Tooltip overlay on desktop when card is hovered */}
-              <AnimatePresence>
-                {isHovered && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute -bottom-12 left-0 right-0 z-30 p-2 bg-stone-950 text-amber-300 text-[9px] font-mono leading-tight border border-amber-500 shadow-xl pointer-events-none hidden md:block"
-                  >
-                    <div className="flex items-start gap-1">
-                      <Info className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-                      <span>{item.description}</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+            </div>
           );
         })}
       </div>
-
-      {/* Selected/Hovered Metric Detail Drawer Tooltip Bar */}
-      <AnimatePresence mode="wait">
-        {activeSpec && (
-          <motion.div
-            key={activeSpec.id}
-            initial={{ opacity: 0, y: 8, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: -8, height: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="p-3 bg-stone-900 border-2 border-amber-500 text-white font-sans flex items-start gap-3 shadow-md">
-              <div className="p-1.5 bg-amber-500 text-stone-950 shrink-0 mt-0.5">
-                <Info className="w-4 h-4" />
-              </div>
-              <div className="space-y-0.5 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400">
-                    SPEC METRIC BREAKDOWN: {activeSpec.category.toUpperCase()}
-                  </span>
-                  <span className="text-[9px] font-mono text-stone-400 uppercase">
-                    Auto World Inspection Standard
-                  </span>
-                </div>
-                <p className="text-xs text-stone-200 leading-relaxed font-medium">
-                  {activeSpec.description}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

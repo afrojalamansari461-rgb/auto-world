@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Bell, Trash2, Search, CheckCircle2, BookmarkPlus, ArrowRight } from "lucide-react";
 import { db } from "../firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
@@ -30,7 +31,17 @@ export const SavedSearchesModal: React.FC<SavedSearchesModalProps> = ({
   currentFilters = { type: "", priceRange: "", location: "", make: "" },
   showToast,
 }) => {
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
 
   const [savedSearches, setSavedSearches] = useState<SavedSearchItem[]>([]);
   const [customName, setCustomName] = useState<string>("");
@@ -46,8 +57,12 @@ export const SavedSearchesModal: React.FC<SavedSearchesModalProps> = ({
     .join(" • ");
 
   useEffect(() => {
-    loadSavedSearches();
-  }, []);
+    if (isOpen) {
+      loadSavedSearches();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const loadSavedSearches = async () => {
     setIsLoading(true);
@@ -126,7 +141,7 @@ export const SavedSearchesModal: React.FC<SavedSearchesModalProps> = ({
     showToast?.("Search alert deleted.", "info");
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[#FAF8F5] border border-stone-300 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
@@ -258,6 +273,7 @@ export const SavedSearchesModal: React.FC<SavedSearchesModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

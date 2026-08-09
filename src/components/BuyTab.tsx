@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
@@ -10,7 +10,6 @@ import { User as FirebaseUser } from "firebase/auth";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
 import { EMICalculator } from "./EMICalculator";
-import { CarCompareModal } from "./CarCompareModal";
 import { TestDriveModal } from "./TestDriveModal";
 import { InspectionReportModal } from "./InspectionReportModal";
 import { SavedSearchesModal } from "./SavedSearchesModal";
@@ -160,30 +159,11 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   // EMI Calculator Modal State
   const [emiVehicle, setEmiVehicle] = useState<Vehicle | null>(null);
 
-  // Feature Modals & Comparison States
-  const [compareList, setCompareList] = useState<Vehicle[]>([]);
-  const [isCompareModalOpen, setIsCompareModalOpen] = useState<boolean>(false);
+  // Feature Modals States
   const [testDriveVehicle, setTestDriveVehicle] = useState<Vehicle | null>(null);
   const [inspectionVehicle, setInspectionVehicle] = useState<Vehicle | null>(null);
   const [isSavedSearchesOpen, setIsSavedSearchesOpen] = useState<boolean>(false);
   const [callbackVehicle, setCallbackVehicle] = useState<Vehicle | null>(null);
-
-  const toggleCompareVehicle = (vehicle: Vehicle) => {
-    setCompareList((prev) => {
-      const exists = prev.some((v) => v.id === vehicle.id);
-      if (exists) {
-        showToast(`Removed ${vehicle.title} from comparison`, "info");
-        return prev.filter((v) => v.id !== vehicle.id);
-      } else {
-        if (prev.length >= 3) {
-          showToast("Maximum 3 vehicles can be compared simultaneously.", "error");
-          return prev;
-        }
-        showToast(`Added ${vehicle.title} to side-by-side comparison`, "success");
-        return [...prev, vehicle];
-      }
-    });
-  };
 
   // Smart Matcher States
   const [isSmartMatcherEnabled, setIsSmartMatcherEnabled] = useState<boolean>(() => {
@@ -533,6 +513,19 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     if (searchFilters.priceRange) setSelectedPriceRange(searchFilters.priceRange);
     if (searchFilters.location) setLocationValue(searchFilters.location);
   }, [searchFilters]);
+
+  // Prevent scroll jump and lock body scroll when emiVehicle modal is active
+  useEffect(() => {
+    if (!emiVehicle) return;
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [emiVehicle]);
 
   // Simple synth tone generator for tactical audios
   const playSynthBeep = (freq = 800, duration = 0.1, type: OscillatorType = "sine") => {
@@ -1928,24 +1921,6 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             {car.badge}
                           </span>
                         )}
-
-                        {/* Compare Toggle Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleCompareVehicle(car);
-                          }}
-                          className={`absolute top-3 right-3 z-10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-md transition border shadow-xs flex items-center gap-1 cursor-pointer ${
-                            compareList.some((v) => v.id === car.id)
-                              ? "bg-amber-500 text-stone-950 border-amber-400 font-black"
-                              : "bg-stone-950/80 text-stone-200 border-stone-700 hover:bg-stone-950"
-                          }`}
-                          title="Compare specs with other vehicles"
-                        >
-                          <Scale className="w-3 h-3" />
-                          <span>{compareList.some((v) => v.id === car.id) ? "Compared" : "+ Compare"}</span>
-                        </button>
                       </div>
 
                       <div className="p-3.5 sm:p-5 md:p-6 flex-1 flex flex-col justify-between min-w-0 w-full">
@@ -2319,75 +2294,6 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           </div>
         )}
       </AnimatePresence>
-
-      {/* FLOATING COMPARISON DOCK BAR */}
-      <AnimatePresence>
-        {compareList.length > 0 && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] w-[95%] max-w-2xl bg-stone-950/95 text-white border border-stone-800 rounded-2xl p-3 shadow-2xl backdrop-blur-md flex items-center justify-between gap-3"
-          >
-            <div className="flex items-center gap-3 overflow-x-auto min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold shrink-0">
-                <Scale className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <span>Side-by-Side Comparison</span>
-                  <span className="px-1.5 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] rounded">
-                    {compareList.length}/3
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  {compareList.map((v) => (
-                    <div
-                      key={v.id}
-                      className="flex items-center gap-1 px-2 py-0.5 bg-stone-800 border border-stone-700 rounded text-[10px] text-stone-200 shrink-0"
-                    >
-                      <span className="font-semibold truncate max-w-[90px]">{v.title}</span>
-                      <button
-                        onClick={() => toggleCompareVehicle(v)}
-                        className="text-stone-400 hover:text-red-400 transition ml-1"
-                        title="Remove"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setCompareList([])}
-                className="px-2.5 py-1.5 text-[11px] font-bold text-stone-400 hover:text-stone-200 transition"
-              >
-                Clear
-              </button>
-              <button
-                onClick={() => setIsCompareModalOpen(true)}
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black uppercase tracking-wider rounded-xl transition shadow-md cursor-pointer flex items-center gap-1.5"
-              >
-                <span>Compare Now</span>
-                <ArrowUp className="w-3.5 h-3.5 rotate-45" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* CAR COMPARISON MODAL */}
-      <CarCompareModal
-        isOpen={isCompareModalOpen}
-        onClose={() => setIsCompareModalOpen(false)}
-        vehicles={compareList}
-        onRemoveVehicle={(id) => setCompareList((prev) => prev.filter((v) => v.id !== id))}
-        onSelectVehicleForView={onQuickView}
-        onBookTestDrive={(v) => setTestDriveVehicle(v)}
-      />
 
       {/* TEST DRIVE SCHEDULER MODAL */}
       <TestDriveModal

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Calendar, Clock, MapPin, CheckCircle2, Car, ShieldCheck, Phone, User, Compass } from "lucide-react";
 import { Vehicle } from "../types";
 import { db } from "../firebase";
@@ -20,7 +21,17 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
   currentUser,
   showToast,
 }) => {
-  if (!isOpen || !vehicle) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
 
   const [driveType, setDriveType] = useState<"doorstep" | "showroom">("doorstep");
   const [preferredDate, setPreferredDate] = useState<string>(
@@ -29,11 +40,13 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
   const [timeSlot, setTimeSlot] = useState<string>("Morning (10:00 AM - 1:00 PM)");
   const [fullName, setFullName] = useState<string>(currentUser?.displayName || "");
   const [phone, setPhone] = useState<string>(currentUser?.phoneNumber || "");
-  const [address, setAddress] = useState<string>(vehicle.location || "Mumbai, Maharashtra");
+  const [address, setAddress] = useState<string>(vehicle?.location || "Mumbai, Maharashtra");
   const [hasLicense, setHasLicense] = useState<boolean>(true);
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [bookingSuccess, setBookingSuccess] = useState<any | null>(null);
+
+  if (!isOpen || !vehicle) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +104,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[#FAF8F5] border border-stone-300 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
         {/* Modal Header */}
@@ -334,6 +347,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
