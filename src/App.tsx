@@ -11,6 +11,7 @@ import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
 import { AnimatedFavoriteHeart } from "./components/AnimatedFavoriteHeart";
 import { EMICalculator } from "./components/EMICalculator";
+import { CallbackModal } from "./components/CallbackModal";
 import AdminPanel from "./components/AdminPanel";
 import OfficeRoom from "./components/OfficeRoom";
 import FavoritesTab from "./components/FavoritesTab";
@@ -983,17 +984,10 @@ export default function App() {
     }
   };
 
+  const [isAppCallbackOpen, setIsAppCallbackOpen] = useState<boolean>(false);
+
   const handleRequestCallback = () => {
-    const seller = {
-      phoneNumber: modalSellerInfo?.phone || selectedVehicle?.sellerPhone || '+919920155667',
-      name: modalSellerInfo?.name || selectedVehicle?.sellerName || 'Amitabh',
-    };
-    const phoneNumber = seller?.phoneNumber || '+919920155667';
-    const sellerName = seller?.name || 'Amitabh';
-    const message = `Hi ${sellerName}, I am interested in a luxury import from Auto World and would like to request a callback.`;
-    const encodedMessage = encodeURIComponent(message);
-    
-    window.location.href = `sms:${phoneNumber}?body=${encodedMessage}`;
+    setIsAppCallbackOpen(true);
   };
 
   const handleToggleHotInModal = async () => {
@@ -3015,6 +3009,16 @@ export default function App() {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* GLOBAL CALLBACK MODAL */}
+      <CallbackModal
+        isOpen={isAppCallbackOpen}
+        onClose={() => setIsAppCallbackOpen(false)}
+        vehicle={selectedVehicle}
+        sellerInfo={modalSellerInfo}
+        currentUser={currentUser}
+        showToast={showToast}
+      />
     </div>
   );
 }

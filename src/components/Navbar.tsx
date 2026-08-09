@@ -70,6 +70,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     { id: "sell", label: "SELL", icon: Tag },
     { id: "premium", label: "PREMIUM", icon: Crown },
     { id: "favorites", label: "FAVORITES", icon: Heart },
+    { id: "contact", label: "CONTACT", icon: Mail },
   ];
 
   if (isUserOwner) {
@@ -161,13 +162,13 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               </div>
             </motion.button>
 
-            {/* Desktop Navigation Links - Shown on laptop/desktop (lg+) */}
-            <div className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 mx-auto min-w-0" role="tablist" aria-label="Main navigation tabs">
+            {/* Desktop & Tablet Navigation Links - Shown on md+ (tablets, laptops, desktops) */}
+            <div className="hidden md:flex items-center gap-0.5 md:gap-1 lg:gap-1.5 xl:gap-2 mx-auto min-w-0" role="tablist" aria-label="Main navigation tabs">
               {isLoadingTabs ? (
                 navItems.map((item, idx) => (
                   <div 
                     key={`shimmer-${item.id}`} 
-                    className="w-16 lg:w-20 h-7 bg-stone-200/60 rounded-full relative overflow-hidden flex items-center justify-center"
+                    className="w-14 md:w-16 lg:w-20 h-7 bg-stone-200/60 rounded-full relative overflow-hidden flex items-center justify-center"
                   >
                     <motion.div 
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
@@ -175,7 +176,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                       animate={{ x: "100%" }}
                       transition={{ repeat: Infinity, duration: 1.2, ease: "linear", delay: idx * 0.1 }}
                     />
-                    <div className="w-10 h-2 bg-stone-300/50 rounded-full" />
+                    <div className="w-8 md:w-10 h-2 bg-stone-300/50 rounded-full" />
                   </div>
                 ))
               ) : (
@@ -194,7 +195,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleTabClick(item.id)}
                       onKeyDown={(e) => handleKeyDown(e, item.id)}
-                      className={`relative flex items-center gap-1 lg:gap-1.5 px-2.5 xl:px-3 py-1.5 text-[11px] xl:text-xs font-sans uppercase tracking-wider transition-all duration-200 cursor-pointer rounded-full whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 ${
+                      className={`relative flex items-center gap-1 md:gap-1 lg:gap-1.5 px-2 md:px-2.5 lg:px-3 py-1.5 text-[10px] md:text-[11px] lg:text-xs font-sans uppercase tracking-wider transition-all duration-200 cursor-pointer rounded-full whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 ${
                         isActive
                           ? "text-stone-950 font-black"
                           : "text-stone-600 hover:text-stone-950 hover:bg-stone-900/5 font-semibold"
@@ -215,13 +216,13 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               )}
             </div>
 
-            {/* Right Actions Section - Shown on laptop/desktop (lg+) */}
-            <div className="hidden lg:flex items-center gap-1.5 xl:gap-2.5 shrink-0">
+            {/* Right Actions Section - Shown on tablet/desktop (md+) */}
+            <div className="hidden md:flex items-center gap-1.5 xl:gap-2.5 shrink-0">
               {currentUser ? (
                 <motion.div 
                   id="user-profile-menu" 
                   layout
-                  className="flex items-center gap-1.5 p-1 pl-2 bg-stone-100 hover:bg-stone-200/70 rounded-full border border-stone-200/90 transition shadow-2xs shrink-0 max-w-[200px] xl:max-w-none"
+                  className="flex items-center gap-1.5 p-1 pl-2 bg-stone-100 hover:bg-stone-200/70 rounded-full border border-stone-200/90 transition shadow-2xs shrink-0 max-w-[180px] md:max-w-[200px] xl:max-w-none"
                 >
                   {currentUser.photoURL ? (
                     <img src={currentUser.photoURL} alt={currentUser.displayName || "User Avatar"} className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full border border-stone-300 object-cover shrink-0" referrerPolicy="no-referrer" />
@@ -231,7 +232,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                     </div>
                   )}
                   <div className="flex items-center min-w-0">
-                    <span className="text-[10px] xl:text-[11px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[65px] lg:max-w-[80px] xl:max-w-[120px]">
+                    <span className="text-[10px] xl:text-[11px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[50px] md:max-w-[70px] lg:max-w-[100px] xl:max-w-[120px]">
                       {currentUser.displayName || "User"}
                     </span>
                   </div>
@@ -242,7 +243,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                     className="flex items-center gap-1 px-2 xl:px-2.5 py-1 bg-red-100/90 hover:bg-red-600 hover:text-white text-red-700 font-bold text-[9.5px] xl:text-[10px] uppercase tracking-wider rounded-full transition cursor-pointer shrink-0"
                   >
                     <LogOut className="w-3 h-3 shrink-0" />
-                    <span className="hidden xl:inline">Sign Out</span>
+                    <span className="hidden lg:inline">Sign Out</span>
                   </button>
                 </motion.div>
               ) : (
@@ -262,7 +263,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
             {/* Mobile Right-Side Action (Sign In Only) */}
             <button
               onClick={currentUser ? handleSignOut : onSignInClick}
-              className="lg:hidden text-[10px] font-bold uppercase tracking-widest border border-stone-800 px-3 py-1.5 rounded-full hover:bg-stone-900 hover:text-[#f4f2ec] transition-colors duration-200 shrink-0 cursor-pointer"
+              className="md:hidden text-[10px] font-bold uppercase tracking-widest border border-stone-800 px-3 py-1.5 rounded-full hover:bg-stone-900 hover:text-[#f4f2ec] transition-colors duration-200 shrink-0 cursor-pointer"
             >
               {currentUser ? "Sign Out" : "Sign In"}
             </button>
@@ -270,9 +271,9 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
         </div>
       </nav>
 
-      {/* Mobile Sticky Bottom Navigation Bar (Phone size < 1024px) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] w-full bg-white border-t border-stone-200/90 shadow-xl h-16 px-2 sm:px-4 pb-safe">
-        <div className="flex justify-between items-center w-full max-w-md sm:max-w-lg mx-auto h-full">
+      {/* Mobile Sticky Bottom Navigation Bar (Phone size < md / 768px) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[100] w-full bg-white/95 backdrop-blur-md border-t border-stone-200/90 shadow-xl h-16 px-1 sm:px-3 pb-safe">
+        <div className="flex justify-between items-center w-full max-w-md sm:max-w-lg mx-auto h-full overflow-x-auto no-scrollbar">
           {mobileNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -280,14 +281,14 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               <button
                 key={`bottom-${item.id}`}
                 onClick={() => handleTabClick(item.id)}
-                className={`relative flex flex-col items-center justify-center h-full flex-1 py-1 text-[10px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer border-t-2 select-none ${
+                className={`relative flex flex-col items-center justify-center h-full flex-1 min-w-[52px] py-1 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer border-t-2 select-none ${
                   isActive
-                    ? "border-black text-black font-black bg-stone-50/60"
+                    ? "border-black text-black font-black bg-stone-100/70"
                     : "border-transparent text-stone-400 hover:text-stone-700 font-bold"
                 }`}
               >
-                <Icon className={`w-5 h-5 mb-0.5 transition-colors ${isActive ? "text-black" : "text-stone-400"}`} />
-                <span className="truncate max-w-[64px]">{item.label}</span>
+                <Icon className={`w-4 h-4 sm:w-5 sm:h-5 mb-0.5 transition-colors ${isActive ? "text-black" : "text-stone-400"}`} />
+                <span className="truncate max-w-[56px]">{item.label}</span>
               </button>
             );
           })}

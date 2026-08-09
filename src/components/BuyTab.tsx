@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, Scale, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
@@ -10,6 +10,12 @@ import { User as FirebaseUser } from "firebase/auth";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
 import { EMICalculator } from "./EMICalculator";
+import { CarCompareModal } from "./CarCompareModal";
+import { TestDriveModal } from "./TestDriveModal";
+import { InspectionReportModal } from "./InspectionReportModal";
+import { SavedSearchesModal } from "./SavedSearchesModal";
+import { CallbackModal } from "./CallbackModal";
+import { InlineEMICalculator } from "./InlineEMICalculator";
 
 interface BuyTabProps {
   favorites: number[];
@@ -153,6 +159,31 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // EMI Calculator Modal State
   const [emiVehicle, setEmiVehicle] = useState<Vehicle | null>(null);
+
+  // Feature Modals & Comparison States
+  const [compareList, setCompareList] = useState<Vehicle[]>([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState<boolean>(false);
+  const [testDriveVehicle, setTestDriveVehicle] = useState<Vehicle | null>(null);
+  const [inspectionVehicle, setInspectionVehicle] = useState<Vehicle | null>(null);
+  const [isSavedSearchesOpen, setIsSavedSearchesOpen] = useState<boolean>(false);
+  const [callbackVehicle, setCallbackVehicle] = useState<Vehicle | null>(null);
+
+  const toggleCompareVehicle = (vehicle: Vehicle) => {
+    setCompareList((prev) => {
+      const exists = prev.some((v) => v.id === vehicle.id);
+      if (exists) {
+        showToast(`Removed ${vehicle.title} from comparison`, "info");
+        return prev.filter((v) => v.id !== vehicle.id);
+      } else {
+        if (prev.length >= 3) {
+          showToast("Maximum 3 vehicles can be compared simultaneously.", "error");
+          return prev;
+        }
+        showToast(`Added ${vehicle.title} to side-by-side comparison`, "success");
+        return [...prev, vehicle];
+      }
+    });
+  };
 
   // Smart Matcher States
   const [isSmartMatcherEnabled, setIsSmartMatcherEnabled] = useState<boolean>(() => {
@@ -776,10 +807,25 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     }, 1500);
   };
 
+  // Location matching calculations
+  const cleanedLocQuery = (locationValue || "").trim().toLowerCase();
+
+  const locationMatchesInInventory = cleanedLocQuery 
+    ? inventoryList.filter(vehicle => {
+        const vLoc = (vehicle.location || "").toLowerCase();
+        const vTitle = (vehicle.title || "").toLowerCase();
+        const vSeller = (vehicle.sellerName || "").toLowerCase();
+        const vDesc = (vehicle.description || "").toLowerCase();
+        return vLoc.includes(cleanedLocQuery) || vTitle.includes(cleanedLocQuery) || vSeller.includes(cleanedLocQuery) || vDesc.includes(cleanedLocQuery);
+      })
+    : [];
+
+  const hasLocationMatches = locationMatchesInInventory.length > 0;
+
   // Filter dynamic logic
   const filteredVehicles = inventoryList.filter((vehicle) => {
     // Search query matcher
-    if (searchQuery && !vehicle.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+    if (searchQuery && !vehicle.title.toLowerCase().includes(searchQuery.toLowerCase()) && !vehicle.make.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     // Make matcher
@@ -787,15 +833,23 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       return false;
     }
     // Category type matcher
-    if (selectedType && selectedType !== "Any Type" && vehicle.category?.toLowerCase() !== selectedType.toLowerCase()) {
+    if (selectedType && selectedType !== "Any Type" && selectedType !== "" && vehicle.category?.toLowerCase() !== selectedType.toLowerCase()) {
       return false;
     }
-    // Location matcher
-    if (locationValue && !vehicle.isUserListing && Math.random() > 0.75) {
-      return false;
+    // Location matcher: only filter out non-matching vehicles if there ARE matches in the system for this location
+    if (cleanedLocQuery && hasLocationMatches) {
+      const vLoc = (vehicle.location || "").toLowerCase();
+      const vTitle = (vehicle.title || "").toLowerCase();
+      const vSeller = (vehicle.sellerName || "").toLowerCase();
+      const vDesc = (vehicle.description || "").toLowerCase();
+      const matchesLoc = vLoc.includes(cleanedLocQuery) || vTitle.includes(cleanedLocQuery) || vSeller.includes(cleanedLocQuery) || vDesc.includes(cleanedLocQuery);
+
+      if (!matchesLoc) {
+        return false;
+      }
     }
     // Price range selector
-    if (selectedPriceRange && selectedPriceRange !== "Any Price") {
+    if (selectedPriceRange && selectedPriceRange !== "Any Price" && selectedPriceRange !== "") {
       if (selectedPriceRange === "Under ₹5 Lakhs" && vehicle.price > 500000) return false;
       if (selectedPriceRange === "₹5 Lakhs - ₹15 Lakhs" && (vehicle.price < 500000 || vehicle.price > 1500000)) return false;
       if (selectedPriceRange === "₹15 Lakhs - ₹30 Lakhs" && (vehicle.price < 1500000 || vehicle.price > 3000000)) return false;
@@ -1587,42 +1641,82 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           </div>
         )}
 
+        {/* Location Match Banner */}
+        {cleanedLocQuery && (
+          <div className={`mb-6 p-4 rounded-lg border transition-all duration-300 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+            hasLocationMatches
+              ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+              : "bg-amber-50 border-amber-300 text-amber-950"
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                hasLocationMatches ? "bg-emerald-600 text-white" : "bg-amber-600 text-white"
+              }`}>
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold">
+                  {hasLocationMatches
+                    ? `Location Filter Active: "${locationValue}"`
+                    : `No vehicles listed in "${locationValue}" yet`}
+                </p>
+                <p className="text-[11px] opacity-80">
+                  {hasLocationMatches
+                    ? `Showing ${locationMatchesInInventory.length} matching vehicle(s) in this location.`
+                    : `Showing all available vehicles from other regions below.`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setLocationValue("")}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition cursor-pointer shrink-0 ${
+                hasLocationMatches
+                  ? "bg-emerald-200/80 hover:bg-emerald-300 text-emerald-950"
+                  : "bg-amber-200/80 hover:bg-amber-300 text-amber-950"
+              }`}
+            >
+              {hasLocationMatches ? "Clear Location" : "View All Cities"}
+            </button>
+          </div>
+        )}
+
         {/* FILTERS TOOLBAR PANEL */}
-        <div id="inventory-catalog-start" className="bg-[#FAF8F5] border border-stone-300 p-3.5 sm:p-8 mb-10">
-          <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
-            <div className="space-y-1.5">
-              <label htmlFor="buy-search-phrase" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Model Search Phrase</label>
+        <div id="inventory-catalog-start" className="bg-[#FAF8F5] border border-stone-300 p-4 sm:p-6 lg:p-8 mb-10 rounded-xl shadow-sm">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            
+            {/* Search Input */}
+            <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+              <label htmlFor="buy-search-phrase" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">Search Make / Model</label>
               <div className="relative">
                 <Search aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
                 <input
                   id="buy-search-phrase"
                   type="text"
-                  placeholder="Toyota, Mustang, Hybrid..."
+                  placeholder="Toyota, Swift, Thar..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-900"
                 />
               </div>
               
-              {/* Recent searches history tags container */}
+              {/* Recent searches */}
               {recentSearches.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 text-[10px] animate-in fade-in-0 duration-200">
-                  <span className="text-stone-500 font-bold uppercase tracking-wider text-[9px] flex items-center gap-0.5">
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
+                  <span className="text-stone-500 font-bold uppercase text-[9px] flex items-center gap-0.5">
                     <Clock aria-hidden="true" className="w-2.5 h-2.5 shrink-0" /> Recent:
                   </span>
                   {recentSearches.map((sq, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSearchQuery(sq)}
-                      title={`Re-apply search query: ${sq}`}
-                      className="px-2 py-0.5 bg-stone-200 hover:bg-stone-300 text-stone-850 rounded-sm font-sans text-[10px] font-medium transition cursor-pointer flex items-center gap-0.5"
+                      className="px-2 py-0.5 bg-stone-200 hover:bg-stone-300 text-stone-900 rounded-md text-[10px] font-medium transition cursor-pointer"
                     >
                       {sq}
                     </button>
                   ))}
                   <button
                     onClick={clearRecentSearches}
-                    className="ml-auto text-stone-400 hover:text-stone-700 transition text-[9px] uppercase tracking-wider font-bold cursor-pointer"
+                    className="ml-auto text-stone-400 hover:text-stone-700 transition text-[9px] uppercase font-bold cursor-pointer"
                   >
                     Clear
                   </button>
@@ -1630,13 +1724,14 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               )}
             </div>
 
+            {/* Category Type */}
             <div className="space-y-1.5">
-              <label htmlFor="buy-category-select" className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Vehicle Category</label>
+              <label htmlFor="buy-category-select" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">Car Type</label>
               <select
                 id="buy-category-select"
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                className="w-full px-3 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer"
               >
                 <option value="">All Types</option>
                 <option value="car">Car</option>
@@ -1648,18 +1743,19 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               </select>
             </div>
 
+            {/* Make Select */}
             <div className="space-y-1.5">
-              <label htmlFor="buy-make-select" className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Make / Brand Manufacturer</label>
+              <label htmlFor="buy-make-select" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">Brand / Make</label>
               <select
                 id="buy-make-select"
                 value={selectedMake}
                 onChange={(e) => setSelectedMake(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                className="w-full px-3 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer"
               >
-                <option value="">All Makes</option>
-                <option value="Mahindra">Mahindra (Tar, etc)</option>
-                <option value="Tata">Tata Motors (Nexon, etc)</option>
-                <option value="Royal Enfield">Royal Enfield (Classic)</option>
+                <option value="">All Brands</option>
+                <option value="Mahindra">Mahindra</option>
+                <option value="Tata">Tata Motors</option>
+                <option value="Royal Enfield">Royal Enfield</option>
                 <option value="Maruti Suzuki">Maruti Suzuki</option>
                 <option value="Toyota">Toyota</option>
                 <option value="Honda">Honda</option>
@@ -1669,13 +1765,14 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               </select>
             </div>
 
+            {/* Price Range */}
             <div className="space-y-1.5">
-              <label htmlFor="buy-price-select" className="text-[10px] font-bold text-[#2A2A2A] uppercase tracking-widest block">Cap Pricing Bracket</label>
+              <label htmlFor="buy-price-select" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">Budget Range</label>
               <select
                 id="buy-price-select"
                 value={selectedPriceRange}
                 onChange={(e) => setSelectedPriceRange(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                className="w-full px-3 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer"
               >
                 <option value="">Any Price</option>
                 <option value="Under ₹5 Lakhs">Under ₹5 Lakhs</option>
@@ -1684,21 +1781,38 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 <option value="Over ₹30 Lakhs">Over ₹30 Lakhs</option>
               </select>
             </div>
+
+            {/* City / Location */}
+            <div className="space-y-1.5">
+              <label htmlFor="buy-location-input" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">City / Location</label>
+              <div className="relative">
+                <MapPin aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
+                <input
+                  id="buy-location-input"
+                  type="text"
+                  placeholder="Mumbai, Delhi, Pune..."
+                  value={locationValue}
+                  onChange={(e) => setLocationValue(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-900"
+                />
+              </div>
+            </div>
+
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-stone-200">
-            <div className="flex flex-wrap bg-stone-200 p-1 rounded-sm gap-1">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-stone-250">
+            <div className="flex flex-wrap bg-stone-200/80 p-1 rounded-md gap-1 w-full sm:w-auto">
               {[
-                { id: "newest", label: "Year Matrix" },
-                { id: "price-low", label: "Price Asc" },
-                { id: "price-high", label: "Price Desc" },
-                { id: "mileage", label: "Mileage Asc" }
+                { id: "newest", label: "Newest Year" },
+                { id: "price-low", label: "Price: Low to High" },
+                { id: "price-high", label: "Price: High to Low" },
+                { id: "mileage", label: "Lowest Mileage" }
               ].map((btn) => (
                 <button
                   key={btn.id}
                   onClick={() => setSortBy(btn.id)}
-                  className={`px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
-                    sortBy === btn.id ? "bg-stone-900 text-white shadow-sm" : "text-stone-605 hover:text-stone-900"
+                  className={`px-3 py-2 text-[11px] font-bold tracking-wider transition cursor-pointer rounded-md ${
+                    sortBy === btn.id ? "bg-stone-950 text-white shadow-sm" : "text-stone-700 hover:text-stone-950"
                   }`}
                 >
                   {btn.label}
@@ -1706,13 +1820,24 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               ))}
             </div>
 
-            <button
-              onClick={handleResetFilters}
-              className="px-5 py-2.5 bg-stone-900 hover:bg-stone-850 text-[#F4F1EA] text-[10px] font-sans font-bold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Reset All Filters
-            </button>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setIsSavedSearchesOpen(true)}
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition shadow-xs"
+                title="Save current search criteria and manage alert notifications"
+              >
+                <Bell className="w-3.5 h-3.5 text-stone-950" />
+                <span>Saved Search Alerts</span>
+              </button>
+
+              <button
+                onClick={handleResetFilters}
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reset Filters</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1803,6 +1928,24 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             {car.badge}
                           </span>
                         )}
+
+                        {/* Compare Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCompareVehicle(car);
+                          }}
+                          className={`absolute top-3 right-3 z-10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-md transition border shadow-xs flex items-center gap-1 cursor-pointer ${
+                            compareList.some((v) => v.id === car.id)
+                              ? "bg-amber-500 text-stone-950 border-amber-400 font-black"
+                              : "bg-stone-950/80 text-stone-200 border-stone-700 hover:bg-stone-950"
+                          }`}
+                          title="Compare specs with other vehicles"
+                        >
+                          <Scale className="w-3 h-3" />
+                          <span>{compareList.some((v) => v.id === car.id) ? "Compared" : "+ Compare"}</span>
+                        </button>
                       </div>
 
                       <div className="p-3.5 sm:p-5 md:p-6 flex-1 flex flex-col justify-between min-w-0 w-full">
@@ -1810,11 +1953,11 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                           <span className="text-[8.5px] sm:text-[9px] font-mono tracking-widest text-[#777777] block uppercase mb-1 truncate">
                             REF #AW0{car.id}
                           </span>
-                          <h3 className="text-base sm:text-lg md:text-xl font-serif font-black text-stone-950 mb-2.5 sm:mb-3 cursor-pointer break-words line-clamp-2 leading-snug sm:leading-tight">
+                          <h3 className="text-base sm:text-lg md:text-xl font-serif font-black text-stone-950 mb-2 sm:mb-2.5 cursor-pointer break-words line-clamp-2 leading-snug sm:leading-tight">
                             {car.title}
                           </h3>
                           
-                          <div className="w-full grid grid-cols-3 gap-1.5 sm:gap-2 py-2 sm:py-2.5 border-y border-stone-200 text-[9.5px] sm:text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-3.5 sm:mb-4 min-w-0">
+                          <div className="w-full grid grid-cols-3 gap-1.5 sm:gap-2 py-2 sm:py-2.5 border-y border-stone-200 text-[9.5px] sm:text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-2.5 min-w-0">
                             <div className="min-w-0">
                               <span className="text-stone-400 block text-[8px] sm:text-[9px] uppercase font-light truncate">Mileage</span>
                               <span className="text-stone-900 font-bold text-[9px] sm:text-[10px] truncate block">{car.mileage}</span>
@@ -1826,6 +1969,50 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                             <div className="min-w-0">
                               <span className="text-stone-400 block text-[8px] sm:text-[9px] uppercase font-light truncate">Gearbox</span>
                               <span className="text-stone-900 font-bold text-[9px] sm:text-[10px] truncate block">{car.transmission}</span>
+                            </div>
+                          </div>
+
+                          {/* Inspection Badge & Quick Test Drive Bar */}
+                          <div className="flex items-center justify-between gap-1 mb-3 bg-stone-100/90 p-1.5 rounded-md border border-stone-250">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInspectionVehicle(car);
+                              }}
+                              className="flex items-center gap-1 text-[9.5px] font-bold text-emerald-800 hover:text-emerald-900 transition cursor-pointer"
+                              title="View 100-Point Inspection & Certification Report"
+                            >
+                              <Award className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>100-Pt Certified</span>
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTestDriveVehicle(car);
+                                }}
+                                className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-amber-300 text-[9px] font-extrabold uppercase rounded transition cursor-pointer flex items-center gap-1"
+                                title="Schedule Doorstep or Showroom Test Drive"
+                              >
+                                <Car className="w-3 h-3" />
+                                <span>Test Drive</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCallbackVehicle(car);
+                                }}
+                                className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-900 text-[9px] font-bold uppercase rounded transition cursor-pointer flex items-center gap-1"
+                                title="Request Instant Callback"
+                              >
+                                <PhoneCall className="w-3 h-3 text-emerald-700" />
+                                <span>Callback</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -2132,6 +2319,119 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           </div>
         )}
       </AnimatePresence>
+
+      {/* FLOATING COMPARISON DOCK BAR */}
+      <AnimatePresence>
+        {compareList.length > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] w-[95%] max-w-2xl bg-stone-950/95 text-white border border-stone-800 rounded-2xl p-3 shadow-2xl backdrop-blur-md flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3 overflow-x-auto min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold shrink-0">
+                <Scale className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <span>Side-by-Side Comparison</span>
+                  <span className="px-1.5 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] rounded">
+                    {compareList.length}/3
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  {compareList.map((v) => (
+                    <div
+                      key={v.id}
+                      className="flex items-center gap-1 px-2 py-0.5 bg-stone-800 border border-stone-700 rounded text-[10px] text-stone-200 shrink-0"
+                    >
+                      <span className="font-semibold truncate max-w-[90px]">{v.title}</span>
+                      <button
+                        onClick={() => toggleCompareVehicle(v)}
+                        className="text-stone-400 hover:text-red-400 transition ml-1"
+                        title="Remove"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setCompareList([])}
+                className="px-2.5 py-1.5 text-[11px] font-bold text-stone-400 hover:text-stone-200 transition"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setIsCompareModalOpen(true)}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black uppercase tracking-wider rounded-xl transition shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Compare Now</span>
+                <ArrowUp className="w-3.5 h-3.5 rotate-45" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CAR COMPARISON MODAL */}
+      <CarCompareModal
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        vehicles={compareList}
+        onRemoveVehicle={(id) => setCompareList((prev) => prev.filter((v) => v.id !== id))}
+        onSelectVehicleForView={onQuickView}
+        onBookTestDrive={(v) => setTestDriveVehicle(v)}
+      />
+
+      {/* TEST DRIVE SCHEDULER MODAL */}
+      <TestDriveModal
+        isOpen={!!testDriveVehicle}
+        onClose={() => setTestDriveVehicle(null)}
+        vehicle={testDriveVehicle}
+        currentUser={currentUser}
+        showToast={showToast}
+      />
+
+      {/* 100-POINT INSPECTION REPORT MODAL */}
+      <InspectionReportModal
+        isOpen={!!inspectionVehicle}
+        onClose={() => setInspectionVehicle(null)}
+        vehicle={inspectionVehicle}
+      />
+
+      {/* SAVED SEARCH ALERTS MODAL */}
+      <SavedSearchesModal
+        isOpen={isSavedSearchesOpen}
+        onClose={() => setIsSavedSearchesOpen(false)}
+        currentFilters={{
+          type: selectedType,
+          priceRange: selectedPriceRange,
+          location: locationValue,
+          make: selectedMake,
+        }}
+        onApplySearch={(f) => {
+          if (f.type !== undefined) setSelectedType(f.type);
+          if (f.priceRange !== undefined) setSelectedPriceRange(f.priceRange);
+          if (f.location !== undefined) setLocationValue(f.location);
+          if (f.make !== undefined) setSelectedMake(f.make);
+        }}
+        showToast={showToast}
+      />
+
+      {/* REQUEST CALLBACK MODAL */}
+      <CallbackModal
+        isOpen={!!callbackVehicle}
+        onClose={() => setCallbackVehicle(null)}
+        vehicle={callbackVehicle}
+        currentUser={currentUser}
+        showToast={showToast}
+      />
 
     </motion.div>
   );

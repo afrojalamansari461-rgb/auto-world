@@ -1051,6 +1051,62 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   };
 
+  // Toggle Hide status for user listing ('hidden' vs 'active')
+  const handleToggleHideUserListing = async (item: UserListing) => {
+    const isCurrentlyHidden = item.status === "hidden";
+    const nextStatus = isCurrentlyHidden ? "active" : "hidden";
+
+    const performHideToggle = async () => {
+      try {
+        await updateDoc(doc(db, "listings", item.id), { status: nextStatus });
+        setListings(prev => prev.map(l => l.id === item.id ? { ...l, status: nextStatus } : l));
+        
+        // Also update local storage cache if mirrored there
+        try {
+          const stored = localStorage.getItem("autoWorld_listings");
+          if (stored) {
+            const list: UserListing[] = JSON.parse(stored);
+            const updated = list.map(l => l.id === item.id ? { ...l, status: nextStatus } : l);
+            localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
+          }
+        } catch (e) {
+          console.error("Failed to update local storage hidden status:", e);
+        }
+
+        // Record in Audit Log
+        await recordAuditLog(
+          currentUser?.email || "Admin",
+          "Toggle Hide Listing",
+          `Updated visibility status of vehicle "${item.title}" (ID: ${item.id}) to "${nextStatus}".`
+        );
+
+        triggerHudAlert(
+          nextStatus === "hidden" ? "SPECIMEN HIDDEN FROM MARKET" : "SPECIMEN RESTORED TO MARKET",
+          `Vehicle "${item.title}" is now ${nextStatus === "hidden" ? "hidden from buyers" : "restored and active on public catalog"}.`,
+          nextStatus === "hidden" ? "unapprove" : "approve"
+        );
+
+        window.dispatchEvent(new Event("autoWorld_db_update"));
+      } catch (err: any) {
+        handleFirestoreError(err, OperationType.UPDATE, `listings/${item.id}`);
+        showToast("Failed to update listing hide status.", "error");
+      }
+    };
+
+    if (!isCurrentlyHidden) {
+      setConfirmModal({
+        isOpen: true,
+        title: "HIDE VEHICLE LISTING",
+        message: `Are you sure you want to hide vehicle "${item.title}"? The car owner will see that their car has been hidden in their seller catalog, and buyers will no longer see it in search results.`,
+        danger: true,
+        confirmText: "HIDE LISTING",
+        onConfirm: performHideToggle
+      });
+    } else {
+      await performHideToggle();
+    }
+  };
+
   // Compile and record brand-new vehicle specimen to Firestore & local storage
   const handleSubmitIntake = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1617,22 +1673,57 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   };
 
   const handleBulkHideSelected = () => {
+    const selectedUsers = listings.filter(l => selectedKeys.includes(`user-${l.id}`));
     const selectedDefaultIds = DEFAULT_VEHICLES.filter(v => selectedKeys.includes(`default-${v.id}`)).map(v => v.id);
-    if (selectedDefaultIds.length === 0) {
-      triggerHudAlert("NO STATIC SPECIMENS SELECTED", "Hiding only works for static catalog specimens.", "bulk");
+
+    if (selectedUsers.length === 0 && selectedDefaultIds.length === 0) {
+      triggerHudAlert("NO SPECIMENS SELECTED", "Please select vehicles to hide.", "bulk");
       return;
     }
+
+    const totalCount = selectedUsers.length + selectedDefaultIds.length;
 
     setConfirmModal({
       isOpen: true,
       title: "HIDE SELECTED SPECIMENS",
-      message: `Are you sure you want to hide all ${selectedDefaultIds.length} selected static default vehicles from the public catalog?`,
-      onConfirm: () => {
-        const nextHidden = Array.from(new Set([...hiddenDefaultIds, ...selectedDefaultIds]));
-        setHiddenDefaultIds(nextHidden);
-        localStorage.setItem("autoWorld_hidden_defaults", JSON.stringify(nextHidden));
-        triggerHudAlert("SPECIMENS HIDDEN", `Successfully hid ${selectedDefaultIds.length} static specs.`, "hide");
-        window.dispatchEvent(new Event("autoWorld_db_update"));
+      message: `Are you sure you want to hide all ${totalCount} selected vehicles from the public catalog? Car owners will see that their cars have been hidden.`,
+      danger: true,
+      onConfirm: async () => {
+        try {
+          setIsLoading(true);
+          // Hide selected user listings
+          if (selectedUsers.length > 0) {
+            for (const item of selectedUsers) {
+              await updateDoc(doc(db, "listings", item.id), { status: "hidden" });
+            }
+            setListings(prev => prev.map(l => selectedKeys.includes(`user-${l.id}`) ? { ...l, status: "hidden" } : l));
+
+            try {
+              const stored = localStorage.getItem("autoWorld_listings");
+              if (stored) {
+                const list: UserListing[] = JSON.parse(stored);
+                const updated = list.map(l => selectedKeys.includes(`user-${l.id}`) ? { ...l, status: "hidden" } : l);
+                localStorage.setItem("autoWorld_listings", JSON.stringify(updated));
+              }
+            } catch (e) {
+              console.error("Local storage sync error:", e);
+            }
+          }
+
+          // Hide selected static default vehicles
+          if (selectedDefaultIds.length > 0) {
+            const nextHidden = Array.from(new Set([...hiddenDefaultIds, ...selectedDefaultIds]));
+            setHiddenDefaultIds(nextHidden);
+            localStorage.setItem("autoWorld_hidden_defaults", JSON.stringify(nextHidden));
+          }
+
+          triggerHudAlert("SPECIMENS HIDDEN", `Successfully hid ${totalCount} vehicles from public catalog.`, "hide");
+          window.dispatchEvent(new Event("autoWorld_db_update"));
+        } catch (err: any) {
+          showToast("Error hiding selected items.", "error");
+        } finally {
+          setIsLoading(false);
+        }
       }
     });
   };
@@ -3777,6 +3868,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                           Approved & Active
                                         </span>
                                       )}
+                                      {item.status === "hidden" && (
+                                        <span className="uppercase px-2 py-0.5 border bg-red-100 text-red-800 border-red-300 font-extrabold flex items-center gap-1">
+                                          <EyeOff className="w-3 h-3 text-red-600" />
+                                          Hidden by Admin
+                                        </span>
+                                      )}
                                       {item.status === "sold" && (
                                         <span className="uppercase px-2 py-0.5 border bg-stone-200 text-stone-600 border-stone-300">
                                           Sold / Archived
@@ -3837,6 +3934,23 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                     ) : (
                                       "Unapprove"
                                     )}
+                                  </button>
+
+                                  {/* Admin Hide / Unhide Toggle */}
+                                  <button
+                                    onClick={() => {
+                                      const found = listings.find(l => l.id === item.listingId);
+                                      if (found) handleToggleHideUserListing(found);
+                                    }}
+                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
+                                      listings.find(l => l.id === item.listingId)?.status === "hidden"
+                                        ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
+                                        : "bg-red-50 hover:bg-red-100 text-red-700 border-red-300"
+                                    }`}
+                                    title={listings.find(l => l.id === item.listingId)?.status === "hidden" ? "Unhide vehicle and make active for buyers" : "Hide vehicle listing from public view (car owner will see hidden status)"}
+                                  >
+                                    <EyeOff className="w-3 h-3" />
+                                    {listings.find(l => l.id === item.listingId)?.status === "hidden" ? "Unhide" : "Hide"}
                                   </button>
 
                                   {/* Verified control */}

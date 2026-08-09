@@ -2261,29 +2261,36 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             ) : (
               <>
                 {/* Stats Metric Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                  <div className="p-3.5 bg-[#F4F1EA] border border-stone-300">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 pt-2">
+                  <div className="p-3 bg-[#F4F1EA] border border-stone-300">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-500 block">Total Inventory</span>
-                    <span className="text-xl font-serif font-black text-stone-900">{userListings.length} Vehicles</span>
+                    <span className="text-lg sm:text-xl font-serif font-black text-stone-900">{userListings.length} Vehicles</span>
                   </div>
 
-                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-600/30">
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-600/30">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-800 block">Active Listings</span>
-                    <span className="text-xl font-serif font-black text-emerald-900">
+                    <span className="text-lg sm:text-xl font-serif font-black text-emerald-900">
                       {userListings.filter(l => l.status === "active" || !l.status).length}
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-amber-500/10 border border-amber-600/30">
+                  <div className="p-3 bg-amber-500/10 border border-amber-600/30">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-800 block">Pending / On Hold</span>
-                    <span className="text-xl font-serif font-black text-amber-950">
+                    <span className="text-lg sm:text-xl font-serif font-black text-amber-950">
                       {userListings.filter(l => l.status === "pending").length}
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-stone-200/80 border border-stone-300">
+                  <div className="p-3 bg-red-500/10 border border-red-600/30">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-red-800 block">Hidden by Admin</span>
+                    <span className="text-lg sm:text-xl font-serif font-black text-red-950">
+                      {userListings.filter(l => l.status === "hidden").length}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-stone-200/80 border border-stone-300">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-600 block">Sold Vehicles</span>
-                    <span className="text-xl font-serif font-black text-stone-800">
+                    <span className="text-lg sm:text-xl font-serif font-black text-stone-800">
                       {userListings.filter(l => l.status === "sold").length}
                     </span>
                   </div>
@@ -2292,7 +2299,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 {/* Search & Filter Toolbar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
                   <div className="flex items-center gap-1 bg-[#F4F1EA] p-1 border border-stone-300 overflow-x-auto">
-                    {(["all", "active", "pending", "sold"] as const).map((st) => (
+                    {(["all", "active", "pending", "hidden", "sold"] as const).map((st) => (
                       <button
                         key={st}
                         type="button"
@@ -2495,6 +2502,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                 <span className="px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white">
                                   EXPIRED (30 DAYS HIDDEN)
                                 </span>
+                              ) : status === "hidden" ? (
+                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white animate-pulse">
+                                  HIDDEN BY ADMIN
+                                </span>
                               ) : (
                                 <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs ${
                                   status === "active" ? "bg-emerald-500 text-stone-950" :
@@ -2553,6 +2564,19 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                 <p className="text-xs text-stone-600 line-clamp-2 pt-1 font-medium leading-relaxed">
                                   {listing.description}
                                 </p>
+                              )}
+
+                              {/* Admin Hidden Warning Banner */}
+                              {status === "hidden" && (
+                                <div className="p-3 bg-red-100/90 border-2 border-red-600 text-red-950 font-mono text-xs font-bold rounded-xs flex items-start gap-2.5 mt-2 shadow-xs">
+                                  <ShieldAlert className="w-4.5 h-4.5 text-red-600 shrink-0 mt-0.5 animate-pulse" />
+                                  <div>
+                                    <span className="uppercase font-black text-red-700 block text-[11px] tracking-wider">⚠️ LISTING HIDDEN BY ADMIN</span>
+                                    <p className="text-[10.5px] text-stone-800 font-medium leading-normal mt-0.5">
+                                      Your vehicle listing has been hidden by the site administrator and is currently not visible to public buyers in the marketplace search catalog.
+                                    </p>
+                                  </div>
+                                </div>
                               )}
 
                               {/* Created & Expiry Dates for Seller */}

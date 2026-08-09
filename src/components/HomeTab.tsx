@@ -435,34 +435,36 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ type: "spring", stiffness: 60, damping: 15, delay: 0.1 }}
-            className="lg:col-span-5 p-8 sm:p-12 bg-stone-900 text-[#F4F1EA] flex flex-col justify-center"
+            className="lg:col-span-5 p-4 sm:p-8 lg:p-10 bg-stone-900 text-[#F4F1EA] flex flex-col justify-center rounded-xl shadow-xl"
           >
-            <div className="bg-[#FAF8F5] text-stone-950 p-6 shadow-sm border border-stone-250">
+            <div className="bg-[#FAF8F5] text-stone-950 p-6 sm:p-8 rounded-lg shadow-md border border-stone-300">
               
               {/* Tab options */}
-              <div className="flex border-b border-stone-200 mb-6">
+              <div className="flex border-b border-stone-250 mb-6">
                 <button
                   type="button"
                   onClick={() => setActiveSearchTab("buy")}
-                  className={`pb-3.5 px-4 text-xs font-bold uppercase tracking-wider transition relative cursor-pointer ${
-                    activeSearchTab === "buy" ? "text-stone-950" : "text-stone-400 hover:text-stone-600"
+                  className={`pb-3.5 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider transition relative cursor-pointer flex items-center gap-2 ${
+                    activeSearchTab === "buy" ? "text-stone-950" : "text-stone-400 hover:text-stone-700"
                   }`}
                 >
-                  Acquire Vehicle
+                  <Search className="w-4 h-4 text-amber-600" />
+                  <span>Buy a Car</span>
                   {activeSearchTab === "buy" && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-stone-900" />
+                    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-stone-950 rounded-t-sm" />
                   )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveSearchTab("sell")}
-                  className={`pb-3.5 px-4 text-xs font-bold uppercase tracking-wider transition relative cursor-pointer ${
-                    activeSearchTab === "sell" ? "text-stone-950" : "text-stone-400 hover:text-stone-600"
+                  className={`pb-3.5 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider transition relative cursor-pointer flex items-center gap-2 ${
+                    activeSearchTab === "sell" ? "text-stone-950" : "text-stone-400 hover:text-stone-700"
                   }`}
                 >
-                  List a Vehicle
+                  <Car className="w-4 h-4 text-amber-600" />
+                  <span>Sell a Car</span>
                   {activeSearchTab === "sell" && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-stone-900" />
+                    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-stone-950 rounded-t-sm" />
                   )}
                 </button>
               </div>
@@ -471,12 +473,14 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
               {activeSearchTab === "buy" && (
                 <form onSubmit={handleSearchSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label htmlFor="home-type-select" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Class Configuration</label>
+                    <label htmlFor="home-type-select" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">
+                      Car Type
+                    </label>
                     <select
                       id="home-type-select"
                       value={selectedType}
                       onChange={(e) => setSelectedType(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-950 focus:border-stone-950 transition-all cursor-pointer"
                     >
                       <option>Any Type</option>
                       <option>Car</option>
@@ -489,12 +493,14 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                   </div>
 
                   <div className="space-y-1.5">
-                    <label htmlFor="home-price-select" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Target Broker Budget</label>
+                    <label htmlFor="home-price-select" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">
+                      Budget Range
+                    </label>
                     <select
                       id="home-price-select"
                       value={selectedPriceRange}
                       onChange={(e) => setSelectedPriceRange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-950 focus:border-stone-950 transition-all cursor-pointer"
                     >
                       <option>Any Price</option>
                       <option>Under ₹5 Lakhs</option>
@@ -505,52 +511,73 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
                   </div>
 
                   <div className="space-y-1.5">
-                    <label htmlFor="home-location-input" className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Region Coordinates</label>
+                    <label htmlFor="home-location-input" className="text-xs font-bold text-stone-700 uppercase tracking-wider block">
+                      City / Location
+                    </label>
                     <div className="relative">
-                      <MapPin aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
+                      <MapPin aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500 w-4 h-4" />
                       <input
                         id="home-location-input"
                         type="text"
-                        placeholder="City, state, or ZIP..."
+                        placeholder="Type city e.g. Mumbai, Delhi, Pune..."
                         value={selectedLocation}
                         onChange={(e) => setSelectedLocation(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-950 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                        className="w-full pl-10 pr-4 py-3 bg-[#F4F1EA] border border-stone-300 rounded-md text-stone-950 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-stone-950 focus:border-stone-950 transition-all"
                       />
+                    </div>
+                    {/* Quick popular city tags */}
+                    <div className="pt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-600">
+                      <span className="font-semibold text-stone-500">Popular:</span>
+                      {["Mumbai", "Delhi", "Pune", "Bengaluru", "Jaipur", "Gurugram"].map((city) => (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => setSelectedLocation(city)}
+                          className={`px-2 py-0.5 rounded-md border text-[10px] font-semibold transition cursor-pointer ${
+                            selectedLocation.toLowerCase().includes(city.toLowerCase())
+                              ? "bg-stone-950 text-white border-stone-950"
+                              : "bg-stone-200/70 hover:bg-stone-300 text-stone-800 border-stone-300"
+                          }`}
+                        >
+                          {city}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-3.5 bg-stone-900 text-[#F4F1EA] text-xs font-sans font-bold uppercase tracking-widest hover:bg-stone-850 cursor-pointer transition"
+                    className="w-full py-4 bg-stone-950 text-white text-xs sm:text-sm font-sans font-bold uppercase tracking-wider rounded-md hover:bg-stone-800 active:scale-[0.99] cursor-pointer transition shadow-md flex items-center justify-center gap-2 mt-2"
                   >
-                    Examine Catalog Matching Indices
+                    <Search className="w-4 h-4 text-amber-400" />
+                    <span>Search Available Cars</span>
                   </button>
                 </form>
               )}
 
               {/* SELL CONTEXT */}
               {activeSearchTab === "sell" && (
-                <div className="text-center py-3 space-y-4">
-                  <h3 className="text-sm font-bold font-serif italic text-stone-900">Commission-Free Listing Wizard</h3>
-                  <p className="text-sm md:text-xs text-stone-600 leading-relaxed max-w-sm mx-auto font-sans">
-                    Specify mechanical specifications, configure your asking parameters, and allow premium buyers to query your verified details.
+                <div className="text-center py-4 space-y-4">
+                  <h3 className="text-base font-bold text-stone-950">Sell Your Car Commission-Free</h3>
+                  <p className="text-xs text-stone-600 leading-relaxed max-w-sm mx-auto font-sans font-medium">
+                    Post your vehicle details, add photos, set your price, and connect directly with verified buyers.
                   </p>
-                  <div className="w-full grid grid-cols-3 gap-2.5 py-2">
-                    <div className="p-2 bg-[#F4F1EA] border border-stone-200">
-                      <span className="text-[9px] uppercase tracking-wider font-extrabold text-stone-900 block">01 / Classify</span>
+                  <div className="w-full grid grid-cols-3 gap-2 py-2">
+                    <div className="p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-center">
+                      <span className="text-[10px] uppercase tracking-wider font-extrabold text-stone-950 block">1. Details</span>
                     </div>
-                    <div className="p-2 bg-[#F4F1EA] border border-stone-200">
-                      <span className="text-[9px] uppercase tracking-wider font-extrabold text-stone-900 block">02 / Image</span>
+                    <div className="p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-center">
+                      <span className="text-[10px] uppercase tracking-wider font-extrabold text-stone-950 block">2. Photos</span>
                     </div>
-                    <div className="p-2 bg-[#F4F1EA] border border-stone-200">
-                      <span className="text-[9px] uppercase tracking-wider font-extrabold text-stone-900 block">03 / Deploy</span>
+                    <div className="p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-md text-center">
+                      <span className="text-[10px] uppercase tracking-wider font-extrabold text-stone-950 block">3. Publish</span>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveTab("sell")}
-                    className="w-full py-3.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full py-4 bg-stone-950 hover:bg-stone-800 text-white text-xs sm:text-sm font-bold uppercase tracking-wider rounded-md flex items-center justify-center gap-2 cursor-pointer transition shadow-md"
                   >
-                    Create Listing Blueprint
+                    <span>List Your Car Now</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
