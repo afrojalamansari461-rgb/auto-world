@@ -30,8 +30,7 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = originalOverflow;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = originalOverflow === "hidden" ? "" : originalOverflow;
     };
   }, [isOpen]);
 
@@ -64,8 +63,13 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
       callbackRef,
       vehicleId: vehicle?.id || null,
       vehicleTitle: vehicle?.title || "General Query",
+      vehicleImage: vehicle?.image || vehicle?.photos?.[0]?.src || "",
+      vehiclePrice: vehicle?.price || 0,
       sellerName: targetSellerName,
       sellerPhone: targetSellerPhone,
+      sellerEmail: vehicle?.sellerEmail || "",
+      sellerUserId: (vehicle as any)?.userId || "",
+      listingId: (vehicle as any)?.listingId || "",
       fullName: fullName.trim() || "Interested Buyer",
       phoneNumber: phoneNumber.trim(),
       timeSlot,
@@ -84,6 +88,8 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
       const existing = JSON.parse(localStorage.getItem("autoWorld_callback_requests") || "[]");
       existing.unshift(callbackData);
       localStorage.setItem("autoWorld_callback_requests", JSON.stringify(existing));
+
+      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
 
       setSubmittedData(callbackData);
       fireCelebrationConfetti();

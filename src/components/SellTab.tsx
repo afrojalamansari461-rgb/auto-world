@@ -1,11 +1,57 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User, ExternalLink } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { getListingExpirationDetails } from "../lib/expirationManager";
-import { User } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+
+export interface TestDriveRequest {
+  id?: string;
+  bookingRef: string;
+  vehicleId: number | string;
+  vehicleTitle: string;
+  vehiclePrice?: number;
+  vehicleImage?: string;
+  sellerName?: string;
+  sellerPhone?: string;
+  sellerEmail?: string;
+  sellerUserId?: string;
+  listingId?: string;
+  driveType: "doorstep" | "showroom";
+  preferredDate: string;
+  timeSlot: string;
+  fullName: string;
+  phone: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+  status: "scheduled" | "confirmed" | "completed" | "declined" | "cancelled" | "pending";
+  sellerNote?: string;
+}
+
+export interface CallbackRequest {
+  id?: string;
+  callbackRef: string;
+  vehicleId?: number | string | null;
+  vehicleTitle?: string;
+  vehicleImage?: string;
+  vehiclePrice?: number;
+  sellerName?: string;
+  sellerPhone?: string;
+  sellerEmail?: string;
+  sellerUserId?: string;
+  listingId?: string;
+  fullName: string;
+  phoneNumber: string;
+  timeSlot?: string;
+  queryTopic?: string;
+  note?: string;
+  createdAt: string;
+  status: "pending" | "contacted" | "resolved" | "declined" | "cancelled";
+  sellerNote?: string;
+}
 
 interface SellTabProps {
   setActiveTab: (tab: string) => void;
@@ -919,8 +965,20 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [confettiKey, setConfettiKey] = useState(0);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
 
-  // View Mode: "wizard" (List a Vehicle) vs "my_catalog" (My Vehicle Catalog Control Panel)
-  const [viewMode, setViewMode] = useState<"wizard" | "my_catalog">("wizard");
+  // View Mode: "wizard" (List a Vehicle) vs "my_catalog" (My Vehicle Catalog Control Panel) vs "requests" (Buyer Requests & Leads)
+  const [viewMode, setViewMode] = useState<"wizard" | "my_catalog" | "requests">("wizard");
+
+  // Buyer Requests & Leads State
+  const [testDriveRequests, setTestDriveRequests] = useState<TestDriveRequest[]>([]);
+  const [callbackRequests, setCallbackRequests] = useState<CallbackRequest[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [requestTypeFilter, setRequestTypeFilter] = useState<"all" | "test_drives" | "callbacks">("all");
+  const [requestStatusFilter, setRequestStatusFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "declined">("all");
+  const [requestSearchQuery, setRequestSearchQuery] = useState("");
+  const [selectedVehicleIdFilter, setSelectedVehicleIdFilter] = useState<string>("all");
+  const [showOnlyMyVehiclesRequests, setShowOnlyMyVehiclesRequests] = useState<boolean>(true);
+  const [editingNoteForReq, setEditingNoteForReq] = useState<string | null>(null);
+  const [sellerNoteInput, setSellerNoteInput] = useState<string>("");
 
   // User's own listings state & real-time sync
   const [userListings, setUserListings] = useState<UserListing[]>([]);
@@ -1019,6 +1077,213 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
     return () => unsub();
   }, [currentUser]);
+
+  // Real-time listener for test drives & callback requests
+  useEffect(() => {
+    setIsLoadingRequests(true);
+
+    const unsubTD = onSnapshot(collection(db, "test_drives"), (snapshot) => {
+      const tdList: TestDriveRequest[] = [];
+      snapshot.forEach((docSnap) => {
+        tdList.push({ id: docSnap.id, ...docSnap.data() } as TestDriveRequest);
+      });
+
+      try {
+        const stored = localStorage.getItem("autoWorld_test_drives");
+        if (stored) {
+          const localItems: TestDriveRequest[] = JSON.parse(stored);
+          localItems.forEach((item) => {
+            if (!tdList.some((t) => t.bookingRef === item.bookingRef)) {
+              tdList.push(item);
+            }
+          });
+        }
+      } catch (e) {}
+
+      tdList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setTestDriveRequests(tdList);
+      setIsLoadingRequests(false);
+    }, (err) => {
+      console.warn("Test drives firestore snapshot error:", err);
+      try {
+        const stored = localStorage.getItem("autoWorld_test_drives");
+        if (stored) {
+          setTestDriveRequests(JSON.parse(stored));
+        }
+      } catch (e) {}
+      setIsLoadingRequests(false);
+    });
+
+    const unsubCB = onSnapshot(collection(db, "callback_requests"), (snapshot) => {
+      const cbList: CallbackRequest[] = [];
+      snapshot.forEach((docSnap) => {
+        cbList.push({ id: docSnap.id, ...docSnap.data() } as CallbackRequest);
+      });
+
+      try {
+        const stored = localStorage.getItem("autoWorld_callback_requests");
+        if (stored) {
+          const localItems: CallbackRequest[] = JSON.parse(stored);
+          localItems.forEach((item) => {
+            if (!cbList.some((c) => c.callbackRef === item.callbackRef)) {
+              cbList.push(item);
+            }
+          });
+        }
+      } catch (e) {}
+
+      cbList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setCallbackRequests(cbList);
+    }, (err) => {
+      console.warn("Callback requests firestore snapshot error:", err);
+      try {
+        const stored = localStorage.getItem("autoWorld_callback_requests");
+        if (stored) {
+          setCallbackRequests(JSON.parse(stored));
+        }
+      } catch (e) {}
+    });
+
+    const handleCustomUpdate = () => {
+      try {
+        const storedTD = JSON.parse(localStorage.getItem("autoWorld_test_drives") || "[]");
+        setTestDriveRequests((prev) => {
+          const combined = [...prev];
+          storedTD.forEach((item: TestDriveRequest) => {
+            const idx = combined.findIndex((t) => t.bookingRef === item.bookingRef);
+            if (idx >= 0) {
+              combined[idx] = item;
+            } else {
+              combined.unshift(item);
+            }
+          });
+          return combined;
+        });
+
+        const storedCB = JSON.parse(localStorage.getItem("autoWorld_callback_requests") || "[]");
+        setCallbackRequests((prev) => {
+          const combined = [...prev];
+          storedCB.forEach((item: CallbackRequest) => {
+            const idx = combined.findIndex((c) => c.callbackRef === item.callbackRef);
+            if (idx >= 0) {
+              combined[idx] = item;
+            } else {
+              combined.unshift(item);
+            }
+          });
+          return combined;
+        });
+      } catch (e) {}
+    };
+
+    window.addEventListener("autoworld_requests_updated", handleCustomUpdate);
+
+    return () => {
+      unsubTD();
+      unsubCB();
+      window.removeEventListener("autoworld_requests_updated", handleCustomUpdate);
+    };
+  }, []);
+
+  // Update Request Status
+  const handleUpdateRequestStatus = async (type: "test_drive" | "callback", refCode: string, newStatus: string, docId?: string) => {
+    try {
+      if (type === "test_drive") {
+        if (docId && db) {
+          await updateDoc(doc(db, "test_drives", docId), { status: newStatus });
+        }
+        setTestDriveRequests((prev) =>
+          prev.map((item) => (item.bookingRef === refCode ? { ...item, status: newStatus as any } : item))
+        );
+        const stored = JSON.parse(localStorage.getItem("autoWorld_test_drives") || "[]");
+        const updated = stored.map((item: any) => (item.bookingRef === refCode ? { ...item, status: newStatus } : item));
+        localStorage.setItem("autoWorld_test_drives", JSON.stringify(updated));
+      } else {
+        if (docId && db) {
+          await updateDoc(doc(db, "callback_requests", docId), { status: newStatus });
+        }
+        setCallbackRequests((prev) =>
+          prev.map((item) => (item.callbackRef === refCode ? { ...item, status: newStatus as any } : item))
+        );
+        const stored = JSON.parse(localStorage.getItem("autoWorld_callback_requests") || "[]");
+        const updated = stored.map((item: any) => (item.callbackRef === refCode ? { ...item, status: newStatus } : item));
+        localStorage.setItem("autoWorld_callback_requests", JSON.stringify(updated));
+      }
+
+      showToast(`Request #${refCode} status updated to '${newStatus.toUpperCase()}'.`, "success");
+      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
+    } catch (err) {
+      console.error("Error updating request status:", err);
+      showToast(`Updated status locally for #${refCode}`, "info");
+    }
+  };
+
+  // Save Seller Private Note
+  const handleSaveSellerNote = async (type: "test_drive" | "callback", refCode: string, noteText: string, docId?: string) => {
+    try {
+      if (type === "test_drive") {
+        if (docId && db) {
+          await updateDoc(doc(db, "test_drives", docId), { sellerNote: noteText });
+        }
+        setTestDriveRequests((prev) =>
+          prev.map((item) => (item.bookingRef === refCode ? { ...item, sellerNote: noteText } : item))
+        );
+        const stored = JSON.parse(localStorage.getItem("autoWorld_test_drives") || "[]");
+        const updated = stored.map((item: any) => (item.bookingRef === refCode ? { ...item, sellerNote: noteText } : item));
+        localStorage.setItem("autoWorld_test_drives", JSON.stringify(updated));
+      } else {
+        if (docId && db) {
+          await updateDoc(doc(db, "callback_requests", docId), { sellerNote: noteText });
+        }
+        setCallbackRequests((prev) =>
+          prev.map((item) => (item.callbackRef === refCode ? { ...item, sellerNote: noteText } : item))
+        );
+        const stored = JSON.parse(localStorage.getItem("autoWorld_callback_requests") || "[]");
+        const updated = stored.map((item: any) => (item.callbackRef === refCode ? { ...item, sellerNote: noteText } : item));
+        localStorage.setItem("autoWorld_callback_requests", JSON.stringify(updated));
+      }
+
+      showToast(`Seller note saved for #${refCode}`, "success");
+      setEditingNoteForReq(null);
+      setSellerNoteInput("");
+      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
+    } catch (err) {
+      console.error("Error saving note:", err);
+      showToast("Note saved locally", "info");
+      setEditingNoteForReq(null);
+    }
+  };
+
+  // Delete Request
+  const handleDeleteRequest = async (type: "test_drive" | "callback", refCode: string, docId?: string) => {
+    if (!window.confirm(`Are you sure you want to delete request #${refCode}?`)) return;
+
+    try {
+      if (type === "test_drive") {
+        if (docId && db) {
+          await deleteDoc(doc(db, "test_drives", docId));
+        }
+        setTestDriveRequests((prev) => prev.filter((item) => item.bookingRef !== refCode));
+        const stored = JSON.parse(localStorage.getItem("autoWorld_test_drives") || "[]");
+        const filtered = stored.filter((item: any) => item.bookingRef !== refCode);
+        localStorage.setItem("autoWorld_test_drives", JSON.stringify(filtered));
+      } else {
+        if (docId && db) {
+          await deleteDoc(doc(db, "callback_requests", docId));
+        }
+        setCallbackRequests((prev) => prev.filter((item) => item.callbackRef !== refCode));
+        const stored = JSON.parse(localStorage.getItem("autoWorld_callback_requests") || "[]");
+        const filtered = stored.filter((item: any) => item.callbackRef !== refCode);
+        localStorage.setItem("autoWorld_callback_requests", JSON.stringify(filtered));
+      }
+
+      showToast(`Request #${refCode} removed.`, "info");
+      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
+    } catch (err) {
+      console.error("Error deleting request:", err);
+      showToast("Removed request locally", "info");
+    }
+  };
 
   // Quick Status Toggle Handler
   const handleQuickStatusChange = async (listingId: string, newStatus: "active" | "pending" | "sold") => {
@@ -2152,6 +2417,43 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     }
   };
 
+  // Calculate owner requests and pending counts
+  const userEmailStr = currentUser?.email?.toLowerCase() || "";
+  const userUidStr = currentUser?.uid || "";
+  const userNameStr = currentUser?.displayName?.toLowerCase() || "";
+  const userListingIdsSet = new Set(userListings.map((l) => String(l.id)));
+  const userListingTitlesSet = new Set(userListings.map((l) => l.title.toLowerCase()));
+
+  const isOwnerTDReq = (td: TestDriveRequest) => {
+    if (!showOnlyMyVehiclesRequests) return true;
+    if (isAdmin) return true;
+    if (userEmailStr && td.sellerEmail && td.sellerEmail.toLowerCase() === userEmailStr) return true;
+    if (userUidStr && td.sellerUserId && td.sellerUserId === userUidStr) return true;
+    if (td.listingId && userListingIdsSet.has(String(td.listingId))) return true;
+    if (td.vehicleId && userListingIdsSet.has(String(td.vehicleId))) return true;
+    if (td.vehicleTitle && userListingTitlesSet.has(td.vehicleTitle.toLowerCase())) return true;
+    if (userNameStr && td.sellerName && td.sellerName.toLowerCase().includes(userNameStr)) return true;
+    if (userListings.length === 0) return true;
+    return false;
+  };
+
+  const isOwnerCBReq = (cb: CallbackRequest) => {
+    if (!showOnlyMyVehiclesRequests) return true;
+    if (isAdmin) return true;
+    if (userEmailStr && cb.sellerEmail && cb.sellerEmail.toLowerCase() === userEmailStr) return true;
+    if (userUidStr && cb.sellerUserId && cb.sellerUserId === userUidStr) return true;
+    if (cb.listingId && userListingIdsSet.has(String(cb.listingId))) return true;
+    if (cb.vehicleId && userListingIdsSet.has(String(cb.vehicleId))) return true;
+    if (cb.vehicleTitle && userListingTitlesSet.has(cb.vehicleTitle.toLowerCase())) return true;
+    if (userNameStr && cb.sellerName && cb.sellerName.toLowerCase().includes(userNameStr)) return true;
+    if (userListings.length === 0) return true;
+    return false;
+  };
+
+  const ownerTDs = testDriveRequests.filter(isOwnerTDReq);
+  const ownerCBs = callbackRequests.filter(isOwnerCBReq);
+  const totalPendingReqsCount = ownerTDs.filter((t) => t.status === "scheduled" || t.status === "pending").length + ownerCBs.filter((c) => c.status === "pending").length;
+
   return (
     <motion.div 
       initial="hidden"
@@ -2162,36 +2464,60 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     >
       {/* SELLER MODE SWITCHER BAR */}
       <div className="mb-8 bg-stone-900 p-2 sm:p-2.5 border-2 border-stone-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => setViewMode("wizard")}
-            className={`flex-1 sm:flex-none px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border ${
+            className={`flex-1 sm:flex-none px-3.5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border ${
               viewMode === "wizard"
                 ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
                 : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
             }`}
           >
             <Plus className="w-4 h-4" />
-            <span>List New Vehicle</span>
+            <span>List Vehicle</span>
           </button>
 
           <button
             type="button"
             onClick={() => setViewMode("my_catalog")}
-            className={`flex-1 sm:flex-none px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border relative ${
+            className={`flex-1 sm:flex-none px-3.5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border relative ${
               viewMode === "my_catalog"
                 ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
                 : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
             }`}
           >
             <Tag className="w-4 h-4" />
-            <span>My Vehicles Catalog</span>
+            <span>My Vehicles</span>
             {userListings.length > 0 && (
               <span className={`px-2 py-0.5 text-[10px] font-mono font-black rounded-full ${
                 viewMode === "my_catalog" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
               }`}>
                 {userListings.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode("requests")}
+            className={`flex-1 sm:flex-none px-3.5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border relative ${
+              viewMode === "requests"
+                ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
+                : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
+            }`}
+          >
+            <PhoneCall className="w-4 h-4 text-amber-400" />
+            <span>Buyer Requests</span>
+            {(ownerTDs.length + ownerCBs.length) > 0 && (
+              <span className={`px-2 py-0.5 text-[10px] font-mono font-black rounded-full ${
+                totalPendingReqsCount > 0
+                  ? "bg-red-600 text-white animate-pulse"
+                  : viewMode === "requests"
+                  ? "bg-stone-950 text-amber-400"
+                  : "bg-amber-500 text-stone-950"
+              }`}>
+                {totalPendingReqsCount > 0 ? `${totalPendingReqsCount} NEW` : ownerTDs.length + ownerCBs.length}
               </span>
             )}
           </button>
@@ -2642,6 +2968,25 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               )}
                             </div>
 
+                            {/* Buyer Enquiries Button for this Vehicle */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedVehicleIdFilter(String(listing.id));
+                                setViewMode("requests");
+                              }}
+                              className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-amber-600 cursor-pointer shadow-xs transition"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <PhoneCall className="w-4 h-4 text-stone-900" />
+                                <span>View Buyer Enquiries</span>
+                              </span>
+                              <span className="px-2 py-0.5 bg-stone-950 text-amber-400 text-[10px] rounded-full font-black">
+                                {testDriveRequests.filter(t => String(t.listingId) === String(listing.id) || String(t.vehicleId) === String(listing.id)).length +
+                                 callbackRequests.filter(c => String(c.listingId) === String(listing.id) || String(c.vehicleId) === String(listing.id)).length} Leads
+                              </span>
+                            </button>
+
                             {/* Action Control Buttons */}
                             <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200">
                               <button
@@ -2680,6 +3025,629 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               })()}
             </div>
           )}
+        </div>
+      )}
+
+      {/* VIEW MODE 3: BUYER REQUESTS & LEADS CONTROL CENTER */}
+      {viewMode === "requests" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Header Banner */}
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                  <PhoneCall className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Buyer Leads & Enquiries Manager</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
+                  Buyer Callback & Test Drive Requests
+                </h2>
+                <p className="text-stone-600 text-xs mt-1 font-medium max-w-2xl">
+                  Real-time direct enquiries, doorstep/showroom test drive appointments, and instant callback requests submitted by buyers interested in your vehicles.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyMyVehiclesRequests(!showOnlyMyVehiclesRequests)}
+                  className={`px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider border cursor-pointer flex items-center gap-2 transition ${
+                    showOnlyMyVehiclesRequests
+                      ? "bg-amber-500 text-stone-950 border-amber-600 shadow-xs"
+                      : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
+                  }`}
+                  title="Toggle filtering requests for your uploaded vehicles vs all system requests"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>{showOnlyMyVehiclesRequests ? "Filter: My Vehicles Only" : "Show All System Leads"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent("autoworld_requests_updated"))}
+                  className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider border border-stone-950 flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sync</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics Dashboard Overview */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                <div className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Total Received</div>
+                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                  {ownerTDs.length + ownerCBs.length} <span className="text-xs font-sans text-stone-600 font-normal">Enquiries</span>
+                </div>
+              </div>
+
+              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                <div className="text-[10px] font-mono font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-amber-600" /> Test Drives
+                </div>
+                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                  {ownerTDs.length} <span className="text-xs font-sans text-amber-700 font-bold">({ownerTDs.filter(t => t.status === "scheduled" || t.status === "pending").length} Pending)</span>
+                </div>
+              </div>
+
+              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                <div className="text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                  <PhoneCall className="w-3 h-3 text-emerald-600" /> Callbacks
+                </div>
+                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                  {ownerCBs.length} <span className="text-xs font-sans text-emerald-700 font-bold">({ownerCBs.filter(c => c.status === "pending").length} Pending)</span>
+                </div>
+              </div>
+
+              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                <div className="text-[10px] font-mono font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-blue-600" /> Actioned Leads
+                </div>
+                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                  {ownerTDs.filter(t => t.status === "confirmed" || t.status === "completed").length + ownerCBs.filter(c => c.status === "contacted" || c.status === "resolved").length}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Filter Controls */}
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-4 space-y-3">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={requestSearchQuery}
+                  onChange={(e) => setRequestSearchQuery(e.target.value)}
+                  placeholder="Search buyer name, phone number, vehicle, or ref code (#TD... / #CB...)"
+                  className="w-full pl-9 pr-8 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 placeholder:text-stone-500 focus:outline-none focus:border-stone-950"
+                />
+                {requestSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setRequestSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-bold"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* Select Specific Vehicle Filter */}
+              {userListings.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase text-stone-500 whitespace-nowrap">
+                    Vehicle:
+                  </span>
+                  <select
+                    value={selectedVehicleIdFilter}
+                    onChange={(e) => setSelectedVehicleIdFilter(e.target.value)}
+                    className="px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
+                  >
+                    <option value="all">All My Listed Vehicles ({userListings.length})</option>
+                    {userListings.map((l) => (
+                      <option key={l.id} value={String(l.id)}>
+                        {l.title} (₹{l.price.toLocaleString("en-IN")})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Filter Tabs Row */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-300">
+              {/* Request Type Selector */}
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Type:</span>
+                {[
+                  { id: "all", label: "All Enquiries", count: ownerTDs.length + ownerCBs.length },
+                  { id: "test_drives", label: "Test Drives", count: ownerTDs.length },
+                  { id: "callbacks", label: "Callbacks", count: ownerCBs.length },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setRequestTypeFilter(tab.id as any)}
+                    className={`px-3 py-1 text-[11px] font-mono font-bold uppercase border cursor-pointer transition ${
+                      requestTypeFilter === tab.id
+                        ? "bg-stone-900 text-amber-400 border-stone-950 font-extrabold"
+                        : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300"
+                    }`}
+                  >
+                    {tab.label} ({tab.count})
+                  </button>
+                ))}
+              </div>
+
+              {/* Request Status Selector */}
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Status:</span>
+                {[
+                  { id: "all", label: "All Statuses" },
+                  { id: "pending", label: "Pending / Scheduled" },
+                  { id: "confirmed", label: "Confirmed / Contacted" },
+                  { id: "completed", label: "Completed / Resolved" },
+                  { id: "declined", label: "Declined" },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setRequestStatusFilter(st.id as any)}
+                    className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
+                      requestStatusFilter === st.id
+                        ? "bg-amber-500 text-stone-950 border-amber-600 font-extrabold"
+                        : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Requests Content Feed */}
+          {isLoadingRequests ? (
+            <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
+              <RefreshCw className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
+              <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
+                Syncing direct buyer enquiries and test drive schedules...
+              </p>
+            </div>
+          ) : (() => {
+            // Combine and normalize test drives and callbacks
+            const combinedList = [
+              ...ownerTDs.map((td) => ({
+                kind: "test_drive" as const,
+                refCode: td.bookingRef,
+                id: td.id,
+                vehicleId: td.vehicleId,
+                vehicleTitle: td.vehicleTitle,
+                vehiclePrice: td.vehiclePrice,
+                vehicleImage: td.vehicleImage,
+                sellerName: td.sellerName,
+                buyerName: td.fullName,
+                phone: td.phone,
+                preferredDate: td.preferredDate,
+                timeSlot: td.timeSlot,
+                driveType: td.driveType,
+                address: td.address,
+                notes: td.notes,
+                createdAt: td.createdAt,
+                status: td.status || "scheduled",
+                sellerNote: td.sellerNote,
+                rawTD: td,
+              })),
+              ...ownerCBs.map((cb) => ({
+                kind: "callback" as const,
+                refCode: cb.callbackRef,
+                id: cb.id,
+                vehicleId: cb.vehicleId,
+                vehicleTitle: cb.vehicleTitle || "General Enquiry",
+                vehiclePrice: cb.vehiclePrice,
+                vehicleImage: cb.vehicleImage,
+                sellerName: cb.sellerName,
+                buyerName: cb.fullName,
+                phone: cb.phoneNumber,
+                preferredDate: "",
+                timeSlot: cb.timeSlot || "ASAP",
+                driveType: null,
+                address: "",
+                notes: cb.note || cb.queryTopic,
+                createdAt: cb.createdAt,
+                status: cb.status || "pending",
+                sellerNote: cb.sellerNote,
+                rawCB: cb,
+              })),
+            ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+            // Apply Filters
+            const filteredRequests = combinedList.filter((item) => {
+              // 1. Filter by Request Type
+              if (requestTypeFilter === "test_drives" && item.kind !== "test_drive") return false;
+              if (requestTypeFilter === "callbacks" && item.kind !== "callback") return false;
+
+              // 2. Filter by Vehicle ID
+              if (selectedVehicleIdFilter !== "all") {
+                if (String(item.vehicleId) !== selectedVehicleIdFilter) return false;
+              }
+
+              // 3. Filter by Status
+              if (requestStatusFilter === "pending") {
+                if (item.status !== "pending" && item.status !== "scheduled") return false;
+              } else if (requestStatusFilter === "confirmed") {
+                if (item.status !== "confirmed" && item.status !== "contacted") return false;
+              } else if (requestStatusFilter === "completed") {
+                if (item.status !== "completed" && item.status !== "resolved") return false;
+              } else if (requestStatusFilter === "declined") {
+                if (item.status !== "declined" && item.status !== "cancelled") return false;
+              }
+
+              // 4. Search Filter
+              const queryLower = requestSearchQuery.toLowerCase().trim();
+              if (queryLower) {
+                const matchName = item.buyerName?.toLowerCase().includes(queryLower);
+                const matchPhone = item.phone?.toLowerCase().includes(queryLower);
+                const matchRef = item.refCode?.toLowerCase().includes(queryLower);
+                const matchVehicle = item.vehicleTitle?.toLowerCase().includes(queryLower);
+                const matchNotes = item.notes?.toLowerCase().includes(queryLower);
+                if (!matchName && !matchPhone && !matchRef && !matchVehicle && !matchNotes) return false;
+              }
+
+              return true;
+            });
+
+            if (filteredRequests.length === 0) {
+              return (
+                <div className="p-12 text-center bg-[#FAF8F5] border-2 border-stone-900 space-y-4">
+                  <div className="w-14 h-14 bg-amber-500/15 border border-amber-600/30 rounded-full flex items-center justify-center text-amber-700 mx-auto">
+                    <PhoneCall className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1 max-w-md mx-auto">
+                    <h4 className="text-lg font-serif font-black uppercase text-stone-900">
+                      No Buyer Requests Found
+                    </h4>
+                    <p className="text-xs text-stone-600 font-medium">
+                      {combinedList.length === 0
+                        ? "There are no callback or test drive requests submitted yet. When buyers request a callback or schedule a test drive on your listed vehicles, they will appear here in real-time."
+                        : "No enquiries match your selected filters or search query. Try clearing search text or switching status tabs."}
+                    </p>
+                  </div>
+                  {requestSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRequestSearchQuery("");
+                        setRequestTypeFilter("all");
+                        setRequestStatusFilter("all");
+                        setSelectedVehicleIdFilter("all");
+                      }}
+                      className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Reset Filters</span>
+                    </button>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {filteredRequests.map((req) => {
+                  const isTestDrive = req.kind === "test_drive";
+                  const cleanPhone = req.phone?.replace(/[^0-9]/g, "") || "";
+                  const formattedDateStr = req.createdAt
+                    ? new Date(req.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Recently";
+
+                  // Status badge styling
+                  const isPending = req.status === "pending" || req.status === "scheduled";
+                  const isConfirmed = req.status === "confirmed" || req.status === "contacted";
+                  const isCompleted = req.status === "completed" || req.status === "resolved";
+                  const isDeclined = req.status === "declined" || req.status === "cancelled";
+
+                  // Pre-formulated WhatsApp message link
+                  const waText = encodeURIComponent(
+                    `Hello ${req.buyerName}, regarding your ${isTestDrive ? "test drive" : "callback"} request (#${req.refCode}) for ${req.vehicleTitle} on AutoWorld. I am the owner/seller and would like to coordinate with you!`
+                  );
+                  const waUrl = `https://wa.me/${cleanPhone.length <= 10 ? '91' + cleanPhone : cleanPhone}?text=${waText}`;
+
+                  return (
+                    <motion.div
+                      key={req.refCode}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className={`bg-[#FAF8F5] border-2 border-stone-900 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.85)] overflow-hidden relative ${
+                        isTestDrive ? "border-l-8 border-l-amber-500" : "border-l-8 border-l-emerald-600"
+                      }`}
+                    >
+                      {/* Top Header Strip */}
+                      <div className="bg-stone-900 text-stone-100 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                        <div className="flex items-center gap-2">
+                          {isTestDrive ? (
+                            <span className="px-2 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1">
+                              <Calendar className="w-3 h-3" /> TEST DRIVE
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1">
+                              <PhoneCall className="w-3 h-3" /> CALLBACK
+                            </span>
+                          )}
+
+                          <span className="font-bold text-amber-400">#{req.refCode}</span>
+                          <span className="text-stone-500">•</span>
+                          <span className="text-stone-400 text-[10.5px]">{formattedDateStr}</span>
+                        </div>
+
+                        {/* Status Tag */}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2.5 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider border ${
+                              isPending
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
+                                : isConfirmed
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                : isCompleted
+                                ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                                : "bg-stone-700 text-stone-300 border-stone-600"
+                            }`}
+                          >
+                            STATUS: {req.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4">
+                        {/* Vehicle Info Card Row */}
+                        <div className="flex items-center gap-3 p-3 bg-[#F4F1EA] border border-stone-300">
+                          {req.vehicleImage ? (
+                            <img
+                              src={req.vehicleImage}
+                              alt={req.vehicleTitle}
+                              className="w-16 h-12 object-cover border border-stone-400 shrink-0 bg-stone-900"
+                            />
+                          ) : (
+                            <div className="w-16 h-12 bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-400 shrink-0">
+                              <Car className="w-6 h-6" />
+                            </div>
+                          )}
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="font-serif font-black text-stone-950 text-sm uppercase truncate">
+                                {req.vehicleTitle}
+                              </h4>
+                              {req.vehiclePrice ? (
+                                <span className="font-serif font-bold text-xs text-amber-900 whitespace-nowrap bg-amber-500/20 px-2 py-0.5 border border-amber-600/30">
+                                  ₹{req.vehiclePrice.toLocaleString("en-IN")}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-[10.5px] font-mono text-stone-600 truncate mt-0.5">
+                              Seller Listing: <strong className="text-stone-900">{req.sellerName || "AutoWorld Direct"}</strong>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Buyer Details Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-sans">
+                          {/* Buyer Name & Phone */}
+                          <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                            <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
+                              <User className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
+                            </div>
+                            <div className="font-serif font-black text-stone-950 text-sm">
+                              {req.buyerName || "Interested Buyer"}
+                            </div>
+                            <div className="text-xs font-mono font-bold text-stone-800 flex items-center gap-1 pt-0.5">
+                              <Phone className="w-3.5 h-3.5 text-amber-700" />
+                              <a href={`tel:${req.phone}`} className="hover:underline hover:text-amber-900">
+                                {req.phone}
+                              </a>
+                            </div>
+                          </div>
+
+                          {/* Date & Time Slot */}
+                          <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                            <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5 text-amber-700" /> Appointment / Preferred Time
+                            </div>
+                            {isTestDrive ? (
+                              <div className="space-y-0.5 font-mono">
+                                <div className="font-bold text-stone-900">
+                                  📅 {req.preferredDate}
+                                </div>
+                                <div className="text-[11px] text-stone-700">
+                                  ⏰ {req.timeSlot}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="font-mono text-stone-900 font-bold">
+                                ⏰ Preferred Slot: {req.timeSlot}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Drive Type / Topic */}
+                          <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                            <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" /> Enquiry Type
+                            </div>
+                            {isTestDrive ? (
+                              <div className="font-mono font-bold text-stone-900 uppercase text-xs">
+                                {req.driveType === "doorstep" ? "🚗 Doorstep Test Drive" : "🏢 Showroom Visit"}
+                              </div>
+                            ) : (
+                              <div className="font-mono font-bold text-stone-900 text-xs">
+                                📞 Callback & Valuation Inquiry
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Doorstep Address or Notes */}
+                        {isTestDrive && req.address && (
+                          <div className="p-2.5 bg-amber-500/10 border border-amber-600/30 text-xs font-mono text-stone-800 flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                            <div>
+                              <strong className="uppercase text-[10px] text-amber-900 block">Doorstep Delivery Address:</strong>
+                              <span>{req.address}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {req.notes && (
+                          <div className="p-2.5 bg-[#F4F1EA] border border-stone-300 text-xs text-stone-800 font-medium space-y-0.5">
+                            <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
+                              Buyer Note / Request Detail:
+                            </span>
+                            <p className="italic">"{req.notes}"</p>
+                          </div>
+                        )}
+
+                        {/* Seller Internal Note Display */}
+                        {req.sellerNote && editingNoteForReq !== req.refCode && (
+                          <div className="p-3 bg-stone-900 text-amber-300 border border-stone-950 font-mono text-xs space-y-1 rounded-xs">
+                            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-400">
+                              <span>📝 Seller Internal Note:</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNoteForReq(req.refCode);
+                                  setSellerNoteInput(req.sellerNote || "");
+                                }}
+                                className="text-stone-400 hover:text-white underline cursor-pointer"
+                              >
+                                Edit Note
+                              </button>
+                            </div>
+                            <p className="text-stone-200">{req.sellerNote}</p>
+                          </div>
+                        )}
+
+                        {/* Edit Seller Note Input Box */}
+                        {editingNoteForReq === req.refCode && (
+                          <div className="p-3 bg-amber-50 border-2 border-amber-500 space-y-2">
+                            <label className="text-[10.5px] font-mono font-bold uppercase text-stone-900 block">
+                              Add Internal Seller Note / Schedule Remarks:
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={sellerNoteInput}
+                              onChange={(e) => setSellerNoteInput(e.target.value)}
+                              placeholder="e.g. Spoke with buyer on phone, confirmed Sunday 3 PM doorstep delivery."
+                              className="w-full p-2 bg-white border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNoteForReq(null);
+                                  setSellerNoteInput("");
+                                }}
+                                className="px-3 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveSellerNote(req.kind, req.refCode, sellerNoteInput, req.id)}
+                                className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-amber-400 text-xs font-mono font-bold uppercase cursor-pointer"
+                              >
+                                Save Note
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Seller Action Controls Bar */}
+                        <div className="pt-3 border-t border-stone-300 flex flex-wrap items-center justify-between gap-3">
+                          {/* Left: Contact Direct Actions */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>WhatsApp Buyer</span>
+                            </a>
+
+                            <a
+                              href={`tel:${req.phone}`}
+                              className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Call Direct</span>
+                            </a>
+
+                            {editingNoteForReq !== req.refCode && !req.sellerNote && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNoteForReq(req.refCode);
+                                  setSellerNoteInput("");
+                                }}
+                                className="px-2.5 py-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-800 border border-stone-400 text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+                              >
+                                <Edit className="w-3.5 h-3.5 text-stone-600" />
+                                <span>Add Note</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Right: Update Request Status & Delete */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono font-bold uppercase text-stone-500 hidden sm:inline">
+                              Update Status:
+                            </span>
+
+                            <select
+                              value={req.status}
+                              onChange={(e) => handleUpdateRequestStatus(req.kind, req.refCode, e.target.value, req.id)}
+                              className="px-2.5 py-1.5 bg-[#F4F1EA] border border-stone-400 text-xs font-mono font-bold uppercase text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
+                            >
+                              <option value={isTestDrive ? "scheduled" : "pending"}>
+                                {isTestDrive ? "SCHEDULED (PENDING)" : "PENDING"}
+                              </option>
+                              <option value={isTestDrive ? "confirmed" : "contacted"}>
+                                {isTestDrive ? "CONFIRMED APPOINTMENT" : "CONTACTED BUYER"}
+                              </option>
+                              <option value={isTestDrive ? "completed" : "resolved"}>
+                                {isTestDrive ? "TEST DRIVE COMPLETED" : "RESOLVED / CLOSED"}
+                              </option>
+                              <option value="declined">DECLINED / CANCELLED</option>
+                            </select>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRequest(req.kind, req.refCode, req.id)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 cursor-pointer transition"
+                              title="Delete request"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 

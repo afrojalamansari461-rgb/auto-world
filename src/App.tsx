@@ -1234,7 +1234,7 @@ export default function App() {
       )}
 
       {/* Primary tab views switcher */}
-      <main className={`flex-grow overflow-hidden ${activeTab === "login" || activeTab === "signup" ? "" : "pb-16 lg:pb-0"}`}>
+      <main className={`flex-grow overflow-hidden ${activeTab === "login" || activeTab === "signup" ? "" : "pb-16 md:pb-0"}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

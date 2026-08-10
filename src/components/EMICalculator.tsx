@@ -127,7 +127,7 @@ export const EMICalculator: React.FC<EMICalculatorProps> = ({
   };
 
   return (
-    <div className={`bg-stone-900 border border-stone-800 rounded-xl p-5 sm:p-6 text-stone-100 shadow-2xl relative overflow-hidden ${className}`}>
+    <div className={`bg-stone-900 border border-stone-800 rounded-xl p-5 sm:p-6 text-stone-100 shadow-2xl relative ${className}`}>
       {/* Background Subtle Accent */}
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
       

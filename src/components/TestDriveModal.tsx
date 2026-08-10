@@ -28,8 +28,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = originalOverflow;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = originalOverflow === "hidden" ? "" : originalOverflow;
     };
   }, [isOpen]);
 
@@ -67,9 +66,12 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
       vehicleId: vehicle.id,
       vehicleTitle: vehicle.title,
       vehiclePrice: vehicle.price,
-      vehicleImage: vehicle.image || vehicle.photos?.[0]?.src,
+      vehicleImage: vehicle.image || vehicle.photos?.[0]?.src || "",
       sellerName: vehicle.sellerName || "AutoWorld Direct",
       sellerPhone: vehicle.sellerPhone || "+919920155667",
+      sellerEmail: vehicle.sellerEmail || "",
+      sellerUserId: (vehicle as any).userId || "",
+      listingId: (vehicle as any).listingId || "",
       driveType,
       preferredDate,
       timeSlot,
@@ -91,6 +93,8 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
       const existing = JSON.parse(localStorage.getItem("autoWorld_test_drives") || "[]");
       existing.unshift(bookingData);
       localStorage.setItem("autoWorld_test_drives", JSON.stringify(existing));
+
+      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
 
       setBookingSuccess(bookingData);
       fireCelebrationConfetti();

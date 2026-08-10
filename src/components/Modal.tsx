@@ -14,15 +14,13 @@ export const Modal = ({
   isOpen,
   onClose,
   children,
-  containerClassName = "w-full max-w-lg max-h-[90vh] overflow-y-auto",
+  containerClassName = "w-full max-w-lg",
   overlayClassName = "bg-stone-950/80 backdrop-blur-md",
   id
 }: ModalProps) => {
   useEffect(() => {
     if (!isOpen) return;
 
-    // Safely prevent background scroll while capturing scroll position
-    const scrollY = window.scrollY;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -34,25 +32,27 @@ export const Modal = ({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      // Restore overflow safely; if original was 'hidden', reset to empty string so body scrolling is restored
+      document.body.style.overflow = originalOverflow === 'hidden' ? '' : originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
-      window.scrollTo(0, scrollY);
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" id={id}>
+    <div className="fixed inset-0 z-[9999] overflow-y-auto" id={id}>
       {/* Safe Backdrop */}
       <div 
         className={`fixed inset-0 transition-opacity ${overlayClassName}`}
         onClick={onClose} 
       />
       
-      {/* Centered Modal Container */}
-      <div className={`relative z-10 ${containerClassName}`}>
-        {children}
+      {/* Centered Scrollable Container Wrapper */}
+      <div className="min-h-full w-full flex items-center justify-center p-3 sm:p-6 pointer-events-none">
+        <div className={`relative z-10 my-auto pointer-events-auto ${containerClassName}`}>
+          {children}
+        </div>
       </div>
     </div>,
     document.body
@@ -60,3 +60,4 @@ export const Modal = ({
 };
 
 export default Modal;
+

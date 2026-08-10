@@ -277,10 +277,10 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
               <h4 className="text-xs font-bold uppercase text-stone-300 tracking-widest font-mono">Social Community Networks</h4>
               <p className="text-xs text-stone-400 leading-relaxed max-w-sm">Join our newsletter campaigns and follow official profiles to unlock seasonal rewards.</p>
               <div className="flex gap-3">
-                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white" title="Facebook">
                   <Facebook className="w-4.5 h-4.5" />
                 </a>
-                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white">
+                <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white" title="X (Twitter)">
                   <Twitter className="w-4.5 h-4.5" />
                 </a>
                 <a 
@@ -292,7 +292,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 >
                   <Instagram className="w-4.5 h-4.5" />
                 </a>
-                <a href="#" className="w-9 h-9 bg-stone-800 hover:bg-amber-500 transition flex items-center justify-center text-white">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-stone-800 hover:bg-amber-500 transition flex items-center justify-center text-white" title="LinkedIn">
                   <Linkedin className="w-4.5 h-4.5" />
                 </a>
               </div>

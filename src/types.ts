@@ -197,7 +197,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     id: 5,
     title: "Maruti Suzuki Swift ZXi 2022",
     price: 680000,
-    image: "https://images.unsplash.com/photo-494976388531-d1058494cdd8?w=800&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&auto=format&fit=crop&q=80",
     make: "Maruti Suzuki",
     model: "Swift",
     year: 2022,

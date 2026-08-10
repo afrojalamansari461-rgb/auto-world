@@ -270,14 +270,18 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
             <div className="flex items-center gap-2.5 mt-6 pt-6 border-t border-stone-900">
               <span className="text-[10px] uppercase font-mono tracking-wider text-stone-600 mr-2">Channels:</span>
               <a 
-                href="#" 
+                href="https://facebook.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-[#1877F2] hover:text-white hover:border-[#1877F2] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(24,119,242,0.3)] cursor-pointer" 
                 title="Facebook Connect"
               >
                 <Facebook className="w-4 h-4 transition-transform duration-300" />
               </a>
               <a 
-                href="#" 
+                href="https://x.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-white hover:text-black hover:border-white hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(255,255,255,0.15)] cursor-pointer" 
                 title="X Channel"
               >
@@ -293,7 +297,9 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 <Instagram className="w-4 h-4 transition-transform duration-300" />
               </a>
               <a 
-                href="#" 
+                href="https://linkedin.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,119,181,0.3)] cursor-pointer" 
                 title="Linkedin Registry"
               >

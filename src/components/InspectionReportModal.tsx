@@ -21,8 +21,7 @@ export const InspectionReportModal: React.FC<InspectionReportModalProps> = ({
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = originalOverflow;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = originalOverflow === "hidden" ? "" : originalOverflow;
     };
   }, [isOpen]);
 

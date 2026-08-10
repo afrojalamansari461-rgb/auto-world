@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
@@ -10,6 +11,7 @@ import { User as FirebaseUser } from "firebase/auth";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
 import { EMICalculator } from "./EMICalculator";
+import { Modal } from "./Modal";
 import { TestDriveModal } from "./TestDriveModal";
 import { InspectionReportModal } from "./InspectionReportModal";
 import { SavedSearchesModal } from "./SavedSearchesModal";
@@ -513,19 +515,6 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     if (searchFilters.priceRange) setSelectedPriceRange(searchFilters.priceRange);
     if (searchFilters.location) setLocationValue(searchFilters.location);
   }, [searchFilters]);
-
-  // Prevent scroll jump and lock body scroll when emiVehicle modal is active
-  useEffect(() => {
-    if (!emiVehicle) return;
-    const scrollY = window.scrollY;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.scrollTo(0, scrollY);
-    };
-  }, [emiVehicle]);
 
   // Simple synth tone generator for tactical audios
   const playSynthBeep = (freq = 800, duration = 0.1, type: OscillatorType = "sine") => {
@@ -2267,33 +2256,30 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       )}
 
       {/* EMI Loan Calculator Popup Modal */}
-      <AnimatePresence>
+      <Modal
+        isOpen={Boolean(emiVehicle)}
+        onClose={() => setEmiVehicle(null)}
+        containerClassName="w-full max-w-2xl"
+        overlayClassName="bg-stone-950/85 backdrop-blur-md"
+      >
         {emiVehicle && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ duration: 0.22 }}
-              className="relative max-w-2xl w-full my-auto"
+          <div className="relative w-full">
+            <button
+              type="button"
+              onClick={() => setEmiVehicle(null)}
+              className="absolute top-4 right-4 z-30 text-stone-400 hover:text-white p-2 bg-stone-900/90 border border-stone-800 rounded-full cursor-pointer transition shadow-lg"
+              aria-label="Close EMI calculator modal"
             >
-              <button
-                type="button"
-                onClick={() => setEmiVehicle(null)}
-                className="absolute top-4 right-4 z-20 text-stone-400 hover:text-white p-2 bg-stone-900 border border-stone-800 rounded-full cursor-pointer transition"
-                aria-label="Close EMI calculator modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              <EMICalculator
-                vehiclePrice={emiVehicle.price}
-                vehicleTitle={emiVehicle.title}
-                vehicleId={emiVehicle.id}
-              />
-            </motion.div>
+              <X className="w-5 h-5" />
+            </button>
+            <EMICalculator
+              vehiclePrice={emiVehicle.price}
+              vehicleTitle={emiVehicle.title}
+              vehicleId={emiVehicle.id}
+            />
           </div>
         )}
-      </AnimatePresence>
+      </Modal>
 
       {/* TEST DRIVE SCHEDULER MODAL */}
       <TestDriveModal

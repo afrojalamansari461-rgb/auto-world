@@ -229,5 +229,19 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // 13. TEST DRIVES RULES
+    match /test_drives/{bookingId} {
+      allow create: if true;
+      allow read, update: if true;
+      allow delete: if isRegisteredUser() || isAdmin();
+    }
+
+    // 14. CALLBACK REQUESTS RULES
+    match /callback_requests/{callbackId} {
+      allow create: if true;
+      allow read, update: if true;
+      allow delete: if isRegisteredUser() || isAdmin();
+    }
   }
 }
