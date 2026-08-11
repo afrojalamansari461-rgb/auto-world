@@ -1061,7 +1061,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               }`}
             >
               <Car className="w-4 h-4" />
-              <span>🚘 Vehicles Catalog ({inventoryList.length})</span>
+              <span>Vehicles Catalog ({inventoryList.length})</span>
             </button>
 
             <button
@@ -1074,7 +1074,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               }`}
             >
               <Wrench className="w-4 h-4 text-amber-950" />
-              <span>⚙️ Spare Parts & Mods ({allSpareParts.length})</span>
+              <span>Spare Parts & Mods ({allSpareParts.length})</span>
               <span className="px-1.5 py-0.5 text-[9px] font-mono font-black rounded bg-red-600 text-white animate-pulse">
                 NEW
               </span>

@@ -1831,11 +1831,52 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [spPartNumber, setSpPartNumber] = useState("");
   const [spDescription, setSpDescription] = useState("");
   const [spImage, setSpImage] = useState("");
+  const [spPhotos, setSpPhotos] = useState<{ src: string; alt: string }[]>([]);
   const [spSellerName, setSpSellerName] = useState(currentUser?.displayName || "");
   const [spSellerPhone, setSpSellerPhone] = useState("+91 ");
   const [spSellerEmail, setSpSellerEmail] = useState(currentUser?.email || "");
   const [spLocation, setSpLocation] = useState("Mumbai, Maharashtra");
   const [isPublishingPart, setIsPublishingPart] = useState(false);
+
+  const handleSparePartPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    processSparePartPhotoFiles(files);
+  };
+
+  const processSparePartPhotoFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    for (const file of fileArray) {
+      if (!file.type.match("image.*")) {
+        showToast("Please upload valid image formats only.", "error");
+        continue;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        showToast("Maximum image file size is 15MB.", "error");
+        continue;
+      }
+
+      try {
+        const compressedSrc = await compressImageFile(file, 1000, 0.75);
+        if (compressedSrc) {
+          setSpPhotos(prev => [...prev, { src: compressedSrc, alt: file.name }]);
+          if (!spImage) setSpImage(compressedSrc);
+        }
+      } catch (err) {
+        console.error("Spare part photo processing error:", err);
+      }
+    }
+  };
+
+  const handleAddSparePartPhotoByUrl = () => {
+    if (!spImage.trim()) return;
+    setSpPhotos(prev => [...prev, { src: spImage.trim(), alt: spTitle || "Spare Part Photo" }]);
+    showToast("Added image URL to photo list!", "info");
+  };
+
+  const handleRemoveSparePartPhoto = (index: number) => {
+    setSpPhotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handlePublishSparePart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1861,7 +1902,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setIsPublishingPart(true);
     try {
       const generatedId = `SP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const defaultImg = spImage || "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop&q=80";
+      const fallbackImg = "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop&q=80";
+      const defaultImg = spPhotos.length > 0 ? spPhotos[0].src : (spImage || fallbackImg);
+      const photoList = spPhotos.length > 0 ? spPhotos : [{ src: defaultImg, alt: spTitle }];
 
       const newSparePart: UserListing = {
         id: generatedId,
@@ -1881,7 +1924,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         sellerPhone: spSellerPhone,
         location: spLocation || "India",
         features: [spCategory, spRarity, spCondition, spCompatibility],
-        photos: [{ src: defaultImg, alt: spTitle }],
+        photos: photoList,
         datePosted: new Date().toISOString(),
         status: "active",
         userId: currentUser?.uid || "guest",
@@ -1937,6 +1980,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       setSpDescription("");
       setSpPartNumber("");
       setSpImage("");
+      setSpPhotos([]);
       setViewMode("my_catalog");
     } catch (err: any) {
       console.error("Error publishing spare part:", err);
@@ -4219,47 +4263,107 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               />
             </div>
 
-            {/* Photo URL & Quick Demo Preset Selector */}
-            <div className="space-y-2 md:col-span-2 p-4 bg-[#F4F1EA] border border-stone-300">
-              <label className="text-[10.5px] font-mono font-bold text-stone-800 uppercase tracking-wider block">
-                Part Image URL or Quick Preset Photo Selector:
-              </label>
+            {/* Photo Upload & Gallery Section */}
+            <div className="space-y-3 md:col-span-2 p-5 bg-[#F4F1EA] border border-stone-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-300 pb-3">
+                <div>
+                  <label className="text-[10.5px] font-mono font-bold text-stone-900 uppercase tracking-wider block flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5 text-stone-900" />
+                    <span>Upload Spare Part Photos & Documentation</span>
+                  </label>
+                  <p className="text-[10px] text-stone-500 font-sans mt-0.5">
+                    Upload clear photos from your device or paste direct image URLs.
+                  </p>
+                </div>
+                <label className="px-4 py-2 bg-stone-900 hover:bg-stone-850 text-white text-[10px] font-mono font-bold uppercase tracking-widest border border-stone-950 cursor-pointer inline-flex items-center gap-1.5 self-start sm:self-auto">
+                  <Upload className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Add Image File</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleSparePartPhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
 
-              <input
-                type="url"
-                value={spImage}
-                onChange={(e) => setSpImage(e.target.value)}
-                placeholder="Paste high-res image URL (e.g. https://images.unsplash.com/...)"
-                className="w-full p-2.5 bg-white border border-stone-300 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950 mb-2"
-              />
+              {/* URL Input Row */}
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={spImage}
+                  onChange={(e) => setSpImage(e.target.value)}
+                  placeholder="Paste direct high-res image URL (e.g. https://images.unsplash.com/...)"
+                  className="flex-1 p-2.5 bg-white border border-stone-300 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSparePartPhotoByUrl}
+                  className="px-4 py-2.5 bg-stone-800 hover:bg-stone-900 text-white text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Add Link
+                </button>
+              </div>
+
+              {/* Photo Gallery Grid */}
+              {spPhotos.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-stone-300/80">
+                  <span className="text-[9.5px] font-mono font-bold text-stone-600 uppercase block">
+                    Attached Part Photos ({spPhotos.length}):
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {spPhotos.map((photo, idx) => (
+                      <div key={idx} className="relative aspect-video border-2 border-stone-800 bg-stone-900 overflow-hidden group">
+                        <img src={photo.src} alt={photo.alt} className="w-full h-full object-cover" />
+                        <span className="absolute top-1 left-1 bg-stone-950/80 text-white text-[8px] font-mono font-bold px-1.5 py-0.5 uppercase">
+                          {idx === 0 ? "Main Cover" : `#${idx + 1}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSparePartPhoto(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white text-xs flex items-center justify-center hover:bg-red-700 font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Preset Photo Selector Chips */}
-              <div className="space-y-1">
+              <div className="space-y-1.5 pt-2 border-t border-stone-300/80">
                 <span className="text-[9.5px] font-mono font-bold text-stone-500 uppercase block">
-                  Click a preset demo image to auto-fill high-res photo:
+                  Or select preset sample image:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    { name: "🚀 NOS Nitrous Tank", url: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop&q=80" },
-                    { name: "⚡ Turbocharger", url: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=800&auto=format&fit=crop&q=80" },
-                    { name: "🏎️ GT Carbon Wing", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80" },
-                    { name: "🛑 Brembo Brakes", url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80" },
-                    { name: "🛞 BBS Alloys", url: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=800&auto=format&fit=crop&q=80" },
-                    { name: "💺 Recaro Bucket Seat", url: "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&auto=format&fit=crop&q=80" },
-                    { name: "💨 Titanium Exhaust", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80" },
-                    { name: "👑 Vintage Steering", url: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=800&auto=format&fit=crop&q=80" },
+                    { name: "NOS Nitrous Tank", url: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop&q=80" },
+                    { name: "Turbocharger", url: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=800&auto=format&fit=crop&q=80" },
+                    { name: "GT Carbon Wing", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80" },
+                    { name: "Brembo Brakes", url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80" },
+                    { name: "BBS Alloys", url: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=800&auto=format&fit=crop&q=80" },
+                    { name: "Recaro Bucket Seat", url: "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&auto=format&fit=crop&q=80" },
+                    { name: "Titanium Exhaust", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80" },
+                    { name: "Vintage Steering", url: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=800&auto=format&fit=crop&q=80" },
                   ].map((preset) => (
                     <button
                       key={preset.name}
                       type="button"
-                      onClick={() => setSpImage(preset.url)}
+                      onClick={() => {
+                        setSpImage(preset.url);
+                        if (!spPhotos.some(p => p.src === preset.url)) {
+                          setSpPhotos(prev => [...prev, { src: preset.url, alt: preset.name }]);
+                        }
+                      }}
                       className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
                         spImage === preset.url
                           ? "bg-amber-500 text-stone-950 border-amber-600 shadow-xs"
                           : "bg-white hover:bg-stone-200 text-stone-800 border-stone-300"
                       }`}
                     >
-                      {preset.name}
+                      + {preset.name}
                     </button>
                   ))}
                 </div>
@@ -4385,7 +4489,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 1: Basic Specifications */}
-      {!showDealerUpload && currentStep === 1 && (
+      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 1 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step One / Wizard</span>
@@ -4517,7 +4621,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 2: Specs and Checklist Details */}
-      {!showDealerUpload && currentStep === 2 && (
+      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 2 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Two / Specifications</span>
@@ -4954,7 +5058,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 3: Photos Drag and Drop */}
-      {!showDealerUpload && currentStep === 3 && (
+      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 3 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Three / Media Frame</span>
@@ -5057,7 +5161,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 4: Price & Valuation */}
-      {!showDealerUpload && currentStep === 4 && (
+      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 4 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Four / Price & Terms</span>
@@ -5270,7 +5374,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 5: Contact Details Form */}
-      {!showDealerUpload && currentStep === 5 && (
+      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 5 && (
         <form onSubmit={handlePublishListing} className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Five / Broker Contact registry</span>
@@ -5348,7 +5452,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 6: Successful deploy panel layout page */}
-      {currentStep === 6 && (
+      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 6 && (
         <div className="relative max-w-2xl mx-auto py-4">
           <ConfettiExplosion key={confettiKey} />
 
