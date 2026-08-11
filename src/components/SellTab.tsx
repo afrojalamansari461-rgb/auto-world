@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User, ExternalLink } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { getListingExpirationDetails } from "../lib/expirationManager";
@@ -284,13 +284,14 @@ const ConfettiExplosion = () => {
 
 // ==========================================
 // Searchable Make / Manufacturer Component
-// Enables real-time search & filter across thousands of NHTSA & popular vehicle makes
+// Ultra-fast, responsive & category-aware make selector
 // ==========================================
 interface SearchableMakeSelectProps {
   make: string;
   setMake: (make: string) => void;
   setModel: (model: string) => void;
-  setVehicleType: (type: string) => void;
+  setVehicleType?: (type: string) => void;
+  vehicleType?: string;
   customMake: string;
   setCustomMake: (val: string) => void;
   nhtsaMakes: string[];
@@ -298,20 +299,12 @@ interface SearchableMakeSelectProps {
   VEHICLE_MAKES: Record<string, string[]>;
 }
 
-const POPULAR_BRANDS = [
-  "Toyota", "Honda", "Ford", "BMW", "Mercedes-Benz", "Chevrolet", "Audi",
-  "Nissan", "Hyundai", "Kia", "Porsche", "Tesla", "Volkswagen", "Subaru",
-  "Lexus", "Jeep", "Dodge", "GMC", "Mazda", "Ferrari", "Lamborghini",
-  "Aston Martin", "Bentley", "Bugatti", "Cadillac", "Chrysler", "Genesis",
-  "Infiniti", "Jaguar", "Land Rover", "Lincoln", "Lucid", "Maserati",
-  "McLaren", "RAM", "Rivian", "Rolls-Royce", "Volvo"
-];
-
 function SearchableMakeSelect({
   make,
   setMake,
   setModel,
   setVehicleType,
+  vehicleType,
   customMake,
   setCustomMake,
   nhtsaMakes,
@@ -320,53 +313,39 @@ function SearchableMakeSelect({
 }: SearchableMakeSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [dropUp, setDropUp] = useState(false);
-  const [maxListHeight, setMaxListHeight] = useState(220);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Calculate position and max height when opening or window resizes/scrolls
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const calculatePosition = () => {
-        if (!containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-
-        // If space below is less than 320px and there is more space above, drop up
-        if (spaceBelow < 320 && spaceAbove > spaceBelow) {
-          setDropUp(true);
-          setMaxListHeight(Math.max(140, Math.min(240, Math.floor(spaceAbove - 100))));
-        } else {
-          setDropUp(false);
-          setMaxListHeight(Math.max(140, Math.min(240, Math.floor(spaceBelow - 100))));
-        }
-      };
-
-      calculatePosition();
-      window.addEventListener("resize", calculatePosition);
-      window.addEventListener("scroll", calculatePosition, true);
-      return () => {
-        window.removeEventListener("resize", calculatePosition);
-        window.removeEventListener("scroll", calculatePosition, true);
-      };
+  // Category-aware popular brands
+  const categoryPopular = useMemo(() => {
+    if (vehicleType && VEHICLE_MAKES[vehicleType]) {
+      return VEHICLE_MAKES[vehicleType];
     }
-  }, [isOpen]);
+    return [
+      "Toyota", "Honda", "Maruti Suzuki", "Tata", "Mahindra", "Hyundai",
+      "Ford", "BMW", "Mercedes-Benz", "Audi", "Kia", "Volkswagen",
+      "Porsche", "Tesla", "Royal Enfield", "Bajaj", "TVS", "Hero"
+    ];
+  }, [vehicleType, VEHICLE_MAKES]);
 
-  // Auto-close dropdown when clicking outside
+  // Handle click outside to close dropdown safely without blocking touch taps
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const handleSelectMake = (selectedMake: string) => {
     setMake(selectedMake);
-    setModel(""); // Automatically reset model state when Make changes
+    setModel(""); // Reset model when make changes
     setIsOpen(false);
     setSearchTerm("");
   };
@@ -374,37 +353,51 @@ function SearchableMakeSelect({
   const cleanQuery = searchTerm.trim().toLowerCase();
 
   // Filter popular brands based on search query
-  const filteredPopular = POPULAR_BRANDS.filter(brand =>
-    brand.toLowerCase().includes(cleanQuery)
-  );
+  const filteredPopular = useMemo(() => {
+    if (!cleanQuery) return categoryPopular;
+    return categoryPopular.filter(brand =>
+      brand.toLowerCase().includes(cleanQuery)
+    );
+  }, [cleanQuery, categoryPopular]);
 
-  // Filter NHTSA Makes excluding popular ones to avoid duplication
-  const filteredNhtsa = nhtsaMakes.filter(m =>
-    m.toLowerCase().includes(cleanQuery) &&
-    !POPULAR_BRANDS.some(pb => pb.toLowerCase() === m.toLowerCase())
-  );
+  // Filter NHTSA Makes excluding category popular ones to avoid duplication
+  const filteredNhtsa = useMemo(() => {
+    if (!nhtsaMakes || nhtsaMakes.length === 0) return [];
+    const catPopularLower = new Set(categoryPopular.map(b => b.toLowerCase()));
+    
+    const results: string[] = [];
+    for (let i = 0; i < nhtsaMakes.length; i++) {
+      const m = nhtsaMakes[i];
+      const mLower = m.toLowerCase();
+      if (!catPopularLower.has(mLower) && (!cleanQuery || mLower.includes(cleanQuery))) {
+        results.push(m);
+      }
+    }
+    return results;
+  }, [cleanQuery, nhtsaMakes, categoryPopular]);
+
+  // Cap NHTSA results to top 40 for instant 60fps rendering
+  const cappedNhtsa = useMemo(() => filteredNhtsa.slice(0, 40), [filteredNhtsa]);
 
   const totalResultsCount = filteredPopular.length + filteredNhtsa.length;
 
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Trigger Button displaying current selected Make or search prompt */}
+      {/* Trigger Button */}
       <button
         type="button"
         role="combobox"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label="Select Vehicle Make or Manufacturer"
-        onClick={() => setIsOpen(!isOpen)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-            e.preventDefault();
-            setIsOpen(true);
-          } else if (e.key === "Escape") {
-            setIsOpen(false);
+        onClick={() => {
+          const nextState = !isOpen;
+          setIsOpen(nextState);
+          if (nextState) {
+            setTimeout(() => inputRef.current?.focus(), 50);
           }
         }}
-        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none transition text-left"
+        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none transition text-left active:bg-stone-200"
       >
         <div className="flex items-center gap-2 overflow-hidden">
           <Tag className="w-4 h-4 text-stone-500 shrink-0" aria-hidden="true" />
@@ -431,15 +424,7 @@ function SearchableMakeSelect({
                 setModel("");
                 setCustomMake("");
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  setMake("");
-                  setModel("");
-                  setCustomMake("");
-                }
-              }}
-              className="p-0.5 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition"
+              className="p-1 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition active:scale-95"
               title="Clear selection"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -449,23 +434,22 @@ function SearchableMakeSelect({
         </div>
       </button>
 
-      {/* Popover Dropdown with Real-Time Search */}
+      {/* Popover Dropdown */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: dropUp ? 4 : -4 }}
+            initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: dropUp ? 4 : -4 }}
-            transition={{ duration: 0.15 }}
-            className={`absolute left-0 right-0 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden ${
-              dropUp ? "bottom-full mb-1" : "top-full mt-1"
-            }`}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden max-h-[380px] flex flex-col"
           >
             {/* Live Search Input Field */}
-            <div className="p-2.5 bg-stone-100 border-b border-stone-200 relative">
+            <div className="p-2.5 bg-stone-100 border-b border-stone-200 shrink-0">
               <div className="relative flex items-center">
                 <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 pointer-events-none" aria-hidden="true" />
                 <input
+                  ref={inputRef}
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -474,24 +458,41 @@ function SearchableMakeSelect({
                       setIsOpen(false);
                     }
                   }}
-                  placeholder="Type manufacturer name (e.g. Ford, Tesla, Porsche)..."
+                  placeholder="Type brand name (e.g. Toyota, BMW, Tata)..."
                   aria-label="Filter manufacturer list"
-                  className="w-full pl-8 pr-7 py-2 bg-white border border-stone-300 text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
-                  autoFocus
+                  className="w-full pl-8 pr-8 py-2 bg-white border border-stone-300 text-sm sm:text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
                 />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={() => setSearchTerm("")}
                     aria-label="Clear search input"
-                    className="absolute right-2 text-stone-400 hover:text-stone-700 p-0.5"
+                    className="absolute right-2 text-stone-400 hover:text-stone-700 p-1"
                   >
                     <X className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                 )}
               </div>
+
+              {/* Quick Tap Chips for Top Popular Brands */}
+              {!cleanQuery && categoryPopular.length > 0 && (
+                <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <span className="text-[9px] font-mono font-bold text-stone-400 uppercase shrink-0">Quick:</span>
+                  {categoryPopular.slice(0, 7).map((brand) => (
+                    <button
+                      key={`chip-${brand}`}
+                      type="button"
+                      onClick={() => handleSelectMake(brand)}
+                      className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-stone-900 hover:text-white border border-stone-300 text-stone-800 transition shrink-0 rounded-sm active:scale-95"
+                    >
+                      {brand}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="flex justify-between items-center mt-1.5 px-0.5 text-[9.5px] font-mono text-stone-500" aria-live="polite">
-                <span>{isLoadingMakes ? "Fetching from NHTSA API..." : `${totalResultsCount} makes found`}</span>
+                <span>{isLoadingMakes ? "Fetching from NHTSA API..." : `${totalResultsCount} brands available`}</span>
                 <span>Type to filter</span>
               </div>
             </div>
@@ -500,14 +501,13 @@ function SearchableMakeSelect({
             <div
               role="listbox"
               aria-label="Vehicle makes"
-              style={{ maxHeight: `${maxListHeight}px` }}
-              className="overflow-y-auto divide-y divide-stone-100 font-sans text-xs"
+              className="overflow-y-auto divide-y divide-stone-100 font-sans text-xs grow"
             >
               {/* Popular Brands Section */}
               {filteredPopular.length > 0 && (
                 <div>
                   <div className="bg-stone-100 px-3 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-stone-700 sticky top-0 z-10 border-b border-stone-200">
-                    Popular Brands
+                    Recommended Brands ({filteredPopular.length})
                   </div>
                   {filteredPopular.map((brand) => {
                     const isSelected = make === brand;
@@ -518,17 +518,11 @@ function SearchableMakeSelect({
                         tabIndex={0}
                         aria-selected={isSelected}
                         onClick={() => handleSelectMake(brand)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleSelectMake(brand);
-                          }
-                        }}
-                        className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between transition ${
-                          isSelected ? "bg-stone-900 font-bold text-white" : "hover:bg-stone-100 text-stone-900 focus:bg-stone-100 focus:outline-none"
+                        className={`px-3.5 py-3 cursor-pointer flex items-center justify-between transition active:bg-amber-100 ${
+                          isSelected ? "bg-stone-900 font-bold text-white" : "hover:bg-stone-100 text-stone-900"
                         }`}
                       >
-                        <span className="font-semibold">{brand}</span>
+                        <span className="font-semibold text-xs sm:text-xs">{brand}</span>
                         {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />}
                       </div>
                     );
@@ -537,12 +531,12 @@ function SearchableMakeSelect({
               )}
 
               {/* All NHTSA Makes Section */}
-              {filteredNhtsa.length > 0 && (
+              {cappedNhtsa.length > 0 && (
                 <div>
                   <div className="bg-stone-100 px-3 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-stone-700 sticky top-0 z-10 border-b border-stone-200">
-                    All NHTSA Makes ({filteredNhtsa.length})
+                    Additional Makes ({filteredNhtsa.length})
                   </div>
-                  {filteredNhtsa.map((brand) => {
+                  {cappedNhtsa.map((brand) => {
                     const isSelected = make === brand;
                     return (
                       <div
@@ -551,14 +545,8 @@ function SearchableMakeSelect({
                         tabIndex={0}
                         aria-selected={isSelected}
                         onClick={() => handleSelectMake(brand)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleSelectMake(brand);
-                          }
-                        }}
-                        className={`px-3.5 py-2 cursor-pointer flex items-center justify-between transition ${
-                          isSelected ? "bg-stone-900 font-bold text-white" : "hover:bg-stone-100 text-stone-800 focus:bg-stone-100 focus:outline-none"
+                        className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between transition active:bg-amber-100 ${
+                          isSelected ? "bg-stone-900 font-bold text-white" : "hover:bg-stone-100 text-stone-800"
                         }`}
                       >
                         <span>{brand}</span>
@@ -566,6 +554,11 @@ function SearchableMakeSelect({
                       </div>
                     );
                   })}
+                  {filteredNhtsa.length > cappedNhtsa.length && (
+                    <div className="p-2 bg-stone-50 border-t border-stone-200 text-center text-[10px] font-mono text-stone-500">
+                      Showing top 40 of {filteredNhtsa.length} additional makes. Type in search box to narrow down.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -576,13 +569,7 @@ function SearchableMakeSelect({
                   tabIndex={0}
                   aria-selected={make === "Other"}
                   onClick={() => handleSelectMake("Other")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleSelectMake("Other");
-                    }
-                  }}
-                  className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between bg-stone-50 hover:bg-stone-100 text-stone-900 font-bold transition border-t border-stone-200 focus:bg-stone-100 focus:outline-none ${
+                  className={`px-3.5 py-3 cursor-pointer flex items-center justify-between bg-stone-50 hover:bg-stone-100 text-stone-900 font-bold transition border-t border-stone-200 ${
                     make === "Other" ? "bg-stone-900 text-white" : ""
                   }`}
                 >
@@ -604,7 +591,7 @@ function SearchableMakeSelect({
                       setCustomMake(searchTerm);
                       handleSelectMake("Other");
                     }}
-                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold uppercase tracking-wider border border-amber-600 transition"
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold uppercase tracking-wider border border-amber-600 transition active:scale-95"
                   >
                     Add &ldquo;{searchTerm}&rdquo; as Custom Brand
                   </button>
@@ -622,7 +609,7 @@ function SearchableMakeSelect({
           placeholder="Enter custom vehicle brand (e.g. Pagani, Koenigsegg, Rivian)"
           value={customMake}
           onChange={(e) => setCustomMake(e.target.value)}
-          className="w-full mt-2 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 shadow-2xs"
+          className="w-full mt-2 px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 shadow-2xs"
         />
       )}
     </div>
@@ -631,7 +618,7 @@ function SearchableMakeSelect({
 
 // ==========================================
 // Searchable Model Select Component
-// Enables real-time search & filter across NHTSA & fallback vehicle models
+// Enables ultra-fast, smooth search & filter across vehicle models
 // ==========================================
 interface SearchableModelSelectProps {
   year: string;
@@ -658,49 +645,24 @@ function SearchableModelSelect({
 }: SearchableModelSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [dropUp, setDropUp] = useState(false);
-  const [maxListHeight, setMaxListHeight] = useState(220);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const isDisabled = !year || !make || isLoadingModels;
 
-  // Calculate position and max height when opening or window resizes/scrolls
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const calculatePosition = () => {
-        if (!containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-
-        if (spaceBelow < 250 && spaceAbove > spaceBelow) {
-          setDropUp(true);
-          setMaxListHeight(Math.min(260, Math.max(120, spaceAbove - 20)));
-        } else {
-          setDropUp(false);
-          setMaxListHeight(Math.min(260, Math.max(120, spaceBelow - 20)));
-        }
-      };
-
-      calculatePosition();
-      window.addEventListener("resize", calculatePosition);
-      window.addEventListener("scroll", calculatePosition, true);
-      return () => {
-        window.removeEventListener("resize", calculatePosition);
-        window.removeEventListener("scroll", calculatePosition, true);
-      };
-    }
-  }, [isOpen]);
-
   // Auto-close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const handleSelectModel = (selectedModel: string) => {
@@ -712,25 +674,32 @@ function SearchableModelSelect({
     setSearchTerm("");
   };
 
-  // Derive model list
-  let rawModels: string[] = [];
-  if (nhtsaModels.length > 0) {
-    rawModels = nhtsaModels;
-  } else if (make && make !== "Other") {
-    rawModels = VEHICLE_MODELS[make] || Object.values(VEHICLE_MODELS).flat();
-  }
-
-  // Deduplicate models
-  const uniqueModels = Array.from(new Set(rawModels)).sort((a, b) => a.localeCompare(b));
+  // Derive and memoize deduplicated model list
+  const uniqueModels = useMemo(() => {
+    let rawModels: string[] = [];
+    if (nhtsaModels && nhtsaModels.length > 0) {
+      rawModels = nhtsaModels;
+    } else if (make && make !== "Other") {
+      rawModels = VEHICLE_MODELS[make] || Object.values(VEHICLE_MODELS).flat();
+    }
+    return Array.from(new Set(rawModels)).sort((a, b) => a.localeCompare(b));
+  }, [nhtsaModels, make, VEHICLE_MODELS]);
 
   const cleanQuery = searchTerm.trim().toLowerCase();
-  const filteredModels = uniqueModels.filter((mod) =>
-    mod.toLowerCase().includes(cleanQuery)
-  );
+
+  const filteredModels = useMemo(() => {
+    if (!cleanQuery) return uniqueModels;
+    return uniqueModels.filter((mod) =>
+      mod.toLowerCase().includes(cleanQuery)
+    );
+  }, [uniqueModels, cleanQuery]);
+
+  // Cap displayed models to top 50 for max DOM speed
+  const cappedModels = useMemo(() => filteredModels.slice(0, 50), [filteredModels]);
 
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Trigger Button displaying current selected Model or search prompt */}
+      {/* Trigger Button */}
       <button
         type="button"
         role="combobox"
@@ -738,16 +707,15 @@ function SearchableModelSelect({
         aria-haspopup="listbox"
         aria-label="Select Vehicle Model"
         disabled={isDisabled}
-        onClick={() => setIsOpen(!isOpen)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-            e.preventDefault();
-            if (!isDisabled) setIsOpen(true);
-          } else if (e.key === "Escape") {
-            setIsOpen(false);
+        onClick={() => {
+          if (isDisabled) return;
+          const nextState = !isOpen;
+          setIsOpen(nextState);
+          if (nextState) {
+            setTimeout(() => inputRef.current?.focus(), 50);
           }
         }}
-        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none transition text-left disabled:opacity-50 disabled:bg-stone-200 disabled:cursor-not-allowed disabled:hover:border-stone-300"
+        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none transition text-left disabled:opacity-50 disabled:bg-stone-200 disabled:cursor-not-allowed disabled:hover:border-stone-300 active:bg-stone-200"
       >
         <div className="flex items-center gap-2 overflow-hidden">
           {isDisabled && (!year || !make) ? (
@@ -783,14 +751,7 @@ function SearchableModelSelect({
                 setModel("");
                 setCustomModel("");
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  setModel("");
-                  setCustomModel("");
-                }
-              }}
-              className="p-0.5 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition"
+              className="p-1 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition active:scale-95"
               title="Clear selection"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -800,23 +761,22 @@ function SearchableModelSelect({
         </div>
       </button>
 
-      {/* Popover Dropdown with Real-Time Search */}
+      {/* Popover Dropdown */}
       <AnimatePresence>
         {isOpen && !isDisabled && (
           <motion.div
-            initial={{ opacity: 0, y: dropUp ? 4 : -4 }}
+            initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: dropUp ? 4 : -4 }}
-            transition={{ duration: 0.15 }}
-            className={`absolute left-0 right-0 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden ${
-              dropUp ? "bottom-full mb-1" : "top-full mt-1"
-            }`}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden max-h-[380px] flex flex-col"
           >
             {/* Live Search Input Field */}
-            <div className="p-2.5 bg-stone-100 border-b border-stone-200 relative">
+            <div className="p-2.5 bg-stone-100 border-b border-stone-200 shrink-0">
               <div className="relative flex items-center">
                 <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 pointer-events-none" aria-hidden="true" />
                 <input
+                  ref={inputRef}
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -825,22 +785,39 @@ function SearchableModelSelect({
                       setIsOpen(false);
                     }
                   }}
-                  placeholder={`Search ${make} models (e.g. Civic, M3, Mustang, 911)...`}
+                  placeholder={`Search ${make} models...`}
                   aria-label="Filter vehicle model list"
-                  className="w-full pl-8 pr-7 py-2 bg-white border border-stone-300 text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
-                  autoFocus
+                  className="w-full pl-8 pr-8 py-2 bg-white border border-stone-300 text-sm sm:text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
                 />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={() => setSearchTerm("")}
                     aria-label="Clear search input"
-                    className="absolute right-2 text-stone-400 hover:text-stone-700 p-0.5"
+                    className="absolute right-2 text-stone-400 hover:text-stone-700 p-1"
                   >
                     <X className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                 )}
               </div>
+
+              {/* Quick Tap Chips for Top 6 Models if available */}
+              {!cleanQuery && uniqueModels.length > 0 && (
+                <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <span className="text-[9px] font-mono font-bold text-stone-400 uppercase shrink-0">Popular:</span>
+                  {uniqueModels.slice(0, 6).map((mod) => (
+                    <button
+                      key={`chip-mod-${mod}`}
+                      type="button"
+                      onClick={() => handleSelectModel(mod)}
+                      className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-stone-900 hover:text-white border border-stone-300 text-stone-800 transition shrink-0 rounded-sm active:scale-95"
+                    >
+                      {mod}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="flex justify-between items-center mt-1.5 px-0.5 text-[9.5px] font-mono text-stone-500" aria-live="polite">
                 <span>
                   {isLoadingModels
@@ -855,18 +832,17 @@ function SearchableModelSelect({
             <div
               role="listbox"
               aria-label="Vehicle models"
-              style={{ maxHeight: `${maxListHeight}px` }}
-              className="overflow-y-auto divide-y divide-stone-100 font-sans text-xs"
+              className="overflow-y-auto divide-y divide-stone-100 font-sans text-xs grow"
             >
               {/* Models List */}
-              {filteredModels.length > 0 && (
+              {cappedModels.length > 0 && (
                 <div>
                   <div className="bg-stone-100 px-3 py-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-stone-700 sticky top-0 z-10 border-b border-stone-200">
                     {nhtsaModels.length > 0
                       ? `NHTSA Models (${filteredModels.length})`
                       : `Suggested Models (${filteredModels.length})`}
                   </div>
-                  {filteredModels.map((mod) => {
+                  {cappedModels.map((mod) => {
                     const isSelected = model === mod;
                     return (
                       <div
@@ -875,23 +851,22 @@ function SearchableModelSelect({
                         tabIndex={0}
                         aria-selected={isSelected}
                         onClick={() => handleSelectModel(mod)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleSelectModel(mod);
-                          }
-                        }}
-                        className={`px-3.5 py-2 cursor-pointer flex items-center justify-between transition ${
+                        className={`px-3.5 py-3 cursor-pointer flex items-center justify-between transition active:bg-amber-100 ${
                           isSelected
                             ? "bg-stone-900 font-bold text-white"
-                            : "hover:bg-stone-100 text-stone-800 focus:bg-stone-100 focus:outline-none"
+                            : "hover:bg-stone-100 text-stone-800"
                         }`}
                       >
-                        <span>{mod}</span>
+                        <span className="font-medium text-xs sm:text-xs">{mod}</span>
                         {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />}
                       </div>
                     );
                   })}
+                  {filteredModels.length > cappedModels.length && (
+                    <div className="p-2 bg-stone-50 border-t border-stone-200 text-center text-[10px] font-mono text-stone-500">
+                      Showing top 50 of {filteredModels.length} models. Type in search box to narrow down.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -902,13 +877,7 @@ function SearchableModelSelect({
                   tabIndex={0}
                   aria-selected={model === "Other"}
                   onClick={() => handleSelectModel("Other")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleSelectModel("Other");
-                    }
-                  }}
-                  className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between bg-stone-50 hover:bg-stone-100 text-stone-900 font-bold transition border-t border-stone-200 focus:bg-stone-100 focus:outline-none ${
+                  className={`px-3.5 py-3 cursor-pointer flex items-center justify-between bg-stone-50 hover:bg-stone-100 text-stone-900 font-bold transition border-t border-stone-200 ${
                     model === "Other" ? "bg-stone-900 text-white" : ""
                   }`}
                 >
@@ -930,7 +899,7 @@ function SearchableModelSelect({
                       setCustomModel(searchTerm);
                       handleSelectModel("Other");
                     }}
-                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold uppercase tracking-wider border border-amber-600 transition"
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold uppercase tracking-wider border border-amber-600 transition active:scale-95"
                   >
                     Add &ldquo;{searchTerm}&rdquo; as Custom Model
                   </button>
@@ -948,7 +917,7 @@ function SearchableModelSelect({
           placeholder="Enter custom vehicle model name (e.g. Model S, Supra, GT3 RS)"
           value={customModel}
           onChange={(e) => setCustomModel(e.target.value)}
-          className="w-full mt-2 px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 shadow-2xs"
+          className="w-full mt-2 px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-400 text-xs font-semibold focus:outline-none focus:border-stone-900 shadow-2xs"
         />
       )}
     </div>
@@ -4022,6 +3991,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 setMake={setMake}
                 setModel={setModel}
                 setVehicleType={setVehicleType}
+                vehicleType={vehicleType}
                 customMake={customMake}
                 setCustomMake={setCustomMake}
                 nhtsaMakes={nhtsaMakes}
