@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus } from "lucide-react";
-import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus, Wrench, Flame, Shield, Tag, Cpu, Layers } from "lucide-react";
+import { Vehicle, DEFAULT_VEHICLES, UserListing, SparePart, DEFAULT_SPARE_PARTS, RarityTier } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
@@ -202,6 +202,16 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   // Dynamic lists
   const [inventoryList, setInventoryList] = useState<Vehicle[]>([]);
+
+  // Main Tab Navigation (Vehicles vs Spare Parts)
+  const [mainMarketTab, setMainMarketTab] = useState<"vehicles" | "spare_parts">("vehicles");
+  const [userSpareParts, setUserSpareParts] = useState<SparePart[]>([]);
+  const [spFilterCategory, setSpFilterCategory] = useState<string>("all");
+  const [spFilterRarity, setSpFilterRarity] = useState<string>("all");
+  const [spSearchQuery, setSpSearchQuery] = useState<string>("");
+  const [spSortBy, setSpSortBy] = useState<"newest" | "price-low" | "price-high" | "rarity">("newest");
+  const [selectedSparePartModal, setSelectedSparePartModal] = useState<SparePart | null>(null);
+  const [inquireSparePartModal, setInquireSparePartModal] = useState<SparePart | null>(null);
 
   // STEP 1: Check Payment Access Status
   useEffect(() => {
@@ -404,7 +414,34 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         return true;
       });
 
-      const compiledUserVehicles: Vehicle[] = activeUserListings.map((listing, index) => {
+      const vehicleUserListings = activeUserListings.filter(l => !l.isSparePart && l.type !== "spare_part");
+      const sparePartUserListings = activeUserListings.filter(l => l.isSparePart || l.type === "spare_part");
+
+      const mappedUserSpareParts: SparePart[] = sparePartUserListings.map((l, i) => ({
+        id: l.id || `sp-user-${i}`,
+        title: l.title,
+        partCategory: (l.partCategory || "engine") as SparePart["partCategory"],
+        rarity: (l.rarity || "rare") as RarityTier,
+        price: l.price,
+        image: l.photos && l.photos.length > 0 ? l.photos[0].src : "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800",
+        photos: l.photos,
+        description: l.description,
+        compatibility: l.compatibility || l.features?.[3] || "Universal / Custom Fitment",
+        condition: (l.partCondition || "brand_new") as SparePart["condition"],
+        partNumber: l.partNumber,
+        sellerName: l.sellerName,
+        sellerPhone: l.sellerPhone,
+        sellerEmail: l.sellerEmail,
+        location: l.location,
+        datePosted: l.datePosted,
+        status: l.status,
+        isUserListing: true,
+        isSparePart: true
+      }));
+
+      setUserSpareParts(mappedUserSpareParts);
+
+      const compiledUserVehicles: Vehicle[] = vehicleUserListings.map((listing, index) => {
         let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
         if (listing.type === "car" || listing.type === "suv") {
           image = listing.photos && listing.photos.length > 0 
@@ -862,6 +899,60 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
   const displayedVehicles = hasPaidPass ? sortedVehicles : sortedVehicles.slice(0, 3);
 
+  // Combined Spare Parts List
+  const allSpareParts = React.useMemo(() => {
+    return [...DEFAULT_SPARE_PARTS, ...userSpareParts];
+  }, [userSpareParts]);
+
+  // Filtered & Sorted Spare Parts
+  const filteredSpareParts = React.useMemo(() => {
+    return allSpareParts.filter(part => {
+      if (spFilterCategory !== "all" && part.partCategory !== spFilterCategory) {
+        return false;
+      }
+      if (spFilterRarity !== "all" && part.rarity !== spFilterRarity) {
+        return false;
+      }
+      if (spSearchQuery.trim()) {
+        const q = spSearchQuery.toLowerCase();
+        const matchesTitle = part.title.toLowerCase().includes(q);
+        const matchesCategory = part.partCategory.toLowerCase().includes(q);
+        const matchesCompatibility = part.compatibility.toLowerCase().includes(q);
+        const matchesPartNum = part.partNumber?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesCategory && !matchesCompatibility && !matchesPartNum) {
+          return false;
+        }
+      }
+      return true;
+    }).sort((a, b) => {
+      if (spSortBy === "price-low") return a.price - b.price;
+      if (spSortBy === "price-high") return b.price - a.price;
+      if (spSortBy === "rarity") {
+        const rarityWeights: Record<RarityTier, number> = {
+          "vintage": 5,
+          "ultra-rare": 4,
+          "rare": 3,
+          "uncommon": 2,
+          "common": 1
+        };
+        return (rarityWeights[b.rarity] || 0) - (rarityWeights[a.rarity] || 0);
+      }
+      return 0;
+    });
+  }, [allSpareParts, spFilterCategory, spFilterRarity, spSearchQuery, spSortBy]);
+
+  const handleInquireSparePartWhatsApp = (part: SparePart) => {
+    const rawPhone = part.sellerPhone || '919820077112';
+    let cleanPhone = rawPhone.replace(/\D/g, '');
+    if (cleanPhone.length === 10) cleanPhone = `91${cleanPhone}`;
+
+    const textMessage = `Hi ${part.sellerName || 'Seller'}, I found your ${part.rarity.toUpperCase()} spare part "${part.title}" (Price: ₹${part.price.toLocaleString("en-IN")}) listed on Auto World Marketplace. Is this item still available for purchase?`;
+    const encodedText = encodeURIComponent(textMessage);
+
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const handleResetFilters = () => {
     setSelectedMake("");
     setSelectedPriceRange("Any Price");
@@ -951,10 +1042,334 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       )}
 
       <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        <div className="border-b border-stone-300 pb-6 mb-10">
-          <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Index Repository</span>
-          <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Verified Vehicle Inventory</h1>
+        
+        {/* MAIN MARKETPLACE NAVIGATION SWITCHER (Vehicles vs Spare Parts) */}
+        <div className="mb-8 p-2 bg-stone-900 border-2 border-stone-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.85)]">
+          <div className="text-xs font-mono text-stone-200 font-bold uppercase tracking-wider px-2 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-amber-400" />
+            <span>Marketplace Directory:</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMainMarketTab("vehicles")}
+              className={`flex-1 sm:flex-none px-5 py-2.5 text-xs font-mono font-black uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border ${
+                mainMarketTab === "vehicles"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 shadow-inner font-extrabold"
+                  : "bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
+              }`}
+            >
+              <Car className="w-4 h-4" />
+              <span>🚘 Vehicles Catalog ({inventoryList.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMainMarketTab("spare_parts")}
+              className={`flex-1 sm:flex-none px-5 py-2.5 text-xs font-mono font-black uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border relative ${
+                mainMarketTab === "spare_parts"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 shadow-inner font-extrabold"
+                  : "bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
+              }`}
+            >
+              <Wrench className="w-4 h-4 text-amber-950" />
+              <span>⚙️ Spare Parts & Mods ({allSpareParts.length})</span>
+              <span className="px-1.5 py-0.5 text-[9px] font-mono font-black rounded bg-red-600 text-white animate-pulse">
+                NEW
+              </span>
+            </button>
+          </div>
         </div>
+
+        {mainMarketTab === "spare_parts" ? (
+          <div className="space-y-8 mb-16">
+            {/* HERO BANNER FOR SPARE PARTS */}
+            <div className="bg-stone-900 border-2 border-stone-950 p-6 sm:p-8 text-stone-100 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] relative overflow-hidden">
+              <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                <Wrench className="w-72 h-72 text-amber-500" />
+              </div>
+
+              <div className="relative z-10 max-w-3xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-mono font-extrabold uppercase tracking-widest mb-3">
+                  <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                  <span>Performance Engineering & Mods Portal</span>
+                </div>
+                <h1 className="text-2xl sm:text-4xl font-serif font-black uppercase tracking-tight text-white mb-2">
+                  Automotive Spare Parts, Mods & Nitro Marketplace
+                </h1>
+                <p className="text-stone-300 text-xs sm:text-sm font-sans leading-relaxed">
+                  Discover authentic Garrett turbos, NOS nitrous oxide injection kits, Brembo ceramic brake kits, GT carbon fiber spoilers, BBS forged rims, and rare vintage classic parts directly from verified sellers across India.
+                </p>
+              </div>
+            </div>
+
+            {/* SEARCH & SORT CONTROLS */}
+            <div className="bg-[#FAF8F5] border-2 border-stone-900 p-4 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.85)] space-y-4">
+              <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                {/* Search Bar */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={spSearchQuery}
+                    onChange={(e) => setSpSearchQuery(e.target.value)}
+                    placeholder="Search turbos, NOS tanks, BBS alloys, part numbers, or car fitments..."
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-stone-300 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950 font-bold"
+                  />
+                  {spSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSpSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Sort By Dropdown */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase text-stone-600 whitespace-nowrap">Sort By:</span>
+                  <select
+                    value={spSortBy}
+                    onChange={(e) => setSpSortBy(e.target.value as any)}
+                    className="p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
+                  >
+                    <option value="newest">⚡ Newest Listed First</option>
+                    <option value="rarity">👑 Highest Rarity Tier First</option>
+                    <option value="price-low">💰 Price: Low to High</option>
+                    <option value="price-high">💎 Price: High to Low</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* CATEGORY FILTER CHIPS */}
+              <div className="space-y-1.5 pt-2 border-t border-stone-200">
+                <span className="text-[10px] font-mono font-bold text-stone-500 uppercase block">Part Category Filter:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "all", label: "All Parts" },
+                    { id: "engine", label: "🚀 Engine & Turbos" },
+                    { id: "exhaust_nitro", label: "💨 Exhaust & Nitro" },
+                    { id: "spoiler_body", label: "🏎️ Spoilers & Aero" },
+                    { id: "wheels_tyres", label: "🛞 Alloy Wheels" },
+                    { id: "brakes_suspension", label: "🛑 Brakes & Suspension" },
+                    { id: "interior_audio", label: "💺 Seats & Steering" },
+                    { id: "electrical", label: "⚡ ECUs & Gauges" },
+                    { id: "collectibles", label: "👑 Vintage Collectibles" },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSpFilterCategory(cat.id)}
+                      className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase transition border cursor-pointer ${
+                        spFilterCategory === cat.id
+                          ? "bg-stone-900 text-amber-400 border-stone-950 shadow-xs"
+                          : "bg-white hover:bg-stone-200 text-stone-800 border-stone-300"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* RARITY STATUS FILTER CHIPS */}
+              <div className="space-y-1.5 pt-2 border-t border-stone-200">
+                <span className="text-[10px] font-mono font-bold text-stone-500 uppercase block">Rarity Tier Filter:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "all", label: "All Rarities" },
+                    { id: "common", label: "⚪ Common" },
+                    { id: "uncommon", label: "🔵 Uncommon" },
+                    { id: "rare", label: "🟣 Rare" },
+                    { id: "ultra-rare", label: "🟠 Ultra-Rare" },
+                    { id: "vintage", label: "👑 Vintage" },
+                  ].map((rar) => (
+                    <button
+                      key={rar.id}
+                      type="button"
+                      onClick={() => setSpFilterRarity(rar.id)}
+                      className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase transition border cursor-pointer ${
+                        spFilterRarity === rar.id
+                          ? "bg-amber-500 text-stone-950 border-amber-600 shadow-xs"
+                          : "bg-white hover:bg-stone-200 text-stone-800 border-stone-300"
+                      }`}
+                    >
+                      {rar.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* RESULTS COUNT & RESET BUTTON */}
+            <div className="flex items-center justify-between text-xs font-mono font-bold text-stone-700">
+              <span>Showing <strong className="text-stone-950">{filteredSpareParts.length}</strong> spare parts & performance items</span>
+              {(spFilterCategory !== "all" || spFilterRarity !== "all" || spSearchQuery) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSpFilterCategory("all");
+                    setSpFilterRarity("all");
+                    setSpSearchQuery("");
+                  }}
+                  className="text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                >
+                  Reset Part Filters
+                </button>
+              )}
+            </div>
+
+            {/* SPARE PARTS CARDS GRID */}
+            {filteredSpareParts.length === 0 ? (
+              <div className="bg-[#FAF8F5] border-2 border-dashed border-stone-300 p-12 text-center space-y-3">
+                <Wrench className="w-12 h-12 text-stone-400 mx-auto" />
+                <h3 className="text-base font-serif font-black text-stone-900 uppercase">No Spare Parts Matched Your Filters</h3>
+                <p className="text-xs text-stone-500 max-w-md mx-auto">Try broadening your category or rarity filter choices to discover available parts.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSpFilterCategory("all");
+                    setSpFilterRarity("all");
+                    setSpSearchQuery("");
+                  }}
+                  className="px-4 py-2 bg-stone-900 text-amber-400 font-mono text-xs font-bold uppercase cursor-pointer"
+                >
+                  Clear Search Filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredSpareParts.map((part) => {
+                  const rarityBadgeColors: Record<RarityTier, string> = {
+                    "vintage": "bg-yellow-500 text-stone-950 border-yellow-600",
+                    "ultra-rare": "bg-amber-500 text-stone-950 border-amber-600 animate-pulse",
+                    "rare": "bg-purple-600 text-white border-purple-700",
+                    "uncommon": "bg-blue-600 text-white border-blue-700",
+                    "common": "bg-stone-700 text-stone-200 border-stone-800"
+                  };
+
+                  const rarityBorderColors: Record<RarityTier, string> = {
+                    "vintage": "border-yellow-600 shadow-[0_0_12px_rgba(202,138,4,0.25)]",
+                    "ultra-rare": "border-amber-500 shadow-[0_0_16px_rgba(245,158,11,0.3)]",
+                    "rare": "border-purple-600 shadow-[0_0_12px_rgba(147,51,234,0.25)]",
+                    "uncommon": "border-blue-600",
+                    "common": "border-stone-300"
+                  };
+
+                  return (
+                    <div
+                      key={part.id}
+                      className={`bg-white border-2 ${rarityBorderColors[part.rarity]} flex flex-col justify-between transition-transform hover:-translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.85)] relative group`}
+                    >
+                      {/* Card Image Header */}
+                      <div className="relative h-48 bg-stone-900 overflow-hidden">
+                        <img
+                          src={part.image}
+                          alt={part.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent" />
+
+                        {/* Rarity Status Badge Overlay */}
+                        <div className="absolute top-3 left-3">
+                          <span className={`px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-wider border ${rarityBadgeColors[part.rarity]}`}>
+                            {part.rarity === "ultra-rare" && "🟠 "}
+                            {part.rarity === "vintage" && "👑 "}
+                            {part.rarity === "rare" && "🟣 "}
+                            {part.rarity === "uncommon" && "🔵 "}
+                            {part.rarity === "common" && "⚪ "}
+                            {part.rarity.toUpperCase()}
+                          </span>
+                        </div>
+
+                        {/* Condition Badge */}
+                        <div className="absolute top-3 right-3">
+                          <span className="px-2 py-0.5 bg-stone-950/80 backdrop-blur text-stone-200 text-[9px] font-mono font-bold uppercase border border-stone-700">
+                            {part.condition.replace("_", " ")}
+                          </span>
+                        </div>
+
+                        {/* Price Tag Overlay */}
+                        <div className="absolute bottom-3 left-3">
+                          <span className="text-lg font-mono font-black text-amber-400 bg-stone-950/90 px-2.5 py-1 border border-stone-800">
+                            ₹{part.price.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                        <div>
+                          <div className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+                            <Tag className="w-3 h-3 text-amber-600" />
+                            <span>{part.partCategory.replace("_", " & ").toUpperCase()}</span>
+                          </div>
+
+                          <h3 className="text-sm font-serif font-black text-stone-950 uppercase line-clamp-2 leading-tight">
+                            {part.title}
+                          </h3>
+
+                          <p className="text-stone-600 text-xs font-sans mt-1.5 line-clamp-2 leading-snug">
+                            {part.description}
+                          </p>
+                        </div>
+
+                        {/* Specifications & Fitment Pill */}
+                        <div className="space-y-1.5 pt-2 border-t border-stone-200 text-[10.5px] font-mono">
+                          <div className="flex items-center justify-between text-stone-700">
+                            <span className="text-stone-500 uppercase font-bold">Fitment:</span>
+                            <span className="font-bold text-stone-900 truncate max-w-[180px]">{part.compatibility}</span>
+                          </div>
+
+                          {part.partNumber && (
+                            <div className="flex items-center justify-between text-stone-700">
+                              <span className="text-stone-500 uppercase font-bold">Part SKU:</span>
+                              <span className="font-bold text-amber-800">{part.partNumber}</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between text-stone-700">
+                            <span className="text-stone-500 uppercase font-bold">Seller:</span>
+                            <span className="font-bold text-stone-900">{part.sellerName} ({part.location || "India"})</span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="pt-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSparePartModal(part)}
+                            className="flex-1 py-2 bg-stone-100 hover:bg-stone-200 text-stone-900 text-[11px] font-mono font-bold uppercase tracking-wider border border-stone-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-stone-700" />
+                            <span>Inspect Specs</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleInquireSparePartWhatsApp(part)}
+                            className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-mono font-bold uppercase tracking-wider border border-emerald-900 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <div className="border-b border-stone-300 pb-6 mb-10">
+              <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Index Repository</span>
+              <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Verified Vehicle Inventory</h1>
+            </div>
 
         {/* SMART BUDGET MATCHER ENGINE OR FREE LIFESTYLE MATCHED ARCHETYPE */}
         {!hasPaidPass ? (
@@ -2107,7 +2522,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
+    )}
+  </motion.div>
 
       {/* DETAILED DAILY PERMIT INLET MODAL */}
       {showPaymentModal && (
@@ -2324,6 +2741,98 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
         currentUser={currentUser}
         showToast={showToast}
       />
+
+      {/* SPARE PART QUICK INSPECTION MODAL */}
+      <AnimatePresence>
+        {selectedSparePartModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border-2 border-stone-950 max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedSparePartModal(null)}
+                className="absolute top-4 right-4 p-2 bg-stone-100 hover:bg-stone-200 text-stone-900 border border-stone-300 cursor-pointer font-bold"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1 bg-amber-500 text-stone-950 text-[10px] font-mono font-black uppercase tracking-widest border border-amber-600">
+                  {selectedSparePartModal.rarity.toUpperCase()} RARITY
+                </span>
+                <span className="px-3 py-1 bg-stone-900 text-stone-200 text-[10px] font-mono font-bold uppercase border border-stone-950">
+                  {selectedSparePartModal.partCategory.replace("_", " & ").toUpperCase()}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-stone-900 border border-stone-800 h-56 relative overflow-hidden">
+                  <img
+                    src={selectedSparePartModal.image}
+                    alt={selectedSparePartModal.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="space-y-3 flex flex-col justify-between">
+                  <div>
+                    <h2 className="text-xl font-serif font-black text-stone-950 uppercase leading-tight">
+                      {selectedSparePartModal.title}
+                    </h2>
+                    <div className="text-2xl font-mono font-black text-amber-900 mt-2">
+                      ₹{selectedSparePartModal.price.toLocaleString("en-IN")}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 p-3 bg-[#FAF8F5] border border-stone-300 text-xs font-mono">
+                    <div><strong className="text-stone-500 uppercase">Condition:</strong> <span className="font-bold text-stone-900">{selectedSparePartModal.condition.replace("_", " ")}</span></div>
+                    <div><strong className="text-stone-500 uppercase">Fitment:</strong> <span className="font-bold text-stone-900">{selectedSparePartModal.compatibility}</span></div>
+                    {selectedSparePartModal.partNumber && (
+                      <div><strong className="text-stone-500 uppercase">Part SKU:</strong> <span className="font-bold text-amber-800">{selectedSparePartModal.partNumber}</span></div>
+                    )}
+                    <div><strong className="text-stone-500 uppercase">Seller:</strong> <span className="font-bold text-stone-900">{selectedSparePartModal.sellerName}</span></div>
+                    <div><strong className="text-stone-500 uppercase">Location:</strong> <span className="font-bold text-stone-900">{selectedSparePartModal.location || "India"}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 border-t border-stone-200 pt-4">
+                <h4 className="text-xs font-mono font-bold text-stone-900 uppercase">Technical Specifications & Seller Notes</h4>
+                <p className="text-xs text-stone-700 font-sans leading-relaxed bg-[#FAF8F5] p-4 border border-stone-200">
+                  {selectedSparePartModal.description}
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSparePartModal(null)}
+                  className="px-5 py-3 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Close Inspection
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const part = selectedSparePartModal;
+                    setSelectedSparePartModal(null);
+                    handleInquireSparePartWhatsApp(part);
+                  }}
+                  className="flex-1 py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-mono font-black uppercase tracking-wider border border-emerald-900 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Contact Seller on WhatsApp</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </motion.div>
   );

@@ -90,7 +90,193 @@ export interface UserListing {
   color?: string;
   owners?: string;
   regNumber?: string;
+  // Spare Parts specific attributes
+  isSparePart?: boolean;
+  partCategory?: string;
+  rarity?: RarityTier;
+  compatibility?: string;
+  partCondition?: string;
+  partNumber?: string;
 }
+
+export type RarityTier = "common" | "uncommon" | "rare" | "ultra-rare" | "vintage";
+
+export interface SparePart {
+  id: string | number;
+  title: string;
+  partCategory: "engine" | "exhaust_nitro" | "spoiler_body" | "wheels_tyres" | "interior_audio" | "brakes_suspension" | "electrical" | "collectibles";
+  rarity: RarityTier;
+  price: number;
+  image: string;
+  photos?: { src: string; alt: string }[];
+  description: string;
+  compatibility: string;
+  condition: "brand_new" | "like_new" | "refurbished" | "vintage_original" | "used";
+  partNumber?: string;
+  sellerName: string;
+  sellerPhone: string;
+  sellerEmail?: string;
+  location: string;
+  datePosted: string;
+  status?: "pending" | "active" | "sold" | "hidden";
+  isUserListing?: boolean;
+  isSparePart?: boolean;
+}
+
+export const DEFAULT_SPARE_PARTS: SparePart[] = [
+  {
+    id: "sp-1",
+    title: "NOS Supercharger Nitrous Oxide Injection Kit (10lb Tank)",
+    partCategory: "exhaust_nitro",
+    rarity: "ultra-rare",
+    price: 145000,
+    image: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop&q=80",
+    description: "Authentic NOS high-pressure 10lb blue cylinder kit with solenoids, braided stainless steel lines, and dual fogger nozzle setup. Delivers instant +75HP to +150HP burst.",
+    compatibility: "Universal (Supports 4-Cylinder, V6 & V8 Motors)",
+    condition: "brand_new",
+    partNumber: "NOS-05130-NOS",
+    sellerName: "Aman Speedworks",
+    sellerPhone: "+91 98200 77112",
+    sellerEmail: "aman@speedworks.in",
+    location: "Mumbai, Maharashtra",
+    datePosted: "2026-08-10",
+    status: "active",
+    isSparePart: true
+  },
+  {
+    id: "sp-2",
+    title: "Garrett GTX3582R Gen II Dual Ball Bearing Turbocharger",
+    partCategory: "engine",
+    rarity: "rare",
+    price: 185000,
+    image: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=800&auto=format&fit=crop&q=80",
+    description: "High-volume billet compressor turbocharger capable of supporting up to 850 horsepower. Includes T4 twin-scroll turbine housing, oil feed lines, and V-band clamps.",
+    compatibility: "Supra Mk4, BMW M3, Thar Custom Tune, Civic Type-R",
+    condition: "brand_new",
+    partNumber: "GRT-856801-5001S",
+    sellerName: "Vikram Turbo Tech",
+    sellerPhone: "+91 98112 33445",
+    sellerEmail: "vikram@turbotech.co.in",
+    location: "Bengaluru, Karnataka",
+    datePosted: "2026-08-09",
+    status: "active",
+    isSparePart: true
+  },
+  {
+    id: "sp-3",
+    title: "GT High-Downforce Carbon Fiber Rear Spoiler Wing & Diffuser",
+    partCategory: "spoiler_body",
+    rarity: "uncommon",
+    price: 42000,
+    image: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80",
+    description: "100% genuine dry weave carbon fiber high-mount wing kit with adjustable angle brackets and rear aero diffuser. Reduces high-speed rear axle lift dramatically.",
+    compatibility: "Universal (Fits BMW 3-Series, Honda City, Mustang, Skoda Octavia vRS)",
+    condition: "like_new",
+    partNumber: "CF-WING-GT300",
+    sellerName: "Rohan Aero Customs",
+    sellerPhone: "+91 97654 11223",
+    sellerEmail: "rohan@aerocustoms.in",
+    location: "Pune, Maharashtra",
+    datePosted: "2026-08-08",
+    status: "active",
+    isSparePart: true
+  },
+  {
+    id: "sp-4",
+    title: "Brembo GT 6-Piston Monobloc Carbon-Ceramic Brakes Kit",
+    partCategory: "brakes_suspension",
+    rarity: "ultra-rare",
+    price: 210000,
+    image: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80",
+    description: "Ultra-lightweight track day big brake kit featuring red anodized 6-piston monobloc calipers, 380mm drilled ceramic rotors, and high-friction race pads.",
+    compatibility: "BMW 3/5 Series, Mercedes AMG, Porsche, Audi RS",
+    condition: "brand_new",
+    partNumber: "BRM-1B1.9023A",
+    sellerName: "Sanjay Performance Hub",
+    sellerPhone: "+91 99880 44332",
+    sellerEmail: "sanjay@perfhub.com",
+    location: "Delhi NCR",
+    datePosted: "2026-08-07",
+    status: "active",
+    isSparePart: true
+  },
+  {
+    id: "sp-5",
+    title: "BBS Super RS 19\" Forged Mesh Alloy Wheels (Set of 4)",
+    partCategory: "wheels_tyres",
+    rarity: "rare",
+    price: 280000,
+    image: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=800&auto=format&fit=crop&q=80",
+    description: "Iconic 2-piece forged aluminum wheel set with polished lip and hexagonal gold center nut. Wrapped in fresh Michelin Pilot Sport 4S rubber.",
+    compatibility: "5x112 & 5x120 PCD (Audi, BMW, Volkswagen, Mercedes)",
+    condition: "like_new",
+    partNumber: "BBS-SRS-1985",
+    sellerName: "Karan Wheels India",
+    sellerPhone: "+91 98223 99887",
+    sellerEmail: "karan@wheelsindia.in",
+    location: "Chandigarh",
+    datePosted: "2026-08-06",
+    status: "active",
+    isSparePart: true
+  },
+  {
+    id: "sp-6",
+    title: "Momo Heritage Pro Vintage Wood & Leather Steering Wheel 1978",
+    partCategory: "collectibles",
+    rarity: "vintage",
+    price: 68000,
+    image: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=800&auto=format&fit=crop&q=80",
+    description: "Collector's grade original vintage mahogany wood steering wheel with brushed stainless spokes and original 1970s horn button. Verified serial stamp.",
+    compatibility: "Universal Hub Adapter (Retro Classic Cars & Jeeps)",
+    condition: "vintage_original",
+    partNumber: "MOMO-VINTAGE-78",
+    sellerName: "Heritage Classics & Antiques",
+    sellerPhone: "+91 97110 55443",
+    sellerEmail: "antiques@heritageclassics.in",
+    location: "Jaipur, Rajasthan",
+    datePosted: "2026-08-05",
+    status: "active",
+    isSparePart: true
+  },
+  {
+    id: "sp-7",
+    title: "Akrapovič Full Titanium Slip-On Performance Exhaust System",
+    partCategory: "exhaust_nitro",
+    rarity: "rare",
+    price: 165000,
+    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
+    description: "Race-grade lightweight titanium exhaust with quad carbon fiber tips and electronic valve control for dual quiet/loud exhaust notes.",
+    compatibility: "BMW M3/M4, Porsche 911, Audi S5, Thar Custom Tuned",
+    condition: "brand_new",
+    partNumber: "AKR-S-B3/TI/1",
+    sellerName: "Exhaust Dynamics",
+    sellerPhone: "+91 98330 66554",
+    sellerEmail: "sales@exhaustdynamics.in",
+    location: "Mumbai, Maharashtra",
+    datePosted: "2026-08-04",
+    status: "active",
+    isSparePart: true
+  },
+  {
+    id: "sp-8",
+    title: "Recaro Pole Position N.G. Carbon Leather Racing Seats (Pair)",
+    partCategory: "interior_audio",
+    rarity: "uncommon",
+    price: 95000,
+    image: "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&auto=format&fit=crop&q=80",
+    description: "FIA-approved ergonomic bucket seats in Nappa black leather with red contrast stitching. Exceptional lateral support for track cornering.",
+    compatibility: "Universal Mounting Brackets (Included)",
+    condition: "like_new",
+    partNumber: "REC-070.77.0885",
+    sellerName: "TrackDay Accessories",
+    sellerPhone: "+91 98450 22119",
+    sellerEmail: "support@trackday.co.in",
+    location: "Hyderabad, Telangana",
+    datePosted: "2026-08-03",
+    status: "active",
+    isSparePart: true
+  }
+];
 
 export interface Subscription {
   plan: string;

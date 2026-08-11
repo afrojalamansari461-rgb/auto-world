@@ -8,6 +8,7 @@ export interface AdminSettingsData {
   defaultBadges: Record<string, string | null>;
   homeFeaturedIds: string[];
   isFreePassEnabled?: boolean;
+  isSmsNotificationsEnabled?: boolean;
   isSecureShieldEnabled?: boolean;
   isEmiCalculatorEnabled?: boolean;
   isWhatsAppConnectEnabled?: boolean;
