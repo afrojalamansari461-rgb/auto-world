@@ -4,6 +4,7 @@ import { X, Calendar, Clock, MapPin, CheckCircle2, Car, ShieldCheck, Phone, User
 import { Vehicle } from "../types";
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { dispatchAdminSmsAlert } from "../lib/notificationService";
 import { CelebrationAnimation, fireCelebrationConfetti } from "./CelebrationAnimation";
 
 interface TestDriveModalProps {
@@ -95,6 +96,13 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
       localStorage.setItem("autoWorld_test_drives", JSON.stringify(existing));
 
       window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
+
+      dispatchAdminSmsAlert(
+        "buyerLead",
+        "🏎️ Test Drive Requested",
+        `Test Drive Request for ${bookingData.vehicleTitle} by ${bookingData.fullName} (${bookingData.phone}). Slot: ${bookingData.preferredDate} (${bookingData.timeSlot}). Ref: #${bookingRef}`,
+        { bookingRef, vehicleTitle: bookingData.vehicleTitle, buyer: bookingData.fullName, phone: bookingData.phone }
+      );
 
       setBookingSuccess(bookingData);
       fireCelebrationConfetti();

@@ -23,6 +23,7 @@ import {
 } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { subscribeToRealtimeCatalog, saveAdminSettingsToFirestore } from "../lib/catalogSync";
+import { dispatchAdminSmsAlert } from "../lib/notificationService";
 import { OWNER_EMAIL } from "../lib/userRoles";
 import AuthPolicyModal from "./AuthPolicyModal";
 
@@ -133,6 +134,13 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
       const successMsg = `Welcome back, ${userCredential.user.displayName || userCredential.user.email || 'Connoisseur'}!`;
       setSuccessMessage("Authentication successful. Redirecting to showroom...");
       
+      dispatchAdminSmsAlert(
+        "staffLog",
+        "👤 Staff / User Login",
+        `User session initiated: ${userCredential.user.email || userCredential.user.displayName || 'Staff User'} logged in. Time: ${new Date().toLocaleTimeString()}`,
+        { email: userCredential.user.email, uid: userCredential.user.uid }
+      );
+
       if (showToast) {
         showToast(successMsg, "success");
       }
@@ -176,6 +184,13 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
       const successMsg = `Welcome, ${result.user.displayName || "Collector"}!`;
       setSuccessMessage("Google authentication successful!");
       
+      dispatchAdminSmsAlert(
+        "staffLog",
+        "🌐 Google Auth Login",
+        `Google user session: ${result.user.displayName || result.user.email} logged in. Time: ${new Date().toLocaleTimeString()}`,
+        { email: result.user.email, uid: result.user.uid, name: result.user.displayName }
+      );
+
       if (showToast) showToast(successMsg, "success");
 
       setTimeout(() => {

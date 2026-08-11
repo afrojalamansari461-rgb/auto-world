@@ -1,6 +1,7 @@
 import { db } from "../firebase";
 import { collection, getDocs, doc, setDoc } from "firebase/firestore";
 import { UserListing } from "../types";
+import { dispatchAdminSmsAlert } from "./notificationService";
 
 export const EXPIRATION_DAYS = 30;
 export const THIRTY_DAYS_MS = EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
@@ -113,6 +114,13 @@ export async function run30DayExpirationTask(): Promise<{ expiredCount: number; 
     if (updates.length > 0) {
       await Promise.all(updates);
       window.dispatchEvent(new Event("autoWorld_db_update"));
+
+      dispatchAdminSmsAlert(
+        "carExpired",
+        "⏳ Vehicle Listing Expiration",
+        `System Expiration Alert: ${expiredCount} listing(s) expired (30-day free tier limit) and were moved to hidden status. IDs: ${updatedIds.join(", ")}`,
+        { expiredCount, updatedIds }
+      );
     }
   } catch (err) {
     console.warn("Firestore 30-day expiration task executed in offline mode:", err);

@@ -4,6 +4,7 @@ import { X, PhoneCall, CheckCircle2, Clock, Calendar, MessageSquare, ShieldCheck
 import { Vehicle } from "../types";
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { dispatchAdminSmsAlert } from "../lib/notificationService";
 import { CelebrationAnimation, fireCelebrationConfetti } from "./CelebrationAnimation";
 
 interface CallbackModalProps {
@@ -90,6 +91,13 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
       localStorage.setItem("autoWorld_callback_requests", JSON.stringify(existing));
 
       window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
+
+      dispatchAdminSmsAlert(
+        "buyerLead",
+        "📞 Callback Requested",
+        `Callback Request #${callbackRef} from ${callbackData.fullName} (${callbackData.phoneNumber}). Topic: ${callbackData.queryTopic}. Slot: ${callbackData.timeSlot}`,
+        { callbackRef, buyer: callbackData.fullName, phone: callbackData.phoneNumber, topic: callbackData.queryTopic }
+      );
 
       setSubmittedData(callbackData);
       fireCelebrationConfetti();

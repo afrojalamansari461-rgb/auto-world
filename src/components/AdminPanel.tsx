@@ -6,12 +6,20 @@ import {
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
   Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown,
   Sliders, Shield, ShieldCheck, Calculator, HelpCircle, Info,
-  Upload, FolderPlus, UploadCloud, Image, Users, UserCheck, Briefcase
+  Upload, FolderPlus, UploadCloud, Image, Users, UserCheck, Briefcase, Smartphone, Bell, Send
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalogSync";
+import { 
+  SmsAlert, 
+  SmsSettings, 
+  getSmsSettings, 
+  saveSmsSettingsLocally, 
+  dispatchAdminSmsAlert, 
+  fetchSmsHistory 
+} from "../lib/notificationService";
 import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
@@ -94,7 +102,13 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     currentRole: UserRole;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles">("inventory");
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles" | "sms">("inventory");
+
+  // Mobile SMS & Notification System States (+91 7666232753)
+  const [smsSettings, setSmsSettings] = useState<SmsSettings>(() => getSmsSettings());
+  const [smsHistory, setSmsHistory] = useState<SmsAlert[]>([]);
+  const [smsSearch, setSmsSearch] = useState("");
+  const [smsCategoryFilter, setSmsCategoryFilter] = useState<string>("all");
 
   // Content Customizer (Edit Mode) States
   const [footerEmail, setFooterEmail] = useState<string>(() => localStorage.getItem("autoWorld_footer_email") || "afrojalamansari461@gmail.com");
@@ -345,6 +359,45 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       `${label} is now ${nextVal ? "ENABLED" : "DISABLED"}!`,
       nextVal ? "success" : "info"
     );
+  };
+
+  // SMS & Mobile Notification Handlers (+91 7666232753)
+  const handleToggleMasterSms = (newVal: boolean) => {
+    const updated = saveSmsSettingsLocally({ isSmsEnabled: newVal });
+    setSmsSettings(updated);
+    saveAdminSettingsToFirestore({ isSmsNotificationsEnabled: newVal });
+    triggerHudAlert(
+      newVal ? "MOBILE NOTIFICATIONS ACTIVATED" : "MOBILE NOTIFICATIONS PAUSED",
+      newVal
+        ? `Instant SMS & Mobile alerts active for recipient +91 ${smsSettings.targetNumber || "7666232753"}.`
+        : "Mobile notifications master toggle turned off.",
+      newVal ? "verified" : "unapprove"
+    );
+    showToast(
+      newVal ? "Mobile SMS Notifications ENABLED (+91 7666232753)" : "Mobile SMS Notifications DISABLED",
+      newVal ? "success" : "info"
+    );
+  };
+
+  const handleToggleSmsCategory = (key: keyof SmsSettings, newVal: boolean) => {
+    const updated = saveSmsSettingsLocally({ [key]: newVal });
+    setSmsSettings(updated);
+    saveAdminSettingsToFirestore({ [key]: newVal });
+    showToast(`Updated notification preference!`, "success");
+  };
+
+  const handleSendTestSms = async () => {
+    playSynthBeep(1200, 0.2, "sine");
+    const targetNum = smsSettings.targetNumber || "7666232753";
+    const alertRes = await dispatchAdminSmsAlert(
+      "testSms",
+      "🧪 TEST SMS DISPATCH",
+      `Test SMS dispatch to target +91 ${targetNum}. All notification triggers operational. Timestamp: ${new Date().toLocaleTimeString()}`,
+      { test: true }
+    );
+    if (alertRes) {
+      showToast(`Test SMS alert dispatched to +91 ${targetNum}!`, "success");
+    }
   };
 
   // Customized Interactive Confirmation Modal states
@@ -867,6 +920,22 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     };
     window.addEventListener("autoWorld_db_update", handleUpdate);
 
+    // Load initial SMS History & attach live event listener
+    fetchSmsHistory().then(history => setSmsHistory(history));
+
+    const handleLiveSmsAlert = (e: any) => {
+      const alertItem = e.detail;
+      if (alertItem) {
+        setSmsHistory(prev => [alertItem, ...prev]);
+        triggerHudAlert(
+          `📱 SMS ALERT TO ${alertItem.targetNumber || "7666232753"}`,
+          alertItem.title + ": " + alertItem.message,
+          "hot"
+        );
+      }
+    };
+    window.addEventListener("autoWorld_sms_alert", handleLiveSmsAlert);
+
     return () => {
       unsubListings();
       unsubMessages();
@@ -875,6 +944,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       unsubAdminDoc();
       unsubRoles();
       window.removeEventListener("autoWorld_db_update", handleUpdate);
+      window.removeEventListener("autoWorld_sms_alert", handleLiveSmsAlert);
     };
   }, []);
 
@@ -2934,6 +3004,23 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           >
             <Sliders className="w-4 h-4 shrink-0 text-amber-400" />
             Edit Mode (Content)
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("sms")}
+            className={`flex-1 min-w-[150px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              activeSubSection === "sms"
+                ? "bg-emerald-950 text-emerald-300 shadow-md border-b-2 border-emerald-400 font-black"
+                : "text-stone-700 hover:text-stone-900 hover:bg-emerald-50/50"
+            }`}
+          >
+            <Smartphone className="w-4 h-4 shrink-0 text-emerald-500 animate-pulse" />
+            <span>SMS Alerts</span>
+            <span className={`px-1.5 py-0.5 text-[8.5px] font-mono font-bold rounded ${
+              smsSettings.isSmsEnabled ? "bg-emerald-500 text-stone-950" : "bg-stone-300 text-stone-700"
+            }`}>
+              {smsSettings.isSmsEnabled ? "ON" : "OFF"}
+            </span>
           </button>
         </div>
 
@@ -5390,6 +5477,369 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                 })()}
                   </>
                 )}
+              </div>
+            )}
+
+            {/* SUBSECTION 8: MOBILE SMS & NOTIFICATIONS CONTROL CENTER (+91 7666232753) */}
+            {activeSubSection === "sms" && (
+              <div className="space-y-6">
+                {/* HERO CARD FOR MASTER TOGGLE & RECIPIENT NUMBER */}
+                <div className={`p-6 border-2 transition-all duration-300 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] ${
+                  smsSettings.isSmsEnabled
+                    ? "bg-emerald-950 text-emerald-50 border-emerald-500 shadow-emerald-950/40"
+                    : "bg-[#FAF8F5] text-stone-900 border-stone-900"
+                }`}>
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div className="space-y-2 max-w-2xl">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <Smartphone className={`w-7 h-7 ${smsSettings.isSmsEnabled ? "text-emerald-400 animate-bounce" : "text-stone-500"}`} />
+                        <h2 className="text-lg font-serif font-black uppercase tracking-tight">
+                          Mobile SMS & Instant Alerts Control Center
+                        </h2>
+                        <span className={`px-2.5 py-0.5 text-[9.5px] font-mono font-black uppercase tracking-wider border rounded-xs ${
+                          smsSettings.isSmsEnabled
+                            ? "bg-emerald-500 text-stone-950 border-emerald-300 animate-pulse"
+                            : "bg-amber-100 text-amber-900 border-amber-300"
+                        }`}>
+                          {smsSettings.isSmsEnabled ? "● MASTER ALERTS: ACTIVE" : "● MASTER ALERTS: PAUSED"}
+                        </span>
+                      </div>
+                      <p className={`text-xs font-mono leading-relaxed uppercase ${
+                        smsSettings.isSmsEnabled ? "text-emerald-200" : "text-stone-600"
+                      }`}>
+                        {smsSettings.isSmsEnabled
+                          ? `Instant mobile notification alerts dispatched in real-time to owner number +91 ${smsSettings.targetNumber || "7666232753"} for new car uploads, staff logins, vehicle expirations, and buyer leads.`
+                          : "Notifications master toggle is currently OFF. Turn ON to receive instant SMS & alert notifications on phone number 7666232753."}
+                      </p>
+                      
+                      <div className="flex flex-wrap items-center gap-3 pt-2">
+                        <div className="flex items-center gap-2 bg-stone-900/90 text-white px-3 py-1.5 border border-emerald-500/40 text-xs font-mono">
+                          <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Recipient Number:</span>
+                          <input
+                            type="text"
+                            value={smsSettings.targetNumber}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, "");
+                              const updated = saveSmsSettingsLocally({ targetNumber: val });
+                              setSmsSettings(updated);
+                            }}
+                            className="bg-stone-800 text-emerald-300 font-bold px-2 py-0.5 border border-stone-700 w-32 focus:outline-none focus:border-emerald-400"
+                            placeholder="7666232753"
+                          />
+                        </div>
+                        <span className="text-[10px] text-emerald-300 font-mono font-semibold">
+                          (Verified Owner Contact)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Master Switch & Test Trigger Buttons */}
+                    <div className="flex flex-col sm:flex-row lg:flex-col items-stretch gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleMasterSms(!smsSettings.isSmsEnabled)}
+                        className={`py-3 px-6 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border-2 shadow-md ${
+                          smsSettings.isSmsEnabled
+                            ? "bg-emerald-500 hover:bg-emerald-400 text-stone-950 border-emerald-300"
+                            : "bg-stone-900 hover:bg-stone-800 text-amber-400 border-amber-500"
+                        }`}
+                      >
+                        <span className={`w-3 h-3 rounded-full ${smsSettings.isSmsEnabled ? "bg-stone-950 animate-ping" : "bg-amber-500"}`} />
+                        <span>{smsSettings.isSmsEnabled ? "[ ON ] DISABLE ALERTS" : "[ OFF ] ENABLE SMS ALERTS"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSendTestSms}
+                        className="py-2.5 px-4 bg-stone-900 hover:bg-stone-800 text-white border border-stone-700 hover:border-emerald-400 text-[11px] font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition"
+                      >
+                        <Send className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>⚡ Send Test SMS to {smsSettings.targetNumber || "7666232753"}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* NOTIFICATION CATEGORIES TOGGLES GRID */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-950 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-300">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-amber-600" />
+                      <h3 className="text-sm font-serif font-black uppercase text-stone-900 tracking-tight">
+                        Granular Alert Trigger Categories
+                      </h3>
+                    </div>
+                    <span className="text-[10px] font-mono text-stone-500 font-bold uppercase">
+                      Recipient: +91 {smsSettings.targetNumber}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* 1. Car Uploads */}
+                    <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+                      smsSettings.alertCarUploads
+                        ? "bg-stone-900 text-stone-100 border-emerald-500 shadow-sm"
+                        : "bg-white text-stone-600 border-stone-300"
+                    }`}>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase font-serif tracking-wider flex items-center gap-1.5">
+                            🚗 New Car Uploads
+                          </span>
+                          <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold ${
+                            smsSettings.alertCarUploads ? "bg-emerald-500 text-stone-950" : "bg-stone-200 text-stone-600"
+                          }`}>
+                            {smsSettings.alertCarUploads ? "ACTIVE" : "OFF"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-400 font-mono leading-relaxed">
+                          Alert when any user or dealer submits a new car listing on the Sell Tab.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSmsCategory("alertCarUploads", !smsSettings.alertCarUploads)}
+                        className={`w-full py-2 text-[10px] font-mono font-bold uppercase tracking-wider border cursor-pointer ${
+                          smsSettings.alertCarUploads
+                            ? "bg-emerald-500 text-stone-950 border-emerald-400 hover:bg-emerald-400"
+                            : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
+                        }`}
+                      >
+                        {smsSettings.alertCarUploads ? "✓ CAR UPLOAD ALERTS ON" : "TOGGLE ON CAR UPLOADS"}
+                      </button>
+                    </div>
+
+                    {/* 2. Staff Logs */}
+                    <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+                      smsSettings.alertStaffLogs
+                        ? "bg-stone-900 text-stone-100 border-emerald-500 shadow-sm"
+                        : "bg-white text-stone-600 border-stone-300"
+                    }`}>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase font-serif tracking-wider flex items-center gap-1.5">
+                            👤 Staff Logs & Login
+                          </span>
+                          <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold ${
+                            smsSettings.alertStaffLogs ? "bg-emerald-500 text-stone-950" : "bg-stone-200 text-stone-600"
+                          }`}>
+                            {smsSettings.alertStaffLogs ? "ACTIVE" : "OFF"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-400 font-mono leading-relaxed">
+                          Alert when staff or admins log in, change user roles, or modify settings.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSmsCategory("alertStaffLogs", !smsSettings.alertStaffLogs)}
+                        className={`w-full py-2 text-[10px] font-mono font-bold uppercase tracking-wider border cursor-pointer ${
+                          smsSettings.alertStaffLogs
+                            ? "bg-emerald-500 text-stone-950 border-emerald-400 hover:bg-emerald-400"
+                            : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
+                        }`}
+                      >
+                        {smsSettings.alertStaffLogs ? "✓ STAFF LOG ALERTS ON" : "TOGGLE ON STAFF LOGS"}
+                      </button>
+                    </div>
+
+                    {/* 3. Car Expirations */}
+                    <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+                      smsSettings.alertCarExpirations
+                        ? "bg-stone-900 text-stone-100 border-amber-500 shadow-sm"
+                        : "bg-white text-stone-600 border-stone-300"
+                    }`}>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase font-serif tracking-wider flex items-center gap-1.5">
+                            ⏳ 30-Day Listing Expired
+                          </span>
+                          <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold ${
+                            smsSettings.alertCarExpirations ? "bg-amber-500 text-stone-950" : "bg-stone-200 text-stone-600"
+                          }`}>
+                            {smsSettings.alertCarExpirations ? "ACTIVE" : "OFF"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-400 font-mono leading-relaxed">
+                          Alert when a car listing reaches 30 days and auto-hides from public catalog.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSmsCategory("alertCarExpirations", !smsSettings.alertCarExpirations)}
+                        className={`w-full py-2 text-[10px] font-mono font-bold uppercase tracking-wider border cursor-pointer ${
+                          smsSettings.alertCarExpirations
+                            ? "bg-amber-500 text-stone-950 border-amber-400 hover:bg-amber-400"
+                            : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
+                        }`}
+                      >
+                        {smsSettings.alertCarExpirations ? "✓ EXPIRATION ALERTS ON" : "TOGGLE ON EXPIRATIONS"}
+                      </button>
+                    </div>
+
+                    {/* 4. Buyer Leads & Requests */}
+                    <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+                      smsSettings.alertBuyerLeads
+                        ? "bg-stone-900 text-stone-100 border-emerald-500 shadow-sm"
+                        : "bg-white text-stone-600 border-stone-300"
+                    }`}>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase font-serif tracking-wider flex items-center gap-1.5">
+                            📞 Buyer Leads & Callbacks
+                          </span>
+                          <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold ${
+                            smsSettings.alertBuyerLeads ? "bg-emerald-500 text-stone-950" : "bg-stone-200 text-stone-600"
+                          }`}>
+                            {smsSettings.alertBuyerLeads ? "ACTIVE" : "OFF"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-400 font-mono leading-relaxed">
+                          Alert for callback requests, test drive bookings, and inquiry leads.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSmsCategory("alertBuyerLeads", !smsSettings.alertBuyerLeads)}
+                        className={`w-full py-2 text-[10px] font-mono font-bold uppercase tracking-wider border cursor-pointer ${
+                          smsSettings.alertBuyerLeads
+                            ? "bg-emerald-500 text-stone-950 border-emerald-400 hover:bg-emerald-400"
+                            : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
+                        }`}
+                      >
+                        {smsSettings.alertBuyerLeads ? "✓ BUYER LEAD ALERTS ON" : "TOGGLE ON LEADS"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* DISPATCHED SMS & ALERTS HISTORY LOG LEDGER */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-950 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-300">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <History className="w-5 h-5 text-stone-900" />
+                        <h3 className="text-base font-serif font-black uppercase text-stone-900 tracking-tight">
+                          Dispatched SMS Alert Audit Ledger ({smsHistory.length})
+                        </h3>
+                      </div>
+                      <p className="text-[10px] text-stone-500 uppercase font-mono mt-0.5">
+                        Real-time system audit log of all SMS alerts dispatched to owner number +91 {smsSettings.targetNumber || "7666232753"}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-2.5" />
+                        <input
+                          type="text"
+                          value={smsSearch}
+                          onChange={(e) => setSmsSearch(e.target.value)}
+                          placeholder="Search alerts..."
+                          className="pl-8 pr-3 py-1.5 bg-white border border-stone-300 text-xs font-mono text-stone-800 focus:outline-none focus:border-stone-900 w-48"
+                        />
+                      </div>
+
+                      <select
+                        value={smsCategoryFilter}
+                        onChange={(e) => setSmsCategoryFilter(e.target.value)}
+                        className="py-1.5 px-3 bg-white border border-stone-300 text-xs font-mono text-stone-800 focus:outline-none focus:border-stone-900"
+                      >
+                        <option value="all">All Alert Types</option>
+                        <option value="carUpload">Car Uploads</option>
+                        <option value="staffLog">Staff Logs</option>
+                        <option value="carExpired">Expirations</option>
+                        <option value="buyerLead">Buyer Leads</option>
+                        <option value="testSms">Test SMS</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* ALERTS HISTORY TABLE / CARDS */}
+                  {(() => {
+                    const filteredAlerts = smsHistory.filter(item => {
+                      const matchesSearch = `${item.title} ${item.message} ${item.type}`.toLowerCase().includes(smsSearch.toLowerCase());
+                      const matchesCat = smsCategoryFilter === "all" || item.type === smsCategoryFilter;
+                      return matchesSearch && matchesCat;
+                    });
+
+                    if (filteredAlerts.length === 0) {
+                      return (
+                        <div className="text-center py-12 border-2 border-dashed border-stone-300 bg-white p-6 space-y-2">
+                          <Bell className="w-10 h-10 text-stone-400 mx-auto animate-pulse" />
+                          <h4 className="text-sm font-serif font-black uppercase text-stone-700">No Dispatched SMS Alerts Found</h4>
+                          <p className="text-xs text-stone-500 font-mono">
+                            Alerts will automatically log here whenever cars are uploaded, staff log in, or leads arrive.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleSendTestSms}
+                            className="mt-3 px-4 py-2 bg-stone-900 text-white text-xs font-mono font-bold uppercase tracking-wider hover:bg-stone-800 cursor-pointer"
+                          >
+                            Send First Test Alert
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        {filteredAlerts.map((item) => (
+                          <div
+                            key={item.id}
+                            className="p-4 bg-white border-2 border-stone-900 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono"
+                          >
+                            <div className="space-y-1 max-w-3xl">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider border ${
+                                  item.type === "carUpload" ? "bg-emerald-100 text-emerald-900 border-emerald-300" :
+                                  item.type === "staffLog" ? "bg-purple-100 text-purple-900 border-purple-300" :
+                                  item.type === "carExpired" ? "bg-amber-100 text-amber-900 border-amber-300" :
+                                  item.type === "testSms" ? "bg-blue-100 text-blue-900 border-blue-300" :
+                                  "bg-stone-100 text-stone-900 border-stone-300"
+                                }`}>
+                                  {item.type.toUpperCase()}
+                                </span>
+                                <h4 className="text-xs font-bold text-stone-950 uppercase font-serif">
+                                  {item.title}
+                                </h4>
+                                <span className="text-[9px] text-stone-500 font-bold">
+                                  • {item.timestamp ? new Date(item.timestamp).toLocaleString() : "Just now"}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-stone-700 leading-relaxed">
+                                {item.message}
+                              </p>
+
+                              <div className="flex items-center gap-3 text-[9px] text-stone-500 pt-0.5">
+                                <span>Target: <strong className="text-stone-900">+91 {item.targetNumber || "7666232753"}</strong></span>
+                                <span>Status: <strong className="text-emerald-700 font-bold">[DISPATCHED & STORED]</strong></span>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 flex items-center gap-2">
+                              <a
+                                href={`https://wa.me/91${item.targetNumber || "7666232753"}?text=${encodeURIComponent("📱 AUTO WORLD ALERT:\n" + item.title + "\n\n" + item.message)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs"
+                              >
+                                <Smartphone className="w-3 h-3" />
+                                <span>Send WhatsApp</span>
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             )}
           </div>

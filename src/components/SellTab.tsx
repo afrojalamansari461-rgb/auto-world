@@ -6,6 +6,7 @@ import type { User } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import { dispatchAdminSmsAlert } from "../lib/notificationService";
 
 export interface TestDriveRequest {
   id?: string;
@@ -2287,6 +2288,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       }
 
       window.dispatchEvent(new Event("autoWorld_db_update"));
+
+      // Trigger SMS Notification to Admin (+91 7666232753)
+      dispatchAdminSmsAlert(
+        "carUpload",
+        "🚗 New Vehicle Uploaded",
+        `New listing: ${newListing.title} by ${newListing.sellerName} (${newListing.sellerPhone}). Price: ₹${newListing.price?.toLocaleString("en-IN")}`,
+        { listingId: generatedId, title: newListing.title, seller: newListing.sellerName, phone: newListing.sellerPhone }
+      );
 
       setExistingListingsCount(prev => prev + 1);
       setPublishedListingId(generatedId);
