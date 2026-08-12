@@ -97,6 +97,7 @@ export interface UserListing {
   compatibility?: string;
   partCondition?: string;
   partNumber?: string;
+  isPinned?: boolean;
 }
 
 export type RarityTier = "common" | "uncommon" | "rare" | "ultra-rare" | "vintage";
@@ -121,6 +122,7 @@ export interface SparePart {
   status?: "pending" | "active" | "sold" | "hidden";
   isUserListing?: boolean;
   isSparePart?: boolean;
+  isPinned?: boolean;
 }
 
 export const DEFAULT_SPARE_PARTS: SparePart[] = [

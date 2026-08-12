@@ -4091,7 +4091,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               }`}
             >
               <Car className="w-4 h-4" />
-              <span>🚗 Complete Vehicle</span>
+              <span>Complete Vehicle</span>
             </button>
 
             <button
@@ -4103,8 +4103,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   : "bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
               }`}
             >
-              <Wrench className="w-4 h-4 text-amber-900" />
-              <span>⚙️ Spare Part / Mod / Nitro</span>
+              <Wrench className="w-4 h-4 text-amber-950" />
+              <span>Spare Part / Mod / Nitro</span>
             </button>
           </div>
         </div>
@@ -4117,7 +4117,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <div>
               <div className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-widest bg-amber-500/15 text-amber-900 px-2.5 py-1 border border-amber-600/30 mb-2">
                 <Wrench className="w-3.5 h-3.5 text-amber-700" />
-                <span>Spare Parts & Custom Mods Seller Studio</span>
+                <span>Spare Parts & Performance Mods Seller Studio</span>
               </div>
               <h2 className="text-2xl font-serif font-black text-stone-950 uppercase tracking-tight">
                 List Automotive Spare Part or Custom Gear
@@ -4158,14 +4158,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 onChange={(e) => setSpCategory(e.target.value as SparePart["partCategory"])}
                 className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
               >
-                <option value="engine">🚀 Engine & Turbochargers</option>
-                <option value="exhaust_nitro">💨 Exhaust Systems & Nitro Injection</option>
-                <option value="spoiler_body">🏎️ Spoilers, Aero & Body Kits</option>
-                <option value="wheels_tyres">🛞 Alloy Wheels & Performance Tyres</option>
-                <option value="brakes_suspension">🛑 Big Brake Kits & Coilovers</option>
-                <option value="interior_audio">💺 Racing Seats, Steering & Audio</option>
-                <option value="electrical">⚡ ECUs, Harnesses & Gauges</option>
-                <option value="collectibles">👑 Vintage Memorabilia & Rare Collectibles</option>
+                <option value="engine">Engine & Turbochargers</option>
+                <option value="exhaust_nitro">Exhaust Systems & Nitro Injection</option>
+                <option value="spoiler_body">Spoilers, Aero & Body Kits</option>
+                <option value="wheels_tyres">Alloy Wheels & Performance Tyres</option>
+                <option value="brakes_suspension">Big Brake Kits & Coilovers</option>
+                <option value="interior_audio">Racing Seats, Steering & Audio</option>
+                <option value="electrical">ECUs, Harnesses & Gauges</option>
+                <option value="collectibles">Vintage Memorabilia & Rare Collectibles</option>
               </select>
             </div>
 
@@ -4179,11 +4179,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 onChange={(e) => setSpRarity(e.target.value as RarityTier)}
                 className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
               >
-                <option value="common">⚪ Common Replacement Part</option>
-                <option value="uncommon">🔵 Uncommon / Performance Upgrade</option>
-                <option value="rare">🟣 Rare / Custom Tuned Spec</option>
-                <option value="ultra-rare">🟠 Ultra-Rare / Exotic Supercar Grade</option>
-                <option value="vintage">👑 Vintage / Classic Original Collector Item</option>
+                <option value="common">Common Replacement Part</option>
+                <option value="uncommon">Uncommon / Performance Upgrade</option>
+                <option value="rare">Rare / Custom Tuned Spec</option>
+                <option value="ultra-rare">Ultra-Rare / Exotic Supercar Grade</option>
+                <option value="vintage">Vintage / Classic Original Collector Item</option>
               </select>
             </div>
 
@@ -4211,11 +4211,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 onChange={(e) => setSpCondition(e.target.value as SparePart["condition"])}
                 className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
               >
-                <option value="brand_new">✨ Brand New (Unopened Box)</option>
-                <option value="like_new">🌟 Like New / Mint Condition</option>
-                <option value="refurbished">🔧 Refurbished / Rebuilt</option>
-                <option value="vintage_original">🏛️ Vintage Original Stock</option>
-                <option value="used">🚗 Used / Operational</option>
+                <option value="brand_new">Brand New (Unopened Box)</option>
+                <option value="like_new">Like New / Mint Condition</option>
+                <option value="refurbished">Refurbished / Rebuilt</option>
+                <option value="vintage_original">Vintage Original Stock</option>
+                <option value="used">Used / Operational</option>
               </select>
             </div>
 

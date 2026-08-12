@@ -7,6 +7,7 @@ export type UserRole =
   | "Co-Owner"
   | "Super Admin"
   | "Inventory Manager"
+  | "Parts Manager"
   | "Sales & Leads Specialist"
   | "Support Agent"
   | "Content Moderator"
@@ -59,6 +60,14 @@ export const ALL_ROLES: { id: UserRole; label: string; description: string; badg
     badgeBg: "bg-emerald-500/15",
     textColor: "text-emerald-400",
     borderColor: "border-emerald-500/40"
+  },
+  {
+    id: "Parts Manager",
+    label: "Parts & Vault Manager",
+    description: "Component & Performance Mod Specialist. Controls spare parts, custom mods, nitrous kits, fitment specs, and homepage pinning.",
+    badgeBg: "bg-amber-500/15",
+    textColor: "text-amber-400",
+    borderColor: "border-amber-500/40"
   },
   {
     id: "Sales & Leads Specialist",
@@ -114,6 +123,7 @@ export const ALL_ASSIGNABLE_ROLES: UserRole[] = [
   "Co-Owner",
   "Super Admin",
   "Inventory Manager",
+  "Parts Manager",
   "Sales & Leads Specialist",
   "Support Agent",
   "Content Moderator",

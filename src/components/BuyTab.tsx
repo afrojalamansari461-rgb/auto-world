@@ -1136,10 +1136,10 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                     onChange={(e) => setSpSortBy(e.target.value as any)}
                     className="p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
                   >
-                    <option value="newest">⚡ Newest Listed First</option>
-                    <option value="rarity">👑 Highest Rarity Tier First</option>
-                    <option value="price-low">💰 Price: Low to High</option>
-                    <option value="price-high">💎 Price: High to Low</option>
+                    <option value="newest">Newest Listed First</option>
+                    <option value="rarity">Highest Rarity Tier First</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
                   </select>
                 </div>
               </div>
@@ -1150,14 +1150,14 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 <div className="flex flex-wrap gap-1.5">
                   {[
                     { id: "all", label: "All Parts" },
-                    { id: "engine", label: "🚀 Engine & Turbos" },
-                    { id: "exhaust_nitro", label: "💨 Exhaust & Nitro" },
-                    { id: "spoiler_body", label: "🏎️ Spoilers & Aero" },
-                    { id: "wheels_tyres", label: "🛞 Alloy Wheels" },
-                    { id: "brakes_suspension", label: "🛑 Brakes & Suspension" },
-                    { id: "interior_audio", label: "💺 Seats & Steering" },
-                    { id: "electrical", label: "⚡ ECUs & Gauges" },
-                    { id: "collectibles", label: "👑 Vintage Collectibles" },
+                    { id: "engine", label: "Engine & Turbos" },
+                    { id: "exhaust_nitro", label: "Exhaust & Nitro" },
+                    { id: "spoiler_body", label: "Spoilers & Aero" },
+                    { id: "wheels_tyres", label: "Alloy Wheels" },
+                    { id: "brakes_suspension", label: "Brakes & Suspension" },
+                    { id: "interior_audio", label: "Seats & Steering" },
+                    { id: "electrical", label: "ECUs & Gauges" },
+                    { id: "collectibles", label: "Vintage Collectibles" },
                   ].map((cat) => (
                     <button
                       key={cat.id}
@@ -1181,11 +1181,11 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                 <div className="flex flex-wrap gap-1.5">
                   {[
                     { id: "all", label: "All Rarities" },
-                    { id: "common", label: "⚪ Common" },
-                    { id: "uncommon", label: "🔵 Uncommon" },
-                    { id: "rare", label: "🟣 Rare" },
-                    { id: "ultra-rare", label: "🟠 Ultra-Rare" },
-                    { id: "vintage", label: "👑 Vintage" },
+                    { id: "common", label: "Common" },
+                    { id: "uncommon", label: "Uncommon" },
+                    { id: "rare", label: "Rare" },
+                    { id: "ultra-rare", label: "✦ Ultra-Rare" },
+                    { id: "vintage", label: "❖ Vintage" },
                   ].map((rar) => (
                     <button
                       key={rar.id}
@@ -1244,11 +1244,11 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSpareParts.map((part) => {
                   const rarityBadgeColors: Record<RarityTier, string> = {
-                    "vintage": "bg-yellow-500 text-stone-950 border-yellow-600",
-                    "ultra-rare": "bg-amber-500 text-stone-950 border-amber-600 animate-pulse",
-                    "rare": "bg-purple-600 text-white border-purple-700",
-                    "uncommon": "bg-blue-600 text-white border-blue-700",
-                    "common": "bg-stone-700 text-stone-200 border-stone-800"
+                    "vintage": "bg-yellow-500 text-stone-950 border-yellow-600 font-black",
+                    "ultra-rare": "bg-amber-500 text-stone-950 border-amber-600 animate-pulse font-black",
+                    "rare": "bg-purple-600 text-white border-purple-700 font-black",
+                    "uncommon": "bg-blue-600 text-white border-blue-700 font-black",
+                    "common": "bg-stone-700 text-stone-200 border-stone-800 font-black"
                   };
 
                   const rarityBorderColors: Record<RarityTier, string> = {
@@ -1262,7 +1262,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                   return (
                     <div
                       key={part.id}
-                      className={`bg-white border-2 ${rarityBorderColors[part.rarity]} flex flex-col justify-between transition-transform hover:-translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.85)] relative group`}
+                      className={`bg-white border-2 ${rarityBorderColors[part.rarity]} flex flex-col justify-between transition-transform hover:-translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.85)] relative group overflow-hidden`}
                     >
                       {/* Card Image Header */}
                       <div className="relative h-48 bg-stone-900 overflow-hidden">
@@ -1276,11 +1276,9 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                         {/* Rarity Status Badge Overlay */}
                         <div className="absolute top-3 left-3">
                           <span className={`px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-wider border ${rarityBadgeColors[part.rarity]}`}>
-                            {part.rarity === "ultra-rare" && "🟠 "}
-                            {part.rarity === "vintage" && "👑 "}
-                            {part.rarity === "rare" && "🟣 "}
-                            {part.rarity === "uncommon" && "🔵 "}
-                            {part.rarity === "common" && "⚪ "}
+                            {part.rarity === "ultra-rare" && "✦ "}
+                            {part.rarity === "vintage" && "❖ "}
+                            {part.rarity === "rare" && "★ "}
                             {part.rarity.toUpperCase()}
                           </span>
                         </div>

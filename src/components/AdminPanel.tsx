@@ -20,7 +20,7 @@ import {
   dispatchAdminSmsAlert, 
   fetchSmsHistory 
 } from "../lib/notificationService";
-import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
+import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS, SparePart, DEFAULT_SPARE_PARTS } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
 import RoleBadge from "./RoleBadge";
@@ -102,7 +102,11 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     currentRole: UserRole;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles" | "sms">("inventory");
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "spare_parts" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles" | "sms">("inventory");
+  const [adminSpareParts, setAdminSpareParts] = useState<SparePart[]>(DEFAULT_SPARE_PARTS);
+  const [homePinnedSparePartIds, setHomePinnedSparePartIds] = useState<string[]>([]);
+  const [sparePartsSearch, setSparePartsSearch] = useState("");
+  const [sparePartsCatFilter, setSparePartsCatFilter] = useState("all");
 
   // Mobile SMS & Notification System States (+91 7666232753)
   const [smsSettings, setSmsSettings] = useState<SmsSettings>(() => getSmsSettings());
@@ -327,6 +331,50 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         ? "Buy Pass Free Mode ENABLED — All buyers get free access!"
         : "Buy Pass Free Mode DISABLED — Standard ₹1 pass required.",
       nextVal ? "success" : "info"
+    );
+  };
+
+  const handleTogglePinSparePart = async (partId: string, isCurrentlyPinned: boolean) => {
+    const nextPinnedState = !isCurrentlyPinned;
+    playSynthBeep(nextPinnedState ? 1100 : 450, 0.15, "triangle");
+
+    let updatedPinnedIds = [...homePinnedSparePartIds];
+    if (nextPinnedState) {
+      if (!updatedPinnedIds.includes(partId)) updatedPinnedIds.push(partId);
+    } else {
+      updatedPinnedIds = updatedPinnedIds.filter(id => id !== partId);
+    }
+
+    setHomePinnedSparePartIds(updatedPinnedIds);
+    try {
+      localStorage.setItem("autoWorld_home_pinned_spare_parts", JSON.stringify(updatedPinnedIds));
+    } catch (e) {}
+
+    // Update state locally
+    setAdminSpareParts(prev => prev.map(p => p.id === partId ? { ...p, isPinned: nextPinnedState } : p));
+
+    // Update in Firestore
+    try {
+      await updateDoc(doc(db, "components", partId), { isPinned: nextPinnedState });
+    } catch (e) {
+      console.warn("Firestore components update doc skipped/failed:", e);
+    }
+
+    await saveAdminSettingsToFirestore({ homePinnedSparePartIds: updatedPinnedIds });
+
+    triggerHudAlert(
+      nextPinnedState ? "PART PINNED TO HOMEPAGE" : "PART UNPINNED FROM HOMEPAGE",
+      nextPinnedState
+        ? "This spare part is now featured on the homepage Vault showcase."
+        : "Removed from homepage Vault showcase.",
+      nextPinnedState ? "premium" : "hide"
+    );
+
+    showToast(
+      nextPinnedState
+        ? "✦ Spare part successfully pinned to Homepage Vault!"
+        : "Spare part unpinned from Homepage Vault.",
+      nextPinnedState ? "success" : "info"
     );
   };
 
@@ -889,12 +937,29 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         if (data.heroBadge) setHeroBadge(data.heroBadge);
         if (data.announcementText) setAnnouncementText(data.announcementText);
         if (data.isAnnouncementEnabled !== undefined) setIsAnnouncementEnabled(Boolean(data.isAnnouncementEnabled));
+        if (data.homePinnedSparePartIds) setHomePinnedSparePartIds(data.homePinnedSparePartIds);
         if (data.customDialogues && data.customDialogues.length > 0) setCustomDialogues(data.customDialogues);
         if (data.customFaqs && data.customFaqs.length > 0) setCustomFaqs(data.customFaqs);
       }
     }, (err) => console.warn("Admin settings doc listener warning:", err));
     
-    // 6. Real-time subscriber for users & role management
+    // 6. Real-time subscriber for spare parts / performance components
+    const unsubComponents = onSnapshot(collection(db, "components"), (snapshot) => {
+      const parts: SparePart[] = [];
+      snapshot.forEach((docSnap) => {
+        parts.push({ ...docSnap.data() as SparePart, id: docSnap.id });
+      });
+      if (parts.length > 0) {
+        setAdminSpareParts(parts);
+      } else {
+        setAdminSpareParts(DEFAULT_SPARE_PARTS);
+      }
+    }, (err) => {
+      console.warn("Admin components listener warning:", err);
+      setAdminSpareParts(DEFAULT_SPARE_PARTS);
+    });
+
+    // 7. Real-time subscriber for users & role management
     const unsubRoles = subscribeToUserRoles((users) => {
       setUsersList(users);
     });
@@ -2121,7 +2186,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const isCoOwner = currentUserRole === "Co-Owner";
   const isSuperAdmin = currentUserRole === "Super Admin";
 
-  const isAuthorized = isOwner || isCoOwner || isSuperAdmin;
+  const isAuthorized = isOwner || isCoOwner || isSuperAdmin || currentUserRole === "Parts Manager" || currentUserRole === "Inventory Manager" || currentUserRole === "Content Moderator";
 
   if (!isAuthorized) {
     return (
@@ -2930,6 +2995,18 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           >
             <Tag className="w-4 h-4 shrink-0" />
             Inventory list ({aggregateInventoryList.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("spare_parts")}
+            className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              activeSubSection === "spare_parts"
+                ? "bg-amber-500 text-stone-950 shadow-md font-black border-b-2 border-amber-300"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+          >
+            <Wrench className="w-4 h-4 shrink-0 text-amber-500" />
+            The Vault Parts ({adminSpareParts.length})
           </button>
           
           <button
@@ -4212,6 +4289,205 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SUBSECTION 1.5: THE VAULT (SPARE PARTS / MODS / NITRO MANAGEMENT) */}
+            {activeSubSection === "spare_parts" && (
+              <div className="space-y-6 animate-in fade-in">
+                {/* Header card for spare parts */}
+                <div className="bg-stone-900 text-white border-2 border-stone-950 p-6 space-y-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-800 pb-4">
+                    <div className="space-y-1">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-mono font-bold uppercase tracking-widest">
+                        <Wrench className="w-3.5 h-3.5 text-amber-400" />
+                        <span>The Vault Administrative Control Desk</span>
+                      </div>
+                      <h2 className="text-2xl font-serif font-black uppercase text-white tracking-tight">
+                        Performance Parts, Mods & Nitro Ledger
+                      </h2>
+                      <p className="text-stone-400 text-xs font-mono">
+                        Pin spare parts to the homepage Vault carousel, manage inventory status, edit prices, or delete catalog items.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1.5 bg-amber-500 text-stone-950 text-xs font-mono font-black uppercase tracking-wider border border-amber-400">
+                        Total Items: {adminSpareParts.length}
+                      </span>
+                      <span className="px-3 py-1.5 bg-stone-800 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider border border-stone-700">
+                        Pinned on Home: {homePinnedSparePartIds.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Filters & Search */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={sparePartsSearch}
+                        onChange={(e) => setSparePartsSearch(e.target.value)}
+                        placeholder="Search part title, brand, compatibility..."
+                        className="w-full pl-9 pr-4 py-2 bg-stone-950 border border-stone-800 text-white text-xs font-mono focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <select
+                        value={sparePartsCatFilter}
+                        onChange={(e) => setSparePartsCatFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white text-xs font-mono focus:outline-none focus:border-amber-500 cursor-pointer"
+                      >
+                        <option value="all">ALL CATEGORIES ({adminSpareParts.length})</option>
+                        <option value="performance">PERFORMANCE & TURBOS</option>
+                        <option value="engine">ENGINE & EXHAUST</option>
+                        <option value="nitro">NITROUS / NOS KITS</option>
+                        <option value="wheels">WHEELS & BRAKES</option>
+                        <option value="body_kits">BODY KITS & AERO</option>
+                        <option value="electronics">ELECTRONICS & ECU</option>
+                        <option value="tools">TOOLS & WORKSHOP</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-end">
+                      <button
+                        onClick={() => {
+                          setSparePartsSearch("");
+                          setSparePartsCatFilter("all");
+                        }}
+                        className="px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition border border-stone-700"
+                      >
+                        Reset Search Filters
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table of Spare Parts */}
+                {adminSpareParts.length === 0 ? (
+                  <div className="bg-[#FAF8F5] border-2 border-stone-300 p-12 text-center space-y-3">
+                    <Wrench className="w-12 h-12 text-stone-400 mx-auto" />
+                    <h3 className="text-sm font-serif font-bold uppercase text-stone-900">No Parts or Modifications Found</h3>
+                    <p className="text-xs font-mono text-stone-500">Add parts using the Sell tab or seed default items.</p>
+                  </div>
+                ) : (
+                  <div className="bg-[#FAF8F5] border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-stone-900 text-white font-mono text-[10px] uppercase tracking-wider border-b-2 border-stone-950">
+                            <th className="p-3">Component / Part</th>
+                            <th className="p-3">Category</th>
+                            <th className="p-3">Compatibility</th>
+                            <th className="p-3">Price</th>
+                            <th className="p-3">Condition</th>
+                            <th className="p-3">Status / Home Pin</th>
+                            <th className="p-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-300 font-mono text-xs">
+                          {adminSpareParts
+                            .filter(part => {
+                              const searchStr = `${part.title} ${part.partCategory} ${part.brand || ""} ${part.compatibility || ""}`.toLowerCase();
+                              const matchesSearch = searchStr.includes(sparePartsSearch.toLowerCase());
+                              const matchesCat = sparePartsCatFilter === "all" || part.partCategory === sparePartsCatFilter;
+                              return matchesSearch && matchesCat;
+                            })
+                            .map((part) => {
+                              const isPinned = part.isPinned || homePinnedSparePartIds.includes(part.id);
+                              return (
+                                <tr key={part.id} className="hover:bg-stone-200/60 transition-colors">
+                                  {/* Part Info */}
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-3">
+                                      <img
+                                        src={part.image}
+                                        alt={part.title}
+                                        className="w-12 h-12 object-cover border border-stone-400 rounded-xs bg-stone-900 shrink-0"
+                                      />
+                                      <div>
+                                        <div className="font-bold text-stone-950 uppercase line-clamp-1">{part.title}</div>
+                                        <div className="text-[10px] text-stone-500 uppercase">{part.brand || "Aftermarket OEM"}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Category */}
+                                  <td className="p-3 font-semibold text-stone-800 uppercase text-[11px]">
+                                    {part.partCategory.replace("_", " ")}
+                                  </td>
+
+                                  {/* Compatibility */}
+                                  <td className="p-3 text-stone-700 text-[11px] max-w-[150px] truncate">
+                                    {part.compatibility || "Universal"}
+                                  </td>
+
+                                  {/* Price */}
+                                  <td className="p-3 font-black text-amber-600">
+                                    ₹{part.price.toLocaleString("en-IN")}
+                                  </td>
+
+                                  {/* Condition */}
+                                  <td className="p-3">
+                                    <span className="px-2 py-0.5 bg-stone-200 text-stone-800 text-[9px] font-bold uppercase border border-stone-300">
+                                      {part.condition.replace("_", " ")}
+                                    </span>
+                                  </td>
+
+                                  {/* Pin Status Toggle */}
+                                  <td className="p-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTogglePinSparePart(part.id, isPinned)}
+                                      className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5 border shadow-xs ${
+                                        isPinned
+                                          ? "bg-amber-500 text-stone-950 border-amber-400 shadow-amber-300/40"
+                                          : "bg-stone-200 hover:bg-stone-300 text-stone-700 border-stone-300"
+                                      }`}
+                                      title={isPinned ? "Click to unpin from Home Page" : "Click to pin to Home Page Vault"}
+                                    >
+                                      <span>{isPinned ? "✦ PINNED ON HOME" : "📌 PIN TO HOME"}</span>
+                                    </button>
+                                  </td>
+
+                                  {/* Actions */}
+                                  <td className="p-3 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        playSynthBeep(400, 0.2, "sawtooth");
+                                        setConfirmModal({
+                                          isOpen: true,
+                                          title: "DELETE SPARE PART",
+                                          message: `Are you sure you want to delete "${part.title}" from The Vault database?`,
+                                          danger: true,
+                                          confirmText: "DELETE PART",
+                                          onConfirm: async () => {
+                                            try {
+                                              await deleteDoc(doc(db, "components", part.id));
+                                            } catch (e) {}
+                                            setAdminSpareParts(prev => prev.filter(p => p.id !== part.id));
+                                            triggerHudAlert("PART DELETED", `Removed "${part.title}" from catalog.`, "delete");
+                                            showToast(`Spare part "${part.title}" deleted.`, "info");
+                                          }
+                                        });
+                                      }}
+                                      className="px-2.5 py-1 bg-red-100 hover:bg-red-600 hover:text-white text-red-700 border border-red-300 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ml-auto"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
