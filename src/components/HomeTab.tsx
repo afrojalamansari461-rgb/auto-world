@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles, Wrench, Tag, Flame } from "lucide-react";
-import { Vehicle, DEFAULT_VEHICLES, UserListing, SparePart, DEFAULT_SPARE_PARTS } from "../types";
+import { Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles } from "lucide-react";
+import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
 import { motion } from "motion/react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -192,7 +192,6 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
   const [featuredCars, setFeaturedCars] = useState<Vehicle[]>(() => {
     return getOverriddenVehicles().slice(0, 3);
   });
-  const [pinnedSpareParts, setPinnedSpareParts] = useState<SparePart[]>(DEFAULT_SPARE_PARTS.slice(0, 4));
 
   // Dynamic Site Content States
   const [heroTitle, setHeroTitle] = useState(() => {
@@ -205,7 +204,7 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
     return localStorage.getItem("autoWorld_hero_badge") || "Volume IV • Issue 12 • Established MMXXVI";
   });
   const [announcementText, setAnnouncementText] = useState(() => {
-    return localStorage.getItem("autoWorld_announcement_text") || "EXCLUSIVE PROMO: Unlimited verified listings and 0% buyer pass markup for all new users this week!";
+    return localStorage.getItem("autoWorld_announcement_text") || "🔥 EXCLUSIVE PROMO: Unlimited verified listings and 0% buyer pass markup for all new users this week!";
   });
   const [isAnnouncementEnabled, setIsAnnouncementEnabled] = useState(() => {
     try {
@@ -216,19 +215,12 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
   });
 
   useEffect(() => {
-    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings, spareParts }) => {
+    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings }) => {
       if (adminSettings.heroTitle) setHeroTitle(adminSettings.heroTitle);
       if (adminSettings.heroSubtitle) setHeroSubtitle(adminSettings.heroSubtitle);
       if (adminSettings.heroBadge) setHeroBadge(adminSettings.heroBadge);
       if (adminSettings.announcementText) setAnnouncementText(adminSettings.announcementText);
       if (adminSettings.isAnnouncementEnabled !== undefined) setIsAnnouncementEnabled(adminSettings.isAnnouncementEnabled);
-
-      // Handle Pinned Spare Parts
-      const allParts = spareParts && spareParts.length > 0 ? spareParts : DEFAULT_SPARE_PARTS;
-      const pinnedList = allParts.filter(p => 
-        p.isPinned || (adminSettings.homePinnedSparePartIds && adminSettings.homePinnedSparePartIds.includes(String(p.id)))
-      );
-      setPinnedSpareParts(pinnedList.length > 0 ? pinnedList : allParts.slice(0, 4));
 
       let defaults = [...DEFAULT_VEHICLES];
 
@@ -797,105 +789,6 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
           })}
         </div>
       </motion.section>
-
-      {/* Section 2.5: Pinned Performance Parts & Modifications (The Vault) */}
-      {pinnedSpareParts.length > 0 && (
-        <motion.section variants={itemVariants} className="py-16 bg-stone-950 text-white border-b border-stone-850 relative overflow-hidden">
-          <div className="absolute top-0 right-0 opacity-10 pointer-events-none">
-            <Wrench className="w-96 h-96 text-amber-500" />
-          </div>
-
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-10 pb-6 border-b border-stone-800">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-mono font-bold uppercase tracking-widest mb-2">
-                  <Wrench className="w-3.5 h-3.5 text-amber-400" />
-                  <span>The Vault • Performance Mods & Spare Parts</span>
-                </div>
-                <h2 className="text-3xl sm:text-4xl font-serif font-black uppercase tracking-tight text-white">
-                  Featured Engineering & Custom Gear
-                </h2>
-                <p className="text-stone-400 text-xs font-mono mt-1">
-                  Verified turbos, NOS nitrous kits, forged alloys, and rare classic components pinned by curators.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("buy")}
-                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono text-xs font-black uppercase tracking-wider transition cursor-pointer flex items-center gap-2 shadow-sm shrink-0"
-              >
-                <span>Browse Vault Catalog ({pinnedSpareParts.length})</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Compact Grid / Horizontal Carousel for Pinned Spare Parts */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {pinnedSpareParts.map((part) => (
-                <div
-                  key={part.id}
-                  onClick={() => setActiveTab("buy")}
-                  className="bg-stone-900 border border-stone-800 hover:border-amber-500/60 transition-all duration-300 flex flex-col justify-between group cursor-pointer overflow-hidden shadow-lg hover:-translate-y-1 relative"
-                >
-                  {/* Image header */}
-                  <div className="relative h-44 bg-stone-950 overflow-hidden">
-                    <img
-                      src={part.image}
-                      alt={part.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 grayscale-20 group-hover:grayscale-0"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-transparent to-transparent" />
-
-                    {/* Rarity badge overlay */}
-                    <span className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-amber-500 text-stone-950 font-mono text-[9px] font-black uppercase tracking-wider border border-amber-400">
-                      {part.rarity === "ultra-rare" && "✦ "}
-                      {part.rarity === "vintage" && "❖ "}
-                      {part.rarity.toUpperCase()}
-                    </span>
-
-                    {/* Condition tag */}
-                    <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-stone-950/80 text-stone-300 font-mono text-[8.5px] uppercase font-bold border border-stone-700">
-                      {part.condition.replace("_", " ")}
-                    </span>
-
-                    {/* Price tag */}
-                    <div className="absolute bottom-2.5 left-2.5">
-                      <span className="text-base font-mono font-black text-amber-400 bg-stone-950/90 px-2.5 py-1 border border-stone-800">
-                        ₹{part.price.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Body details */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div>
-                      <div className="text-[9.5px] font-mono font-bold text-stone-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                        <Tag className="w-3 h-3 text-amber-500" />
-                        <span>{part.partCategory.replace("_", " & ").toUpperCase()}</span>
-                      </div>
-                      <h3 className="text-xs font-serif font-black text-stone-100 uppercase line-clamp-2 leading-tight group-hover:text-amber-400 transition-colors">
-                        {part.title}
-                      </h3>
-                    </div>
-
-                    <div className="pt-2 border-t border-stone-800/80 text-[10px] font-mono text-stone-400 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-stone-500 uppercase">Fitment:</span>
-                        <span className="text-stone-200 font-bold truncate max-w-[130px]">{part.compatibility || "Universal"}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-amber-400/90 font-bold">
-                        <span>Inspect Specs</span>
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
-      )}
 
       {/* Section 3: Process Steps */}
       <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">

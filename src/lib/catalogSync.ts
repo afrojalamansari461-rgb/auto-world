@@ -1,15 +1,13 @@
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, setDoc, onSnapshot, collection, getDoc } from "firebase/firestore";
-import { UserListing, SparePart, DEFAULT_SPARE_PARTS } from "../types";
+import { UserListing } from "../types";
 
 export interface AdminSettingsData {
   hiddenDefaultIds: number[];
   removedDefaultIds: number[];
   defaultBadges: Record<string, string | null>;
   homeFeaturedIds: string[];
-  homePinnedSparePartIds?: string[];
   isFreePassEnabled?: boolean;
-  isSmsNotificationsEnabled?: boolean;
   isSecureShieldEnabled?: boolean;
   isEmiCalculatorEnabled?: boolean;
   isWhatsAppConnectEnabled?: boolean;
@@ -84,9 +82,6 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       }
       if (settings.homeFeaturedIds) {
         localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(settings.homeFeaturedIds));
-      }
-      if (settings.homePinnedSparePartIds) {
-        localStorage.setItem("autoWorld_home_pinned_spare_parts", JSON.stringify(settings.homePinnedSparePartIds));
       }
       if (settings.isFreePassEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(settings.isFreePassEnabled));
@@ -171,12 +166,10 @@ export function subscribeToRealtimeCatalog(
     userListings: UserListing[];
     overrides: Record<string, any>;
     adminSettings: AdminSettingsData;
-    spareParts: SparePart[];
   }) => void
 ) {
   let userListings: UserListing[] = [];
   let overrides: Record<string, any> = {};
-  let sparePartsList: SparePart[] = DEFAULT_SPARE_PARTS;
   let adminSettings: AdminSettingsData = {
     hiddenDefaultIds: [],
     removedDefaultIds: [],
@@ -188,8 +181,7 @@ export function subscribeToRealtimeCatalog(
     onData({
       userListings: [...userListings],
       overrides: { ...overrides },
-      adminSettings: { ...adminSettings },
-      spareParts: [...sparePartsList]
+      adminSettings: { ...adminSettings }
     });
   };
 
@@ -239,7 +231,6 @@ export function subscribeToRealtimeCatalog(
           removedDefaultIds: Array.isArray(data.removedDefaultIds) ? data.removedDefaultIds : [],
           defaultBadges: data.defaultBadges && typeof data.defaultBadges === "object" ? data.defaultBadges : {},
           homeFeaturedIds: Array.isArray(data.homeFeaturedIds) ? data.homeFeaturedIds : [],
-          homePinnedSparePartIds: Array.isArray(data.homePinnedSparePartIds) ? data.homePinnedSparePartIds : [],
           isFreePassEnabled: data.isFreePassEnabled !== undefined ? Boolean(data.isFreePassEnabled) : true,
           isSecureShieldEnabled: data.isSecureShieldEnabled !== undefined ? Boolean(data.isSecureShieldEnabled) : true,
           isEmiCalculatorEnabled: data.isEmiCalculatorEnabled !== undefined ? Boolean(data.isEmiCalculatorEnabled) : true,
@@ -268,28 +259,9 @@ export function subscribeToRealtimeCatalog(
     }
   );
 
-  // Listen to components collection (spare parts)
-  const unsubComponents = onSnapshot(
-    collection(db, "components"),
-    (snapshot) => {
-      const parts: SparePart[] = [];
-      snapshot.forEach((docSnap) => {
-        parts.push({ ...docSnap.data() as SparePart, id: docSnap.id });
-      });
-      if (parts.length > 0) {
-        sparePartsList = parts;
-      }
-      emit();
-    },
-    (err) => {
-      console.warn("Components snapshot listener error:", err);
-    }
-  );
-
   return () => {
     unsubListings();
     unsubOverrides();
     unsubSettings();
-    unsubComponents();
   };
 }

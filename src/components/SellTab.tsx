@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User as UserIcon, ExternalLink, Wrench, Zap, Flame, Shield } from "lucide-react";
-import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing, SparePart, RarityTier } from "../types";
-import confetti from "canvas-confetti";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User, ExternalLink } from "lucide-react";
+import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
 import { getListingExpirationDetails } from "../lib/expirationManager";
 import type { User } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
@@ -1820,176 +1819,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
 
-  // Spare Parts & Custom Mods Listing Mode States
-  const [listingCategoryMode, setListingCategoryMode] = useState<"vehicle" | "sparePart">("vehicle");
-  const [spTitle, setSpTitle] = useState("");
-  const [spCategory, setSpCategory] = useState<SparePart["partCategory"]>("engine");
-  const [spRarity, setSpRarity] = useState<RarityTier>("rare");
-  const [spPrice, setSpPrice] = useState("");
-  const [spCompatibility, setSpCompatibility] = useState("Universal / Custom Fitment");
-  const [spCondition, setSpCondition] = useState<SparePart["condition"]>("brand_new");
-  const [spPartNumber, setSpPartNumber] = useState("");
-  const [spDescription, setSpDescription] = useState("");
-  const [spImage, setSpImage] = useState("");
-  const [spPhotos, setSpPhotos] = useState<{ src: string; alt: string }[]>([]);
-  const [spSellerName, setSpSellerName] = useState(currentUser?.displayName || "");
-  const [spSellerPhone, setSpSellerPhone] = useState("+91 ");
-  const [spSellerEmail, setSpSellerEmail] = useState(currentUser?.email || "");
-  const [spLocation, setSpLocation] = useState("Mumbai, Maharashtra");
-  const [isPublishingPart, setIsPublishingPart] = useState(false);
-
-  const handleSparePartPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    processSparePartPhotoFiles(files);
-  };
-
-  const processSparePartPhotoFiles = async (files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    for (const file of fileArray) {
-      if (!file.type.match("image.*")) {
-        showToast("Please upload valid image formats only.", "error");
-        continue;
-      }
-      if (file.size > 15 * 1024 * 1024) {
-        showToast("Maximum image file size is 15MB.", "error");
-        continue;
-      }
-
-      try {
-        const compressedSrc = await compressImageFile(file, 1000, 0.75);
-        if (compressedSrc) {
-          setSpPhotos(prev => [...prev, { src: compressedSrc, alt: file.name }]);
-          if (!spImage) setSpImage(compressedSrc);
-        }
-      } catch (err) {
-        console.error("Spare part photo processing error:", err);
-      }
-    }
-  };
-
-  const handleAddSparePartPhotoByUrl = () => {
-    if (!spImage.trim()) return;
-    setSpPhotos(prev => [...prev, { src: spImage.trim(), alt: spTitle || "Spare Part Photo" }]);
-    showToast("Added image URL to photo list!", "info");
-  };
-
-  const handleRemoveSparePartPhoto = (index: number) => {
-    setSpPhotos(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handlePublishSparePart = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!spTitle.trim()) {
-      showToast("Please enter a title for the spare part.", "error");
-      return;
-    }
-    const numPrice = parseInt(spPrice.replace(/[^0-9]/g, "")) || 0;
-    if (numPrice <= 0) {
-      showToast("Please enter a valid asking price.", "error");
-      return;
-    }
-    if (!spDescription.trim()) {
-      showToast("Please enter a short description of fitment and condition.", "error");
-      return;
-    }
-    const cleanPhone = spSellerPhone.replace(/[^0-9]/g, "");
-    if (cleanPhone.length < 10) {
-      showToast("Please enter a valid 10-digit contact phone number.", "error");
-      return;
-    }
-
-    setIsPublishingPart(true);
-    try {
-      const generatedId = `SP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const fallbackImg = "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop&q=80";
-      const defaultImg = spPhotos.length > 0 ? spPhotos[0].src : (spImage || fallbackImg);
-      const photoList = spPhotos.length > 0 ? spPhotos : [{ src: defaultImg, alt: spTitle }];
-
-      const newSparePart: UserListing = {
-        id: generatedId,
-        title: spTitle.trim(),
-        type: "spare_part",
-        make: "Performance Parts",
-        model: spCategory,
-        year: "2026",
-        price: numPrice,
-        condition: 5,
-        mileage: "0 km",
-        fuelType: "N/A",
-        description: spDescription.trim(),
-        negotiable: "Flexible",
-        sellerName: spSellerName || currentUser?.displayName || "Private Seller",
-        sellerEmail: spSellerEmail || currentUser?.email || "",
-        sellerPhone: spSellerPhone,
-        location: spLocation || "India",
-        features: [spCategory, spRarity, spCondition, spCompatibility],
-        photos: photoList,
-        datePosted: new Date().toISOString(),
-        status: "active",
-        userId: currentUser?.uid || "guest",
-        isSparePart: true,
-        partCategory: spCategory,
-        rarity: spRarity,
-        compatibility: spCompatibility,
-        partCondition: spCondition,
-        partNumber: spPartNumber
-      };
-
-      // Save to Firestore
-      try {
-        await setDoc(doc(db, "listings", generatedId), newSparePart);
-      } catch (fErr) {
-        console.warn("Firestore spare part publish warning:", fErr);
-      }
-
-      // Also save to localStorage cache
-      try {
-        const stored = localStorage.getItem("autoWorld_listings");
-        const existing: UserListing[] = stored ? JSON.parse(stored) : [];
-        existing.push(newSparePart);
-        localStorage.setItem("autoWorld_listings", JSON.stringify(existing));
-      } catch (err) {
-        console.error("Local storage error:", err);
-      }
-
-      window.dispatchEvent(new Event("autoWorld_db_update"));
-
-      // Trigger SMS Notification Alert to Admin (+91 7666232753)
-      dispatchAdminSmsAlert(
-        "carUpload",
-        "⚙️ New Spare Part Listed",
-        `New ${spRarity.toUpperCase()} spare part listed: ${spTitle} (Price: ₹${numPrice.toLocaleString("en-IN")}). Category: ${spCategory}. Seller: ${spSellerName} (${spSellerPhone}).`,
-        { sellerPhone: spSellerPhone, partCategory: spCategory, rarity: spRarity }
-      );
-
-      // Trigger Confetti Celebration
-      try {
-        confetti({
-          particleCount: 120,
-          spread: 80,
-          origin: { y: 0.6 }
-        });
-      } catch (e) {}
-
-      showToast(`🎉 "${spTitle}" published to the Spare Parts Marketplace!`, "success");
-
-      // Reset form
-      setSpTitle("");
-      setSpPrice("");
-      setSpDescription("");
-      setSpPartNumber("");
-      setSpImage("");
-      setSpPhotos([]);
-      setViewMode("my_catalog");
-    } catch (err: any) {
-      console.error("Error publishing spare part:", err);
-      showToast("Failed to publish spare part listing.", "error");
-    } finally {
-      setIsPublishingPart(false);
-    }
-  };
-
   const handleParseDealerFeed = async (textToParse?: string) => {
     const text = textToParse !== undefined ? textToParse : rawUploadText;
     if (!text.trim()) {
@@ -3594,7 +3423,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           {/* Buyer Name & Phone */}
                           <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
                             <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
-                              <UserIcon className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
+                              <User className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
                             </div>
                             <div className="font-serif font-black text-stone-950 text-sm">
                               {req.buyerName || "Interested Buyer"}
@@ -4072,393 +3901,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         </div>
       )}
 
-      {/* LISTING CATEGORY MODE SWITCHER (Vehicle vs Spare Part) */}
-      {!showDealerUpload && viewMode === "wizard" && (
-        <div className="mb-6 p-2 bg-stone-900 border-2 border-stone-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.85)]">
-          <div className="text-[11px] font-mono text-stone-300 font-bold uppercase tracking-wider px-2 flex items-center gap-1.5">
-            <Tag className="w-3.5 h-3.5 text-amber-400" />
-            <span>Select Listing Category:</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setListingCategoryMode("vehicle")}
-              className={`flex-1 sm:flex-none px-4 py-2 text-xs font-mono font-black uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border ${
-                listingCategoryMode === "vehicle"
-                  ? "bg-amber-500 text-stone-950 border-amber-400 shadow-xs"
-                  : "bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-              }`}
-            >
-              <Car className="w-4 h-4" />
-              <span>Complete Vehicle</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setListingCategoryMode("sparePart")}
-              className={`flex-1 sm:flex-none px-4 py-2 text-xs font-mono font-black uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border ${
-                listingCategoryMode === "sparePart"
-                  ? "bg-amber-500 text-stone-950 border-amber-400 shadow-xs"
-                  : "bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-              }`}
-            >
-              <Wrench className="w-4 h-4 text-amber-950" />
-              <span>Spare Part / Mod / Nitro</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* SPARE PARTS FORM */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "sparePart" && (
-        <form onSubmit={handlePublishSparePart} className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] mb-10">
-          <div className="border-b border-stone-300 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-widest bg-amber-500/15 text-amber-900 px-2.5 py-1 border border-amber-600/30 mb-2">
-                <Wrench className="w-3.5 h-3.5 text-amber-700" />
-                <span>Spare Parts & Performance Mods Seller Studio</span>
-              </div>
-              <h2 className="text-2xl font-serif font-black text-stone-950 uppercase tracking-tight">
-                List Automotive Spare Part or Custom Gear
-              </h2>
-              <p className="text-stone-600 text-xs mt-1 font-medium">
-                Sell turbos, NOS nitrous cylinders, spoilers, wheels, brake kits, racing seats, or rare vintage car parts directly to buyers across India.
-              </p>
-            </div>
-
-            <span className="self-start sm:self-auto px-3 py-1 bg-stone-900 text-amber-400 font-mono text-[10px] font-bold uppercase border border-stone-950 shadow-xs">
-              0% Commission
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Part Title */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Part Title / Product Name <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={spTitle}
-                onChange={(e) => setSpTitle(e.target.value)}
-                placeholder="e.g. Garrett GTX3582R Ball Bearing Turbocharger or NOS 10lb Nitrous Cylinder"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Category */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Part Category <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={spCategory}
-                onChange={(e) => setSpCategory(e.target.value as SparePart["partCategory"])}
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
-              >
-                <option value="engine">Engine & Turbochargers</option>
-                <option value="exhaust_nitro">Exhaust Systems & Nitro Injection</option>
-                <option value="spoiler_body">Spoilers, Aero & Body Kits</option>
-                <option value="wheels_tyres">Alloy Wheels & Performance Tyres</option>
-                <option value="brakes_suspension">Big Brake Kits & Coilovers</option>
-                <option value="interior_audio">Racing Seats, Steering & Audio</option>
-                <option value="electrical">ECUs, Harnesses & Gauges</option>
-                <option value="collectibles">Vintage Memorabilia & Rare Collectibles</option>
-              </select>
-            </div>
-
-            {/* Rarity Status Tier */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Rarity Status Tier <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={spRarity}
-                onChange={(e) => setSpRarity(e.target.value as RarityTier)}
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
-              >
-                <option value="common">Common Replacement Part</option>
-                <option value="uncommon">Uncommon / Performance Upgrade</option>
-                <option value="rare">Rare / Custom Tuned Spec</option>
-                <option value="ultra-rare">Ultra-Rare / Exotic Supercar Grade</option>
-                <option value="vintage">Vintage / Classic Original Collector Item</option>
-              </select>
-            </div>
-
-            {/* Fitment / Compatibility */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Vehicle Fitment / Compatibility
-              </label>
-              <input
-                type="text"
-                value={spCompatibility}
-                onChange={(e) => setSpCompatibility(e.target.value)}
-                placeholder="e.g. Universal / Fits Mahindra Thar, Supra Mk4, BMW M3"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Condition */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Condition Grade
-              </label>
-              <select
-                value={spCondition}
-                onChange={(e) => setSpCondition(e.target.value as SparePart["condition"])}
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
-              >
-                <option value="brand_new">Brand New (Unopened Box)</option>
-                <option value="like_new">Like New / Mint Condition</option>
-                <option value="refurbished">Refurbished / Rebuilt</option>
-                <option value="vintage_original">Vintage Original Stock</option>
-                <option value="used">Used / Operational</option>
-              </select>
-            </div>
-
-            {/* Part Serial Number / SKU */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Part Serial / Model Number <span className="text-stone-400 font-normal">(Optional)</span>
-              </label>
-              <input
-                type="text"
-                value={spPartNumber}
-                onChange={(e) => setSpPartNumber(e.target.value)}
-                placeholder="e.g. NOS-05130 or BBS-SRS-1985"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Asking Price (₹) */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Asking Price (₹) <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={spPrice}
-                onChange={(e) => setSpPrice(e.target.value)}
-                placeholder="e.g. 145000"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-amber-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Detailed Product Specs & Technical Description <span className="text-red-600">*</span>
-              </label>
-              <textarea
-                rows={3}
-                required
-                value={spDescription}
-                onChange={(e) => setSpDescription(e.target.value)}
-                placeholder="Describe key technical specs, boost capabilities, nozzle sizes, materials (carbon fiber, titanium, forged aluminum), included mounting hardware, and seller warranty."
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Photo Upload & Gallery Section */}
-            <div className="space-y-3 md:col-span-2 p-5 bg-[#F4F1EA] border border-stone-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-300 pb-3">
-                <div>
-                  <label className="text-[10.5px] font-mono font-bold text-stone-900 uppercase tracking-wider block flex items-center gap-1.5">
-                    <Upload className="w-3.5 h-3.5 text-stone-900" />
-                    <span>Upload Spare Part Photos & Documentation</span>
-                  </label>
-                  <p className="text-[10px] text-stone-500 font-sans mt-0.5">
-                    Upload clear photos from your device or paste direct image URLs.
-                  </p>
-                </div>
-                <label className="px-4 py-2 bg-stone-900 hover:bg-stone-850 text-white text-[10px] font-mono font-bold uppercase tracking-widest border border-stone-950 cursor-pointer inline-flex items-center gap-1.5 self-start sm:self-auto">
-                  <Upload className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Add Image File</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleSparePartPhotoUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              {/* URL Input Row */}
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={spImage}
-                  onChange={(e) => setSpImage(e.target.value)}
-                  placeholder="Paste direct high-res image URL (e.g. https://images.unsplash.com/...)"
-                  className="flex-1 p-2.5 bg-white border border-stone-300 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddSparePartPhotoByUrl}
-                  className="px-4 py-2.5 bg-stone-800 hover:bg-stone-900 text-white text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer"
-                >
-                  Add Link
-                </button>
-              </div>
-
-              {/* Photo Gallery Grid */}
-              {spPhotos.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-stone-300/80">
-                  <span className="text-[9.5px] font-mono font-bold text-stone-600 uppercase block">
-                    Attached Part Photos ({spPhotos.length}):
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {spPhotos.map((photo, idx) => (
-                      <div key={idx} className="relative aspect-video border-2 border-stone-800 bg-stone-900 overflow-hidden group">
-                        <img src={photo.src} alt={photo.alt} className="w-full h-full object-cover" />
-                        <span className="absolute top-1 left-1 bg-stone-950/80 text-white text-[8px] font-mono font-bold px-1.5 py-0.5 uppercase">
-                          {idx === 0 ? "Main Cover" : `#${idx + 1}`}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSparePartPhoto(idx)}
-                          className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white text-xs flex items-center justify-center hover:bg-red-700 font-bold cursor-pointer"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Preset Photo Selector Chips */}
-              <div className="space-y-1.5 pt-2 border-t border-stone-300/80">
-                <span className="text-[9.5px] font-mono font-bold text-stone-500 uppercase block">
-                  Or select preset sample image:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { name: "NOS Nitrous Tank", url: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop&q=80" },
-                    { name: "Turbocharger", url: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=800&auto=format&fit=crop&q=80" },
-                    { name: "GT Carbon Wing", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80" },
-                    { name: "Brembo Brakes", url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80" },
-                    { name: "BBS Alloys", url: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=800&auto=format&fit=crop&q=80" },
-                    { name: "Recaro Bucket Seat", url: "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&auto=format&fit=crop&q=80" },
-                    { name: "Titanium Exhaust", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80" },
-                    { name: "Vintage Steering", url: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=800&auto=format&fit=crop&q=80" },
-                  ].map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => {
-                        setSpImage(preset.url);
-                        if (!spPhotos.some(p => p.src === preset.url)) {
-                          setSpPhotos(prev => [...prev, { src: preset.url, alt: preset.name }]);
-                        }
-                      }}
-                      className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
-                        spImage === preset.url
-                          ? "bg-amber-500 text-stone-950 border-amber-600 shadow-xs"
-                          : "bg-white hover:bg-stone-200 text-stone-800 border-stone-300"
-                      }`}
-                    >
-                      + {preset.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Seller Details Header */}
-            <div className="md:col-span-2 pt-2 border-t border-stone-300">
-              <h4 className="text-xs font-serif font-black text-stone-950 uppercase tracking-wider">
-                Seller Contact Dossier & Pickup Location
-              </h4>
-            </div>
-
-            {/* Seller Name */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Seller Full Name / Tuning Shop <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={spSellerName}
-                onChange={(e) => setSpSellerName(e.target.value)}
-                placeholder="e.g. Speedworks Customs"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Seller Phone */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Contact Phone (+91) <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={spSellerPhone}
-                onChange={(e) => setSpSellerPhone(e.target.value)}
-                placeholder="+91 98200 77112"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Seller Email */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={spSellerEmail}
-                onChange={(e) => setSpSellerEmail(e.target.value)}
-                placeholder="seller@tuning.in"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-
-            {/* Location */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-mono font-bold text-stone-700 uppercase tracking-wider block">
-                City / Location
-              </label>
-              <input
-                type="text"
-                value={spLocation}
-                onChange={(e) => setSpLocation(e.target.value)}
-                placeholder="e.g. Mumbai, Maharashtra"
-                className="w-full p-3 bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-stone-950"
-              />
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-stone-300 flex justify-between items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setListingCategoryMode("vehicle")}
-              className="px-4 py-3 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
-            >
-              ← Back to Vehicle Listing
-            </button>
-
-            <button
-              type="submit"
-              disabled={isPublishingPart}
-              className="px-8 py-3.5 bg-stone-900 hover:bg-stone-800 text-amber-400 text-xs font-mono font-black uppercase tracking-widest border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer flex items-center gap-2 transition-transform active:scale-95 disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>{isPublishingPart ? "Publishing Spare Part..." : "Publish Spare Part Now"}</span>
-            </button>
-          </div>
-        </form>
-      )}
-
       {/* Top wizard stepper */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep <= 5 && (
+      {!showDealerUpload && currentStep <= 5 && (
         <div className="mb-10 border-b border-stone-300 pb-8">
           <div className="flex justify-between items-center relative py-2 mb-2">
             <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[1px] bg-stone-300 z-10" />
@@ -4489,7 +3933,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 1: Basic Specifications */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 1 && (
+      {!showDealerUpload && currentStep === 1 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step One / Wizard</span>
@@ -4621,7 +4065,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 2: Specs and Checklist Details */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 2 && (
+      {!showDealerUpload && currentStep === 2 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Two / Specifications</span>
@@ -5058,7 +4502,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 3: Photos Drag and Drop */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 3 && (
+      {!showDealerUpload && currentStep === 3 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Three / Media Frame</span>
@@ -5161,7 +4605,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 4: Price & Valuation */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 4 && (
+      {!showDealerUpload && currentStep === 4 && (
         <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Four / Price & Terms</span>
@@ -5374,7 +4818,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 5: Contact Details Form */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 5 && (
+      {!showDealerUpload && currentStep === 5 && (
         <form onSubmit={handlePublishListing} className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Five / Broker Contact registry</span>
@@ -5452,7 +4896,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       )}
 
       {/* STEP 6: Successful deploy panel layout page */}
-      {!showDealerUpload && viewMode === "wizard" && listingCategoryMode === "vehicle" && currentStep === 6 && (
+      {currentStep === 6 && (
         <div className="relative max-w-2xl mx-auto py-4">
           <ConfettiExplosion key={confettiKey} />
 
