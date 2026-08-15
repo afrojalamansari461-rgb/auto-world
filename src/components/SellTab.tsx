@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User, ExternalLink } from "lucide-react";
-import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing } from "../types";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User as UserIcon, ExternalLink, Wrench } from "lucide-react";
+import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing, INDIAN_RTO_STATES, INSURANCE_STATUS_OPTIONS, PUCC_STATUS_OPTIONS, HYPOTHECATION_OPTIONS, STATE_NOC_OPTIONS, ROAD_TAX_OPTIONS } from "../types";
+import PartsUploadWizard from "./PartsUploadWizard";
 import { getListingExpirationDetails } from "../lib/expirationManager";
-import type { User } from "firebase/auth";
+import type { User as FirebaseUser } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
-import { db, handleFirestoreError, OperationType } from "../firebase";
+import { db, storage, ref, uploadBytesResumable, getDownloadURL, handleFirestoreError, OperationType } from "../firebase";
 import { dispatchAdminSmsAlert } from "../lib/notificationService";
 
 export interface TestDriveRequest {
@@ -58,7 +59,7 @@ interface SellTabProps {
   setActiveTab: (tab: string) => void;
   subscriptionActive: boolean;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
-  currentUser: User | null;
+  currentUser: FirebaseUser | null;
   onSignInClick?: () => void;
 }
 
@@ -935,8 +936,17 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [confettiKey, setConfettiKey] = useState(0);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
 
-  // View Mode: "wizard" (List a Vehicle) vs "my_catalog" (My Vehicle Catalog Control Panel) vs "requests" (Buyer Requests & Leads)
-  const [viewMode, setViewMode] = useState<"wizard" | "my_catalog" | "requests">("wizard");
+  // View Mode: "wizard" (List a Vehicle) vs "my_catalog" (My Vehicle Catalog Control Panel) vs "requests" (Buyer Requests & Leads) vs "parts" (Performance Parts Desk)
+  const [viewMode, setViewMode] = useState<"wizard" | "my_catalog" | "requests" | "parts">(() => {
+    try {
+      const initMode = sessionStorage.getItem("autoWorld_sell_initial_mode");
+      if (initMode === "part") {
+        sessionStorage.removeItem("autoWorld_sell_initial_mode");
+        return "parts";
+      }
+    } catch (e) {}
+    return "wizard";
+  });
 
   // Buyer Requests & Leads State
   const [testDriveRequests, setTestDriveRequests] = useState<TestDriveRequest[]>([]);
@@ -1654,8 +1664,24 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [electricRange, setElectricRange] = useState("");
   const [driveType, setDriveType] = useState("");
 
-  // STEP 3: Base64 Photos state
+  // Indian Automotive & RTO Localization states
+  const [rtoState, setRtoState] = useState("Maharashtra");
+  const [rtoCode, setRtoCode] = useState("MH-02 (Mumbai West)");
+  const [regNumber, setRegNumber] = useState("");
+  const [insuranceStatus, setInsuranceStatus] = useState("Comprehensive (Active)");
+  const [insuranceValidity, setInsuranceValidity] = useState("Dec 2026");
+  const [puccStatus, setPuccStatus] = useState("Valid / Certified");
+  const [puccValidity, setPuccValidity] = useState("Dec 2026");
+  const [hypothecationStatus, setHypothecationStatus] = useState("Clean (No Active Loan)");
+  const [fastagStatus, setFastagStatus] = useState("Active & Linked");
+  const [stateNocAvailable, setStateNocAvailable] = useState("Pan-India Transferable (NOC Available)");
+  const [roadTaxStatus, setRoadTaxStatus] = useState("Lifetime Road Tax Paid (LTT)");
+
+  // STEP 3: Photos and Firebase Cloud Media Storage Upload state
+  const [sessionVehicleId] = useState(() => `AW-${Date.now()}-${Math.floor(Math.random() * 1000)}`);
   const [photos, setPhotos] = useState<{ src: string; alt: string }[]>([]);
+  const [uploadProgressMap, setUploadProgressMap] = useState<Record<string, { progress: number; status: "uploading" | "done" | "error" }>>({});
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
   // STEP 4: Price & Contacts details
   const [askingPrice, setAskingPrice] = useState("");
@@ -2021,25 +2047,87 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
   const processPhotoFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
+    setIsUploadingMedia(true);
+
     for (const file of fileArray) {
       if (!file.type.match("image.*")) {
-        showToast("Please upload valid image formats only.", "error");
+        showToast(`Skipped non-image file "${file.name}".`, "error");
         continue;
       }
-      if (file.size > 15 * 1024 * 1024) {
-        showToast("Maximum image file size is 15MB.", "error");
+      if (file.size > 25 * 1024 * 1024) {
+        showToast(`Image "${file.name}" exceeds maximum allowed 25MB.`, "error");
         continue;
       }
 
+      const fileKey = `${file.name}_${Date.now()}`;
+      setUploadProgressMap(prev => ({
+        ...prev,
+        [fileKey]: { progress: 5, status: "uploading" }
+      }));
+
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const storagePath = `vehicles/${sessionVehicleId}/${Date.now()}_${sanitizedFileName}`;
+
       try {
-        const compressedSrc = await compressImageFile(file, 1000, 0.75);
-        if (compressedSrc) {
-          setPhotos(prev => [...prev, { src: compressedSrc, alt: file.name }]);
+        // 1. Direct Cloud Upload to Firebase Storage
+        const fileRef = ref(storage, storagePath);
+        const uploadTask = uploadBytesResumable(fileRef, file);
+
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+              setUploadProgressMap(prev => ({
+                ...prev,
+                [fileKey]: { progress: Math.max(5, progress), status: "uploading" }
+              }));
+            },
+            (error) => {
+              console.warn("Firebase Storage direct upload error:", error);
+              reject(error);
+            },
+            async () => {
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                setPhotos(prev => [...prev, { src: downloadURL, alt: file.name }]);
+                setUploadProgressMap(prev => ({
+                  ...prev,
+                  [fileKey]: { progress: 100, status: "done" }
+                }));
+                resolve();
+              } catch (urlErr) {
+                reject(urlErr);
+              }
+            }
+          );
+        });
+
+        showToast(`Uploaded "${file.name}" to Cloud Storage!`, "success");
+      } catch (err: any) {
+        console.warn(`Cloud upload fallback for "${file.name}":`, err);
+        // 2. Resilient local compression fallback if remote Storage is offline
+        try {
+          const compressedSrc = await compressImageFile(file, 800, 0.65);
+          if (compressedSrc) {
+            setPhotos(prev => [...prev, { src: compressedSrc, alt: file.name }]);
+            setUploadProgressMap(prev => ({
+              ...prev,
+              [fileKey]: { progress: 100, status: "done" }
+            }));
+            showToast(`Processed "${file.name}" locally.`, "info");
+          }
+        } catch (compErr) {
+          setUploadProgressMap(prev => ({
+            ...prev,
+            [fileKey]: { progress: 0, status: "error" }
+          }));
+          showToast(`Failed to process photo "${file.name}".`, "error");
         }
-      } catch (err) {
-        console.error("Image processing error:", err);
       }
     }
+
+    setIsUploadingMedia(false);
   };
 
   const [step3UrlInput, setStep3UrlInput] = useState("");
@@ -2230,6 +2318,18 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         batteryCapacity: sanitizeInput(batteryCapacity || ""),
         electricRange: sanitizeInput(electricRange || ""),
         driveType: sanitizeInput(driveType || ""),
+        // Indian Automotive & RTO Localization
+        rtoState: sanitizeInput(rtoState || "Maharashtra"),
+        rtoCode: sanitizeInput(rtoCode || "MH-02"),
+        regNumber: sanitizeInput(regNumber || ""),
+        insuranceStatus: sanitizeInput(insuranceStatus || "Comprehensive (Active)"),
+        insuranceValidity: sanitizeInput(insuranceValidity || "Dec 2026"),
+        puccStatus: sanitizeInput(puccStatus || "Valid / Certified"),
+        puccValidity: sanitizeInput(puccValidity || "Dec 2026"),
+        hypothecationStatus: sanitizeInput(hypothecationStatus || "Clean (No Active Loan)"),
+        fastagStatus: sanitizeInput(fastagStatus || "Active & Linked"),
+        stateNocAvailable: sanitizeInput(stateNocAvailable || "Pan-India Transferable (NOC Available)"),
+        roadTaxStatus: sanitizeInput(roadTaxStatus || "Lifetime Road Tax Paid (LTT)"),
         featured: featuredListing,
         urgent: urgentListing,
         photos: preparedPhotos,
@@ -2441,34 +2541,81 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       className="max-w-4xl mx-auto px-4 py-12 bg-[#F4F1EA] text-[#1A1A1A] font-sans"
     >
       {/* SELLER MODE SWITCHER BAR */}
-      <div className="mb-8 bg-stone-900 p-2 sm:p-2.5 border-2 border-stone-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+      <div className="mb-8 bg-stone-900 p-2 sm:p-3 border-2 border-stone-950 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 1ST BUTTON: LIST VEHICLE */}
           <button
             type="button"
+            id="sell-tab-btn-list-vehicle"
             onClick={() => setViewMode("wizard")}
-            className={`flex-1 sm:flex-none px-3.5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border ${
+            className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
               viewMode === "wizard"
-                ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
-                : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
+                ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
             }`}
           >
-            <Plus className="w-4 h-4" />
-            <span>List Vehicle</span>
+            <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+              viewMode === "wizard" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
+            }`}>
+              <Car className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col items-start leading-tight text-left">
+              <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
+                List Vehicle
+              </span>
+              <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
+                viewMode === "wizard" ? "text-stone-900 font-bold" : "text-stone-400"
+              }`}>
+                Cars & SUVs
+              </span>
+            </div>
           </button>
 
+          {/* 2ND BUTTON: LIST PART */}
           <button
             type="button"
-            onClick={() => setViewMode("my_catalog")}
-            className={`flex-1 sm:flex-none px-3.5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border relative ${
-              viewMode === "my_catalog"
-                ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
-                : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
+            id="sell-tab-btn-list-part"
+            onClick={() => setViewMode("parts")}
+            className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
+              viewMode === "parts"
+                ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
             }`}
           >
-            <Tag className="w-4 h-4" />
+            <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+              viewMode === "parts" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
+            }`}>
+              <Wrench className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col items-start leading-tight text-left">
+              <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
+                List Part
+              </span>
+              <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
+                viewMode === "parts" ? "text-stone-900 font-bold" : "text-stone-400"
+              }`}>
+                Hardware & Upgrades
+              </span>
+            </div>
+          </button>
+
+          <div className="h-6 w-px bg-stone-750 hidden sm:block mx-0.5" />
+
+          {/* MY VEHICLES QUICK ACCESS */}
+          <button
+            type="button"
+            id="sell-tab-btn-my-vehicles"
+            onClick={() => setViewMode("my_catalog")}
+            className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
+              viewMode === "my_catalog"
+                ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
+                : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5 text-stone-400" />
             <span>My Vehicles</span>
             {userListings.length > 0 && (
-              <span className={`px-2 py-0.5 text-[10px] font-mono font-black rounded-full ${
+              <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
                 viewMode === "my_catalog" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
               }`}>
                 {userListings.length}
@@ -2476,19 +2623,21 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             )}
           </button>
 
+          {/* BUYER REQUESTS QUICK ACCESS */}
           <button
             type="button"
+            id="sell-tab-btn-buyer-requests"
             onClick={() => setViewMode("requests")}
-            className={`flex-1 sm:flex-none px-3.5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer border relative ${
+            className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
               viewMode === "requests"
-                ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-inner"
-                : "bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700 hover:text-white"
+                ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
+                : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
             }`}
           >
-            <PhoneCall className="w-4 h-4 text-amber-400" />
+            <PhoneCall className="w-3.5 h-3.5 text-amber-400" />
             <span>Buyer Requests</span>
             {(ownerTDs.length + ownerCBs.length) > 0 && (
-              <span className={`px-2 py-0.5 text-[10px] font-mono font-black rounded-full ${
+              <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
                 totalPendingReqsCount > 0
                   ? "bg-red-600 text-white animate-pulse"
                   : viewMode === "requests"
@@ -2502,7 +2651,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         </div>
 
         {currentUser && !currentUser.isAnonymous ? (
-          <div className="text-[10.5px] font-mono text-stone-300 px-3 py-1.5 bg-stone-800 border border-stone-700 flex items-center gap-2 self-start sm:self-auto">
+          <div className="text-[10.5px] font-mono text-stone-300 px-3 py-1.5 bg-stone-800 border border-stone-700 flex items-center gap-2 self-start md:self-auto">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span className="truncate">Seller: <strong className="text-amber-400">{currentUser.displayName || currentUser.email}</strong></span>
           </div>
@@ -2510,13 +2659,42 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           <button
             type="button"
             onClick={onSignInClick}
-            className="text-[10.5px] font-mono text-amber-400 hover:text-amber-300 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            className="text-[10.5px] font-mono text-amber-400 hover:text-amber-300 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer self-start md:self-auto"
           >
             <LogIn className="w-3.5 h-3.5" />
             <span>Sign In to Control Listings</span>
           </button>
         )}
       </div>
+
+      {/* VIEW MODE 0: PERFORMANCE HARDWARE & UPGRADES DESK */}
+      {viewMode === "parts" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                  <Wrench className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Motorsport Tuning & Hardware Desk</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
+                  Performance Hardware Marketplace
+                </h2>
+                <p className="text-stone-600 text-xs mt-1 font-medium">
+                  List turbochargers, GT spoilers, race exhausts, high-performance brake calipers, ECU tunes, and aftermarket accessories for immediate trade.
+                </p>
+              </div>
+            </div>
+
+            <PartsUploadWizard
+              currentUser={currentUser}
+              subscriptionActive={subscriptionActive}
+              showToast={showToast}
+              onSignInClick={onSignInClick}
+            />
+          </div>
+        </div>
+      )}
       
       {/* VIEW MODE 1: MY VEHICLE CATALOG CONTROL PANEL */}
       {viewMode === "my_catalog" && (
@@ -3423,7 +3601,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           {/* Buyer Name & Phone */}
                           <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
                             <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
-                              <User className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
+                              <UserIcon className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
                             </div>
                             <div className="font-serif font-black text-stone-950 text-sm">
                               {req.buyerName || "Interested Buyer"}
@@ -4438,6 +4616,185 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             </div>
           )}
 
+          {/* INDIAN AUTOMOTIVE & RTO REGISTRATION SPECIFICATIONS */}
+          <div className="bg-[#F4F1EA] border border-stone-300 p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-300 pb-2">
+              <div>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-amber-700 font-bold block">Compliance & Documentation</span>
+                <h3 className="text-xs sm:text-sm font-serif font-black uppercase text-stone-950">Indian RTO & Vehicle Verification Data</h3>
+              </div>
+              <span className="px-2 py-0.5 bg-stone-900 text-amber-300 text-[9px] font-mono font-bold uppercase tracking-wider rounded-xs">
+                RTO Parivahan
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {/* Registration Number (RC) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  Registration Number (RC)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. MH-02-EQ-8842"
+                  value={regNumber}
+                  onChange={(e) => setRegNumber(e.target.value.toUpperCase())}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-mono font-bold tracking-wider text-stone-900 uppercase focus:outline-none focus:border-stone-900"
+                />
+              </div>
+
+              {/* RTO State */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  RTO State
+                </label>
+                <select
+                  value={rtoState}
+                  onChange={(e) => {
+                    const newState = e.target.value;
+                    setRtoState(newState);
+                    const stateObj = INDIAN_RTO_STATES.find(s => s.state === newState);
+                    if (stateObj && stateObj.rtos && stateObj.rtos.length > 0) {
+                      setRtoCode(stateObj.rtos[0]);
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                >
+                  {INDIAN_RTO_STATES.map((st) => (
+                    <option key={st.state} value={st.state}>{st.state}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* RTO Office Code */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  RTO Office / Circle Code
+                </label>
+                <select
+                  value={rtoCode}
+                  onChange={(e) => setRtoCode(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 font-mono"
+                >
+                  {INDIAN_RTO_STATES.find(s => s.state === rtoState)?.rtos.map((code) => (
+                    <option key={code} value={code}>{code}</option>
+                  )) || (
+                    <option value={rtoCode}>{rtoCode}</option>
+                  )}
+                </select>
+              </div>
+
+              {/* Insurance Status */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  Insurance Status
+                </label>
+                <select
+                  value={insuranceStatus}
+                  onChange={(e) => setInsuranceStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                >
+                  {INSURANCE_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Insurance Validity */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  Insurance Validity
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Dec 2026 or 11/2026"
+                  value={insuranceValidity}
+                  onChange={(e) => setInsuranceValidity(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                />
+              </div>
+
+              {/* PUCC Pollution Certificate */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  PUCC Emission Certificate
+                </label>
+                <select
+                  value={puccStatus}
+                  onChange={(e) => setPuccStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                >
+                  {PUCC_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Hypothecation / Bank NOC */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  Hypothecation / Loan Status
+                </label>
+                <select
+                  value={hypothecationStatus}
+                  onChange={(e) => setHypothecationStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                >
+                  {HYPOTHECATION_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* FASTag Status */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  FASTag Attachment
+                </label>
+                <select
+                  value={fastagStatus}
+                  onChange={(e) => setFastagStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                >
+                  <option value="Active & Linked">Active & Linked</option>
+                  <option value="Not Attached">Not Attached</option>
+                </select>
+              </div>
+
+              {/* State NOC Availability */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  Interstate Transfer NOC
+                </label>
+                <select
+                  value={stateNocAvailable}
+                  onChange={(e) => setStateNocAvailable(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                >
+                  {STATE_NOC_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Road Tax Status */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">
+                  Road Tax Status
+                </label>
+                <select
+                  value={roadTaxStatus}
+                  onChange={(e) => setRoadTaxStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                >
+                  {ROAD_TAX_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* DYNAMIC CATEGORY FEATURES CHECKLIST */}
           <div className="space-y-2 pt-3 border-t border-stone-200">
             <span className="text-[10px] text-stone-600 block uppercase font-bold tracking-wider">
@@ -4521,12 +4878,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <p className="text-[10px] uppercase text-stone-500 tracking-wider mt-1 text-center font-bold">Compatible with JPEG & PNG formats (Auto-compressed to web size)</p>
               
               <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                <label className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] uppercase tracking-widest font-bold shadow-sm cursor-pointer select-none">
-                  Browse Files
+                <label className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] uppercase tracking-widest font-bold shadow-sm cursor-pointer select-none flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{isUploadingMedia ? "Uploading Media..." : "Browse Local Files"}</span>
                   <input
                     type="file"
                     multiple
                     accept="image/*"
+                    disabled={isUploadingMedia}
                     onChange={handlePhotoUpload}
                     className="hidden"
                   />
@@ -4542,6 +4901,49 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 )}
               </div>
             </div>
+
+            {/* LIVE FIREBASE STORAGE UPLOAD PROGRESS BAR CONTAINER */}
+            {Object.keys(uploadProgressMap).length > 0 && (
+              <div className="bg-[#F4F1EA] border border-stone-300 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-900">
+                      Firebase Cloud Storage Pipe
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono text-stone-500 uppercase">Direct Secure Bucket</span>
+                </div>
+                <div className="space-y-2">
+                  {Object.entries(uploadProgressMap).map(([key, rawItem]) => {
+                    const item = rawItem as { progress: number; status: "uploading" | "done" | "error" };
+                    const shortName = key.split("_")[0];
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-mono">
+                          <span className="text-stone-700 truncate max-w-[200px]">{shortName}</span>
+                          <span className={item.status === "error" ? "text-red-600 font-bold" : "text-emerald-700 font-bold"}>
+                            {item.status === "error" ? "Failed" : item.progress === 100 ? "Ready" : `${item.progress}%`}
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-stone-300 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${
+                              item.status === "error"
+                                ? "bg-red-500"
+                                : item.progress === 100
+                                ? "bg-emerald-600"
+                                : "bg-amber-600"
+                            }`}
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Direct Image URL input option */}
             <div className="bg-[#F4F1EA] p-4 border border-stone-300 space-y-2">

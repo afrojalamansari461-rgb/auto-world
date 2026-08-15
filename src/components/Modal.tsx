@@ -8,6 +8,7 @@ interface ModalProps {
   containerClassName?: string;
   overlayClassName?: string;
   id?: string;
+  originCoords?: { x: number; y: number } | null;
 }
 
 export const Modal = ({
@@ -16,7 +17,8 @@ export const Modal = ({
   children,
   containerClassName = "w-full max-w-lg",
   overlayClassName = "bg-stone-950/80 backdrop-blur-md",
-  id
+  id,
+  originCoords
 }: ModalProps) => {
   useEffect(() => {
     if (!isOpen) return;

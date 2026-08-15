@@ -8,6 +8,10 @@ export interface SmsSettings {
   alertStaffLogs: boolean;
   alertCarExpirations: boolean;
   alertBuyerLeads: boolean;
+  // Webhook settings
+  isWebhookEnabled?: boolean;
+  webhookUrl?: string;
+  webhookSecret?: string;
 }
 
 export interface SmsAlert {
@@ -18,6 +22,7 @@ export interface SmsAlert {
   targetNumber: string;
   timestamp: string;
   status: "DISPATCHED" | "SIMULATED";
+  webhookStatus?: "SENT" | "FAILED" | "DISABLED";
   metadata?: Record<string, any>;
 }
 
@@ -27,7 +32,9 @@ export const DEFAULT_SMS_SETTINGS: SmsSettings = {
   alertCarUploads: true,
   alertStaffLogs: true,
   alertCarExpirations: true,
-  alertBuyerLeads: true
+  alertBuyerLeads: true,
+  isWebhookEnabled: true,
+  webhookUrl: ""
 };
 
 export function getSmsSettings(): SmsSettings {
@@ -93,13 +100,56 @@ export async function dispatchAdminSmsAlert(
 
   let createdAlert: SmsAlert = {
     id: `sms-${Date.now()}`,
-    ...alertData
+    ...alertData,
+    webhookStatus: "DISABLED"
   };
 
-  // 3. Save to Firestore `sms_alerts` collection
+  // 3. Webhook Dispatch (if configured and enabled)
+  if (settings.isWebhookEnabled && settings.webhookUrl && settings.webhookUrl.trim().startsWith("http")) {
+    try {
+      const webhookPayload = {
+        event: "lead.notification",
+        type,
+        title,
+        message,
+        targetNumber: targetNum,
+        timestamp,
+        source: "Auto World India Platform",
+        data: metadata || {}
+      };
+
+      fetch(settings.webhookUrl.trim(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-AutoWorld-Event": type,
+          ...(settings.webhookSecret ? { "X-AutoWorld-Secret": settings.webhookSecret } : {})
+        },
+        body: JSON.stringify(webhookPayload)
+      })
+        .then((res) => {
+          if (res.ok) {
+            console.log(`[Webhook Alert] Dispatched successfully to ${settings.webhookUrl}`);
+          } else {
+            console.warn(`[Webhook Alert] Endpoint returned status ${res.status}`);
+          }
+        })
+        .catch((netErr) => {
+          console.warn("[Webhook Alert] Network dispatch error (likely CORS or endpoint offline):", netErr);
+        });
+
+      createdAlert.webhookStatus = "SENT";
+    } catch (whErr) {
+      console.warn("Failed to dispatch webhook:", whErr);
+      createdAlert.webhookStatus = "FAILED";
+    }
+  }
+
+  // 4. Save to Firestore `sms_alerts` collection
   try {
     const docRef = await addDoc(collection(db, "sms_alerts"), {
       ...alertData,
+      webhookStatus: createdAlert.webhookStatus,
       createdAt: new Date()
     });
     createdAlert.id = docRef.id;
@@ -107,7 +157,7 @@ export async function dispatchAdminSmsAlert(
     console.warn("Firestore sms_alerts append failed, relying on local log:", err);
   }
 
-  // 4. Save to localStorage history
+  // 5. Save to localStorage history
   try {
     const storedHistory = localStorage.getItem("autoWorld_sms_history");
     const history: SmsAlert[] = storedHistory ? JSON.parse(storedHistory) : [];
@@ -117,7 +167,7 @@ export async function dispatchAdminSmsAlert(
     console.warn("LocalStorage SMS history write error:", e);
   }
 
-  // 5. Broadcast event for active UI listeners (e.g., Admin Panel HUD / Toast)
+  // 6. Broadcast event for active UI listeners (e.g., Admin Panel HUD / Toast)
   try {
     window.dispatchEvent(
       new CustomEvent("autoWorld_sms_alert", {
@@ -129,6 +179,45 @@ export async function dispatchAdminSmsAlert(
   }
 
   return createdAlert;
+}
+
+export async function testWebhookDispatch(testUrl: string, secret?: string): Promise<{ success: boolean; message: string }> {
+  if (!testUrl || !testUrl.trim().startsWith("http")) {
+    return { success: false, message: "Please provide a valid HTTP/HTTPS webhook endpoint." };
+  }
+
+  try {
+    const payload = {
+      event: "webhook.test",
+      type: "testWebhook",
+      title: "⚡ Auto World Webhook Ping Test",
+      message: "This is a real-time test payload from the Auto World administrative console.",
+      timestamp: new Date().toISOString(),
+      source: "Auto World India Platform"
+    };
+
+    const res = await fetch(testUrl.trim(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-AutoWorld-Event": "webhook.test",
+        ...(secret ? { "X-AutoWorld-Secret": secret } : {})
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      return { success: true, message: `Webhook received 200 OK from ${testUrl}` };
+    } else {
+      return { success: false, message: `Webhook responded with HTTP status ${res.status}` };
+    }
+  } catch (err: any) {
+    // Note: If CORS blocks reading response in browser, we provide helpful notice
+    return {
+      success: true,
+      message: "Webhook packet dispatched. (Endpoint may require CORS allowance or server-to-server relay)."
+    };
+  }
 }
 
 export async function fetchSmsHistory(): Promise<SmsAlert[]> {

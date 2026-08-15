@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { User } from "firebase/auth";
-import { db, handleFirestoreError, OperationType } from "../firebase";
+import { db, storage, ref, uploadBytesResumable, getDownloadURL, handleFirestoreError, OperationType } from "../firebase";
 import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalogSync";
 import { 
   SmsAlert, 
@@ -18,11 +18,25 @@ import {
   getSmsSettings, 
   saveSmsSettingsLocally, 
   dispatchAdminSmsAlert, 
-  fetchSmsHistory 
+  fetchSmsHistory,
+  testWebhookDispatch
 } from "../lib/notificationService";
-import { Vehicle, DEFAULT_VEHICLES, UserListing, VEHICLE_MAKES, VEHICLE_MODELS } from "../types";
+import { 
+  Vehicle, 
+  DEFAULT_VEHICLES, 
+  UserListing, 
+  VEHICLE_MAKES, 
+  VEHICLE_MODELS, 
+  INDIAN_RTO_STATES, 
+  INSURANCE_STATUS_OPTIONS, 
+  PUCC_STATUS_OPTIONS, 
+  HYPOTHECATION_OPTIONS, 
+  STATE_NOC_OPTIONS, 
+  ROAD_TAX_OPTIONS 
+} from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
+import AdminPartsDesk from "./AdminPartsDesk";
 import RoleBadge from "./RoleBadge";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -102,7 +116,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     currentRole: UserRole;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles" | "sms">("inventory");
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "parts" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles" | "sms">("inventory");
 
   // Mobile SMS & Notification System States (+91 7666232753)
   const [smsSettings, setSmsSettings] = useState<SmsSettings>(() => getSmsSettings());
@@ -503,17 +517,45 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const [newEngine, setNewEngine] = useState("2.0L Turbocharged I4");
   const [newColor, setNewColor] = useState("Stealth Black");
   const [newOwners, setNewOwners] = useState("1st Owner");
-  const [newRegNumber, setNewRegNumber] = useState("DL-3C");
+  const [newRegNumber, setNewRegNumber] = useState("MH-02-EQ-8842");
+  
+  // Indian Automotive & RTO Localization Specimen fields
+  const [newRtoState, setNewRtoState] = useState("Maharashtra");
+  const [newRtoCode, setNewRtoCode] = useState("MH-02 (Mumbai West)");
+  const [newInsuranceStatus, setNewInsuranceStatus] = useState("Comprehensive (Active)");
+  const [newInsuranceValidity, setNewInsuranceValidity] = useState("Dec 2026");
+  const [newPuccStatus, setNewPuccStatus] = useState("Valid / Certified");
+  const [newPuccValidity, setNewPuccValidity] = useState("Dec 2026");
+  const [newHypothecationStatus, setNewHypothecationStatus] = useState("Clean (No Active Loan)");
+  const [newFastagStatus, setNewFastagStatus] = useState("Active & Linked");
+  const [newStateNocAvailable, setNewStateNocAvailable] = useState("Pan-India Transferable (NOC Available)");
+  const [newRoadTaxStatus, setNewRoadTaxStatus] = useState("Lifetime Road Tax Paid (LTT)");
+
   const [newBadge, setNewBadge] = useState<"verified" | "premium" | "hot" | null>(null);
   const [newDescription, setNewDescription] = useState("");
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [adminUploadProgress, setAdminUploadProgress] = useState<number | null>(null);
+  const [isAdminUploadingImage, setIsAdminUploadingImage] = useState(false);
   const [newSellerName, setNewSellerName] = useState("Auto World Executive Desk");
-  const [newSellerPhone, setNewSellerPhone] = useState("+91 99001 88224");
+  const [newSellerPhone, setNewSellerPhone] = useState("+91 76662 32753");
   const [newSellerEmail, setNewSellerEmail] = useState("admin@autoworld.in");
-  const [newLocation, setNewLocation] = useState("New Delhi, Delhi");
+  const [newLocation, setNewLocation] = useState("Mumbai, Maharashtra");
   const [newNegotiable, setNewNegotiable] = useState("no");
   const [newFeatures, setNewFeatures] = useState("ABS, Airbags, Bluetooth, Backup Camera, Climate Control");
   const [isSubmittingIntake, setIsSubmittingIntake] = useState(false);
+
+  // Webhook Configuration State
+  const [webhookUrlInput, setWebhookUrlInput] = useState<string>(() => {
+    return getSmsSettings().webhookUrl || "";
+  });
+  const [webhookSecretInput, setWebhookSecretInput] = useState<string>(() => {
+    return getSmsSettings().webhookSecret || "";
+  });
+  const [isWebhookActive, setIsWebhookActive] = useState<boolean>(() => {
+    return getSmsSettings().isWebhookEnabled ?? true;
+  });
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [webhookTestResult, setWebhookTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Search and category filters inside admin panel
   const [adminSearch, setAdminSearch] = useState("");
@@ -1214,6 +1256,17 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         color: newColor,
         owners: newOwners,
         regNumber: newRegNumber,
+        // Indian Automotive & RTO Localization
+        rtoState: newRtoState,
+        rtoCode: newRtoCode,
+        insuranceStatus: newInsuranceStatus,
+        insuranceValidity: newInsuranceValidity,
+        puccStatus: newPuccStatus,
+        puccValidity: newPuccValidity,
+        hypothecationStatus: newHypothecationStatus,
+        fastagStatus: newFastagStatus,
+        stateNocAvailable: newStateNocAvailable,
+        roadTaxStatus: newRoadTaxStatus,
         description: newDescription || `Superb condition pristine ${finalTitle} curated for elite buyers.`,
         negotiable: newNegotiable,
         sellerName: newSellerName,
@@ -1279,12 +1332,94 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       setNewEngine("2.0L Turbocharged I4");
       setNewColor("Stealth Black");
       setNewOwners("1st Owner");
-      setNewRegNumber("DL-3C");
+      setNewRegNumber("MH-02-EQ-8842");
     } catch (err: any) {
       console.error(err);
       showToast("Error uploading specimen to Firestore.", "error");
     } finally {
       setIsSubmittingIntake(false);
+    }
+  };
+
+  // Direct Firebase Cloud Storage upload for Admin Intake
+  const handleAdminImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (!file.type.match("image.*")) {
+      showToast("Please upload valid image files (JPG, PNG, WebP).", "error");
+      return;
+    }
+    setIsAdminUploadingImage(true);
+    setAdminUploadProgress(15);
+    try {
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const storagePath = `vehicles/admin_${Date.now()}/${sanitizedFileName}`;
+      const fileRef = ref(storage, storagePath);
+      const uploadTask = uploadBytesResumable(fileRef, file);
+
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snap) => {
+            const prog = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+            setAdminUploadProgress(Math.max(15, prog));
+          },
+          (err) => reject(err),
+          async () => {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            setNewImageUrl(url);
+            setAdminUploadProgress(100);
+            showToast("Uploaded image directly to Cloud Storage!", "success");
+            resolve();
+          }
+        );
+      });
+    } catch (err: any) {
+      console.warn("Storage upload fallback in admin:", err);
+      // Fallback
+      const reader = new FileReader();
+      reader.onload = () => {
+        setNewImageUrl(reader.result as string);
+        setAdminUploadProgress(100);
+        showToast("Processed local image thumbnail.", "info");
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsAdminUploadingImage(false);
+    }
+  };
+
+  // Webhook settings saver & ping test
+  const handleSaveWebhookSettings = () => {
+    const updated = saveSmsSettingsLocally({
+      webhookUrl: webhookUrlInput.trim(),
+      webhookSecret: webhookSecretInput.trim(),
+      isWebhookEnabled: isWebhookActive
+    });
+    setSmsSettings(updated);
+    showToast("Saved Webhook lead notification settings!", "success");
+  };
+
+  const handleTestWebhookPing = async () => {
+    if (!webhookUrlInput.trim()) {
+      showToast("Please specify a target Webhook URL first.", "error");
+      return;
+    }
+    setIsTestingWebhook(true);
+    setWebhookTestResult(null);
+    try {
+      const result = await testWebhookDispatch(webhookUrlInput.trim(), webhookSecretInput.trim());
+      setWebhookTestResult(result);
+      if (result.success) {
+        showToast("Webhook test dispatched successfully!", "success");
+      } else {
+        showToast(result.message, "error");
+      }
+    } catch (e: any) {
+      setWebhookTestResult({ success: false, message: e?.message || "Webhook delivery failed." });
+    } finally {
+      setIsTestingWebhook(false);
     }
   };
 
@@ -2929,7 +3064,19 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             }`}
           >
             <Tag className="w-4 h-4 shrink-0" />
-            Inventory list ({aggregateInventoryList.length})
+            Inventory ({aggregateInventoryList.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("parts")}
+            className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              activeSubSection === "parts"
+                ? "bg-amber-600 text-stone-950 shadow-md font-black border-b-2 border-amber-300"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+          >
+            <Wrench className="w-4 h-4 shrink-0 text-amber-600" />
+            Parts Desk
           </button>
           
           <button
@@ -3035,6 +3182,16 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           </div>
         ) : (
           <div>
+            {/* SUBSECTION 0: PERFORMANCE PARTS & HARDWARE DESK */}
+            {activeSubSection === "parts" && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <AdminPartsDesk
+                  showToast={showToast}
+                  currentUser={currentUser}
+                />
+              </div>
+            )}
+
             {/* SUBSECTION 1: INVENTORY MANAGEMENT */}
             {activeSubSection === "inventory" && (
               <div className="space-y-6">

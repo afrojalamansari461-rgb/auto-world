@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles } from "lucide-react";
-import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
+import { 
+  Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, 
+  DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles, 
+  Wrench, Cpu, Zap, Flame, Disc, MessageCircle, Layers, Sliders, Activity, 
+  Wind, Lightbulb, PlusCircle
+} from "lucide-react";
+import { 
+  Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, 
+  PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES, UserPartListing 
+} from "../types";
 import { motion } from "motion/react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -13,6 +21,7 @@ interface HomeTabProps {
   toggleFavorite: (id: number) => void;
   setSearchFilters: (filters: { type: string; priceRange: string; location: string }) => void;
   onQuickView: (vehicle: Vehicle) => void;
+  onQuickViewPart?: (part: Part, coords?: { x: number; y: number }) => void;
 }
 
 function getOverriddenVehicles(): Vehicle[] {
@@ -72,6 +81,68 @@ function getOverriddenVehicles(): Vehicle[] {
     }
   } catch (e) {
     console.error("Failed to parse custom default overrides in HomeTab:", e);
+  }
+
+  return list;
+}
+
+function getOverriddenParts(): Part[] {
+  let list = [...DEFAULT_PARTS];
+  try {
+    const hiddenStr = localStorage.getItem("autoWorld_hidden_parts");
+    if (hiddenStr) {
+      const hiddenIds = JSON.parse(hiddenStr);
+      if (Array.isArray(hiddenIds)) {
+        list = list.filter(p => !hiddenIds.includes(p.id));
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse hidden default parts in HomeTab:", e);
+  }
+
+  try {
+    const removedStr = localStorage.getItem("autoWorld_removed_parts");
+    if (removedStr) {
+      const removedIds = JSON.parse(removedStr);
+      if (Array.isArray(removedIds)) {
+        list = list.filter(p => !removedIds.includes(p.id));
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse removed default parts in HomeTab:", e);
+  }
+
+  try {
+    const badgesStr = localStorage.getItem("autoWorld_part_badges");
+    if (badgesStr) {
+      const badgesMap = JSON.parse(badgesStr);
+      if (badgesMap && typeof badgesMap === "object") {
+        list = list.map(p => {
+          const customBadge = badgesMap[p.id];
+          return {
+            ...p,
+            badge: customBadge !== undefined ? customBadge : p.badge
+          };
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse custom part badges in HomeTab:", e);
+  }
+
+  try {
+    const overridesStr = localStorage.getItem("autoWorld_part_overrides");
+    if (overridesStr) {
+      const overridesMap = JSON.parse(overridesStr);
+      if (overridesMap && typeof overridesMap === "object") {
+        list = list.map(p => {
+          const override = overridesMap[p.id];
+          return override ? { ...p, ...override } : p;
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse custom default parts overrides in HomeTab:", e);
   }
 
   return list;
@@ -182,7 +253,14 @@ async function getHomeFeaturedVehicles(): Promise<Vehicle[]> {
   return defaults.slice(0, 3);
 }
 
-export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSearchFilters, onQuickView }: HomeTabProps) {
+export default function HomeTab({ 
+  setActiveTab, 
+  favorites, 
+  toggleFavorite, 
+  setSearchFilters, 
+  onQuickView,
+  onQuickViewPart 
+}: HomeTabProps) {
   const [activeSearchTab, setActiveSearchTab] = useState<"buy" | "sell">("buy");
   const [selectedType, setSelectedType] = useState("Any Type");
   const [selectedPriceRange, setSelectedPriceRange] = useState("Any Price");
@@ -192,6 +270,12 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
   const [featuredCars, setFeaturedCars] = useState<Vehicle[]>(() => {
     return getOverriddenVehicles().slice(0, 3);
   });
+
+  // Performance Parts States
+  const [featuredParts, setFeaturedParts] = useState<Part[]>(() => {
+    return getOverriddenParts().slice(0, 3);
+  });
+  const [hoveredPartId, setHoveredPartId] = useState<number | string | null>(null);
 
   // Dynamic Site Content States
   const [heroTitle, setHeroTitle] = useState(() => {
@@ -215,13 +299,14 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
   });
 
   useEffect(() => {
-    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings }) => {
+    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, userParts, overrides, partOverrides, adminSettings }) => {
       if (adminSettings.heroTitle) setHeroTitle(adminSettings.heroTitle);
       if (adminSettings.heroSubtitle) setHeroSubtitle(adminSettings.heroSubtitle);
       if (adminSettings.heroBadge) setHeroBadge(adminSettings.heroBadge);
       if (adminSettings.announcementText) setAnnouncementText(adminSettings.announcementText);
       if (adminSettings.isAnnouncementEnabled !== undefined) setIsAnnouncementEnabled(adminSettings.isAnnouncementEnabled);
 
+      // --- 1. Vehicles logic ---
       let defaults = [...DEFAULT_VEHICLES];
 
       if (adminSettings.hiddenDefaultIds && adminSettings.hiddenDefaultIds.length > 0) {
@@ -308,11 +393,87 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
         });
         if (selectedList.length > 0) {
           setFeaturedCars(selectedList);
-          return;
+        } else {
+          setFeaturedCars(defaults.slice(0, 3));
         }
+      } else {
+        setFeaturedCars(defaults.slice(0, 3));
       }
 
-      setFeaturedCars(defaults.slice(0, 3));
+      // --- 2. Performance Parts logic ---
+      let pDefaults = getOverriddenParts();
+      if (adminSettings.hiddenPartIds && adminSettings.hiddenPartIds.length > 0) {
+        pDefaults = pDefaults.filter(p => !adminSettings.hiddenPartIds?.includes(p.id));
+      }
+      if (adminSettings.removedPartIds && adminSettings.removedPartIds.length > 0) {
+        pDefaults = pDefaults.filter(p => !adminSettings.removedPartIds?.includes(p.id));
+      }
+      if (adminSettings.partBadges) {
+        pDefaults = pDefaults.map(p => {
+          const customB = adminSettings.partBadges?.[String(p.id)];
+          return {
+            ...p,
+            badge: (customB !== undefined ? customB : p.badge) as any
+          };
+        });
+      }
+      if (partOverrides) {
+        pDefaults = pDefaults.map(p => {
+          const customOver = partOverrides[String(p.id)];
+          return customOver ? { ...p, ...customOver } : p;
+        });
+      }
+
+      const mappedUserParts: Part[] = (userParts || [])
+        .filter(item => item.status === "active" || item.status === undefined)
+        .map((p, idx) => ({
+          id: p.id || `user-part-${idx}`,
+          title: p.title,
+          category: p.category,
+          rarity: p.rarity,
+          condition: (p.condition as any) || 5,
+          brand: p.brand,
+          price: p.price,
+          image: p.photos && p.photos.length > 0 ? p.photos[0].src : "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800",
+          photos: p.photos,
+          compatibleVehicles: p.compatibleVehicles,
+          description: p.description,
+          specifications: p.specifications,
+          sellerName: p.sellerName,
+          sellerPhone: p.sellerPhone,
+          sellerEmail: p.sellerEmail,
+          location: p.location,
+          negotiable: p.negotiable,
+          badge: (p.verified ? "verified" : p.featured ? "premium" : p.urgent ? "hot" : null) as any,
+          status: p.status,
+          isUserListing: true,
+          listingId: p.id,
+          partNumber: p.partNumber,
+          warranty: p.warranty
+        }));
+
+      const allPartsCombined = [
+        ...pDefaults.map(p => ({ ...p, uniqueKey: `default-${p.id}` })),
+        ...mappedUserParts.map(p => ({ ...p, uniqueKey: `user-${p.listingId}` }))
+      ];
+
+      if (adminSettings.homeFeaturedPartIds && adminSettings.homeFeaturedPartIds.length > 0) {
+        const selectedParts: Part[] = [];
+        adminSettings.homeFeaturedPartIds.forEach(key => {
+          const found = allPartsCombined.find(p => String(p.uniqueKey) === String(key) || String(p.id) === String(key));
+          if (found) {
+            const { uniqueKey, ...cleanPart } = found;
+            selectedParts.push(cleanPart as Part);
+          }
+        });
+        if (selectedParts.length > 0) {
+          setFeaturedParts(selectedParts);
+        } else {
+          setFeaturedParts(pDefaults.slice(0, 3));
+        }
+      } else {
+        setFeaturedParts(allPartsCombined.map(({ uniqueKey, ...c }) => c as Part).slice(0, 3));
+      }
     });
 
     const handleLocalUpdate = () => {
@@ -787,6 +948,188 @@ export default function HomeTab({ setActiveTab, favorites, toggleFavorite, setSe
               </motion.div>
             );
           })}
+        </div>
+      </motion.section>
+
+      {/* Section 2.5: Performance Hardware & Curated Parts Marketplace Showcase */}
+      <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-6 border-b border-[#1A1A1A]/10 gap-4">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-serif font-black text-stone-950">Curated Motorsport Parts & Upgrades</h2>
+            <p className="text-stone-700 text-sm font-sans mt-1 max-w-2xl">
+              Factory OEM components, high-flow turbochargers, aero kits, and verified performance hardware.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setActiveTab("buy");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="group flex items-center gap-2 text-stone-900 hover:text-stone-600 font-sans uppercase font-bold text-xs tracking-widest transition-colors cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+            >
+              <span>Examine Inventory Room</span>
+              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </button>
+          </div>
+        </div>
+
+        {/* 3-Column Performance Parts Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {featuredParts.map((part) => {
+              const rarityMeta = PART_RARITY_TIERS[part.rarity] || PART_RARITY_TIERS.Common;
+              const conditionMeta = PART_CONDITION_LABELS[part.condition] || PART_CONDITION_LABELS[5];
+              const isHovered = hoveredPartId === part.id;
+              const displayImage = part.photos && part.photos.length > 0 ? part.photos[0].src : (part.image || "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800");
+
+              // Badge styling per prompt specification
+              let badgeStyle = "bg-stone-200 text-stone-800 border-stone-300";
+              let badgeGlow = "";
+              if (part.rarity === "Common") {
+                badgeStyle = "bg-slate-200 text-slate-800 border-slate-300";
+              } else if (part.rarity === "Uncommon") {
+                badgeStyle = "bg-emerald-950 text-emerald-300 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]";
+              } else if (part.rarity === "Rare") {
+                badgeStyle = "bg-blue-950 text-blue-300 border-blue-500/50 shadow-[0_0_14px_rgba(59,130,246,0.35)]";
+              } else if (part.rarity === "Epic") {
+                badgeStyle = "bg-purple-950 text-purple-300 border-purple-500/60 shadow-[0_0_18px_rgba(168,85,247,0.4)]";
+              } else if (part.rarity === "Legendary") {
+                badgeStyle = "bg-amber-950 text-amber-300 border-amber-400 ring-1 ring-amber-400/50 shadow-[0_0_22px_rgba(245,158,11,0.5)] animate-pulse";
+              }
+
+              const cleanPhone = (part.sellerPhone || "+919820011988").replace(/[^0-9]/g, "");
+              const waMessage = encodeURIComponent(
+                `Hello ${part.sellerName || "Seller"}, I am inquiring about "${part.title}" (Ref #PART-AW0${part.id}, ₹${part.price.toLocaleString("en-IN")}) listed on Auto World Motorsport Marketplace.`
+              );
+              const waUrl = `https://wa.me/${cleanPhone}?text=${waMessage}`;
+
+              return (
+                <motion.div
+                  key={part.id}
+                  onMouseEnter={() => setHoveredPartId(part.id)}
+                  onMouseLeave={() => setHoveredPartId(null)}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4 }}
+                  className="bg-[#FAF8F5] border border-stone-300 flex flex-col justify-between group overflow-hidden transition-all duration-300 hover:border-amber-700 hover:shadow-xl relative"
+                >
+                  {/* Top Image Showcase with Zoom on Hover */}
+                  <div className="relative h-60 w-full overflow-hidden bg-stone-900 border-b border-stone-250">
+                    <img
+                      src={displayImage}
+                      alt={part.title}
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800";
+                      }}
+                    />
+
+                    {/* Laser Scanner Effect on Hover */}
+                    {isHovered && (
+                      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-amber-500/20 to-transparent h-12 w-full animate-pulse transition-all" />
+                    )}
+
+                    {/* Rarity & Verified Badges */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                      <span className={`px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${badgeStyle}`}>
+                        {part.rarity}
+                      </span>
+                      {part.badge === "verified" && (
+                        <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded flex items-center gap-1 shadow-sm">
+                          <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                          Accredited
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Category Stamp */}
+                    <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-stone-950/80 text-stone-200 text-[9px] font-mono uppercase tracking-widest rounded border border-stone-700">
+                      {part.category.replace("_", " ")}
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-amber-700 font-bold">
+                          {part.brand}
+                        </span>
+                        <div className="flex items-center gap-0.5" title={`${part.condition}/5 Condition`}>
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-3 h-3 ${
+                                s <= part.condition ? "text-amber-500 fill-amber-500" : "text-stone-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <h3 
+                        onClick={(e) => {
+                          if (onQuickViewPart) onQuickViewPart(part, { x: e.clientX, y: e.clientY });
+                        }}
+                        className="font-serif font-black text-stone-950 text-lg leading-snug line-clamp-2 cursor-pointer hover:underline"
+                      >
+                        {part.title}
+                      </h3>
+
+                      {/* Compatible Fitment */}
+                      <div className="mt-3 p-2.5 bg-[#F4F1EA] border border-stone-250 rounded text-[11px] font-sans flex items-start gap-2">
+                        <Wrench className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                        <div className="text-stone-700 line-clamp-1">
+                          <span className="font-bold text-stone-900">Fitment: </span>
+                          {part.compatibleVehicles || "Universal Specification"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Price & Action Row */}
+                    <div className="pt-3 border-t border-stone-200 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-stone-400 block uppercase font-light font-sans">Valuation</span>
+                          <span className="text-2xl font-serif font-black text-stone-950">
+                            ₹{part.price.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        {part.negotiable === "yes" && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 bg-stone-200 text-stone-700 rounded">
+                            Negotiable
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          onClick={(e) => {
+                            if (onQuickViewPart) {
+                              onQuickViewPart(part, { x: e.clientX, y: e.clientY });
+                            }
+                          }}
+                          className="w-full py-2.5 bg-stone-950 hover:bg-stone-800 text-white text-[11px] font-sans uppercase font-bold tracking-wider rounded border border-stone-950 transition-all duration-300 cursor-pointer text-center"
+                        >
+                          Examine Part Dossier
+                        </button>
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-sans uppercase font-bold tracking-wider rounded transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs text-center"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>WhatsApp Seller</span>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
         </div>
       </motion.section>
 

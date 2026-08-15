@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, updateProfile } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getStorage, ref, uploadBytesResumable, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Web app's Firebase configuration strictly using environment variables
 export const firebaseConfig = {
@@ -22,6 +22,7 @@ setPersistence(auth, browserLocalPersistence).catch((err) => {
 });
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export { ref, uploadBytesResumable, uploadBytes, getDownloadURL };
 export const googleProvider = new GoogleAuthProvider();
 
 export default app;

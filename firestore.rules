@@ -85,6 +85,56 @@ service cloud.firestore {
         && data.userId is string && data.userId.size() <= 128;
     }
 
+    // 1b. PARTS & PERFORMANCE UPGRADES COLLECTION RULES
+    match /parts/{partId} {
+      // Public read access for all visitors
+      allow read: if true;
+
+      // Creation restricted to authenticated users matching payload userId
+      allow create: if isRegisteredUser() 
+        && isValidId(partId)
+        && incoming().userId == request.auth.uid
+        && isValidPart(incoming());
+
+      // Updates allowed for document owner or admin with field restrictions
+      allow update: if (
+        isRegisteredUser()
+        && incoming().userId == request.auth.uid
+        && existing().userId == request.auth.uid
+        && incoming().id == existing().id
+        && isValidPart(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'category', 'rarity', 'condition', 'brand', 'price', 
+          'compatibleVehicles', 'description', 'negotiable', 'status', 
+          'photos', 'featured', 'urgent', 'verified', 'partNumber', 
+          'warranty', 'specifications', 'location', 'sellerPhone', 'sellerEmail', 
+          'sellerName', 'updatedAt'
+        ])
+      ) || isAdmin();
+
+      // Deletion restricted to part owner or admin
+      allow delete: if (
+        isRegisteredUser() && existing().userId == request.auth.uid
+      ) || isAdmin();
+    }
+
+    function isValidPart(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.category is string && data.category.size() <= 50
+        && data.rarity is string && (data.rarity == 'Common' || data.rarity == 'Uncommon' || data.rarity == 'Rare' || data.rarity == 'Epic' || data.rarity == 'Legendary')
+        && data.condition is int && data.condition >= 1 && data.condition <= 5
+        && data.brand is string && data.brand.size() <= 100
+        && data.price is int && data.price >= 0
+        && data.compatibleVehicles is string && data.compatibleVehicles.size() <= 300
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 5000
+        && data.sellerName is string && data.sellerName.size() <= 200
+        && data.sellerEmail is string && data.sellerEmail.size() <= 200
+        && data.location is string && data.location.size() <= 200
+        && data.status is string && (data.status == 'active' || data.status == 'sold' || data.status == 'pending' || data.status == 'hidden')
+        && data.userId is string && data.userId.size() <= 128;
+    }
+
     // 2. CONTACT MESSAGES & INQUIRIES (LEADS) RULES
     match /messages/{messageId} {
       // Anyone (authenticated or guest) can create a contact inquiry

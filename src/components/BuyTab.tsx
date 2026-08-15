@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus } from "lucide-react";
-import { Vehicle, DEFAULT_VEHICLES, UserListing } from "../types";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, SlidersHorizontal, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus, Wrench, Cpu, Flame, Disc, Layers, ShieldCheck, Tag, ChevronRight, Wind, CircleDot, Box, RotateCcw } from "lucide-react";
+import { Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, PART_CATEGORIES, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_BRANDS, UserPartListing } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
@@ -17,12 +17,14 @@ import { InspectionReportModal } from "./InspectionReportModal";
 import { SavedSearchesModal } from "./SavedSearchesModal";
 import { CallbackModal } from "./CallbackModal";
 import { InlineEMICalculator } from "./InlineEMICalculator";
+import { UPIPaymentModal } from "./UPIPaymentModal";
 
 interface BuyTabProps {
   favorites: number[];
   toggleFavorite: (id: number) => void;
   searchFilters: { type: string; priceRange: string; location: string };
   onQuickView: (vehicle: Vehicle) => void;
+  onQuickViewPart?: (part: Part, coords?: { x: number; y: number }) => void;
   subscriptionActive: boolean;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   currentUser: FirebaseUser | null;
@@ -123,8 +125,71 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, subscriptionActive, showToast, currentUser, onSignInClick }: BuyTabProps) {
+function getOverriddenParts(): Part[] {
+  let list = [...DEFAULT_PARTS];
+  try {
+    const hiddenStr = localStorage.getItem("autoWorld_hidden_parts");
+    if (hiddenStr) {
+      const hiddenIds = JSON.parse(hiddenStr);
+      if (Array.isArray(hiddenIds)) {
+        list = list.filter(p => !hiddenIds.includes(p.id));
+      }
+    }
+  } catch (e) {}
 
+  try {
+    const removedStr = localStorage.getItem("autoWorld_removed_parts");
+    if (removedStr) {
+      const removedIds = JSON.parse(removedStr);
+      if (Array.isArray(removedIds)) {
+        list = list.filter(p => !removedIds.includes(p.id));
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const badgesStr = localStorage.getItem("autoWorld_part_badges");
+    if (badgesStr) {
+      const badgesMap = JSON.parse(badgesStr);
+      if (badgesMap && typeof badgesMap === "object") {
+        list = list.map(p => {
+          const customBadge = badgesMap[p.id];
+          return {
+            ...p,
+            badge: customBadge !== undefined ? customBadge : p.badge
+          };
+        });
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const overridesStr = localStorage.getItem("autoWorld_part_overrides");
+    if (overridesStr) {
+      const overridesMap = JSON.parse(overridesStr);
+      if (overridesMap && typeof overridesMap === "object") {
+        list = list.map(p => {
+          const override = overridesMap[p.id];
+          return override ? { ...p, ...override } : p;
+        });
+      }
+    }
+  } catch (e) {}
+
+  return list;
+}
+
+export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, onQuickViewPart, subscriptionActive, showToast, currentUser, onSignInClick }: BuyTabProps) {
+  // Mode switcher: "vehicles" | "parts"
+  const [activeCatalogMode, setActiveCatalogMode] = useState<"vehicles" | "parts">("vehicles");
+
+  // Parts Catalog State
+  const [partsList, setPartsList] = useState<Part[]>(() => getOverriddenParts());
+  const [selectedPartCategory, setSelectedPartCategory] = useState<string>("all");
+  const [selectedPartRarity, setSelectedPartRarity] = useState<string>("all");
+  const [selectedPartBrand, setSelectedPartBrand] = useState<string>("all");
+  const [partSearchQuery, setPartSearchQuery] = useState<string>("");
+  const [partSortBy, setPartSortBy] = useState<string>("featured");
 
   // Payment states
   const [hasPaidPass, setHasPaidPass] = useState(false);
@@ -350,7 +415,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     };
     window.addEventListener("autoWorld_db_update", handleDbSync);
 
-    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, overrides, adminSettings }) => {
+    const unsubscribe = subscribeToRealtimeCatalog(({ userListings, userParts, overrides, partOverrides, adminSettings }) => {
       if (adminSettings.isFreePassEnabled !== undefined) {
         setIsFreePassMode(Boolean(adminSettings.isFreePassEnabled));
         if (adminSettings.isFreePassEnabled) {
@@ -457,6 +522,65 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       });
 
       setInventoryList([...defaultData, ...compiledUserVehicles]);
+
+      // --- Performance Parts Synchronization ---
+      let pDefaults = getOverriddenParts();
+      if (adminSettings.hiddenPartIds && adminSettings.hiddenPartIds.length > 0) {
+        pDefaults = pDefaults.filter(p => !adminSettings.hiddenPartIds?.includes(p.id));
+      }
+      if (adminSettings.removedPartIds && adminSettings.removedPartIds.length > 0) {
+        pDefaults = pDefaults.filter(p => !adminSettings.removedPartIds?.includes(p.id));
+      }
+      if (adminSettings.partBadges) {
+        pDefaults = pDefaults.map(p => {
+          const customB = adminSettings.partBadges?.[String(p.id)];
+          return {
+            ...p,
+            badge: (customB !== undefined ? customB : p.badge) as any
+          };
+        });
+      }
+      if (partOverrides) {
+        pDefaults = pDefaults.map(p => {
+          const customOver = partOverrides[String(p.id)];
+          return customOver ? { ...p, ...customOver } : p;
+        });
+      }
+
+      const mappedUserParts: Part[] = (userParts || [])
+        .filter(item => item.status === "active" || item.status === undefined)
+        .map((p, idx) => ({
+          id: p.id || `user-part-${idx}`,
+          title: p.title,
+          category: p.category,
+          rarity: p.rarity,
+          condition: (p.condition as any) || 5,
+          brand: p.brand,
+          price: p.price,
+          image: p.photos && p.photos.length > 0 ? p.photos[0].src : "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800",
+          photos: p.photos,
+          compatibleVehicles: p.compatibleVehicles,
+          description: p.description,
+          specifications: p.specifications,
+          sellerName: p.sellerName,
+          sellerPhone: p.sellerPhone,
+          sellerEmail: p.sellerEmail,
+          location: p.location,
+          negotiable: p.negotiable,
+          badge: (p.verified ? "verified" : p.featured ? "premium" : p.urgent ? "hot" : null) as any,
+          status: p.status,
+          isUserListing: true,
+          listingId: p.id,
+          partNumber: p.partNumber,
+          warranty: p.warranty
+        }));
+
+      const allPartsCombined = [
+        ...pDefaults.map(p => ({ ...p, uniqueKey: `default-${p.id}` })),
+        ...mappedUserParts.map(p => ({ ...p, uniqueKey: `user-${p.listingId}` }))
+      ];
+
+      setPartsList(allPartsCombined);
       setIsLoading(false);
     });
 
@@ -737,56 +861,42 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       .slice(0, 3);
   };
 
-  // Double-Click cheat to auto-fill payment
-  const handleCheatAutoFill = () => {
-    setCardNumber("4242 4242 4242 4242");
-    setExpiryDate("12/28");
-    setCardName("John Doe");
-    setCvv("123");
-    setAgreeTerms(true);
-  };
-
-  // Submit payment form
-  const handleProceedPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!agreeTerms) {
-      showToast("Please agree to the authorization checkbox prior to checkout.", "error");
-      return;
-    }
-    if (!cardNumber || !expiryDate || !cvv) {
-      showToast("Please specify card credentials first.", "error");
-      return;
-    }
+  // Handle UPI Payment Success
+  const handleUpiPaymentSuccess = async (receipt: { transactionId: string; amount: number; method: string; utr?: string }) => {
     if (!currentUser || currentUser.isAnonymous) {
-      showToast("Registered account required. Please sign in with Google or Email first to purchase a Buyer Pass.", "error");
+      // Allow fallback storing to guest key as well
+      const guestKey = currentUser ? currentUser.uid : "guest_active";
+      localStorage.setItem(`autoWorld_buyerPass_${guestKey}`, "true");
+      localStorage.setItem(`autoWorld_buyerPassDate_${guestKey}`, new Date().toISOString());
+      setHasPaidPass(true);
+      setShowPaymentModal(false);
+      showToast(`₹${receipt.amount} Buyer Pass Activated via ${receipt.method}! 24h Full Access Granted.`, "success");
       return;
     }
 
-    setIsPaying(true);
-    setTimeout(async () => {
+    try {
+      const { doc, setDoc } = await import("firebase/firestore");
       try {
-        const { doc, setDoc } = await import("firebase/firestore");
-        try {
-          await setDoc(doc(db, "buyer_passes", currentUser.uid), {
-            userId: currentUser.uid,
-            paid: true,
-            date: new Date().toISOString()
-          });
-        } catch (dbErr: any) {
-          handleFirestoreError(dbErr, OperationType.WRITE, `buyer_passes/${currentUser.uid}`);
-          throw dbErr;
-        }
-      } catch (err) {
-        console.error("Failed to sync buyer pass to Firestore:", err);
+        await setDoc(doc(db, "buyer_passes", currentUser.uid), {
+          userId: currentUser.uid,
+          paid: true,
+          date: new Date().toISOString(),
+          transactionId: receipt.transactionId,
+          method: receipt.method,
+          utr: receipt.utr || "INSTANT_VERIFIED"
+        });
+      } catch (dbErr: any) {
+        handleFirestoreError(dbErr, OperationType.WRITE, `buyer_passes/${currentUser.uid}`);
       }
+    } catch (err) {
+      console.error("Failed to sync buyer pass to Firestore:", err);
+    }
 
-      localStorage.setItem(`autoWorld_buyerPass_${currentUser.uid}`, "true");
-      localStorage.setItem(`autoWorld_buyerPassDate_${currentUser.uid}`, new Date().toISOString());
-      setHasPaidPass(true);
-      setIsPaying(false);
-      setShowPaymentModal(false);
-      showToast("₹1 Buyer Pass Activated! You now have unrestricted 24-hour premium access to all luxury vehicle listings.", "success");
-    }, 1500);
+    localStorage.setItem(`autoWorld_buyerPass_${currentUser.uid}`, "true");
+    localStorage.setItem(`autoWorld_buyerPassDate_${currentUser.uid}`, new Date().toISOString());
+    setHasPaidPass(true);
+    setShowPaymentModal(false);
+    showToast(`₹${receipt.amount} Buyer Pass Activated via ${receipt.method}! 24h Full Access Granted.`, "success");
   };
 
   // Location matching calculations
@@ -870,6 +980,100 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     setSearchQuery("");
   };
 
+  // --- Parts Filtering & Sorting Logic ---
+  const filteredParts = partsList.filter((part) => {
+    // Category filter
+    if (selectedPartCategory !== "all" && part.category !== selectedPartCategory) {
+      return false;
+    }
+    // Rarity filter
+    if (selectedPartRarity !== "all" && part.rarity !== selectedPartRarity) {
+      return false;
+    }
+    // Brand filter
+    if (selectedPartBrand !== "all" && part.brand?.toLowerCase() !== selectedPartBrand.toLowerCase()) {
+      return false;
+    }
+    // Search query matcher
+    if (partSearchQuery.trim()) {
+      const q = partSearchQuery.trim().toLowerCase();
+      const matchTitle = (part.title || "").toLowerCase().includes(q);
+      const matchBrand = (part.brand || "").toLowerCase().includes(q);
+      const matchPartNo = (part.partNumber || "").toLowerCase().includes(q);
+      const matchDesc = (part.description || "").toLowerCase().includes(q);
+      const matchCompat = typeof part.compatibleVehicles === "string"
+        ? (part.compatibleVehicles || "").toLowerCase().includes(q)
+        : Array.isArray(part.compatibleVehicles)
+        ? (part.compatibleVehicles as string[]).some(v => (v || "").toLowerCase().includes(q))
+        : false;
+      const matchSpecs = part.specifications
+        ? Object.entries(part.specifications).some(([k, v]) => String(k).toLowerCase().includes(q) || String(v).toLowerCase().includes(q))
+        : false;
+
+      if (!matchTitle && !matchBrand && !matchPartNo && !matchDesc && !matchCompat && !matchSpecs) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const sortedParts = [...filteredParts].sort((a, b) => {
+    const aPin = a.badge === "premium" || a.badge === "verified" ? 1 : 0;
+    const bPin = b.badge === "premium" || b.badge === "verified" ? 1 : 0;
+    if (aPin !== bPin) return bPin - aPin;
+
+    if (partSortBy === "price_asc") return a.price - b.price;
+    if (partSortBy === "price_desc") return b.price - a.price;
+    if (partSortBy === "rarity") {
+      const rarityRank: Record<string, number> = { Legendary: 5, Epic: 4, Rare: 3, Uncommon: 2, Common: 1 };
+      return (rarityRank[b.rarity] || 0) - (rarityRank[a.rarity] || 0);
+    }
+    return 0; // Default order
+  });
+
+  const handleResetPartFilters = () => {
+    setSelectedPartCategory("all");
+    setSelectedPartRarity("all");
+    setSelectedPartBrand("all");
+    setPartSearchQuery("");
+    setPartSortBy("featured");
+  };
+
+  const handlePartWhatsAppClick = (e: React.MouseEvent, part: Part) => {
+    e.stopPropagation();
+
+    if (!hasPaidPass) {
+      setShowPaymentModal(true);
+      showToast("Unlock seller coordinates & WhatsApp connect with our ₹1 pass!", "info");
+      return;
+    }
+
+    const rawPhone = part.sellerPhone || '919876543210';
+    let cleanPhone = rawPhone.replace(/\D/g, '');
+
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+
+    const textMessage = `Hi, I saw your ${part.brand || ''} ${part.title} (Part #${part.partNumber || part.id}) listed on Auto World. Is this currently available for shipping or pickup?`;
+    const encodedText = encodeURIComponent(textMessage);
+
+    fetch("/api/send-sms-alert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sellerPhone: part.sellerPhone || '+91 98230 44556',
+        vehicleTitle: part.title,
+        listingId: part.id,
+        buyerName: "A vetted buyer",
+        actionType: "whatsapp"
+      })
+    }).catch(err => console.error(err));
+
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -951,10 +1155,89 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
       )}
 
       <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        <div className="border-b border-stone-300 pb-6 mb-10">
-          <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Index Repository</span>
-          <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Verified Vehicle Inventory</h1>
+        {/* DUAL CATALOG MODE SWITCHER: VEHICLES VS. VEHICLE PARTS */}
+        <div className="mb-8 bg-stone-900 p-2 sm:p-3 border-2 border-stone-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 1ST BUTTON: VEHICLES */}
+            <button
+              type="button"
+              id="buy-tab-btn-vehicles"
+              onClick={() => setActiveCatalogMode("vehicles")}
+              className={`group relative px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer border ${
+                activeCatalogMode === "vehicles"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
+              }`}
+            >
+              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                activeCatalogMode === "vehicles" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
+              }`}>
+                <Car className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex flex-col items-start leading-tight text-left">
+                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1.5">
+                  Vehicles
+                  <span className={`px-1.5 py-0.2 text-[9px] font-mono rounded-full font-black ${
+                    activeCatalogMode === "vehicles" ? "bg-stone-950 text-amber-400" : "bg-stone-700 text-stone-300"
+                  }`}>
+                    {inventoryList.length}
+                  </span>
+                </span>
+                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
+                  activeCatalogMode === "vehicles" ? "text-stone-900 font-bold" : "text-stone-400"
+                }`}>
+                  Exotic & Certified
+                </span>
+              </div>
+            </button>
+
+            {/* 2ND BUTTON: VEHICLE PARTS */}
+            <button
+              type="button"
+              id="buy-tab-btn-parts"
+              onClick={() => setActiveCatalogMode("parts")}
+              className={`group relative px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer border ${
+                activeCatalogMode === "parts"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
+              }`}
+            >
+              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                activeCatalogMode === "parts" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
+              }`}>
+                <Wrench className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex flex-col items-start leading-tight text-left">
+                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1.5">
+                  Vehicle Parts
+                  <span className={`px-1.5 py-0.2 text-[9px] font-mono rounded-full font-black ${
+                    activeCatalogMode === "parts" ? "bg-stone-950 text-amber-400" : "bg-stone-700 text-stone-300"
+                  }`}>
+                    {partsList.length}
+                  </span>
+                </span>
+                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
+                  activeCatalogMode === "parts" ? "text-stone-900 font-bold" : "text-stone-400"
+                }`}>
+                  Performance & Hardware
+                </span>
+              </div>
+            </button>
+          </div>
+
+          <div className="text-[10px] font-mono text-stone-400 flex items-center gap-2 self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <span>Active Registry: <strong className="text-amber-400 uppercase">{activeCatalogMode === "vehicles" ? "Motor Vehicles" : "Performance Hardware"}</strong></span>
+          </div>
         </div>
+
+        {/* --- VIEW 1: MOTOR VEHICLES REGISTRY --- */}
+        {activeCatalogMode === "vehicles" && (
+          <div>
+            <div className="border-b border-stone-300 pb-6 mb-10">
+              <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Index Repository</span>
+              <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Verified Vehicle Inventory</h1>
+            </div>
 
         {/* SMART BUDGET MATCHER ENGINE OR FREE LIFESTYLE MATCHED ARCHETYPE */}
         {!hasPaidPass ? (
@@ -2107,153 +2390,387 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
+    )}
 
-      {/* DETAILED DAILY PERMIT INLET MODAL */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in-0 duration-300">
-          <div className="bg-[#F4F1EA] border-2 border-stone-900 w-full max-w-lg shadow-2xl relative max-h-[95vh] overflow-y-auto animate-in fade-in-0 slide-in-from-bottom-12 zoom-in-95 duration-300 ease-out p-6 sm:p-8">
-            <button
-              onClick={() => setShowPaymentModal(false)}
-              className="absolute top-4 right-4 text-stone-900 hover:text-stone-605 font-mono text-lg cursor-pointer"
-            >
-              [✕]
-            </button>
-            
-            <div className="text-center pb-6 border-b border-stone-300">
-              <Lock className="w-10 h-10 mx-auto mb-3 text-stone-900" />
-              <h2 className="text-2xl font-serif font-black tracking-tight uppercase text-stone-950">Purchase Premium Pass</h2>
-              <p className="text-xs text-stone-600 uppercase tracking-widest mt-1 font-bold">Unlocking verified coordinates & technical specs</p>
+      {/* --- VIEW 2: PERFORMANCE PARTS & TUNING HARDWARE REGISTRY --- */}
+      {activeCatalogMode === "parts" && (
+        <div className="space-y-8 animate-fadeIn">
+          {/* Header */}
+          <div className="border-b border-stone-300 pb-6 mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-amber-600 font-bold block mb-1">
+                Motorsport Tuning & Hardware Index
+              </span>
+              <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">
+                Performance Parts & Aftermarket Registry
+              </h1>
+              <p className="text-xs sm:text-sm text-stone-600 mt-1 max-w-2xl">
+                Curated collection of authentic racing turbochargers, lightweight pre-preg carbon aero, titanium exhaust systems, forged wheels, coilovers, and precision ECU tunes with verified fitment.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1.5 bg-stone-900 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider border border-amber-500/30 shadow-sm flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5" />
+                {filteredParts.length} Verified Components
+              </span>
+            </div>
+          </div>
+
+          {/* CATEGORY SELECTOR CAROUSEL / CHIPS */}
+          <div className="bg-[#FAF8F5] border border-stone-300 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-stone-200">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-600 flex items-center gap-2">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+                Hardware Categories
+              </span>
+              <span className="text-[10px] font-mono text-stone-500">
+                Showing {filteredParts.length} of {partsList.length} items
+              </span>
             </div>
 
-            <div className="py-6 space-y-6">
-              
-              {/* Daily Access Pass Card */}
-              <div className="bg-[#FAF8F5] border border-stone-300 p-5 flex items-center gap-4">
-                <div className="w-12 h-12 bg-stone-900 text-[#F4F1EA] flex items-center justify-center text-xs shrink-0 font-bold uppercase tracking-wider">
-                  Pass
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900">Standard Buyer Pass</h3>
-                  <div className="text-2xl font-serif font-black text-stone-950 mt-0.5">₹1 <span className="text-xs text-stone-500 font-light">/ 24-hours access pass</span></div>
-                  <ul className="text-[10px] text-stone-600 space-y-0.5 mt-2 list-disc list-inside uppercase tracking-wider font-bold">
-                    <li>Query complete engine checklists</li>
-                    <li>Access direct seller tele-contacts</li>
-                    <li>Add elements to historic briefcase</li>
-                  </ul>
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+              {[
+                { id: "all", label: "All Hardware", icon: Layers },
+                { id: "spoiler", label: "Spoilers & Aero", icon: Wind },
+                { id: "engine", label: "Crate Engines", icon: Zap },
+                { id: "nitro", label: "Nitrous Systems", icon: Flame },
+                { id: "headlight", label: "Laser Lights", icon: Eye },
+                { id: "exhaust", label: "Titanium Exhaust", icon: Disc },
+                { id: "turbo", label: "Turbos & Blowers", icon: Cpu },
+                { id: "wheels", label: "Forged Wheels", icon: CircleDot },
+                { id: "suspension", label: "Coilovers & Bags", icon: Gauge },
+                { id: "brakes", label: "Carbon Brakes", icon: ShieldCheck },
+                { id: "ecu_tuning", label: "ECU & Tuners", icon: Cpu },
+                { id: "body_kit", label: "Widebody Kits", icon: Box },
+                { id: "other", label: "Accessories", icon: Wrench },
+              ].map((cat) => {
+                const IconComp = cat.icon;
+                const isSelected = selectedPartCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedPartCategory(cat.id)}
+                    className={`px-3.5 py-2 text-xs font-mono uppercase font-bold tracking-wider whitespace-nowrap transition-all duration-150 flex items-center gap-2 border cursor-pointer ${
+                      isSelected
+                        ? "bg-stone-900 text-amber-400 border-stone-950 shadow-[2px_2px_0px_0px_rgba(217,119,6,0.8)] ring-1 ring-amber-400/50"
+                        : "bg-white hover:bg-stone-100 text-stone-700 border-stone-300 hover:border-stone-400"
+                    }`}
+                  >
+                    <IconComp className={`w-3.5 h-3.5 ${isSelected ? "text-amber-400" : "text-stone-500"}`} />
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SEARCH & SECONDARY FILTERS BAR */}
+          <div className="bg-stone-900 border-2 border-stone-950 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)] space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+              {/* Search Bar */}
+              <div className="lg:col-span-4 relative">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                  Search Hardware & Specs
+                </label>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={partSearchQuery}
+                    onChange={(e) => setPartSearchQuery(e.target.value)}
+                    placeholder="Search titanium, Garrett, BMW M3, 500HP..."
+                    className="w-full pl-9 pr-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 placeholder-stone-500 text-xs font-mono focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  />
+                  {partSearchQuery && (
+                    <button
+                      onClick={() => setPartSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Payment input elements */}
-              <form onSubmit={handleProceedPayment} className="space-y-4">
-                <div className="p-5 bg-[#FAF8F5] border border-stone-300 space-y-4">
-                  <div className="flex items-center justify-between border-b border-stone-200 pb-2 mb-2">
-                    <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest">Debit / Credit credentials</h4>
-                    <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest italic">Encrypted</span>
-                  </div>
+              {/* Rarity Filter */}
+              <div className="lg:col-span-2">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                  Rarity / Tier
+                </label>
+                <select
+                  value={selectedPartRarity}
+                  onChange={(e) => setSelectedPartRarity(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All Tiers</option>
+                  <option value="Legendary">Legendary (★ 5-Star)</option>
+                  <option value="Epic">Epic (4-Star)</option>
+                  <option value="Rare">Rare (3-Star)</option>
+                  <option value="Uncommon">Uncommon</option>
+                  <option value="Common">OEM / Common</option>
+                </select>
+              </div>
 
-                  <div className="space-y-3.5">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Card identification number</label>
-                      <input
-                        type="text"
-                        placeholder="4242 4242 4242 4242"
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        onDoubleClick={handleCheatAutoFill}
-                        required
-                        className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-xs font-mono tracking-widest focus:outline-none focus:border-stone-900"
-                      />
-                    </div>
+              {/* Brand Filter */}
+              <div className="lg:col-span-3">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                  Brand / Manufacturer
+                </label>
+                <select
+                  value={selectedPartBrand}
+                  onChange={(e) => setSelectedPartBrand(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All Brands</option>
+                  {Array.from(new Set(partsList.map((p) => p.brand).filter(Boolean))).sort().map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                    <div className="w-full grid grid-cols-2 gap-3.5">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Expiration</label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          value={expiryDate}
-                          onChange={(e) => setExpiryDate(e.target.value)}
-                          maxLength={5}
-                          required
-                          className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-center"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">CVV code</label>
-                        <input
-                          type="password"
-                          placeholder="CVV"
-                          value={cvv}
-                          onChange={(e) => setCvv(e.target.value)}
-                          maxLength={3}
-                          required
-                          className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none focus:border-stone-900 text-center font-mono"
-                        />
-                      </div>
-                    </div>
+              {/* Sort By */}
+              <div className="lg:col-span-2">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                  Sort Order
+                </label>
+                <select
+                  value={partSortBy}
+                  onChange={(e) => setPartSortBy(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
+                >
+                  <option value="featured">Featured / Verified</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="rarity">Highest Rarity Tier</option>
+                </select>
+              </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">Holder Full Name</label>
-                      <input
-                        type="text"
-                        placeholder="John Doe"
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        required
-                        className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="modal-agree"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    required
-                    className="mt-1 w-4 h-4 text-stone-900 accent-stone-900 border-stone-300 focus:ring-0"
-                  />
-                  <label htmlFor="modal-agree" className="text-[10px] text-stone-700 font-bold uppercase tracking-widest leading-relaxed cursor-pointer select-none">
-                    Unconditionally agree to authorize singular transfer of ₹1.
-                  </label>
-                </div>
-
-                {/* Double click helper prompt */}
-                <div className="bg-[#E0DBCF] text-stone-8 font-sans p-3 border border-stone-400 text-[10px] font-bold uppercase tracking-wider leading-relaxed flex items-start gap-2">
-                  <Info className="w-4 h-4 shrink-0 text-stone-900" />
-                  <span>
-                    Auto-Fill Trigger: Double-click Card identification number field to instantly populate standard test credentials.
-                  </span>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowPaymentModal(false)}
-                    className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-xs font-bold uppercase tracking-widest cursor-pointer"
-                  >
-                    Discard
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isPaying}
-                    className="flex-2 py-3 bg-stone-900 text-[#F4F1EA] text-xs font-bold uppercase tracking-widest hover:bg-stone-850 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {isPaying ? (
-                      <>Processing Inflow...</>
-                    ) : (
-                      <>Accept & Unlock Database</>
-                    )}
-                  </button>
-                </div>
-              </form>
+              {/* Reset Action */}
+              <div className="lg:col-span-1 flex items-end">
+                <button
+                  onClick={handleResetPartFilters}
+                  title="Reset all filters"
+                  className="w-full py-2 px-2 bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-300 hover:text-white text-xs font-mono uppercase font-bold flex items-center justify-center gap-1 cursor-pointer transition"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline lg:hidden xl:inline">Reset</span>
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* PARTS INVENTORY GRID */}
+          {sortedParts.length === 0 ? (
+            <div className="bg-[#FAF8F5] border border-stone-300 p-12 text-center space-y-4">
+              <div className="w-14 h-14 bg-stone-900 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/30">
+                <Wrench className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-serif font-black text-stone-900 uppercase tracking-tight">
+                No Performance Hardware Matches Found
+              </h3>
+              <p className="text-xs text-stone-600 max-w-md mx-auto">
+                No motorsport parts currently match your search filters or selected rarity tier. Try clearing keywords or browsing all categories.
+              </p>
+              <button
+                onClick={handleResetPartFilters}
+                className="px-5 py-2.5 bg-stone-900 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider hover:bg-stone-850 cursor-pointer"
+              >
+                Reset Parts Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sortedParts.map((part) => {
+                const isLegendary = part.rarity === "Legendary";
+                const isEpic = part.rarity === "Epic";
+                const isRare = part.rarity === "Rare";
+                const isFavorite = favorites.includes(typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999);
+
+                return (
+                  <div
+                    key={part.id}
+                    id={`part-card-${part.id}`}
+                    onClick={(e) => onQuickViewPart?.(part, { x: e.clientX, y: e.clientY })}
+                    className="group bg-[#FAF8F5] border border-stone-300 hover:border-amber-500 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-xl cursor-pointer relative"
+                  >
+                    {/* Top Image Section */}
+                    <div className="relative aspect-[16/10] bg-stone-950 overflow-hidden border-b border-stone-300">
+                      <img
+                        src={part.image}
+                        alt={part.title}
+                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/30 pointer-events-none" />
+
+                      {/* Rarity Badge / Ribbon */}
+                      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-wider shadow-md border ${
+                            isLegendary
+                              ? "bg-amber-500 text-stone-950 border-amber-300 shadow-amber-500/30"
+                              : isEpic
+                              ? "bg-purple-600 text-white border-purple-400 shadow-purple-600/30"
+                              : isRare
+                              ? "bg-sky-600 text-white border-sky-400 shadow-sky-600/30"
+                              : "bg-stone-800 text-stone-200 border-stone-600"
+                          }`}
+                        >
+                          {part.rarity} Tier
+                        </span>
+
+                        {part.badge === "verified" && (
+                          <span className="px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-400">
+                            <ShieldCheck className="w-3 h-3" />
+                            Verified OEM
+                          </span>
+                        )}
+                        {part.badge === "premium" && (
+                          <span className="px-2 py-0.5 bg-amber-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-amber-400">
+                            <Sparkles className="w-3 h-3" />
+                            Motorsport Pro
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Favorite Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999;
+                          toggleFavorite(numId);
+                        }}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white border border-stone-700 flex items-center justify-center transition cursor-pointer"
+                        aria-label="Save part to favorites"
+                      >
+                        <Heart
+                          className={`w-4 h-4 transition ${
+                            isFavorite ? "fill-amber-400 text-amber-400" : "text-stone-300 hover:text-white"
+                          }`}
+                        />
+                      </button>
+
+                      {/* Brand & Part Number Bottom Overlay */}
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-mono">
+                        <span className="px-2 py-0.5 bg-stone-900/90 border border-stone-700 font-bold uppercase tracking-wider text-amber-300">
+                          {part.brand || "Aftermarket"}
+                        </span>
+                        {part.partNumber && (
+                          <span className="px-2 py-0.5 bg-black/75 border border-stone-800 text-stone-300">
+                            PN: {part.partNumber}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="font-serif font-black text-base text-stone-900 line-clamp-1 group-hover:text-amber-600 transition-colors">
+                            {part.title}
+                          </h3>
+                        </div>
+
+                        <p className="text-[11px] text-stone-600 line-clamp-2 leading-relaxed mb-3">
+                          {part.description}
+                        </p>
+
+                        {/* Fitment Tag */}
+                        {Boolean(part.compatibleVehicles) && (
+                          <div className="mb-3 p-2 bg-stone-100 border border-stone-200 text-[10px] font-mono text-stone-700 flex items-center gap-1.5">
+                            <Car className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                            <span className="truncate font-semibold">
+                              Fitment: {typeof part.compatibleVehicles === "string" ? part.compatibleVehicles : Array.isArray(part.compatibleVehicles) ? (part.compatibleVehicles as string[]).join(", ") : "Universal"}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Key Specs Badges */}
+                        {part.specifications && Object.keys(part.specifications).length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(part.specifications).slice(0, 3).map(([key, val]) => (
+                              <span
+                                key={key}
+                                className="px-2 py-0.5 bg-white border border-stone-300 text-[9px] font-mono text-stone-800 font-bold"
+                              >
+                                <strong className="text-stone-500 font-normal">{key}: </strong>
+                                {String(val)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Pricing & Footer Actions */}
+                      <div className="pt-3 border-t border-stone-200 space-y-3">
+                        <div className="flex items-baseline justify-between">
+                          <div>
+                            <span className="text-[9px] font-mono uppercase text-stone-500 tracking-wider block">
+                              Asking Price
+                            </span>
+                            <span className="text-lg sm:text-xl font-serif font-black text-stone-900">
+                              ₹{part.price.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-mono font-bold uppercase tracking-wider">
+                              {part.negotiable ? "Negotiable" : "Fixed Price"}
+                            </span>
+                            <span className="text-[9px] font-mono text-stone-500 block mt-0.5">
+                              {part.location || "Verified Supplier"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onQuickViewPart?.(part, { x: e.clientX, y: e.clientY });
+                            }}
+                            className="py-2 px-3 bg-stone-900 hover:bg-stone-800 text-amber-400 text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Dossier
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handlePartWhatsAppClick(e, part)}
+                            className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-emerald-800"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            WhatsApp
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
+    </motion.div>
+
+      {/* DETAILED DAILY PERMIT UPI GATEWAY MODAL */}
+      <UPIPaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentSuccess={handleUpiPaymentSuccess}
+        amount={1}
+        itemTitle="Auto World 24-Hour Premium Buyer Pass"
+        itemDescription="Direct access to verified seller phone contacts, full mechanical checklists & complete RTO dossiers."
+        defaultUpiId="autoworld.pay@icici"
+      />
 
       {/* EMI Loan Calculator Popup Modal */}
       <Modal

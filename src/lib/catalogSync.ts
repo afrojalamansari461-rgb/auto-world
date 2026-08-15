@@ -1,18 +1,24 @@
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, setDoc, onSnapshot, collection, getDoc } from "firebase/firestore";
-import { UserListing } from "../types";
+import { UserListing, UserPartListing } from "../types";
 
 export interface AdminSettingsData {
   hiddenDefaultIds: number[];
   removedDefaultIds: number[];
   defaultBadges: Record<string, string | null>;
   homeFeaturedIds: string[];
+  hiddenPartIds?: (number | string)[];
+  removedPartIds?: (number | string)[];
+  partBadges?: Record<string, string | null>;
+  homeFeaturedPartIds?: string[];
   isFreePassEnabled?: boolean;
   isSecureShieldEnabled?: boolean;
   isEmiCalculatorEnabled?: boolean;
   isWhatsAppConnectEnabled?: boolean;
   isAiAssistantEnabled?: boolean;
   isSimranFreeModeEnabled?: boolean;
+  isSmsNotificationsEnabled?: boolean;
+  [key: string]: any;
   footerEmail?: string;
   footerPhone?: string;
   loginQuote?: string;
@@ -60,7 +66,59 @@ export async function saveCatalogOverride(vehicleId: number | string, overrideDa
   }
 }
 
+// 1b. Save spec overrides for default parts catalog items to Firestore
+export async function savePartOverride(partId: number | string, overrideData: Record<string, any>) {
+  const docId = String(partId);
+  try {
+    const overrideRef = doc(db, "catalog_overrides", `part_${docId}`);
+    await setDoc(overrideRef, {
+      id: partId,
+      isPart: true,
+      ...overrideData,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    try {
+      const storedStr = localStorage.getItem("autoWorld_part_overrides") || "{}";
+      const currentMap = JSON.parse(storedStr);
+      currentMap[docId] = { ...currentMap[docId], ...overrideData };
+      localStorage.setItem("autoWorld_part_overrides", JSON.stringify(currentMap));
+    } catch (e) {
+      console.warn("Local storage part overrides write error:", e);
+    }
+
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+  } catch (err) {
+    console.error("Failed to save part override to Firestore:", err);
+    handleFirestoreError(err, OperationType.WRITE, `catalog_overrides/part_${docId}`);
+  }
+}
+
 // 2. Save global Admin settings (hidden defaults, badges, home featured) to Firestore
+export async function loadAdminSettingsFromFirestore(): Promise<Partial<AdminSettingsData>> {
+  try {
+    const adminRef = doc(db, "admin_settings", "catalog");
+    const snap = await getDoc(adminRef);
+    if (snap.exists()) {
+      return snap.data() as Partial<AdminSettingsData>;
+    }
+  } catch (err) {
+    console.warn("Failed to load admin settings from Firestore, using local fallback:", err);
+  }
+  try {
+    const storedBadges = localStorage.getItem("autoWorld_part_badges");
+    const storedHidden = localStorage.getItem("autoWorld_hidden_parts");
+    const storedHome = localStorage.getItem("autoworld_home_featured_parts");
+    return {
+      partBadges: storedBadges ? JSON.parse(storedBadges) : {},
+      hiddenPartIds: storedHidden ? JSON.parse(storedHidden) : [],
+      homeFeaturedPartIds: storedHome ? JSON.parse(storedHome) : ["1", "2", "3"]
+    };
+  } catch (e) {
+    return {};
+  }
+}
+
 export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettingsData>) {
   try {
     const adminRef = doc(db, "admin_settings", "catalog");
@@ -82,6 +140,18 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       }
       if (settings.homeFeaturedIds) {
         localStorage.setItem("autoWorld_home_featured_ids", JSON.stringify(settings.homeFeaturedIds));
+      }
+      if (settings.hiddenPartIds) {
+        localStorage.setItem("autoWorld_hidden_parts", JSON.stringify(settings.hiddenPartIds));
+      }
+      if (settings.removedPartIds) {
+        localStorage.setItem("autoWorld_removed_parts", JSON.stringify(settings.removedPartIds));
+      }
+      if (settings.partBadges) {
+        localStorage.setItem("autoWorld_part_badges", JSON.stringify(settings.partBadges));
+      }
+      if (settings.homeFeaturedPartIds) {
+        localStorage.setItem("autoWorld_home_featured_parts", JSON.stringify(settings.homeFeaturedPartIds));
       }
       if (settings.isFreePassEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_free_pass", JSON.stringify(settings.isFreePassEnabled));
@@ -160,27 +230,37 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
   }
 }
 
-// 3. Real-time subscriber for Firestore catalog data
+// 3. Real-time subscriber for Firestore catalog & parts data
 export function subscribeToRealtimeCatalog(
   onData: (data: {
     userListings: UserListing[];
+    userParts?: UserPartListing[];
     overrides: Record<string, any>;
+    partOverrides?: Record<string, any>;
     adminSettings: AdminSettingsData;
   }) => void
 ) {
   let userListings: UserListing[] = [];
+  let userParts: UserPartListing[] = [];
   let overrides: Record<string, any> = {};
+  let partOverrides: Record<string, any> = {};
   let adminSettings: AdminSettingsData = {
     hiddenDefaultIds: [],
     removedDefaultIds: [],
     defaultBadges: {},
-    homeFeaturedIds: []
+    homeFeaturedIds: [],
+    hiddenPartIds: [],
+    removedPartIds: [],
+    partBadges: {},
+    homeFeaturedPartIds: []
   };
 
   const emit = () => {
     onData({
       userListings: [...userListings],
+      userParts: [...userParts],
       overrides: { ...overrides },
+      partOverrides: { ...partOverrides },
       adminSettings: { ...adminSettings }
     });
   };
@@ -201,18 +281,40 @@ export function subscribeToRealtimeCatalog(
     }
   );
 
+  // Listen to parts collection
+  const unsubParts = onSnapshot(
+    collection(db, "parts"),
+    (snapshot) => {
+      const items: UserPartListing[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push(docSnap.data() as UserPartListing);
+      });
+      userParts = items;
+      emit();
+    },
+    (err) => {
+      console.warn("Parts snapshot listener error:", err);
+    }
+  );
+
   // Listen to catalog_overrides collection
   const unsubOverrides = onSnapshot(
     collection(db, "catalog_overrides"),
     (snapshot) => {
       const map: Record<string, any> = {};
+      const pMap: Record<string, any> = {};
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data && data.id !== undefined) {
-          map[String(data.id)] = data;
+          if (docSnap.id.startsWith("part_")) {
+            pMap[String(data.id)] = data;
+          } else {
+            map[String(data.id)] = data;
+          }
         }
       });
       overrides = map;
+      partOverrides = pMap;
       emit();
     },
     (err) => {
@@ -231,6 +333,10 @@ export function subscribeToRealtimeCatalog(
           removedDefaultIds: Array.isArray(data.removedDefaultIds) ? data.removedDefaultIds : [],
           defaultBadges: data.defaultBadges && typeof data.defaultBadges === "object" ? data.defaultBadges : {},
           homeFeaturedIds: Array.isArray(data.homeFeaturedIds) ? data.homeFeaturedIds : [],
+          hiddenPartIds: Array.isArray(data.hiddenPartIds) ? data.hiddenPartIds : [],
+          removedPartIds: Array.isArray(data.removedPartIds) ? data.removedPartIds : [],
+          partBadges: data.partBadges && typeof data.partBadges === "object" ? data.partBadges : {},
+          homeFeaturedPartIds: Array.isArray(data.homeFeaturedPartIds) ? data.homeFeaturedPartIds : [],
           isFreePassEnabled: data.isFreePassEnabled !== undefined ? Boolean(data.isFreePassEnabled) : true,
           isSecureShieldEnabled: data.isSecureShieldEnabled !== undefined ? Boolean(data.isSecureShieldEnabled) : true,
           isEmiCalculatorEnabled: data.isEmiCalculatorEnabled !== undefined ? Boolean(data.isEmiCalculatorEnabled) : true,
@@ -261,6 +367,7 @@ export function subscribeToRealtimeCatalog(
 
   return () => {
     unsubListings();
+    unsubParts();
     unsubOverrides();
     unsubSettings();
   };

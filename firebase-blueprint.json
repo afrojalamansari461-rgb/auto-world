@@ -45,6 +45,46 @@
       },
       "required": ["id", "title", "type", "make", "model", "year", "price", "sellerName", "sellerEmail", "sellerPhone", "location", "status", "userId"]
     },
+    "UserPartListing": {
+      "title": "UserPartListing",
+      "description": "An automotive performance part or upgrade item posted by an authenticated user or merchant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "rarity": { "type": "string", "enum": ["Common", "Uncommon", "Rare", "Epic", "Legendary"] },
+        "condition": { "type": "integer" },
+        "brand": { "type": "string" },
+        "price": { "type": "integer" },
+        "compatibleVehicles": { "type": "string" },
+        "description": { "type": "string" },
+        "negotiable": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerEmail": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "location": { "type": "string" },
+        "partNumber": { "type": "string" },
+        "warranty": { "type": "string" },
+        "featured": { "type": "boolean" },
+        "urgent": { "type": "boolean" },
+        "verified": { "type": "boolean" },
+        "photos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "src": { "type": "string" },
+              "alt": { "type": "string" }
+            }
+          }
+        },
+        "datePosted": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "sold", "pending", "hidden"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "rarity", "condition", "brand", "price", "compatibleVehicles", "sellerName", "sellerEmail", "sellerPhone", "location", "status", "userId"]
+    },
     "Message": {
       "title": "Message",
       "description": "A contact submission message",
@@ -159,6 +199,10 @@
     "listings": {
       "schema": "UserListing",
       "description": "A global collection containing all pre-owned vehicle listing briefs posted by verified users"
+    },
+    "parts": {
+      "schema": "UserPartListing",
+      "description": "Global collection containing all curated automotive performance parts and aftermarket upgrades"
     },
     "messages": {
       "schema": "Message",

@@ -14,6 +14,7 @@ import RoleBadge from "./RoleBadge";
 import { Vehicle, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
+import AdminPartsDesk from "./AdminPartsDesk";
 
 interface OfficeRoomProps {
   currentUser: User | null;
@@ -83,6 +84,7 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
 
   const canAccessStaffRoles = isOwner;
   const canAccessInventory = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Inventory Manager";
+  const canAccessParts = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Inventory Manager" || userRole === "Content Moderator";
   const canAccessSales = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Sales & Leads Specialist";
   const canAccessSupport = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Support Agent";
   const canAccessModeration = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Content Moderator";
@@ -316,6 +318,20 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
               <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 text-[10px] font-mono rounded-full font-bold">
                 {listings.length}
               </span>
+            </button>
+          )}
+
+          {canAccessParts && (
+            <button
+              onClick={() => setActiveSubDesk("parts")}
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                activeSubDesk === "parts"
+                  ? "bg-amber-600 text-stone-950 font-black shadow-md border-b-2 border-amber-300"
+                  : "bg-white text-stone-600 hover:text-stone-950 border border-stone-200"
+              }`}
+            >
+              <Wrench className="w-4 h-4 text-amber-600" />
+              Hardware Desk
             </button>
           )}
 
@@ -574,6 +590,16 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 1.5. PERFORMANCE HARDWARE & TUNING DESK */}
+        {activeSubDesk === "parts" && canAccessParts && (
+          <div className="space-y-6">
+            <AdminPartsDesk
+              showToast={showToast}
+              currentUser={currentUser}
+            />
           </div>
         )}
 

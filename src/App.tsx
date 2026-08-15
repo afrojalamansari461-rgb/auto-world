@@ -20,8 +20,9 @@ import Login from "./components/Login";
 import SignUp from "./components/SignUp";
 import FeedbackWidget from "./components/FeedbackWidget";
 import Modal from "./components/Modal";
+import PartDossierModal from "./components/PartDossierModal";
 import { SecureShieldCard } from "./components/SecureShieldCard";
-import { Vehicle, UserListing, DEFAULT_VEHICLES } from "./types";
+import { Vehicle, UserListing, DEFAULT_VEHICLES, Part } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, firebaseConfig, handleFirestoreError, OperationType } from "./firebase";
 import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
@@ -80,6 +81,8 @@ export default function App() {
   const [favoritesLoaded, setFavoritesLoaded] = useState<boolean>(false);
   const [subscriptionActive, setSubscriptionActive] = useState<boolean>(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
+  const [partClickCoords, setPartClickCoords] = useState<{ x: number; y: number } | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [activeModalSubTab, setActiveModalSubTab] = useState<"overview" | "gallery" | "specs" | "contact" | "finance">("overview");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
@@ -1251,6 +1254,10 @@ export default function App() {
                 toggleFavorite={toggleFavorite}
                 setSearchFilters={setSearchFilters}
                 onQuickView={handleQuickView}
+                onQuickViewPart={(part, coords) => {
+                  setSelectedPart(part);
+                  if (coords) setPartClickCoords(coords);
+                }}
               />
             )}
             
@@ -1260,6 +1267,10 @@ export default function App() {
                 toggleFavorite={toggleFavorite}
                 searchFilters={searchFilters}
                 onQuickView={handleQuickView}
+                onQuickViewPart={(part, coords) => {
+                  setSelectedPart(part);
+                  if (coords) setPartClickCoords(coords);
+                }}
                 subscriptionActive={subscriptionActive}
                 showToast={showToast}
                 currentUser={currentUser}
@@ -2703,6 +2714,20 @@ export default function App() {
 </Modal>
 )}
 </AnimatePresence>
+
+      {/* Part Dossier Modal with Dynamic Non-Centered Coordinates */}
+      {selectedPart && (
+        <PartDossierModal
+          part={selectedPart}
+          clickCoordinates={partClickCoords}
+          currentUser={currentUser}
+          isAdmin={userRole === "admin" || userRole === "owner" || currentUser?.email === "afrojalamansari461@gmail.com"}
+          onClose={() => {
+            setSelectedPart(null);
+            setPartClickCoords(null);
+          }}
+        />
+      )}
 
       {/* Toast Notification element with Framer Motion AnimatePresence */}
       <AnimatePresence>
