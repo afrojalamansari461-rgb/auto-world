@@ -2722,6 +2722,23 @@ export default function App() {
           clickCoordinates={partClickCoords}
           currentUser={currentUser}
           isAdmin={userRole === "admin" || userRole === "owner" || currentUser?.email === "afrojalamansari461@gmail.com"}
+          hasPaidPass={hasPaidPass}
+          onRequestPass={() => {
+            if (currentUser && !currentUser.isAnonymous) {
+              setActiveTab("buy");
+              setSelectedPart(null);
+              setTimeout(() => {
+                const partsModule = document.getElementById("motorsport-parts-catalog-root");
+                if (partsModule) {
+                  partsModule.scrollIntoView({ behavior: "smooth" });
+                }
+              }, 300);
+              showToast("Activate your ₹1 buyer pass to unlock all tuner coordinates!", "info");
+            } else {
+              setIsSignInModalOpen(true);
+              showToast("Please sign in to unlock buyer passes and contacts.", "info");
+            }
+          }}
           onClose={() => {
             setSelectedPart(null);
             setPartClickCoords(null);

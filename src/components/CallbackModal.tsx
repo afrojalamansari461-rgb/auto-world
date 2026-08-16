@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, PhoneCall, CheckCircle2, Clock, Calendar, MessageSquare, ShieldCheck, User, Phone } from "lucide-react";
-import { Vehicle } from "../types";
+import { X, PhoneCall, CheckCircle2, Clock, Calendar, MessageSquare, ShieldCheck, User, Phone, Wrench, Car } from "lucide-react";
+import { Vehicle, Part } from "../types";
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { dispatchAdminSmsAlert } from "../lib/notificationService";
@@ -11,6 +11,8 @@ interface CallbackModalProps {
   isOpen: boolean;
   onClose: () => void;
   vehicle?: Vehicle | null;
+  part?: Part | null;
+  itemType?: "vehicle" | "part";
   sellerInfo?: { name?: string; phone?: string; email?: string } | null;
   currentUser?: any;
   showToast?: (msg: string, type?: "success" | "error" | "info") => void;
@@ -20,6 +22,8 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
   isOpen,
   onClose,
   vehicle,
+  part,
+  itemType,
   sellerInfo,
   currentUser,
   showToast,
@@ -35,15 +39,18 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
     };
   }, [isOpen]);
 
-  const targetSellerName = sellerInfo?.name || vehicle?.sellerName || "AutoWorld Concierge Desk";
-  const targetSellerPhone = sellerInfo?.phone || vehicle?.sellerPhone || "+919920155667";
+  const isPart = itemType === "part" || Boolean(part);
+  const targetSellerName = sellerInfo?.name || part?.sellerName || vehicle?.sellerName || "AutoWorld Concierge Desk";
+  const targetSellerPhone = sellerInfo?.phone || part?.sellerPhone || vehicle?.sellerPhone || "+919920155667";
 
   const [fullName, setFullName] = useState<string>(currentUser?.displayName || "");
   const [phoneNumber, setPhoneNumber] = useState<string>(currentUser?.phoneNumber || "");
   const [timeSlot, setTimeSlot] = useState<string>("ASAP (Within 15 minutes)");
-  const [queryTopic, setQueryTopic] = useState<string>(
-    vehicle ? `Inquiry regarding ${vehicle.title}` : "General Vehicle Buying & Valuation Query"
-  );
+  const [queryTopic, setQueryTopic] = useState<string>(() => {
+    if (part) return `Inquiry for Motorsport Part: ${part.title}`;
+    if (vehicle) return `Inquiry regarding ${vehicle.title}`;
+    return "General Vehicle & Tuning Query";
+  });
   const [note, setNote] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedData, setSubmittedData] = useState<any | null>(null);
@@ -62,15 +69,22 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
 
     const callbackData = {
       callbackRef,
-      vehicleId: vehicle?.id || null,
-      vehicleTitle: vehicle?.title || "General Query",
-      vehicleImage: vehicle?.image || vehicle?.photos?.[0]?.src || "",
-      vehiclePrice: vehicle?.price || 0,
+      itemType: isPart ? "part" : "vehicle",
+      vehicleId: isPart ? null : (vehicle?.id || null),
+      vehicleTitle: isPart ? "" : (vehicle?.title || "General Vehicle Query"),
+      vehicleImage: isPart ? "" : (vehicle?.image || vehicle?.photos?.[0]?.src || ""),
+      vehiclePrice: isPart ? 0 : (vehicle?.price || 0),
+      partId: isPart ? (part?.id || null) : null,
+      partTitle: isPart ? (part?.title || "Motorsport Hardware") : "",
+      partImage: isPart ? (part?.image || part?.photos?.[0]?.src || "") : "",
+      partPrice: isPart ? (part?.price || 0) : 0,
+      partCategory: isPart ? (part?.category || "") : "",
+      partNumber: isPart ? (part?.partNumber || "") : "",
       sellerName: targetSellerName,
       sellerPhone: targetSellerPhone,
-      sellerEmail: vehicle?.sellerEmail || "",
-      sellerUserId: (vehicle as any)?.userId || "",
-      listingId: (vehicle as any)?.listingId || "",
+      sellerEmail: (isPart ? part?.sellerEmail : vehicle?.sellerEmail) || "",
+      sellerUserId: ((isPart ? part : vehicle) as any)?.userId || "",
+      listingId: ((isPart ? part : vehicle) as any)?.listingId || "",
       fullName: fullName.trim() || "Interested Buyer",
       phoneNumber: phoneNumber.trim(),
       timeSlot,
@@ -94,14 +108,14 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
 
       dispatchAdminSmsAlert(
         "buyerLead",
-        "📞 Callback Requested",
-        `Callback Request #${callbackRef} from ${callbackData.fullName} (${callbackData.phoneNumber}). Topic: ${callbackData.queryTopic}. Slot: ${callbackData.timeSlot}`,
+        isPart ? "🔧 Part Callback Requested" : "📞 Vehicle Callback Requested",
+        `Callback Request #${callbackRef} from ${callbackData.fullName} (${callbackData.phoneNumber}). Target: ${isPart ? callbackData.partTitle : callbackData.vehicleTitle}. Slot: ${callbackData.timeSlot}`,
         { callbackRef, buyer: callbackData.fullName, phone: callbackData.phoneNumber, topic: callbackData.queryTopic }
       );
 
       setSubmittedData(callbackData);
       fireCelebrationConfetti();
-      showToast?.(`Callback request #${callbackRef} logged! Advisor will call you shortly.`, "success");
+      showToast?.(`Callback request #${callbackRef} logged! Seller will call you shortly.`, "success");
     } catch (err) {
       console.error("Callback registration error:", err);
       setSubmittedData(callbackData);
@@ -114,7 +128,7 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
   const handleWhatsAppRedirect = () => {
     const text = encodeURIComponent(
       `Hello ${targetSellerName}, I logged a callback request (#${submittedData?.callbackRef || "AW"}) for ${
-        vehicle ? vehicle.title : "a vehicle inquiry"
+        isPart ? (part ? part.title : "motorsport parts") : (vehicle ? vehicle.title : "a vehicle inquiry")
       }. My phone is ${phoneNumber}. Please get back to me.`
     );
     window.open(`https://wa.me/${targetSellerPhone.replace(/[^0-9]/g, "")}?text=${text}`, "_blank");
@@ -126,12 +140,14 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
         {/* Header */}
         <div className="p-4 bg-stone-950 text-white flex items-center justify-between border-b border-stone-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
-              <PhoneCall className="w-5 h-5" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold border ${
+              isPart ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+            }`}>
+              {isPart ? <Wrench className="w-5 h-5" /> : <PhoneCall className="w-5 h-5" />}
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-serif font-bold text-white leading-tight">
-                Request Instant Callback
+                {isPart ? "Request Part Enquiry Callback" : "Request Instant Callback"}
               </h3>
               <p className="text-xs text-stone-300 truncate max-w-xs">
                 Speak directly with {targetSellerName}
@@ -150,17 +166,40 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
           {!submittedData ? (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Context Summary */}
-              {vehicle && (
+              {/* Context Summary for Part */}
+              {isPart && part && (
+                <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl flex items-center gap-3 shadow-2xs">
+                  <img
+                    src={part.image || part.photos?.[0]?.src || "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400"}
+                    alt={part.title}
+                    className="w-14 h-11 object-cover rounded-md border border-blue-300 shrink-0 bg-stone-900"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono font-bold bg-blue-600 text-white px-1.5 py-0.2 rounded-xs uppercase">PART</span>
+                      <h4 className="text-xs font-bold text-stone-900 truncate">{part.title}</h4>
+                    </div>
+                    <p className="text-[11px] font-semibold text-blue-900 mt-0.5">
+                      ₹{part.price.toLocaleString("en-IN")} • {part.brand || "OEM Performance"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Context Summary for Vehicle */}
+              {!isPart && vehicle && (
                 <div className="p-3 bg-white border border-stone-250 rounded-xl flex items-center gap-3 shadow-2xs">
                   <img
                     src={vehicle.image || vehicle.photos?.[0]?.src}
                     alt={vehicle.title}
                     className="w-14 h-11 object-cover rounded-md border border-stone-200 shrink-0"
                   />
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-stone-900 truncate">{vehicle.title}</h4>
-                    <p className="text-[11px] font-semibold text-amber-700">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono font-bold bg-amber-500 text-stone-950 px-1.5 py-0.2 rounded-xs uppercase">VEHICLE</span>
+                      <h4 className="text-xs font-bold text-stone-900 truncate">{vehicle.title}</h4>
+                    </div>
+                    <p className="text-[11px] font-semibold text-amber-700 mt-0.5">
                       ₹{vehicle.price.toLocaleString("en-IN")} • {vehicle.location || "Mumbai"}
                     </p>
                   </div>
@@ -222,17 +261,31 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
                   <MessageSquare className="w-3.5 h-3.5 inline mr-1 text-stone-500" />
                   Primary Discussion Topic
                 </label>
-                <select
-                  value={queryTopic}
-                  onChange={(e) => setQueryTopic(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-xs font-semibold text-stone-950 focus:ring-2 focus:ring-stone-950 cursor-pointer"
-                >
-                  <option>Vehicle Inquiry & Final Pricing</option>
-                  <option>Test Drive & Inspection Booking</option>
-                  <option>Loan Approval & EMI Rates</option>
-                  <option>Exchange / Sell Old Car</option>
-                  <option>General Concierge Guidance</option>
-                </select>
+                {isPart ? (
+                  <select
+                    value={queryTopic}
+                    onChange={(e) => setQueryTopic(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-xs font-semibold text-stone-950 focus:ring-2 focus:ring-stone-950 cursor-pointer"
+                  >
+                    <option>Chassis & Engine Compatibility Check</option>
+                    <option>Price Negotiation & Bulk Order</option>
+                    <option>Shipping, Courier & Inspection Clearance</option>
+                    <option>Warranty & Tuning Guidance</option>
+                    <option>General Hardware Inquiry</option>
+                  </select>
+                ) : (
+                  <select
+                    value={queryTopic}
+                    onChange={(e) => setQueryTopic(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-xs font-semibold text-stone-950 focus:ring-2 focus:ring-stone-950 cursor-pointer"
+                  >
+                    <option>Vehicle Inquiry & Final Pricing</option>
+                    <option>Test Drive & Inspection Booking</option>
+                    <option>Loan Approval & EMI Rates</option>
+                    <option>Exchange / Sell Old Car</option>
+                    <option>General Concierge Guidance</option>
+                  </select>
+                )}
               </div>
 
               {/* Note */}
@@ -242,7 +295,7 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Any specific questions for the seller or concierge..."
+                  placeholder={isPart ? "Specific vehicle model for fitment check, delivery city, etc..." : "Any specific questions for the seller or concierge..."}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-lg text-xs text-stone-950 focus:ring-2 focus:ring-stone-950"

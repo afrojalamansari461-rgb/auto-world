@@ -21,6 +21,8 @@ interface PartDossierModalProps {
   onPartUpdated?: () => void;
   initialTab?: "overview" | "gallery" | "specs" | "contact" | "control";
   clickCoordinates?: { x: number; y: number } | null;
+  hasPaidPass?: boolean;
+  onRequestPass?: () => void;
 }
 
 export const MOTORSPORT_IMAGE_PRESETS = [
@@ -42,7 +44,9 @@ export default function PartDossierModal({
   isAdmin = false, // Strictly default to false for security
   onPartUpdated,
   initialTab = "overview",
-  clickCoordinates
+  clickCoordinates,
+  hasPaidPass = false,
+  onRequestPass
 }: PartDossierModalProps) {
   // Check whether the logged-in user is the verified owner or an authorized administrator
   const isAuthorizedAdmin = Boolean(
@@ -497,12 +501,27 @@ export default function PartDossierModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-stone-950/85 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-stone-950/85 backdrop-blur-md"
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          initial={{ opacity: 0, scale: 0.88, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ type: "spring", stiffness: 350, damping: 28 }}
+          exit={{ opacity: 0, scale: 0.88, y: 20 }}
+          transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.85 }}
+          style={
+            clickCoordinates
+              ? {
+                  transformOrigin: `${clickCoordinates.x}px ${clickCoordinates.y}px`,
+                }
+              : undefined
+          }
+          onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-5xl bg-[#FAF8F5] text-[#1A1A1A] rounded-xl shadow-2xl border-2 border-stone-950 overflow-hidden my-auto max-h-[92vh] flex flex-col font-sans"
         >
           {/* Top Dossier Header */}
@@ -754,15 +773,30 @@ export default function PartDossierModal({
 
                     {/* Action Buttons */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
-                      <a
-                        href={getWhatsAppUrl()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition shadow-sm"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>WhatsApp Seller</span>
-                      </a>
+                      {hasPaidPass || isAuthorizedAdmin ? (
+                        <a
+                          href={getWhatsAppUrl()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition shadow-sm"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>WhatsApp Seller</span>
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onRequestPass) {
+                              onRequestPass();
+                            }
+                          }}
+                          className="py-3 bg-stone-900 hover:bg-stone-850 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition shadow-sm border border-amber-500/40 cursor-pointer"
+                        >
+                          <Lock className="w-4 h-4 text-amber-400" />
+                          <span>Unlock Seller (₹1)</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={handleCopyRef}
@@ -958,31 +992,68 @@ export default function PartDossierModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
                     <div className="p-3 bg-[#FAF8F5] border border-stone-200 rounded space-y-1">
                       <span className="text-[10px] text-stone-500 uppercase">Direct Telephone:</span>
-                      <div className="font-bold text-stone-900 flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-amber-700" />
-                        <span>{part.sellerPhone || "+91 98200 11988"}</span>
+                      <div className="font-bold text-stone-900 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-amber-700" />
+                          <span>
+                            {hasPaidPass || isAuthorizedAdmin 
+                              ? (part.sellerPhone || "+91 98200 11988")
+                              : "+91 ••••• •••••"}
+                          </span>
+                        </div>
+                        {!hasPaidPass && !isAuthorizedAdmin && (
+                          <span className="px-2 py-0.5 bg-amber-200 text-stone-900 text-[9px] font-bold uppercase rounded-xs">
+                            Pass Required
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <div className="p-3 bg-[#FAF8F5] border border-stone-200 rounded space-y-1">
                       <span className="text-[10px] text-stone-500 uppercase">Dispatch Email:</span>
-                      <div className="font-bold text-stone-900 flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-amber-700" />
-                        <span>{part.sellerEmail || "dispatch@autoworld.com"}</span>
+                      <div className="font-bold text-stone-900 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-amber-700" />
+                          <span>
+                            {hasPaidPass || isAuthorizedAdmin 
+                              ? (part.sellerEmail || "dispatch@autoworld.com")
+                              : "••••••••@autoworld.com"}
+                          </span>
+                        </div>
+                        {!hasPaidPass && !isAuthorizedAdmin && (
+                          <span className="px-2 py-0.5 bg-amber-200 text-stone-900 text-[9px] font-bold uppercase rounded-xs">
+                            Pass Required
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div className="pt-2">
-                    <a
-                      href={getWhatsAppUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-mono text-xs font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition shadow-sm"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>Start Direct WhatsApp Callback</span>
-                    </a>
+                    {hasPaidPass || isAuthorizedAdmin ? (
+                      <a
+                        href={getWhatsAppUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-mono text-xs font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition shadow-sm"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Start Direct WhatsApp Callback</span>
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onRequestPass) {
+                            onRequestPass();
+                          }
+                        }}
+                        className="w-full py-3.5 bg-stone-900 hover:bg-stone-850 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition shadow-sm border border-amber-500/40 cursor-pointer"
+                      >
+                        <Lock className="w-4 h-4 text-amber-400" />
+                        <span>Unlock Tuner Coordinates & WhatsApp (₹1 Buyer Pass)</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1509,7 +1580,7 @@ export default function PartDossierModal({
           </div>
 
         </motion.div>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 }

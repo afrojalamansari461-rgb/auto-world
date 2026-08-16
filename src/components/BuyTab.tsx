@@ -190,6 +190,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   const [selectedPartBrand, setSelectedPartBrand] = useState<string>("all");
   const [partSearchQuery, setPartSearchQuery] = useState<string>("");
   const [partSortBy, setPartSortBy] = useState<string>("featured");
+  const [isPartWishlistOnly, setIsPartWishlistOnly] = useState<boolean>(false);
 
   // Payment states
   const [hasPaidPass, setHasPaidPass] = useState(false);
@@ -981,9 +982,50 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   };
 
   // --- Parts Filtering & Sorting Logic ---
+  const isPartMatchCategory = (part: Part, category: string): boolean => {
+    if (!category || category === "all") return true;
+    const cat = (part.category || "").toLowerCase();
+    const title = (part.title || "").toLowerCase();
+    const desc = (part.description || "").toLowerCase();
+    const brand = (part.brand || "").toLowerCase();
+    const specsStr = part.specifications ? JSON.stringify(part.specifications).toLowerCase() : "";
+    const combined = `${cat} ${title} ${desc} ${brand} ${specsStr}`;
+
+    if (category === "performance") {
+      const perfCats = ["turbo", "nitro", "suspension", "brakes", "ecu_tuning", "exhaust", "wheels", "performance"];
+      if (perfCats.includes(cat)) return true;
+      return /turbo|boost|nitrous|nos|ecu|tuning|tuner|exhaust|valved|coilover|suspension|brake|caliper|rotors|stage|racing|motorsport|downpipe|supercharger|intercooler/i.test(combined);
+    }
+    if (category === "engine") {
+      const engineCats = ["engine", "turbo", "nitro", "ecu_tuning"];
+      if (engineCats.includes(cat)) return true;
+      return /engine|crate|cylinder|piston|camshaft|crankshaft|intake|manifold|valvetrain|inconel|fuel rail|injector|turbo|block|spark|cooling|radiator|oil cooler/i.test(combined);
+    }
+    if (category === "interior") {
+      const interiorCats = ["interior"];
+      if (interiorCats.includes(cat)) return true;
+      return /interior|seat|bucket|recaro|sparco|steering|wheel|harness|roll cage|cage|gauge|cluster|telemetry|pedal|shifter|shift knob|carbon trim|alcantara|cockpit/i.test(combined);
+    }
+    if (category === "exterior") {
+      const exteriorCats = ["spoiler", "headlight", "body_kit", "wheels", "exterior"];
+      if (exteriorCats.includes(cat)) return true;
+      return /spoiler|wing|aero|splitter|diffuser|body kit|widebody|bumper|hood|fender|headlight|lamp|laser|led|carbon fiber|lip|mirror|grille/i.test(combined);
+    }
+    return cat === category.toLowerCase();
+  };
+
+  const isPartFavorited = (part: Part): boolean => {
+    const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999;
+    return favorites.includes(numId) || favorites.includes(part.id as any) || favorites.includes(String(part.id) as any);
+  };
+
   const filteredParts = partsList.filter((part) => {
+    // Wishlist Only filter
+    if (isPartWishlistOnly && !isPartFavorited(part)) {
+      return false;
+    }
     // Category filter
-    if (selectedPartCategory !== "all" && part.category !== selectedPartCategory) {
+    if (!isPartMatchCategory(part, selectedPartCategory)) {
       return false;
     }
     // Rarity filter
@@ -1031,12 +1073,15 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
     return 0; // Default order
   });
 
+  const displayedParts = hasPaidPass ? sortedParts : sortedParts.slice(0, 3);
+
   const handleResetPartFilters = () => {
     setSelectedPartCategory("all");
     setSelectedPartRarity("all");
     setSelectedPartBrand("all");
     setPartSearchQuery("");
     setPartSortBy("featured");
+    setIsPartWishlistOnly(false);
   };
 
   const handlePartWhatsAppClick = (e: React.MouseEvent, part: Part) => {
@@ -2417,51 +2462,86 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             </div>
           </div>
 
-          {/* CATEGORY SELECTOR CAROUSEL / CHIPS */}
-          <div className="bg-[#FAF8F5] border border-stone-300 p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-stone-200">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-600 flex items-center gap-2">
+          {/* CATEGORY SELECTOR TABS & WISHLIST FILTER */}
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-4 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)] space-y-3 font-sans">
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-stone-300 flex-wrap">
+              <span className="text-[10px] font-mono font-black uppercase tracking-widest text-stone-700 flex items-center gap-2">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
-                Hardware Categories
+                Hardware Categories & Filters
               </span>
-              <span className="text-[10px] font-mono text-stone-500">
-                Showing {filteredParts.length} of {partsList.length} items
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-mono text-stone-600 font-bold">
+                  Showing {displayedParts.length} of {filteredParts.length} items
+                </span>
+                {!hasPaidPass && sortedParts.length > 3 && (
+                  <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-black uppercase tracking-wider rounded-xs flex items-center gap-1 shadow-xs">
+                    <Lock className="w-3 h-3" />
+                    Preview (Top 3)
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            {/* Category Tabs: All, Performance, Engine, Interior, Exterior + Wishlist */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
               {[
-                { id: "all", label: "All Hardware", icon: Layers },
-                { id: "spoiler", label: "Spoilers & Aero", icon: Wind },
-                { id: "engine", label: "Crate Engines", icon: Zap },
-                { id: "nitro", label: "Nitrous Systems", icon: Flame },
-                { id: "headlight", label: "Laser Lights", icon: Eye },
-                { id: "exhaust", label: "Titanium Exhaust", icon: Disc },
-                { id: "turbo", label: "Turbos & Blowers", icon: Cpu },
-                { id: "wheels", label: "Forged Wheels", icon: CircleDot },
-                { id: "suspension", label: "Coilovers & Bags", icon: Gauge },
-                { id: "brakes", label: "Carbon Brakes", icon: ShieldCheck },
-                { id: "ecu_tuning", label: "ECU & Tuners", icon: Cpu },
-                { id: "body_kit", label: "Widebody Kits", icon: Box },
-                { id: "other", label: "Accessories", icon: Wrench },
+                { id: "all", label: "All", subtitle: "All Parts", icon: Layers },
+                { id: "performance", label: "Performance", subtitle: "Turbos & Brakes", icon: Zap },
+                { id: "engine", label: "Engine", subtitle: "Blocks & Crates", icon: Cpu },
+                { id: "interior", label: "Interior", subtitle: "Cockpit & Seats", icon: Gauge },
+                { id: "exterior", label: "Exterior", subtitle: "Aero & Spoilers", icon: Wind },
               ].map((cat) => {
                 const IconComp = cat.icon;
-                const isSelected = selectedPartCategory === cat.id;
+                const isSelected = selectedPartCategory === cat.id && !isPartWishlistOnly;
+                const matchCount = partsList.filter(p => isPartMatchCategory(p, cat.id)).length;
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => setSelectedPartCategory(cat.id)}
-                    className={`px-3.5 py-2 text-xs font-mono uppercase font-bold tracking-wider whitespace-nowrap transition-all duration-150 flex items-center gap-2 border cursor-pointer ${
+                    onClick={() => {
+                      setSelectedPartCategory(cat.id);
+                      setIsPartWishlistOnly(false);
+                    }}
+                    className={`px-4 py-2.5 text-xs font-mono uppercase font-black tracking-wider whitespace-nowrap transition-all duration-200 flex items-center gap-2 border-2 cursor-pointer shadow-xs ${
                       isSelected
-                        ? "bg-stone-900 text-amber-400 border-stone-950 shadow-[2px_2px_0px_0px_rgba(217,119,6,0.8)] ring-1 ring-amber-400/50"
-                        : "bg-white hover:bg-stone-100 text-stone-700 border-stone-300 hover:border-stone-400"
+                        ? "bg-stone-950 text-amber-400 border-stone-950 ring-2 ring-amber-400/60 shadow-[2px_2px_0px_0px_rgba(217,119,6,0.9)] scale-[1.02]"
+                        : "bg-white hover:bg-stone-100 text-stone-800 border-stone-300 hover:border-stone-500"
                     }`}
                   >
-                    <IconComp className={`w-3.5 h-3.5 ${isSelected ? "text-amber-400" : "text-stone-500"}`} />
+                    <IconComp className={`w-4 h-4 shrink-0 ${isSelected ? "text-amber-400" : "text-amber-600"}`} />
                     <span>{cat.label}</span>
+                    <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-xs ${
+                      isSelected ? "bg-amber-400 text-stone-950 font-black" : "bg-stone-200 text-stone-700"
+                    }`}>
+                      {matchCount}
+                    </span>
                   </button>
                 );
               })}
+
+              {/* Dedicated Wishlist Category Button */}
+              {(() => {
+                const wishlistCount = partsList.filter(p => isPartFavorited(p)).length;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => setIsPartWishlistOnly(prev => !prev)}
+                    className={`ml-auto px-4 py-2.5 text-xs font-mono uppercase font-black tracking-wider whitespace-nowrap transition-all duration-200 flex items-center gap-2 border-2 cursor-pointer shadow-xs ${
+                      isPartWishlistOnly
+                        ? "bg-red-600 text-white border-red-700 ring-2 ring-red-400/70 shadow-[2px_2px_0px_0px_rgba(220,38,38,0.9)] scale-[1.02]"
+                        : "bg-white hover:bg-red-50 text-stone-800 border-stone-300 hover:border-red-300"
+                    }`}
+                    title="Filter by saved Wishlist parts"
+                  >
+                    <Heart className={`w-4 h-4 shrink-0 ${isPartWishlistOnly ? "fill-white text-white" : "text-red-500 fill-red-500/20"}`} />
+                    <span>Wishlist</span>
+                    <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-xs ${
+                      isPartWishlistOnly ? "bg-white text-red-600 font-black" : "bg-red-100 text-red-700"
+                    }`}>
+                      {wishlistCount}
+                    </span>
+                  </button>
+                );
+              })()}
             </div>
           </div>
 
@@ -2470,7 +2550,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
               {/* Search Bar */}
               <div className="lg:col-span-4 relative">
-                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1 font-bold">
                   Search Hardware & Specs
                 </label>
                 <div className="relative">
@@ -2495,7 +2575,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
               {/* Rarity Filter */}
               <div className="lg:col-span-2">
-                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1 font-bold">
                   Rarity / Tier
                 </label>
                 <select
@@ -2514,7 +2594,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
               {/* Brand Filter */}
               <div className="lg:col-span-3">
-                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1 font-bold">
                   Brand / Manufacturer
                 </label>
                 <select
@@ -2533,7 +2613,7 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
 
               {/* Sort By */}
               <div className="lg:col-span-2">
-                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1">
+                <label className="block text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-1 font-bold">
                   Sort Order
                 </label>
                 <select
@@ -2563,198 +2643,255 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
           </div>
 
           {/* PARTS INVENTORY GRID */}
-          {sortedParts.length === 0 ? (
-            <div className="bg-[#FAF8F5] border border-stone-300 p-12 text-center space-y-4">
+          {displayedParts.length === 0 ? (
+            <div className="bg-[#FAF8F5] border-2 border-stone-900 p-12 text-center space-y-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
               <div className="w-14 h-14 bg-stone-900 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/30">
-                <Wrench className="w-7 h-7" />
+                {isPartWishlistOnly ? <Heart className="w-7 h-7 text-red-500 fill-red-500" /> : <Wrench className="w-7 h-7" />}
               </div>
               <h3 className="text-lg font-serif font-black text-stone-900 uppercase tracking-tight">
-                No Performance Hardware Matches Found
+                {isPartWishlistOnly ? "No Saved Wishlist Parts Yet" : "No Performance Hardware Matches Found"}
               </h3>
               <p className="text-xs text-stone-600 max-w-md mx-auto">
-                No motorsport parts currently match your search filters or selected rarity tier. Try clearing keywords or browsing all categories.
+                {isPartWishlistOnly
+                  ? "You haven't added any motorsport parts to your wishlist yet. Click the heart icon on any part card to bookmark it for later."
+                  : "No motorsport parts currently match your search filters or selected category. Try clearing keywords or browsing all categories."}
               </p>
               <button
                 onClick={handleResetPartFilters}
-                className="px-5 py-2.5 bg-stone-900 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider hover:bg-stone-850 cursor-pointer"
+                className="px-5 py-2.5 bg-stone-900 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider hover:bg-stone-850 cursor-pointer shadow-sm"
               >
-                Reset Parts Filters
+                {isPartWishlistOnly ? "View All Parts" : "Reset Parts Filters"}
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sortedParts.map((part) => {
-                const isLegendary = part.rarity === "Legendary";
-                const isEpic = part.rarity === "Epic";
-                const isRare = part.rarity === "Rare";
-                const isFavorite = favorites.includes(typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999);
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedParts.map((part) => {
+                  const isLegendary = part.rarity === "Legendary";
+                  const isEpic = part.rarity === "Epic";
+                  const isRare = part.rarity === "Rare";
+                  const isFavorite = isPartFavorited(part);
 
-                return (
-                  <div
-                    key={part.id}
-                    id={`part-card-${part.id}`}
-                    onClick={(e) => onQuickViewPart?.(part, { x: e.clientX, y: e.clientY })}
-                    className="group bg-[#FAF8F5] border border-stone-300 hover:border-amber-500 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-xl cursor-pointer relative"
-                  >
-                    {/* Top Image Section */}
-                    <div className="relative aspect-[16/10] bg-stone-950 overflow-hidden border-b border-stone-300">
-                      <img
-                        src={part.image}
-                        alt={part.title}
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/30 pointer-events-none" />
-
-                      {/* Rarity Badge / Ribbon */}
-                      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
-                        <span
-                          className={`px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-wider shadow-md border ${
-                            isLegendary
-                              ? "bg-amber-500 text-stone-950 border-amber-300 shadow-amber-500/30"
-                              : isEpic
-                              ? "bg-purple-600 text-white border-purple-400 shadow-purple-600/30"
-                              : isRare
-                              ? "bg-sky-600 text-white border-sky-400 shadow-sky-600/30"
-                              : "bg-stone-800 text-stone-200 border-stone-600"
-                          }`}
-                        >
-                          {part.rarity} Tier
-                        </span>
-
-                        {part.badge === "verified" && (
-                          <span className="px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-400">
-                            <ShieldCheck className="w-3 h-3" />
-                            Verified OEM
-                          </span>
-                        )}
-                        {part.badge === "premium" && (
-                          <span className="px-2 py-0.5 bg-amber-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-amber-400">
-                            <Sparkles className="w-3 h-3" />
-                            Motorsport Pro
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Favorite Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999;
-                          toggleFavorite(numId);
-                        }}
-                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white border border-stone-700 flex items-center justify-center transition cursor-pointer"
-                        aria-label="Save part to favorites"
-                      >
-                        <Heart
-                          className={`w-4 h-4 transition ${
-                            isFavorite ? "fill-amber-400 text-amber-400" : "text-stone-300 hover:text-white"
-                          }`}
+                  return (
+                    <div
+                      key={part.id}
+                      id={`part-card-${part.id}`}
+                      onClick={(e) => onQuickViewPart?.(part, { x: e.clientX, y: e.clientY })}
+                      className="group bg-[#FAF8F5] border-2 border-stone-900 hover:border-amber-500 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-[3px_3px_0px_0px_rgba(0,0,0,0.9)] hover:shadow-[5px_5px_0px_0px_rgba(217,119,6,0.8)] cursor-pointer relative"
+                    >
+                      {/* Top Image Section */}
+                      <div className="relative aspect-[16/10] bg-stone-950 overflow-hidden border-b-2 border-stone-900">
+                        <img
+                          src={part.image}
+                          alt={part.title}
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
                         />
-                      </button>
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/30 pointer-events-none" />
 
-                      {/* Brand & Part Number Bottom Overlay */}
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-mono">
-                        <span className="px-2 py-0.5 bg-stone-900/90 border border-stone-700 font-bold uppercase tracking-wider text-amber-300">
-                          {part.brand || "Aftermarket"}
-                        </span>
-                        {part.partNumber && (
-                          <span className="px-2 py-0.5 bg-black/75 border border-stone-800 text-stone-300">
-                            PN: {part.partNumber}
+                        {/* Rarity Badge / Ribbon */}
+                        <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-wider shadow-md border ${
+                              isLegendary
+                                ? "bg-amber-500 text-stone-950 border-amber-300 shadow-amber-500/30"
+                                : isEpic
+                                ? "bg-purple-600 text-white border-purple-400 shadow-purple-600/30"
+                                : isRare
+                                ? "bg-sky-600 text-white border-sky-400 shadow-sky-600/30"
+                                : "bg-stone-800 text-stone-200 border-stone-600"
+                            }`}
+                          >
+                            {part.rarity} Tier
                           </span>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Card Content */}
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                      <div>
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3 className="font-serif font-black text-base text-stone-900 line-clamp-1 group-hover:text-amber-600 transition-colors">
-                            {part.title}
-                          </h3>
+                          {part.badge === "verified" && (
+                            <span className="px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-400">
+                              <ShieldCheck className="w-3 h-3" />
+                              Verified OEM
+                            </span>
+                          )}
+                          {part.badge === "premium" && (
+                            <span className="px-2 py-0.5 bg-amber-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-amber-400">
+                              <Sparkles className="w-3 h-3" />
+                              Motorsport Pro
+                            </span>
+                          )}
                         </div>
 
-                        <p className="text-[11px] text-stone-600 line-clamp-2 leading-relaxed mb-3">
-                          {part.description}
-                        </p>
+                        {/* Interactive Wishlist Heart Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999;
+                            toggleFavorite(numId);
+                            if (isFavorite) {
+                              showToast(`Removed "${part.title}" from Wishlist`, "info");
+                            } else {
+                              showToast(`Saved "${part.title}" to Wishlist!`, "success");
+                            }
+                          }}
+                          className={`absolute top-3 right-3 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md active:scale-90 ${
+                            isFavorite
+                              ? "bg-red-600 border-red-400 text-white shadow-red-600/40 scale-105"
+                              : "bg-stone-900/85 hover:bg-stone-900 text-stone-300 hover:text-white border-stone-700 hover:scale-105"
+                          }`}
+                          aria-label={isFavorite ? "Remove part from wishlist" : "Save part to wishlist"}
+                          title={isFavorite ? "Saved to Wishlist (Click to remove)" : "Save to Wishlist"}
+                        >
+                          <Heart
+                            className={`w-4 h-4 transition-transform ${
+                              isFavorite ? "fill-white text-white scale-110" : "text-stone-300 hover:text-red-400 hover:scale-110"
+                            }`}
+                          />
+                        </button>
 
-                        {/* Fitment Tag */}
-                        {Boolean(part.compatibleVehicles) && (
-                          <div className="mb-3 p-2 bg-stone-100 border border-stone-200 text-[10px] font-mono text-stone-700 flex items-center gap-1.5">
-                            <Car className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                            <span className="truncate font-semibold">
-                              Fitment: {typeof part.compatibleVehicles === "string" ? part.compatibleVehicles : Array.isArray(part.compatibleVehicles) ? (part.compatibleVehicles as string[]).join(", ") : "Universal"}
+                        {/* Brand & Part Number Bottom Overlay */}
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-mono">
+                          <span className="px-2 py-0.5 bg-stone-900/90 border border-stone-700 font-bold uppercase tracking-wider text-amber-300">
+                            {part.brand || "Aftermarket"}
+                          </span>
+                          {part.partNumber && (
+                            <span className="px-2 py-0.5 bg-black/75 border border-stone-800 text-stone-300">
+                              PN: {part.partNumber}
                             </span>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      </div>
 
-                        {/* Key Specs Badges */}
-                        {part.specifications && Object.keys(part.specifications).length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {Object.entries(part.specifications).slice(0, 3).map(([key, val]) => (
-                              <span
-                                key={key}
-                                className="px-2 py-0.5 bg-white border border-stone-300 text-[9px] font-mono text-stone-800 font-bold"
-                              >
-                                <strong className="text-stone-500 font-normal">{key}: </strong>
-                                {String(val)}
+                      {/* Card Content */}
+                      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h3 className="font-serif font-black text-base text-stone-900 line-clamp-1 group-hover:text-amber-600 transition-colors">
+                              {part.title}
+                            </h3>
+                          </div>
+
+                          <p className="text-[11px] text-stone-600 line-clamp-2 leading-relaxed mb-3">
+                            {part.description}
+                          </p>
+
+                          {/* Fitment Tag */}
+                          {Boolean(part.compatibleVehicles) && (
+                            <div className="mb-3 p-2 bg-stone-100 border border-stone-200 text-[10px] font-mono text-stone-700 flex items-center gap-1.5">
+                              <Car className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                              <span className="truncate font-semibold">
+                                Fitment: {typeof part.compatibleVehicles === "string" ? part.compatibleVehicles : Array.isArray(part.compatibleVehicles) ? (part.compatibleVehicles as string[]).join(", ") : "Universal"}
                               </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                            </div>
+                          )}
 
-                      {/* Pricing & Footer Actions */}
-                      <div className="pt-3 border-t border-stone-200 space-y-3">
-                        <div className="flex items-baseline justify-between">
-                          <div>
-                            <span className="text-[9px] font-mono uppercase text-stone-500 tracking-wider block">
-                              Asking Price
-                            </span>
-                            <span className="text-lg sm:text-xl font-serif font-black text-stone-900">
-                              ₹{part.price.toLocaleString("en-IN")}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-mono font-bold uppercase tracking-wider">
-                              {part.negotiable ? "Negotiable" : "Fixed Price"}
-                            </span>
-                            <span className="text-[9px] font-mono text-stone-500 block mt-0.5">
-                              {part.location || "Verified Supplier"}
-                            </span>
-                          </div>
+                          {/* Key Specs Badges */}
+                          {part.specifications && Object.keys(part.specifications).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {Object.entries(part.specifications).slice(0, 3).map(([key, val]) => (
+                                <span
+                                  key={key}
+                                  className="px-2 py-0.5 bg-white border border-stone-300 text-[9px] font-mono text-stone-800 font-bold"
+                                >
+                                  <strong className="text-stone-500 font-normal">{key}: </strong>
+                                  {String(val)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onQuickViewPart?.(part, { x: e.clientX, y: e.clientY });
-                            }}
-                            className="py-2 px-3 bg-stone-900 hover:bg-stone-800 text-amber-400 text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            Dossier
-                          </button>
+                        {/* Pricing & Footer Actions */}
+                        <div className="pt-3 border-t border-stone-200 space-y-3">
+                          <div className="flex items-baseline justify-between">
+                            <div>
+                              <span className="text-[9px] font-mono uppercase text-stone-500 tracking-wider block">
+                                Asking Price
+                              </span>
+                              <span className="text-lg sm:text-xl font-serif font-black text-stone-900">
+                                ₹{part.price.toLocaleString("en-IN")}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-mono font-bold uppercase tracking-wider">
+                                {part.negotiable ? "Negotiable" : "Fixed Price"}
+                              </span>
+                              <span className="text-[9px] font-mono text-stone-500 block mt-0.5">
+                                {part.location || "Verified Supplier"}
+                              </span>
+                            </div>
+                          </div>
 
-                          <button
-                            type="button"
-                            onClick={(e) => handlePartWhatsAppClick(e, part)}
-                            className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-emerald-800"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            WhatsApp
-                          </button>
+                          {/* Action Buttons */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onQuickViewPart?.(part, { x: e.clientX, y: e.clientY });
+                              }}
+                              className="py-2.5 px-3 bg-stone-900 hover:bg-stone-800 text-amber-400 text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950 shadow-xs"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              Dossier
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handlePartWhatsAppClick(e, part)}
+                              className={`py-2.5 px-3 text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border shadow-xs ${
+                                hasPaidPass
+                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-800"
+                                  : "bg-stone-900 hover:bg-stone-800 text-amber-400 border-stone-950"
+                              }`}
+                              title={hasPaidPass ? "Connect directly on WhatsApp with seller" : "Unlock seller coordinates & WhatsApp"}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span className="truncate">{hasPaidPass ? "WhatsApp" : "Unlock & Chat"}</span>
+                              {!hasPaidPass && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Locked Parts Module when user has not activated Buyer Pass and there are more than 3 parts */}
+              {sortedParts.length > 3 && !hasPaidPass && (
+                <div className="mt-12 bg-[#FAF8F5] border-2 border-stone-900 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-4 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="w-12 h-12 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto border border-amber-500/40">
+                    <Lock className="w-5 h-5 text-amber-400" />
                   </div>
-                );
-              })}
+                  <div>
+                    <h3 className="text-lg font-serif font-black uppercase text-stone-950 tracking-tight">
+                      Plus {sortedParts.length - 3} More Motorsport Components Catalogued
+                    </h3>
+                    <p className="text-sm md:text-xs text-stone-600 max-w-md mx-auto pt-1 leading-relaxed">
+                      You are viewing the first 3 performance parts completely free. Activate our secure ₹1 buyer pass to reveal all remaining component inventory and direct seller contact registries.
+                    </p>
+                  </div>
+                  
+                  {currentUser && !currentUser.isAnonymous ? (
+                    <button
+                      onClick={() => setShowPaymentModal(true)}
+                      className="px-6 py-3.5 bg-stone-900 text-amber-400 font-bold uppercase text-[11px] font-mono tracking-widest hover:bg-stone-850 cursor-pointer border border-amber-500/40 shadow-sm"
+                    >
+                      Activate ₹1 Account Pass
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        onClick={onSignInClick}
+                        className="px-6 py-3.5 bg-stone-900 text-amber-400 font-bold uppercase text-[11px] font-mono tracking-widest hover:bg-stone-850 cursor-pointer flex items-center gap-2 mx-auto transition border border-amber-500/40"
+                      >
+                        <User className="w-4 h-4 shrink-0 text-[#F4F1EA]" />
+                        Sign In to Unlock All Parts
+                      </button>
+                      <p className="text-[9px] uppercase font-bold text-stone-500 tracking-wider leading-none">Authentication required for registering your pass</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

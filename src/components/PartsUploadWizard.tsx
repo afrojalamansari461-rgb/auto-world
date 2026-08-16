@@ -21,6 +21,7 @@ interface PartsUploadWizardProps {
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   onSignInClick?: () => void;
   onViewPartDossier?: (part: Part) => void;
+  onUploadSuccess?: () => void;
 }
 
 // Helper function to compress images before upload
@@ -72,7 +73,8 @@ export default function PartsUploadWizard({
   subscriptionActive,
   showToast,
   onSignInClick,
-  onViewPartDossier
+  onViewPartDossier,
+  onUploadSuccess
 }: PartsUploadWizardProps) {
   const [subTab, setSubTab] = useState<"wizard" | "myParts">("wizard");
   const [currentStep, setCurrentStep] = useState(1);
@@ -316,6 +318,9 @@ export default function PartsUploadWizard({
       showToast(editingPart ? "Performance Part updated successfully!" : "Performance Part listed live on Auto World Marketplace!", "success");
       resetForm();
       setSubTab("myParts");
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
     } catch (err) {
       console.error("Failed to publish part listing:", err);
       handleFirestoreError(err, OperationType.WRITE, `parts/${partId}`);

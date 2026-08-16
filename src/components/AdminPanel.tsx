@@ -8,7 +8,7 @@ import {
   Sliders, Shield, ShieldCheck, Calculator, HelpCircle, Info,
   Upload, FolderPlus, UploadCloud, Image, Users, UserCheck, Briefcase, Smartphone, Bell, Send
 } from "lucide-react";
-import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, storage, ref, uploadBytesResumable, getDownloadURL, handleFirestoreError, OperationType } from "../firebase";
 import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalogSync";
@@ -77,11 +77,12 @@ interface FirestoreBuyerPass {
 interface FirestoreFeedback {
   id: string;
   text: string;
-  category: "bug_report" | "suggestion" | "question" | "praise";
+  category: "bug_report" | "suggestion" | "question" | "praise" | string;
   name?: string;
   email?: string;
   timestamp: string;
-  status: "active" | "archived" | "resolved";
+  status: "active" | "archived" | "resolved" | "unread" | string;
+  collectionSource?: "feedbacks" | "userFeedback";
 }
 
 interface CustomTooltipProps {
@@ -688,11 +689,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           loadedFeedbacks.push({
             id: docSnap.id,
             text: d.text || d.message || "",
-            category: d.category || "suggestion",
+            category: (d.category || "suggestion").toLowerCase(),
             name: d.name || "",
             email: d.email || "",
             timestamp: d.timestamp || new Date().toISOString(),
-            status: d.status || "active"
+            status: d.status || "active",
+            collectionSource: "feedbacks"
           });
         });
       } catch (e) {
@@ -712,11 +714,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
           loadedFeedbacks.push({
             id: docSnap.id,
             text: d.message || d.text || "",
-            category: d.category || "SUGGESTION",
+            category: (d.category || "suggestion").toLowerCase(),
             name: d.name || "",
             email: d.email || "",
             timestamp: ts,
-            status: d.status || "unread"
+            status: d.status || "active",
+            collectionSource: "userFeedback"
           });
         });
       } catch (e) {
@@ -887,24 +890,62 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       setPasses(pList);
     }, (err) => console.warn("Admin passes listener warning:", err));
 
-    // 4. Real-time subscriber for feedbacks
+    // 4. Real-time subscribers for feedbacks & userFeedback
+    const feedbackMap = new Map<string, FirestoreFeedback>();
+
+    const refreshFeedbacks = () => {
+      const all = Array.from(feedbackMap.values());
+      all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setFeedbacks(all);
+    };
+
     const unsubFeedbacks = onSnapshot(collection(db, "feedbacks"), (snapshot) => {
-      const fList: FirestoreFeedback[] = [];
-      snapshot.forEach((docSnap) => {
-        const d = docSnap.data();
-        fList.push({
-          id: docSnap.id,
-          text: d.text || "",
-          category: d.category || "suggestion",
-          name: d.name || "",
-          email: d.email || "",
-          timestamp: d.timestamp || new Date().toISOString(),
-          status: d.status || "active"
-        });
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "removed") {
+          feedbackMap.delete(change.doc.id);
+        } else {
+          const d = change.doc.data();
+          feedbackMap.set(change.doc.id, {
+            id: change.doc.id,
+            text: d.text || d.message || "",
+            category: (d.category || "suggestion").toLowerCase(),
+            name: d.name || "",
+            email: d.email || "",
+            timestamp: d.timestamp || new Date().toISOString(),
+            status: d.status || "active",
+            collectionSource: "feedbacks"
+          });
+        }
       });
-      fList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      setFeedbacks(fList);
+      refreshFeedbacks();
     }, (err) => console.warn("Admin feedbacks listener warning:", err));
+
+    const unsubUserFeedback = onSnapshot(collection(db, "userFeedback"), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "removed") {
+          feedbackMap.delete(change.doc.id);
+        } else {
+          const d = change.doc.data();
+          let ts = new Date().toISOString();
+          if (d.createdAt) {
+            if (typeof d.createdAt === 'string') ts = d.createdAt;
+            else if (d.createdAt.seconds) ts = new Date(d.createdAt.seconds * 1000).toISOString();
+            else if (d.createdAt instanceof Date) ts = d.createdAt.toISOString();
+          }
+          feedbackMap.set(change.doc.id, {
+            id: change.doc.id,
+            text: d.message || d.text || "",
+            category: (d.category || "suggestion").toLowerCase(),
+            name: d.name || "",
+            email: d.email || "",
+            timestamp: ts,
+            status: d.status || "active",
+            collectionSource: "userFeedback"
+          });
+        }
+      });
+      refreshFeedbacks();
+    }, (err) => console.warn("Admin userFeedback listener warning:", err));
 
     // 5. Real-time subscriber for admin_settings/catalog
     const unsubAdminDoc = onSnapshot(doc(db, "admin_settings", "catalog"), (docSnap) => {
@@ -983,6 +1024,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       unsubMessages();
       unsubPasses();
       unsubFeedbacks();
+      unsubUserFeedback();
       unsubAdminDoc();
       unsubRoles();
       window.removeEventListener("autoWorld_db_update", handleUpdate);
@@ -1542,6 +1584,8 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   const handleDeleteFeedback = (id: string) => {
     const fb = feedbacks.find(f => f.id === id);
     const author = fb ? fb.name : "Anonymous";
+    const primaryColl = fb?.collectionSource || "feedbacks";
+    const fallbackColl = primaryColl === "feedbacks" ? "userFeedback" : "feedbacks";
 
     setConfirmModal({
       isOpen: true,
@@ -1551,7 +1595,12 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
       confirmText: "SCRUB CORRESPONDENCE",
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, "feedbacks", id));
+          // Delete from both collections safely
+          await Promise.allSettled([
+            deleteDoc(doc(db, primaryColl, id)),
+            deleteDoc(doc(db, fallbackColl, id))
+          ]);
+
           setFeedbacks(prev => prev.filter(item => item.id !== id));
           
           // Also update localized storage if mirrored there
@@ -1568,7 +1617,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
 
           triggerHudAlert("TESTIMONIAL PURGED", `Feedback from "${author}" scrubbed.`, "delete");
         } catch (err: any) {
-          handleFirestoreError(err, OperationType.DELETE, `feedbacks/${id}`);
+          handleFirestoreError(err, OperationType.DELETE, `${primaryColl}/${id}`);
           showToast("Could not delete feedback: rules constraint.", "error");
         }
       }
@@ -1578,13 +1627,41 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   // Toggle Feedback resolution status
   const handleToggleFeedbackStatus = async (item: FirestoreFeedback) => {
     const nextStatus = item.status === "active" ? "resolved" : "active";
+    const primaryColl = item.collectionSource || "feedbacks";
+    const fallbackColl = primaryColl === "feedbacks" ? "userFeedback" : "feedbacks";
+
     try {
-      await updateDoc(doc(db, "feedbacks", item.id), { status: nextStatus });
+      // Check which collection actually holds this doc to avoid "No document to update" error
+      const primaryRef = doc(db, primaryColl, item.id);
+      const primarySnap = await getDoc(primaryRef).catch(() => null);
+
+      if (primarySnap && primarySnap.exists()) {
+        await setDoc(primaryRef, { status: nextStatus }, { merge: true });
+      } else {
+        const fallbackRef = doc(db, fallbackColl, item.id);
+        const fallbackSnap = await getDoc(fallbackRef).catch(() => null);
+        if (fallbackSnap && fallbackSnap.exists()) {
+          await setDoc(fallbackRef, { status: nextStatus }, { merge: true });
+        } else {
+          // If doc is missing from both, upsert it in feedbacks gracefully
+          await setDoc(primaryRef, {
+            id: item.id,
+            text: item.text,
+            category: item.category,
+            name: item.name || "",
+            email: item.email || "",
+            timestamp: item.timestamp || new Date().toISOString(),
+            status: nextStatus
+          }, { merge: true });
+        }
+      }
+
       setFeedbacks(prev => prev.map(fb => fb.id === item.id ? { ...fb, status: nextStatus } : fb));
       showToast(`Feedback status updated to ${nextStatus}!`, "success");
     } catch (err: any) {
-      handleFirestoreError(err, OperationType.UPDATE, `feedbacks/${item.id}`);
-      showToast("Failed to update feedback status: insufficient rules.", "error");
+      console.error("Failed to toggle feedback status:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `${primaryColl}/${item.id}`);
+      showToast("Failed to update feedback status.", "error");
     }
   };
 

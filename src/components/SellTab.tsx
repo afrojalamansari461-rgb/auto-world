@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User as UserIcon, ExternalLink, Wrench } from "lucide-react";
-import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing, INDIAN_RTO_STATES, INSURANCE_STATUS_OPTIONS, PUCC_STATUS_OPTIONS, HYPOTHECATION_OPTIONS, STATE_NOC_OPTIONS, ROAD_TAX_OPTIONS } from "../types";
+import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing, INDIAN_RTO_STATES, INSURANCE_STATUS_OPTIONS, PUCC_STATUS_OPTIONS, HYPOTHECATION_OPTIONS, STATE_NOC_OPTIONS, ROAD_TAX_OPTIONS, DEFAULT_PARTS, UserPartListing, PartCategory, PartRarity, PART_CATEGORIES, PART_RARITY_TIERS, PART_BRANDS, PART_CONDITION_LABELS } from "../types";
 import PartsUploadWizard from "./PartsUploadWizard";
+import AdminPartsDesk from "./AdminPartsDesk";
 import { getListingExpirationDetails } from "../lib/expirationManager";
+import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 import type { User as FirebaseUser } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
@@ -36,10 +38,17 @@ export interface TestDriveRequest {
 export interface CallbackRequest {
   id?: string;
   callbackRef: string;
+  itemType?: "vehicle" | "part";
   vehicleId?: number | string | null;
   vehicleTitle?: string;
   vehicleImage?: string;
   vehiclePrice?: number;
+  partId?: number | string | null;
+  partTitle?: string;
+  partImage?: string;
+  partPrice?: number;
+  partCategory?: string;
+  partNumber?: string;
   sellerName?: string;
   sellerPhone?: string;
   sellerEmail?: string;
@@ -936,22 +945,48 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [confettiKey, setConfettiKey] = useState(0);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
 
-  // View Mode: "wizard" (List a Vehicle) vs "my_catalog" (My Vehicle Catalog Control Panel) vs "requests" (Buyer Requests & Leads) vs "parts" (Performance Parts Desk)
-  const [viewMode, setViewMode] = useState<"wizard" | "my_catalog" | "requests" | "parts">(() => {
+  // View Mode: "wizard" (List a Vehicle) vs "list_part" (List a Part) vs "my_catalog" (Vehicle Catalog) vs "part_desk" (Part Desk) vs "requests" (Buyer Requests & Leads)
+  const [viewMode, setViewMode] = useState<"wizard" | "list_part" | "my_catalog" | "part_desk" | "requests" | "parts">(() => {
     try {
       const initMode = sessionStorage.getItem("autoWorld_sell_initial_mode");
-      if (initMode === "part") {
+      if (initMode === "part" || initMode === "parts" || initMode === "list_part") {
         sessionStorage.removeItem("autoWorld_sell_initial_mode");
-        return "parts";
+        return "list_part";
+      }
+      if (initMode === "part_desk") {
+        sessionStorage.removeItem("autoWorld_sell_initial_mode");
+        return "part_desk";
+      }
+      if (initMode === "my_catalog") {
+        sessionStorage.removeItem("autoWorld_sell_initial_mode");
+        return "my_catalog";
+      }
+      if (initMode === "requests") {
+        sessionStorage.removeItem("autoWorld_sell_initial_mode");
+        return "requests";
       }
     } catch (e) {}
     return "wizard";
   });
 
+  // Performance Parts Count State for Desk Badge
+  const [totalPartsCount, setTotalPartsCount] = useState<number>(() => DEFAULT_PARTS.length);
+
+  useEffect(() => {
+    const unsub = subscribeToRealtimeCatalog((catalog) => {
+      const userParts = catalog.userParts || [];
+      setTotalPartsCount(DEFAULT_PARTS.length + userParts.length);
+    });
+    return () => {
+      if (unsub && typeof unsub === "function") unsub();
+    };
+  }, []);
+
   // Buyer Requests & Leads State
   const [testDriveRequests, setTestDriveRequests] = useState<TestDriveRequest[]>([]);
   const [callbackRequests, setCallbackRequests] = useState<CallbackRequest[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [requestItemTargetFilter, setRequestItemTargetFilter] = useState<"all" | "vehicles" | "parts">("all");
   const [requestTypeFilter, setRequestTypeFilter] = useState<"all" | "test_drives" | "callbacks">("all");
   const [requestStatusFilter, setRequestStatusFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "declined">("all");
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
@@ -964,7 +999,28 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [userListings, setUserListings] = useState<UserListing[]>([]);
   const [isLoadingUserListings, setIsLoadingUserListings] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
-  const [catalogFilterStatus, setCatalogFilterStatus] = useState<"all" | "active" | "pending" | "sold">("all");
+  const [catalogFilterStatus, setCatalogFilterStatus] = useState<"all" | "active" | "pending" | "hidden" | "sold">("all");
+
+  // User's own part listings state & real-time sync
+  const [userPartListings, setUserPartListings] = useState<UserPartListing[]>([]);
+  const [isLoadingUserPartListings, setIsLoadingUserPartListings] = useState(false);
+  const [partCatalogSearch, setPartCatalogSearch] = useState("");
+  const [partCatalogFilterStatus, setPartCatalogFilterStatus] = useState<"all" | "active" | "pending" | "hidden" | "sold">("all");
+
+  // Edit Part Modal States
+  const [editingPartListing, setEditingPartListing] = useState<UserPartListing | null>(null);
+  const [editPartForm, setEditPartForm] = useState<Partial<UserPartListing>>({});
+  const [isSavingPartEdit, setIsSavingPartEdit] = useState(false);
+
+  // Manage Part Photos Modal States
+  const [photoManagingPartListing, setPhotoManagingPartListing] = useState<UserPartListing | null>(null);
+  const [managePartPhotosList, setManagePartPhotosList] = useState<{ src: string; alt: string }[]>([]);
+  const [newPartPhotoUrlInput, setNewPartPhotoUrlInput] = useState("");
+  const [isSavingPartPhotos, setIsSavingPartPhotos] = useState(false);
+
+  // Delete Part Confirmation Modal States
+  const [deletingPartListing, setDeletingPartListing] = useState<UserPartListing | null>(null);
+  const [isDeletingPart, setIsDeletingPart] = useState(false);
 
   // Edit Listing Modal States
   const [editingListing, setEditingListing] = useState<UserListing | null>(null);
@@ -1056,6 +1112,75 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     });
 
     return () => unsub();
+  }, [currentUser]);
+
+  // Real-time listener for current user's performance parts in Firestore
+  useEffect(() => {
+    if (!currentUser || currentUser.isAnonymous) {
+      setUserPartListings([]);
+      return;
+    }
+
+    setIsLoadingUserPartListings(true);
+    const partsRef = collection(db, "parts");
+
+    const unsubParts = onSnapshot(partsRef, (snapshot) => {
+      const allParts: UserPartListing[] = [];
+      const userUid = currentUser.uid;
+      const userEmail = currentUser.email?.toLowerCase();
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const isOwner = data.userId === userUid || 
+          (data.sellerEmail && userEmail && String(data.sellerEmail).toLowerCase() === userEmail);
+
+        if (isOwner) {
+          allParts.push({
+            id: docSnap.id,
+            ...data
+          } as UserPartListing);
+        }
+      });
+
+      // Also check local storage for offline / cached items
+      try {
+        const stored = localStorage.getItem("autoworld_user_parts");
+        if (stored) {
+          const localParts: UserPartListing[] = JSON.parse(stored);
+          localParts.forEach((localPart) => {
+            const isOwner = localPart.userId === userUid || 
+              (localPart.sellerEmail && userEmail && String(localPart.sellerEmail).toLowerCase() === userEmail);
+            if (isOwner && !allParts.some(item => String(item.id) === String(localPart.id))) {
+              allParts.push(localPart);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Local storage fallback read error for parts:", e);
+      }
+
+      allParts.sort((a, b) => new Date(b.datePosted || (b as any).createdAt || 0).getTime() - new Date(a.datePosted || (a as any).createdAt || 0).getTime());
+      setUserPartListings(allParts);
+      setIsLoadingUserPartListings(false);
+    }, (err) => {
+      console.warn("User parts snapshot listener error:", err);
+      try {
+        const stored = localStorage.getItem("autoworld_user_parts");
+        if (stored) {
+          const localParts: UserPartListing[] = JSON.parse(stored);
+          const userEmail = currentUser.email?.toLowerCase();
+          const filtered = localParts.filter(p => 
+            p.userId === currentUser.uid || (p.sellerEmail && userEmail && p.sellerEmail.toLowerCase() === userEmail)
+          );
+          setUserPartListings(filtered);
+        }
+      } catch (e) {
+        console.warn("Fallback local read failed:", e);
+      }
+      setIsLoadingUserPartListings(false);
+    });
+
+    return () => unsubParts();
   }, [currentUser]);
 
   // Real-time listener for test drives & callback requests
@@ -1486,6 +1611,228 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       showToast("Failed to delete listing.", "error");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // ----------------------------------------------------
+  // PERFORMANCE PART CATALOG HANDLERS
+  // ----------------------------------------------------
+  // Quick Part Status Change (Active / Pending / Sold)
+  const handleQuickPartStatusChange = async (partId: string | number, newStatus: "active" | "pending" | "sold") => {
+    try {
+      const docRef = doc(db, "parts", String(partId));
+      await updateDoc(docRef, {
+        status: newStatus,
+        updatedAt: new Date().toISOString()
+      });
+
+      setUserPartListings(prev => prev.map(p => String(p.id) === String(partId) ? { ...p, status: newStatus } : p));
+
+      try {
+        const stored = localStorage.getItem("autoworld_user_parts");
+        if (stored) {
+          const localParts: UserPartListing[] = JSON.parse(stored);
+          const updated = localParts.map(p => String(p.id) === String(partId) ? { ...p, status: newStatus } : p);
+          localStorage.setItem("autoworld_user_parts", JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.warn("LocalStorage part status update error:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_parts_update"));
+      showToast(`Part status updated to ${newStatus.toUpperCase()}`, "success");
+    } catch (err: any) {
+      console.error("Part status update error:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `parts/${partId}`);
+      showToast("Failed to update part status.", "error");
+    }
+  };
+
+  // Open Edit Part Modal
+  const handleOpenEditPartModal = (part: UserPartListing) => {
+    setEditingPartListing(part);
+    setEditPartForm({
+      title: part.title,
+      price: part.price,
+      brand: part.brand,
+      category: part.category,
+      rarity: part.rarity,
+      condition: part.condition,
+      compatibleVehicles: part.compatibleVehicles,
+      partNumber: part.partNumber || "",
+      description: part.description,
+      negotiable: part.negotiable,
+      sellerName: part.sellerName,
+      sellerPhone: part.sellerPhone,
+      sellerEmail: part.sellerEmail,
+      location: part.location,
+      status: part.status,
+      featured: part.featured,
+      urgent: part.urgent,
+      verified: part.verified
+    });
+  };
+
+  // Save Edit Part Listing
+  const handleSaveEditPartListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPartListing) return;
+
+    setIsSavingPartEdit(true);
+    try {
+      const docRef = doc(db, "parts", String(editingPartListing.id));
+      const safeStatus = (editingPartListing.status === "hidden" && !isAdmin) ? "hidden" : (editPartForm.status || editingPartListing.status || "active");
+      const updatedFields = {
+        ...editingPartListing,
+        ...editPartForm,
+        status: safeStatus,
+        price: typeof editPartForm.price === "number" ? editPartForm.price : parseInt(String(editPartForm.price || editingPartListing.price)),
+        updatedAt: new Date().toISOString()
+      };
+
+      const cleanFields = Object.fromEntries(
+        Object.entries(updatedFields).filter(([_, v]) => v !== undefined)
+      );
+
+      await setDoc(docRef, cleanFields, { merge: true });
+
+      try {
+        const stored = localStorage.getItem("autoworld_user_parts");
+        if (stored) {
+          const localParts: UserPartListing[] = JSON.parse(stored);
+          const idx = localParts.findIndex(p => String(p.id) === String(editingPartListing.id));
+          if (idx !== -1) {
+            localParts[idx] = { ...localParts[idx], ...cleanFields } as UserPartListing;
+            localStorage.setItem("autoworld_user_parts", JSON.stringify(localParts));
+          }
+        }
+      } catch (e) {
+        console.warn("Local storage update error for parts:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_parts_update"));
+      showToast("Part listing updated successfully!", "success");
+      setEditingPartListing(null);
+    } catch (err: any) {
+      console.error("Save edit part error:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `parts/${editingPartListing.id}`);
+      showToast("Failed to save changes.", "error");
+    } finally {
+      setIsSavingPartEdit(false);
+    }
+  };
+
+  // Open Manage Part Photos Modal
+  const handleOpenPartPhotoManager = (part: UserPartListing) => {
+    setPhotoManagingPartListing(part);
+    const existing = part.photos && part.photos.length > 0
+      ? [...part.photos]
+      : part.image ? [{ src: part.image, alt: part.title }] : [];
+    setManagePartPhotosList(existing);
+    setNewPartPhotoUrlInput("");
+  };
+
+  // Add Part Photo Files
+  const handleAddPartPhotoFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+
+    for (const file of files as File[]) {
+      try {
+        const compressedSrc = await compressImageFile(file, 600, 0.60);
+        if (compressedSrc) {
+          setManagePartPhotosList(prev => [...prev, { src: compressedSrc, alt: file.name }]);
+        }
+      } catch (err) {
+        console.error("Part image processing error:", err);
+      }
+    }
+    e.target.value = "";
+  };
+
+  // Add Part Photo by URL
+  const handleAddPartPhotoUrl = () => {
+    if (!newPartPhotoUrlInput.trim()) return;
+    setManagePartPhotosList(prev => [...prev, { src: newPartPhotoUrlInput.trim(), alt: "Part Photo" }]);
+    setNewPartPhotoUrlInput("");
+    showToast("Added photo URL to gallery!", "info");
+  };
+
+  // Save Managed Part Photos
+  const handleSavePartPhotos = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!photoManagingPartListing) return;
+
+    if (managePartPhotosList.length === 0) {
+      showToast("Please keep at least one photo for your part listing.", "error");
+      return;
+    }
+
+    setIsSavingPartPhotos(true);
+    try {
+      const preparedPhotos = await preparePhotosForFirestore(managePartPhotosList);
+      const docRef = doc(db, "parts", String(photoManagingPartListing.id));
+      await updateDoc(docRef, {
+        photos: preparedPhotos,
+        image: preparedPhotos[0]?.src || photoManagingPartListing.image || "",
+        updatedAt: new Date().toISOString()
+      });
+
+      try {
+        const stored = localStorage.getItem("autoworld_user_parts");
+        if (stored) {
+          const localParts: UserPartListing[] = JSON.parse(stored);
+          const idx = localParts.findIndex(p => String(p.id) === String(photoManagingPartListing.id));
+          if (idx !== -1) {
+            localParts[idx].photos = managePartPhotosList;
+            localParts[idx].image = managePartPhotosList[0]?.src || localParts[idx].image;
+            localStorage.setItem("autoworld_user_parts", JSON.stringify(localParts));
+          }
+        }
+      } catch (e) {
+        console.warn("Local storage update error for part photos:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_parts_update"));
+      showToast("Part photo gallery updated successfully!", "success");
+      setPhotoManagingPartListing(null);
+    } catch (err: any) {
+      console.error("Save part photos error:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `parts/${photoManagingPartListing.id}`);
+      showToast("Failed to save photos.", "error");
+    } finally {
+      setIsSavingPartPhotos(false);
+    }
+  };
+
+  // Confirm Delete Part
+  const handleConfirmDeletePart = async () => {
+    if (!deletingPartListing) return;
+
+    setIsDeletingPart(true);
+    try {
+      await deleteDoc(doc(db, "parts", String(deletingPartListing.id)));
+
+      try {
+        const stored = localStorage.getItem("autoworld_user_parts");
+        if (stored) {
+          const localParts: UserPartListing[] = JSON.parse(stored);
+          const filtered = localParts.filter(p => String(p.id) !== String(deletingPartListing.id));
+          localStorage.setItem("autoworld_user_parts", JSON.stringify(filtered));
+        }
+      } catch (e) {
+        console.warn("Local storage delete error for part:", e);
+      }
+
+      window.dispatchEvent(new Event("autoWorld_parts_update"));
+      showToast(`Part "${deletingPartListing.title}" removed permanently.`, "info");
+      setDeletingPartListing(null);
+    } catch (err: any) {
+      console.error("Delete part error:", err);
+      handleFirestoreError(err, OperationType.DELETE, `parts/${deletingPartListing.id}`);
+      showToast("Failed to delete part.", "error");
+    } finally {
+      setIsDeletingPart(false);
     }
   };
 
@@ -2540,150 +2887,199 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       id="sell-form-wrapper" 
       className="max-w-4xl mx-auto px-4 py-12 bg-[#F4F1EA] text-[#1A1A1A] font-sans"
     >
-      {/* SELLER MODE SWITCHER BAR */}
-      <div className="mb-8 bg-stone-900 p-2 sm:p-3 border-2 border-stone-950 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* 1ST BUTTON: LIST VEHICLE */}
-          <button
-            type="button"
-            id="sell-tab-btn-list-vehicle"
-            onClick={() => setViewMode("wizard")}
-            className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
-              viewMode === "wizard"
-                ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
-                : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
-            }`}
-          >
-            <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-              viewMode === "wizard" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
-            }`}>
-              <Car className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex flex-col items-start leading-tight text-left">
-              <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
-                List Vehicle
-              </span>
-              <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
-                viewMode === "wizard" ? "text-stone-900 font-bold" : "text-stone-400"
+      {/* SELLER MODE & DESK CONTROL SWITCHER BAR */}
+      <div 
+        id="sell-tab-mode-switcher-bar"
+        className="mb-8 bg-stone-900 p-3 sm:p-4 border-2 border-stone-950 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]"
+      >
+        {/* GROUP 1: LISTING & CREATION (DEDICATED DIV) */}
+        <div id="seller-action-creation-group" className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold px-1 hidden md:inline">
+            Create:
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 1ST BUTTON: LIST VEHICLE */}
+            <button
+              type="button"
+              id="sell-tab-btn-list-vehicle"
+              onClick={() => setViewMode("wizard")}
+              className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
+                viewMode === "wizard"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
+              }`}
+            >
+              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                viewMode === "wizard" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
               }`}>
-                Cars & SUVs
-              </span>
-            </div>
-          </button>
+                <Car className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex flex-col items-start leading-tight text-left">
+                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
+                  List Vehicle
+                </span>
+                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
+                  viewMode === "wizard" ? "text-stone-900 font-bold" : "text-stone-400"
+                }`}>
+                  Cars &amp; SUVs
+                </span>
+              </div>
+            </button>
 
-          {/* 2ND BUTTON: LIST PART */}
-          <button
-            type="button"
-            id="sell-tab-btn-list-part"
-            onClick={() => setViewMode("parts")}
-            className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
-              viewMode === "parts"
-                ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
-                : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
-            }`}
-          >
-            <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-              viewMode === "parts" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
-            }`}>
-              <Wrench className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex flex-col items-start leading-tight text-left">
-              <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
-                List Part
-              </span>
-              <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
-                viewMode === "parts" ? "text-stone-900 font-bold" : "text-stone-400"
+            {/* 2ND BUTTON: LIST PART */}
+            <button
+              type="button"
+              id="sell-tab-btn-list-part"
+              onClick={() => setViewMode("list_part")}
+              className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
+                viewMode === "list_part" || (viewMode as string) === "parts"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
+              }`}
+            >
+              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                viewMode === "list_part" || (viewMode as string) === "parts" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
               }`}>
-                Hardware & Upgrades
-              </span>
-            </div>
-          </button>
-
-          <div className="h-6 w-px bg-stone-750 hidden sm:block mx-0.5" />
-
-          {/* MY VEHICLES QUICK ACCESS */}
-          <button
-            type="button"
-            id="sell-tab-btn-my-vehicles"
-            onClick={() => setViewMode("my_catalog")}
-            className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
-              viewMode === "my_catalog"
-                ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
-                : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-            }`}
-          >
-            <Tag className="w-3.5 h-3.5 text-stone-400" />
-            <span>My Vehicles</span>
-            {userListings.length > 0 && (
-              <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
-                viewMode === "my_catalog" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
-              }`}>
-                {userListings.length}
-              </span>
-            )}
-          </button>
-
-          {/* BUYER REQUESTS QUICK ACCESS */}
-          <button
-            type="button"
-            id="sell-tab-btn-buyer-requests"
-            onClick={() => setViewMode("requests")}
-            className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
-              viewMode === "requests"
-                ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
-                : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-            }`}
-          >
-            <PhoneCall className="w-3.5 h-3.5 text-amber-400" />
-            <span>Buyer Requests</span>
-            {(ownerTDs.length + ownerCBs.length) > 0 && (
-              <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
-                totalPendingReqsCount > 0
-                  ? "bg-red-600 text-white animate-pulse"
-                  : viewMode === "requests"
-                  ? "bg-stone-950 text-amber-400"
-                  : "bg-amber-500 text-stone-950"
-              }`}>
-                {totalPendingReqsCount > 0 ? `${totalPendingReqsCount} NEW` : ownerTDs.length + ownerCBs.length}
-              </span>
-            )}
-          </button>
+                <Wrench className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex flex-col items-start leading-tight text-left">
+                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
+                  List Part
+                </span>
+                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
+                  viewMode === "list_part" || (viewMode as string) === "parts" ? "text-stone-900 font-bold" : "text-stone-400"
+                }`}>
+                  Hardware &amp; Tuning
+                </span>
+              </div>
+            </button>
+          </div>
         </div>
 
-        {currentUser && !currentUser.isAnonymous ? (
-          <div className="text-[10.5px] font-mono text-stone-300 px-3 py-1.5 bg-stone-800 border border-stone-700 flex items-center gap-2 self-start md:self-auto">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="truncate">Seller: <strong className="text-amber-400">{currentUser.displayName || currentUser.email}</strong></span>
+        <div className="h-8 w-px bg-stone-750 hidden xl:block mx-1" />
+
+        {/* GROUP 2: MANAGEMENT CATALOGS & LEADS (DEDICATED DIV) */}
+        <div id="seller-action-management-group" className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold px-1 hidden md:inline">
+            Catalogs &amp; Leads:
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 3RD BUTTON: VEHICLE CATALOG */}
+            <button
+              type="button"
+              id="sell-tab-btn-my-vehicles"
+              onClick={() => setViewMode("my_catalog")}
+              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
+                viewMode === "my_catalog"
+                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
+                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5 text-stone-400" />
+              <span>Vehicle Catalog</span>
+              {userListings.length > 0 && (
+                <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
+                  viewMode === "my_catalog" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
+                }`}>
+                  {userListings.length}
+                </span>
+              )}
+            </button>
+
+            {/* 4TH BUTTON: PART CATALOG */}
+            <button
+              type="button"
+              id="sell-tab-btn-part-desk"
+              onClick={() => setViewMode("part_desk")}
+              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
+                viewMode === "part_desk"
+                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
+                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-amber-400" />
+              <span>Part Catalog</span>
+              <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
+                viewMode === "part_desk" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
+              }`}>
+                {currentUser && !currentUser.isAnonymous ? userPartListings.length : totalPartsCount}
+              </span>
+            </button>
+
+            {/* 5TH BUTTON: BUYER REQUESTS */}
+            <button
+              type="button"
+              id="sell-tab-btn-buyer-requests"
+              onClick={() => setViewMode("requests")}
+              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
+                viewMode === "requests"
+                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
+                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
+              }`}
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-amber-400" />
+              <span>Buyer Requests</span>
+              {(ownerTDs.length + ownerCBs.length) > 0 && (
+                <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
+                  totalPendingReqsCount > 0
+                    ? "bg-red-600 text-white animate-pulse"
+                    : viewMode === "requests"
+                    ? "bg-stone-950 text-amber-400"
+                    : "bg-amber-500 text-stone-950"
+                }`}>
+                  {totalPendingReqsCount > 0 ? `${totalPendingReqsCount} NEW` : ownerTDs.length + ownerCBs.length}
+                </span>
+              )}
+            </button>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onSignInClick}
-            className="text-[10.5px] font-mono text-amber-400 hover:text-amber-300 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer self-start md:self-auto"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Sign In to Control Listings</span>
-          </button>
-        )}
+        </div>
+
+        {/* GROUP 3: AUTH / SELLER PROFILE STATUS (DEDICATED DIV) */}
+        <div id="seller-action-auth-status" className="flex items-center">
+          {currentUser && !currentUser.isAnonymous ? (
+            <div className="text-[10.5px] font-mono text-stone-300 px-3 py-1.5 bg-stone-800 border border-stone-700 flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="truncate">Seller: <strong className="text-amber-400">{currentUser.displayName || currentUser.email}</strong></span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onSignInClick}
+              className="text-[10.5px] font-mono text-amber-400 hover:text-amber-300 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer w-full sm:w-auto justify-center"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In to Control Listings</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* VIEW MODE 0: PERFORMANCE HARDWARE & UPGRADES DESK */}
-      {viewMode === "parts" && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4">
+      {/* 1. LIST MOTORSPORT & PERFORMANCE PART (DEDICATED DIV) */}
+      {(viewMode === "list_part" || (viewMode as string) === "parts") && (
+        <div id="sell-view-list-part" className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
               <div>
                 <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
                   <Wrench className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Motorsport Tuning & Hardware Desk</span>
+                  <span>Motorsport Tuning &amp; Hardware Listing Desk</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
-                  Performance Hardware Marketplace
+                  List Performance Hardware
                 </h2>
                 <p className="text-stone-600 text-xs mt-1 font-medium">
                   List turbochargers, GT spoilers, race exhausts, high-performance brake calipers, ECU tunes, and aftermarket accessories for immediate trade.
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setViewMode("part_desk")}
+                className="px-4 py-2.5 bg-stone-900 hover:bg-stone-850 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-stone-950 shadow-sm cursor-pointer shrink-0 transition"
+              >
+                <Layers className="w-4 h-4 text-amber-400" />
+                <span>Go to Part Catalog →</span>
+              </button>
             </div>
 
             <PartsUploadWizard
@@ -2691,14 +3087,17 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               subscriptionActive={subscriptionActive}
               showToast={showToast}
               onSignInClick={onSignInClick}
+              onUploadSuccess={() => {
+                setViewMode("part_desk");
+              }}
             />
           </div>
         </div>
       )}
       
-      {/* VIEW MODE 1: MY VEHICLE CATALOG CONTROL PANEL */}
+      {/* 2. MY VEHICLE CATALOG CONTROL PANEL (DEDICATED DIV) */}
       {viewMode === "my_catalog" && (
-        <div className="space-y-6 animate-in fade-in duration-200">
+        <div id="sell-view-vehicle-catalog" className="space-y-6 animate-in fade-in duration-200">
           {/* Header Banner */}
           <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
@@ -3184,206 +3583,528 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         </div>
       )}
 
-      {/* VIEW MODE 3: BUYER REQUESTS & LEADS CONTROL CENTER */}
-      {viewMode === "requests" && (
-        <div className="space-y-6 animate-in fade-in duration-200">
+      {/* 3. PERFORMANCE PART CATALOG & HARDWARE INVENTORY (DEDICATED DIV) */}
+      {viewMode === "part_desk" && (
+        <div id="sell-view-part-desk" className="space-y-6 animate-in fade-in duration-200">
           {/* Header Banner */}
           <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
               <div>
                 <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
-                  <PhoneCall className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Buyer Leads & Enquiries Manager</span>
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Seller Control Center</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
-                  Buyer Callback & Test Drive Requests
+                  My Part Catalog
                 </h2>
-                <p className="text-stone-600 text-xs mt-1 font-medium max-w-2xl">
-                  Real-time direct enquiries, doorstep/showroom test drive appointments, and instant callback requests submitted by buyers interested in your vehicles.
+                <p className="text-stone-600 text-xs mt-1 font-medium">
+                  Full control center for your uploaded performance parts. Edit part specs, manage photo galleries, update status, or remove listings.
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowOnlyMyVehiclesRequests(!showOnlyMyVehiclesRequests)}
-                  className={`px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider border cursor-pointer flex items-center gap-2 transition ${
-                    showOnlyMyVehiclesRequests
-                      ? "bg-amber-500 text-stone-950 border-amber-600 shadow-xs"
-                      : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
-                  }`}
-                  title="Toggle filtering requests for your uploaded vehicles vs all system requests"
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>{showOnlyMyVehiclesRequests ? "Filter: My Vehicles Only" : "Show All System Leads"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent("autoworld_requests_updated"))}
-                  className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider border border-stone-950 flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Sync</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setViewMode("list_part")}
+                className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer shrink-0 transition-transform active:scale-95"
+              >
+                <Plus className="w-4 h-4 text-amber-400" />
+                <span>List New Part</span>
+              </button>
             </div>
 
-            {/* Metrics Dashboard Overview */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
-                <div className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Total Received</div>
-                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
-                  {ownerTDs.length + ownerCBs.length} <span className="text-xs font-sans text-stone-600 font-normal">Enquiries</span>
+            {/* Unauthenticated State Warning */}
+            {(!currentUser || currentUser.isAnonymous) ? (
+              <div className="p-8 bg-[#F4F1EA] border-2 border-stone-400 text-center space-y-4 my-4">
+                <div className="w-14 h-14 bg-amber-500/15 border-2 border-amber-600/40 rounded-full flex items-center justify-center text-amber-700 mx-auto">
+                  <Lock className="w-7 h-7" />
                 </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-serif font-bold text-stone-900 uppercase">
+                    Seller Sign In Required
+                  </h3>
+                  <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed font-medium">
+                    Log in or create your free account to view your listed performance parts, edit parameters, update photo galleries, and track buyer inquiries.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onSignInClick}
+                  className="px-6 py-3.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition"
+                >
+                  <LogIn className="w-4 h-4 text-amber-400" />
+                  <span>Log In / Sign Up Now</span>
+                </button>
               </div>
+            ) : (
+              <>
+                {/* Stats Metric Cards (5 Columns matching Image 1) */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 pt-2">
+                  <div className="p-3 bg-[#F4F1EA] border border-stone-300">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-500 block">Total Inventory</span>
+                    <span className="text-lg sm:text-xl font-serif font-black text-stone-900">{userPartListings.length} Parts</span>
+                  </div>
 
-              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
-                <div className="text-[10px] font-mono font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-amber-600" /> Test Drives
-                </div>
-                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
-                  {ownerTDs.length} <span className="text-xs font-sans text-amber-700 font-bold">({ownerTDs.filter(t => t.status === "scheduled" || t.status === "pending").length} Pending)</span>
-                </div>
-              </div>
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-600/30">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-800 block">Active Listings</span>
+                    <span className="text-lg sm:text-xl font-serif font-black text-emerald-900">
+                      {userPartListings.filter(l => l.status === "active" || !l.status).length}
+                    </span>
+                  </div>
 
-              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
-                <div className="text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
-                  <PhoneCall className="w-3 h-3 text-emerald-600" /> Callbacks
-                </div>
-                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
-                  {ownerCBs.length} <span className="text-xs font-sans text-emerald-700 font-bold">({ownerCBs.filter(c => c.status === "pending").length} Pending)</span>
-                </div>
-              </div>
+                  <div className="p-3 bg-amber-500/10 border border-amber-600/30">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-800 block">Pending / On Hold</span>
+                    <span className="text-lg sm:text-xl font-serif font-black text-amber-950">
+                      {userPartListings.filter(l => l.status === "pending").length}
+                    </span>
+                  </div>
 
-              <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
-                <div className="text-[10px] font-mono font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-blue-600" /> Actioned Leads
-                </div>
-                <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
-                  {ownerTDs.filter(t => t.status === "confirmed" || t.status === "completed").length + ownerCBs.filter(c => c.status === "contacted" || c.status === "resolved").length}
-                </div>
-              </div>
-            </div>
-          </div>
+                  <div className="p-3 bg-red-500/10 border border-red-600/30">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-red-800 block">Hidden by Admin</span>
+                    <span className="text-lg sm:text-xl font-serif font-black text-red-950">
+                      {userPartListings.filter(l => l.status === "hidden").length}
+                    </span>
+                  </div>
 
-          {/* Search & Filter Controls */}
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-4 space-y-3">
-            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-              {/* Search Bar */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={requestSearchQuery}
-                  onChange={(e) => setRequestSearchQuery(e.target.value)}
-                  placeholder="Search buyer name, phone number, vehicle, or ref code (#TD... / #CB...)"
-                  className="w-full pl-9 pr-8 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 placeholder:text-stone-500 focus:outline-none focus:border-stone-950"
-                />
-                {requestSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setRequestSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-bold"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+                  <div className="p-3 bg-stone-200/80 border border-stone-300">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-600 block">Sold / Out of Stock</span>
+                    <span className="text-lg sm:text-xl font-serif font-black text-stone-800">
+                      {userPartListings.filter(l => l.status === "sold").length}
+                    </span>
+                  </div>
+                </div>
 
-              {/* Select Specific Vehicle Filter */}
-              {userListings.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold uppercase text-stone-500 whitespace-nowrap">
-                    Vehicle:
-                  </span>
-                  <select
-                    value={selectedVehicleIdFilter}
-                    onChange={(e) => setSelectedVehicleIdFilter(e.target.value)}
-                    className="px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
-                  >
-                    <option value="all">All My Listed Vehicles ({userListings.length})</option>
-                    {userListings.map((l) => (
-                      <option key={l.id} value={String(l.id)}>
-                        {l.title} (₹{l.price.toLocaleString("en-IN")})
-                      </option>
+                {/* Search & Filter Toolbar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-1 bg-[#F4F1EA] p-1 border border-stone-300 overflow-x-auto">
+                    {(["all", "active", "pending", "hidden", "sold"] as const).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => setPartCatalogFilterStatus(st)}
+                        className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider transition cursor-pointer whitespace-nowrap ${
+                          partCatalogFilterStatus === st
+                            ? "bg-stone-900 text-white shadow-xs"
+                            : "text-stone-600 hover:text-stone-900 hover:bg-stone-200/60"
+                        }`}
+                      >
+                        {st === "all" ? `All (${userPartListings.length})` : `${st} (${userPartListings.filter(l => (st === "active" ? (l.status === "active" || !l.status) : l.status === st)).length})`}
+                      </button>
                     ))}
-                  </select>
+                  </div>
+
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Filter my catalog..."
+                      value={partCatalogSearch}
+                      onChange={(e) => setPartCatalogSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900 placeholder:text-stone-400"
+                    />
+                    {partCatalogSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setPartCatalogSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Filter Tabs Row */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-300">
-              {/* Request Type Selector */}
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Type:</span>
-                {[
-                  { id: "all", label: "All Enquiries", count: ownerTDs.length + ownerCBs.length },
-                  { id: "test_drives", label: "Test Drives", count: ownerTDs.length },
-                  { id: "callbacks", label: "Callbacks", count: ownerCBs.length },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setRequestTypeFilter(tab.id as any)}
-                    className={`px-3 py-1 text-[11px] font-mono font-bold uppercase border cursor-pointer transition ${
-                      requestTypeFilter === tab.id
-                        ? "bg-stone-900 text-amber-400 border-stone-950 font-extrabold"
-                        : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300"
-                    }`}
-                  >
-                    {tab.label} ({tab.count})
-                  </button>
-                ))}
-              </div>
-
-              {/* Request Status Selector */}
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Status:</span>
-                {[
-                  { id: "all", label: "All Statuses" },
-                  { id: "pending", label: "Pending / Scheduled" },
-                  { id: "confirmed", label: "Confirmed / Contacted" },
-                  { id: "completed", label: "Completed / Resolved" },
-                  { id: "declined", label: "Declined" },
-                ].map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setRequestStatusFilter(st.id as any)}
-                    className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
-                      requestStatusFilter === st.id
-                        ? "bg-amber-500 text-stone-950 border-amber-600 font-extrabold"
-                        : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+              </>
+            )}
           </div>
 
-          {/* Requests Content Feed */}
-          {isLoadingRequests ? (
-            <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
-              <RefreshCw className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
-              <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
-                Syncing direct buyer enquiries and test drive schedules...
-              </p>
+          {/* CATALOG CARDS LIST FOR PERFORMANCE PARTS */}
+          {currentUser && !currentUser.isAnonymous && (
+            <div className="space-y-4">
+              {/* Part 30-Day Expiration & Warning Summary Banner */}
+              {(() => {
+                let nearExpiryCount = 0;
+                let hiddenCount = 0;
+
+                userPartListings.forEach((item) => {
+                  const isPremiumOrFeatured = Boolean(item.featured || item.urgent || item.verified || subscriptionActive || isAdmin);
+                  const exp = getListingExpirationDetails(item.datePosted || (item as any).createdAt, isPremiumOrFeatured);
+                  if (!isPremiumOrFeatured) {
+                    if (exp.isNearExpiry) {
+                      nearExpiryCount++;
+                    } else if (exp.isExpired || item.status === "hidden") {
+                      hiddenCount++;
+                    }
+                  }
+                });
+
+                if (nearExpiryCount === 0 && hiddenCount === 0) return null;
+
+                return (
+                  <div className="space-y-3 mb-2">
+                    {nearExpiryCount > 0 && (
+                      <div className="bg-amber-50 border-2 border-amber-500 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+                          <div>
+                            <h4 className="text-xs font-mono font-extrabold uppercase tracking-wider text-amber-950">
+                              ⚠️ EXPIRATION ALERT: {nearExpiryCount} {nearExpiryCount === 1 ? "Part" : "Parts"} Expiring Within 3 Days
+                            </h4>
+                            <p className="text-[11px] text-stone-800 font-medium mt-0.5">
+                              Free tier part listings automatically hide after 30 days. Upgrade your account or listing to feature permanently.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("premium")}
+                          className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-[10px] font-mono font-extrabold uppercase tracking-widest border border-amber-600 shrink-0 cursor-pointer transition"
+                        >
+                          Upgrade To Premium
+                        </button>
+                      </div>
+                    )}
+
+                    {hiddenCount > 0 && (
+                      <div className="bg-red-50 border-2 border-red-600 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-start gap-3">
+                          <Lock className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-xs font-mono font-extrabold uppercase tracking-wider text-red-950">
+                              🚫 AUTO-HIDDEN: {hiddenCount} {hiddenCount === 1 ? "Part" : "Parts"} Exceeded 30-Day Window
+                            </h4>
+                            <p className="text-[11px] text-stone-800 font-medium mt-0.5">
+                              These items are hidden from public search results due to the 30-day limit.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("premium")}
+                          className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-[10px] font-mono font-extrabold uppercase tracking-widest border border-red-700 shrink-0 cursor-pointer transition"
+                        >
+                          Restore Visibility
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {isLoadingUserPartListings ? (
+                <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
+                  <RefreshCw className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
+                  <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
+                    Loading your performance part catalog...
+                  </p>
+                </div>
+              ) : (() => {
+                const filteredParts = userPartListings.filter((item) => {
+                  const matchStatus = partCatalogFilterStatus === "all" ||
+                    (partCatalogFilterStatus === "active" && (item.status === "active" || !item.status)) ||
+                    item.status === partCatalogFilterStatus;
+
+                  const searchLower = partCatalogSearch.toLowerCase().trim();
+                  const matchSearch = !searchLower ||
+                    item.title.toLowerCase().includes(searchLower) ||
+                    item.brand.toLowerCase().includes(searchLower) ||
+                    item.category.toLowerCase().includes(searchLower) ||
+                    (item.partNumber && item.partNumber.toLowerCase().includes(searchLower));
+
+                  return matchStatus && matchSearch;
+                });
+
+                if (filteredParts.length === 0) {
+                  return (
+                    <div className="p-12 text-center bg-[#FAF8F5] border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] space-y-4">
+                      <div className="w-14 h-14 bg-amber-500/15 border-2 border-amber-600/30 rounded-full flex items-center justify-center text-amber-700 mx-auto">
+                        <Wrench className="w-7 h-7 text-amber-700" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-base font-serif font-black uppercase text-stone-900">
+                          {userPartListings.length === 0 ? "No Parts Uploaded Yet" : "No Matching Parts Found"}
+                        </h4>
+                        <p className="text-xs text-stone-600 max-w-sm mx-auto font-medium">
+                          {userPartListings.length === 0
+                            ? "You haven't listed any performance parts in your account. Click below to add your first part listing."
+                            : "Try clearing search keywords or choosing 'All' status."}
+                        </p>
+                      </div>
+                      {userPartListings.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("list_part")}
+                          className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-stone-950 transition active:scale-95"
+                        >
+                          <Plus className="w-4 h-4 text-amber-400" />
+                          <span>List Your First Part</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {filteredParts.map((part) => {
+                      const mainPhoto = part.photos && part.photos.length > 0
+                        ? part.photos[0].src
+                        : part.image || "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800";
+                      const status = part.status || "active";
+
+                      const isPremiumOrFeatured = Boolean(part.featured || part.urgent || part.verified || subscriptionActive || isAdmin);
+                      const exp = getListingExpirationDetails(part.datePosted || (part as any).createdAt, isPremiumOrFeatured);
+                      const is30DaysExpired = exp.isExpired;
+                      const daysRemaining = exp.daysRemaining;
+
+                      // Leads count for this specific part
+                      const leadsCount = callbackRequests.filter(c => 
+                        String(c.partId) === String(part.id) ||
+                        (c.partTitle && part.title && c.partTitle.toLowerCase() === part.title.toLowerCase())
+                      ).length;
+
+                      return (
+                        <motion.div
+                          key={part.id}
+                          layout
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className={`bg-[#FAF8F5] border-2 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] flex flex-col justify-between overflow-hidden relative group ${
+                            is30DaysExpired ? "border-red-600 bg-red-50/20" : "border-stone-900"
+                          }`}
+                        >
+                          {/* Image Thumbnail (Matching Image 2) */}
+                          <div className="relative aspect-video bg-stone-900 overflow-hidden">
+                            <img
+                              src={mainPhoto}
+                              alt={part.title}
+                              className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${is30DaysExpired ? "grayscale contrast-125 opacity-70" : ""}`}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-stone-950/20" />
+
+                            {/* Status & Expiry Badges */}
+                            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                              {is30DaysExpired ? (
+                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white">
+                                  EXPIRED (30 DAYS HIDDEN)
+                                </span>
+                              ) : status === "hidden" ? (
+                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white animate-pulse">
+                                  HIDDEN BY ADMIN
+                                </span>
+                              ) : (
+                                <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs ${
+                                  status === "active" ? "bg-emerald-500 text-stone-950 font-black" :
+                                  status === "sold" ? "bg-stone-800 text-stone-200" :
+                                  "bg-amber-500 text-stone-950 font-black"
+                                }`}>
+                                  {status.toUpperCase()}
+                                </span>
+                              )}
+
+                              {part.featured && (
+                                <span className="px-2 py-0.5 bg-amber-400 text-stone-950 text-[9px] font-mono font-extrabold uppercase tracking-wider flex items-center gap-1 border border-stone-950">
+                                  <Star className="w-3 h-3 fill-stone-950" /> Featured
+                                </span>
+                              )}
+
+                              {!isPremiumOrFeatured && !is30DaysExpired && daysRemaining !== null && (
+                                <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border border-stone-950 ${
+                                  exp.isNearExpiry ? "bg-amber-500 text-stone-950 animate-pulse font-black" : "bg-stone-900 text-amber-400"
+                                }`}>
+                                  {daysRemaining}d Left (Free Tier)
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Photos Counter */}
+                            <div className="absolute bottom-3 right-3 bg-stone-950/85 text-white text-[10px] font-mono px-2 py-1 flex items-center gap-1.5 backdrop-blur-xs border border-white/20">
+                              <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                              <span>{part.photos?.length || (part.image ? 1 : 0)} Photos</span>
+                            </div>
+                          </div>
+
+                          {/* Part Specifications & Body (Matching Image 2) */}
+                          <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-start gap-2">
+                                <h3 className="font-serif font-black text-lg text-stone-950 uppercase leading-snug">
+                                  {part.title}
+                                </h3>
+                                <span className="font-serif font-black text-base text-amber-900 whitespace-nowrap bg-amber-500/15 px-2 py-0.5 border border-amber-600/30">
+                                  ₹{part.price?.toLocaleString("en-IN")}
+                                </span>
+                              </div>
+
+                              {/* Specs row matching Image 2 style */}
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-mono text-stone-600 font-semibold">
+                                <span>Cat: <strong className="text-stone-800 uppercase">{part.category}</strong></span>
+                                <span>•</span>
+                                <span>Brand: <strong className="text-stone-800">{part.brand}</strong></span>
+                                <span>•</span>
+                                <span>Rarity: <strong className="text-stone-800 uppercase">{part.rarity}</strong></span>
+                                {part.partNumber && (
+                                  <>
+                                    <span>•</span>
+                                    <span>PN: {part.partNumber}</span>
+                                  </>
+                                )}
+                              </div>
+
+                              {part.description && (
+                                <p className="text-xs text-stone-600 line-clamp-2 pt-1 font-medium leading-relaxed">
+                                  {part.description}
+                                </p>
+                              )}
+
+                              {/* Admin Hidden Warning Banner */}
+                              {status === "hidden" && (
+                                <div className="p-3 bg-red-100/90 border-2 border-red-600 text-red-950 font-mono text-xs font-bold rounded-xs flex items-start gap-2.5 mt-2 shadow-xs">
+                                  <ShieldAlert className="w-4.5 h-4.5 text-red-600 shrink-0 mt-0.5 animate-pulse" />
+                                  <div>
+                                    <span className="uppercase font-black text-red-700 block text-[11px] tracking-wider">⚠️ LISTING HIDDEN BY ADMIN</span>
+                                    <p className="text-[10.5px] text-stone-800 font-medium leading-normal mt-0.5">
+                                      Your part listing has been hidden by the administrator and is currently not visible to buyers in the motorsport parts catalog.
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Posted & Expiry Dates */}
+                              <div className="pt-2.5 mt-2 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-1 text-[10.5px] font-mono">
+                                <span className="text-stone-500 font-bold uppercase">
+                                  Posted: <span className="text-stone-800">{exp.postedDateObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}</span>
+                                </span>
+                                <span className={`font-bold ${
+                                  exp.isPremiumOrFeatured
+                                    ? "text-emerald-700"
+                                    : exp.isExpired
+                                    ? "text-red-600 font-black uppercase"
+                                    : exp.isNearExpiry
+                                    ? "text-amber-700 font-black"
+                                    : "text-stone-700"
+                                }`}>
+                                  {exp.isPremiumOrFeatured
+                                    ? "Expires: Never (Premium)"
+                                    : exp.isExpired
+                                    ? "Expired (Auto-Hidden)"
+                                    : `Expires: ${exp.expiryDateStr} (${exp.daysRemaining}d left)`}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Status Quick Switch Selector (Matching Image 2) */}
+                            <div className="pt-3 border-t border-stone-200 flex items-center justify-between text-xs">
+                              <span className="text-[10px] font-mono font-bold uppercase text-stone-500">
+                                Listing Status:
+                              </span>
+                              {status === "hidden" && !isAdmin ? (
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 border border-red-400 text-red-950 rounded-xs">
+                                  <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                                  <span className="text-[9.5px] font-mono font-black uppercase tracking-wider">
+                                    LOCKED BY ADMIN
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {(["active", "pending", "sold"] as const).map((st) => (
+                                    <button
+                                      key={st}
+                                      type="button"
+                                      onClick={() => handleQuickPartStatusChange(part.id, st)}
+                                      className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
+                                        status === st
+                                          ? "bg-stone-900 text-white border-stone-950 font-extrabold"
+                                          : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
+                                      }`}
+                                    >
+                                      {st}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Buyer Enquiries Button (Matching Image 2) */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRequestItemTargetFilter("parts");
+                                setRequestSearchQuery(part.title);
+                                setViewMode("requests");
+                              }}
+                              className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-amber-600 cursor-pointer shadow-xs transition"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <PhoneCall className="w-4 h-4 text-stone-900" />
+                                <span>View Buyer Enquiries</span>
+                              </span>
+                              <span className="px-2 py-0.5 bg-stone-950 text-amber-400 text-[10px] rounded-full font-black">
+                                {leadsCount} Leads
+                              </span>
+                            </button>
+
+                            {/* Action Buttons Grid: Edit, Photos, Remove (Matching Image 2) */}
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditPartModal(part)}
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                              >
+                                <Edit className="w-3.5 h-3.5 text-stone-700" />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPartPhotoManager(part)}
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                              >
+                                <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
+                                <span>Photos</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setDeletingPartListing(part)}
+                                className="py-2 px-2 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
-          ) : (() => {
+          )}
+        </div>
+      )}
+
+      {/* 4. BUYER REQUESTS & LEADS CONTROL CENTER (DEDICATED DIV) */}
+      {viewMode === "requests" && (
+        <div id="sell-view-buyer-requests" className="space-y-6 animate-in fade-in duration-200">
+          {(() => {
             // Combine and normalize test drives and callbacks
             const combinedList = [
               ...ownerTDs.map((td) => ({
                 kind: "test_drive" as const,
+                itemType: "vehicle" as const,
                 refCode: td.bookingRef,
                 id: td.id,
                 vehicleId: td.vehicleId,
                 vehicleTitle: td.vehicleTitle,
                 vehiclePrice: td.vehiclePrice,
                 vehicleImage: td.vehicleImage,
+                partId: undefined as string | number | undefined,
+                partTitle: undefined as string | undefined,
+                partImage: undefined as string | undefined,
+                partPrice: undefined as number | undefined,
+                partCategory: undefined as string | undefined,
+                partNumber: undefined as string | undefined,
                 sellerName: td.sellerName,
                 buyerName: td.fullName,
                 phone: td.phone,
@@ -3397,419 +4118,728 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 sellerNote: td.sellerNote,
                 rawTD: td,
               })),
-              ...ownerCBs.map((cb) => ({
-                kind: "callback" as const,
-                refCode: cb.callbackRef,
-                id: cb.id,
-                vehicleId: cb.vehicleId,
-                vehicleTitle: cb.vehicleTitle || "General Enquiry",
-                vehiclePrice: cb.vehiclePrice,
-                vehicleImage: cb.vehicleImage,
-                sellerName: cb.sellerName,
-                buyerName: cb.fullName,
-                phone: cb.phoneNumber,
-                preferredDate: "",
-                timeSlot: cb.timeSlot || "ASAP",
-                driveType: null,
-                address: "",
-                notes: cb.note || cb.queryTopic,
-                createdAt: cb.createdAt,
-                status: cb.status || "pending",
-                sellerNote: cb.sellerNote,
-                rawCB: cb,
-              })),
+              ...ownerCBs.map((cb) => {
+                const isPartEnquiry = cb.itemType === "part" || !!cb.partTitle || !!cb.partId;
+                return {
+                  kind: "callback" as const,
+                  itemType: (isPartEnquiry ? "part" : "vehicle") as "part" | "vehicle",
+                  refCode: cb.callbackRef,
+                  id: cb.id,
+                  vehicleId: cb.vehicleId,
+                  vehicleTitle: cb.vehicleTitle || (isPartEnquiry ? undefined : "General Vehicle Enquiry"),
+                  vehiclePrice: cb.vehiclePrice,
+                  vehicleImage: cb.vehicleImage,
+                  partId: cb.partId,
+                  partTitle: cb.partTitle,
+                  partImage: cb.partImage,
+                  partPrice: cb.partPrice,
+                  partCategory: cb.partCategory,
+                  partNumber: cb.partNumber,
+                  sellerName: cb.sellerName,
+                  buyerName: cb.fullName,
+                  phone: cb.phoneNumber,
+                  preferredDate: "",
+                  timeSlot: cb.timeSlot || "ASAP",
+                  driveType: null,
+                  address: "",
+                  notes: cb.note || cb.queryTopic,
+                  createdAt: cb.createdAt,
+                  status: cb.status || "pending",
+                  sellerNote: cb.sellerNote,
+                  rawCB: cb,
+                };
+              }),
             ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-            // Apply Filters
-            const filteredRequests = combinedList.filter((item) => {
-              // 1. Filter by Request Type
-              if (requestTypeFilter === "test_drives" && item.kind !== "test_drive") return false;
-              if (requestTypeFilter === "callbacks" && item.kind !== "callback") return false;
-
-              // 2. Filter by Vehicle ID
-              if (selectedVehicleIdFilter !== "all") {
-                if (String(item.vehicleId) !== selectedVehicleIdFilter) return false;
-              }
-
-              // 3. Filter by Status
-              if (requestStatusFilter === "pending") {
-                if (item.status !== "pending" && item.status !== "scheduled") return false;
-              } else if (requestStatusFilter === "confirmed") {
-                if (item.status !== "confirmed" && item.status !== "contacted") return false;
-              } else if (requestStatusFilter === "completed") {
-                if (item.status !== "completed" && item.status !== "resolved") return false;
-              } else if (requestStatusFilter === "declined") {
-                if (item.status !== "declined" && item.status !== "cancelled") return false;
-              }
-
-              // 4. Search Filter
-              const queryLower = requestSearchQuery.toLowerCase().trim();
-              if (queryLower) {
-                const matchName = item.buyerName?.toLowerCase().includes(queryLower);
-                const matchPhone = item.phone?.toLowerCase().includes(queryLower);
-                const matchRef = item.refCode?.toLowerCase().includes(queryLower);
-                const matchVehicle = item.vehicleTitle?.toLowerCase().includes(queryLower);
-                const matchNotes = item.notes?.toLowerCase().includes(queryLower);
-                if (!matchName && !matchPhone && !matchRef && !matchVehicle && !matchNotes) return false;
-              }
-
-              return true;
-            });
-
-            if (filteredRequests.length === 0) {
-              return (
-                <div className="p-12 text-center bg-[#FAF8F5] border-2 border-stone-900 space-y-4">
-                  <div className="w-14 h-14 bg-amber-500/15 border border-amber-600/30 rounded-full flex items-center justify-center text-amber-700 mx-auto">
-                    <PhoneCall className="w-7 h-7" />
-                  </div>
-                  <div className="space-y-1 max-w-md mx-auto">
-                    <h4 className="text-lg font-serif font-black uppercase text-stone-900">
-                      No Buyer Requests Found
-                    </h4>
-                    <p className="text-xs text-stone-600 font-medium">
-                      {combinedList.length === 0
-                        ? "There are no callback or test drive requests submitted yet. When buyers request a callback or schedule a test drive on your listed vehicles, they will appear here in real-time."
-                        : "No enquiries match your selected filters or search query. Try clearing search text or switching status tabs."}
-                    </p>
-                  </div>
-                  {requestSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRequestSearchQuery("");
-                        setRequestTypeFilter("all");
-                        setRequestStatusFilter("all");
-                        setSelectedVehicleIdFilter("all");
-                      }}
-                      className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <span>Reset Filters</span>
-                    </button>
-                  )}
-                </div>
-              );
-            }
+            const vehicleReqs = combinedList.filter((item) => item.itemType === "vehicle");
+            const partReqs = combinedList.filter((item) => item.itemType === "part");
+            const pendingVehicleReqs = vehicleReqs.filter((i) => i.status === "pending" || i.status === "scheduled");
+            const pendingPartReqs = partReqs.filter((i) => i.status === "pending");
+            const actionedCount = combinedList.filter(
+              (i) => i.status === "confirmed" || i.status === "contacted" || i.status === "completed" || i.status === "resolved"
+            ).length;
 
             return (
-              <div className="space-y-4">
-                {filteredRequests.map((req) => {
-                  const isTestDrive = req.kind === "test_drive";
-                  const cleanPhone = req.phone?.replace(/[^0-9]/g, "") || "";
-                  const formattedDateStr = req.createdAt
-                    ? new Date(req.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "Recently";
+              <>
+                {/* Header Banner */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+                    <div>
+                      <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                        <PhoneCall className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Buyer Leads &amp; Enquiries Manager</span>
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
+                        Buyer Requests &amp; Leads
+                      </h2>
+                      <p className="text-stone-600 text-xs mt-1 font-medium max-w-2xl">
+                        Real-time direct enquiries and test drive schedules for vehicles &amp; performance motorsport parts.
+                      </p>
+                    </div>
 
-                  // Status badge styling
-                  const isPending = req.status === "pending" || req.status === "scheduled";
-                  const isConfirmed = req.status === "confirmed" || req.status === "contacted";
-                  const isCompleted = req.status === "completed" || req.status === "resolved";
-                  const isDeclined = req.status === "declined" || req.status === "cancelled";
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowOnlyMyVehiclesRequests(!showOnlyMyVehiclesRequests)}
+                        className={`px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider border cursor-pointer flex items-center gap-2 transition ${
+                          showOnlyMyVehiclesRequests
+                            ? "bg-amber-500 text-stone-950 border-amber-600 shadow-xs"
+                            : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
+                        }`}
+                        title="Toggle filtering requests for your listings vs all system requests"
+                      >
+                        <Filter className="w-3.5 h-3.5" />
+                        <span>{showOnlyMyVehiclesRequests ? "Filter: My Listings Only" : "Show All System Leads"}</span>
+                      </button>
 
-                  // Pre-formulated WhatsApp message link
-                  const waText = encodeURIComponent(
-                    `Hello ${req.buyerName}, regarding your ${isTestDrive ? "test drive" : "callback"} request (#${req.refCode}) for ${req.vehicleTitle} on AutoWorld. I am the owner/seller and would like to coordinate with you!`
-                  );
-                  const waUrl = `https://wa.me/${cleanPhone.length <= 10 ? '91' + cleanPhone : cleanPhone}?text=${waText}`;
+                      <button
+                        type="button"
+                        onClick={() => window.dispatchEvent(new CustomEvent("autoworld_requests_updated"))}
+                        className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider border border-stone-950 flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Sync</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Metrics Dashboard Overview */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                      <div className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Total Received</div>
+                      <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                        {combinedList.length} <span className="text-xs font-sans text-stone-600 font-normal">Leads</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                      <div className="text-[10px] font-mono font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                        <Car className="w-3 h-3 text-amber-600" /> Vehicle Enquiries
+                      </div>
+                      <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                        {vehicleReqs.length}{" "}
+                        <span className="text-xs font-sans text-amber-700 font-bold">
+                          ({pendingVehicleReqs.length} Pending)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                      <div className="text-[10px] font-mono font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                        <Wrench className="w-3 h-3 text-blue-600" /> Part Enquiries
+                      </div>
+                      <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                        {partReqs.length}{" "}
+                        <span className="text-xs font-sans text-blue-700 font-bold">
+                          ({pendingPartReqs.length} Pending)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                      <div className="text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Actioned Leads
+                      </div>
+                      <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
+                        {actionedCount}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search & Filter Controls */}
+                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-4 space-y-3">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    {/* Search Bar */}
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={requestSearchQuery}
+                        onChange={(e) => setRequestSearchQuery(e.target.value)}
+                        placeholder="Search buyer name, phone, vehicle, part title, or ref code (#TD... / #CB...)"
+                        className="w-full pl-9 pr-8 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 placeholder:text-stone-500 focus:outline-none focus:border-stone-950"
+                      />
+                      {requestSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setRequestSearchQuery("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-bold"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Select Specific Vehicle Filter */}
+                    {userListings.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold uppercase text-stone-500 whitespace-nowrap">
+                          Vehicle:
+                        </span>
+                        <select
+                          value={selectedVehicleIdFilter}
+                          onChange={(e) => setSelectedVehicleIdFilter(e.target.value)}
+                          className="px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
+                        >
+                          <option value="all">All My Listed Vehicles ({userListings.length})</option>
+                          {userListings.map((l) => (
+                            <option key={l.id} value={String(l.id)}>
+                              {l.title} (₹{l.price.toLocaleString("en-IN")})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filter Tabs Row */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-300">
+                    {/* Item Category (Vehicle vs Part) Selector */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Target:</span>
+                      {[
+                        { id: "all", label: "All Items", count: combinedList.length },
+                        { id: "vehicles", label: "🚗 Vehicles", count: vehicleReqs.length },
+                        { id: "parts", label: "🔧 Motorsport Parts", count: partReqs.length },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setRequestItemTargetFilter(tab.id as any)}
+                          className={`px-3 py-1 text-[11px] font-mono font-bold uppercase border cursor-pointer transition ${
+                            requestItemTargetFilter === tab.id
+                              ? "bg-stone-900 text-amber-400 border-stone-950 font-extrabold"
+                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300"
+                          }`}
+                        >
+                          {tab.label} ({tab.count})
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Request Type Selector */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Type:</span>
+                      {[
+                        { id: "all", label: "All Enquiries", count: combinedList.length },
+                        { id: "test_drives", label: "Test Drives", count: ownerTDs.length },
+                        { id: "callbacks", label: "Callbacks", count: ownerCBs.length },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setRequestTypeFilter(tab.id as any)}
+                          className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
+                            requestTypeFilter === tab.id
+                              ? "bg-amber-500 text-stone-950 border-amber-600 font-extrabold"
+                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300"
+                          }`}
+                        >
+                          {tab.label} ({tab.count})
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Request Status Selector */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Status:</span>
+                      {[
+                        { id: "all", label: "All Statuses" },
+                        { id: "pending", label: "Pending" },
+                        { id: "confirmed", label: "Confirmed / Contacted" },
+                        { id: "completed", label: "Resolved" },
+                        { id: "declined", label: "Declined" },
+                      ].map((st) => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => setRequestStatusFilter(st.id as any)}
+                          className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
+                            requestStatusFilter === st.id
+                              ? "bg-stone-900 text-white border-stone-950 font-extrabold"
+                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
+                          }`}
+                        >
+                          {st.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Requests Content Feed */}
+                {isLoadingRequests ? (
+                  <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
+                    <RefreshCw className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
+                    <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
+                      Syncing direct buyer enquiries and test drive schedules...
+                    </p>
+                  </div>
+                ) : (() => {
+                  // Apply Filters
+                  const filteredRequests = combinedList.filter((item) => {
+                    // 1. Filter by Item Target (Vehicles vs Parts)
+                    if (requestItemTargetFilter === "vehicles" && item.itemType !== "vehicle") return false;
+                    if (requestItemTargetFilter === "parts" && item.itemType !== "part") return false;
+
+                    // 2. Filter by Request Type
+                    if (requestTypeFilter === "test_drives" && item.kind !== "test_drive") return false;
+                    if (requestTypeFilter === "callbacks" && item.kind !== "callback") return false;
+
+                    // 3. Filter by Vehicle ID
+                    if (selectedVehicleIdFilter !== "all") {
+                      if (String(item.vehicleId) !== selectedVehicleIdFilter) return false;
+                    }
+
+                    // 4. Filter by Status
+                    if (requestStatusFilter === "pending") {
+                      if (item.status !== "pending" && item.status !== "scheduled") return false;
+                    } else if (requestStatusFilter === "confirmed") {
+                      if (item.status !== "confirmed" && item.status !== "contacted") return false;
+                    } else if (requestStatusFilter === "completed") {
+                      if (item.status !== "completed" && item.status !== "resolved") return false;
+                    } else if (requestStatusFilter === "declined") {
+                      if (item.status !== "declined" && item.status !== "cancelled") return false;
+                    }
+
+                    // 5. Search Filter
+                    const queryLower = requestSearchQuery.toLowerCase().trim();
+                    if (queryLower) {
+                      const matchName = item.buyerName?.toLowerCase().includes(queryLower);
+                      const matchPhone = item.phone?.toLowerCase().includes(queryLower);
+                      const matchRef = item.refCode?.toLowerCase().includes(queryLower);
+                      const matchVehicle = item.vehicleTitle?.toLowerCase().includes(queryLower);
+                      const matchPart = item.partTitle?.toLowerCase().includes(queryLower);
+                      const matchCategory = item.partCategory?.toLowerCase().includes(queryLower);
+                      const matchNotes = item.notes?.toLowerCase().includes(queryLower);
+                      if (!matchName && !matchPhone && !matchRef && !matchVehicle && !matchPart && !matchCategory && !matchNotes) return false;
+                    }
+
+                    return true;
+                  });
+
+                  if (filteredRequests.length === 0) {
+                    return (
+                      <div className="p-12 text-center bg-[#FAF8F5] border-2 border-stone-900 space-y-4">
+                        <div className="w-14 h-14 bg-amber-500/15 border border-amber-600/30 rounded-full flex items-center justify-center text-amber-700 mx-auto">
+                          <PhoneCall className="w-7 h-7" />
+                        </div>
+                        <div className="space-y-1 max-w-md mx-auto">
+                          <h4 className="text-lg font-serif font-black uppercase text-stone-900">
+                            No Buyer Requests Found
+                          </h4>
+                          <p className="text-xs text-stone-600 font-medium">
+                            {combinedList.length === 0
+                              ? "There are no callback or test drive requests submitted yet. When buyers request a callback or schedule a test drive on your listed vehicles or performance parts, they will appear here in real-time."
+                              : "No enquiries match your selected filters or search query. Try clearing search text or switching status tabs."}
+                          </p>
+                        </div>
+                        {(requestSearchQuery || requestItemTargetFilter !== "all" || requestTypeFilter !== "all" || requestStatusFilter !== "all" || selectedVehicleIdFilter !== "all") && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRequestSearchQuery("");
+                              setRequestItemTargetFilter("all");
+                              setRequestTypeFilter("all");
+                              setRequestStatusFilter("all");
+                              setSelectedVehicleIdFilter("all");
+                            }}
+                            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <span>Reset Filters</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
 
                   return (
-                    <motion.div
-                      key={req.refCode}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className={`bg-[#FAF8F5] border-2 border-stone-900 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.85)] overflow-hidden relative ${
-                        isTestDrive ? "border-l-8 border-l-amber-500" : "border-l-8 border-l-emerald-600"
-                      }`}
-                    >
-                      {/* Top Header Strip */}
-                      <div className="bg-stone-900 text-stone-100 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-                        <div className="flex items-center gap-2">
-                          {isTestDrive ? (
-                            <span className="px-2 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1">
-                              <Calendar className="w-3 h-3" /> TEST DRIVE
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1">
-                              <PhoneCall className="w-3 h-3" /> CALLBACK
-                            </span>
-                          )}
+                    <div className="space-y-4">
+                      {filteredRequests.map((req) => {
+                        const isTestDrive = req.kind === "test_drive";
+                        const isPart = req.itemType === "part";
+                        const cleanPhone = req.phone?.replace(/[^0-9]/g, "") || "";
+                        const formattedDateStr = req.createdAt
+                          ? new Date(req.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "Recently";
 
-                          <span className="font-bold text-amber-400">#{req.refCode}</span>
-                          <span className="text-stone-500">•</span>
-                          <span className="text-stone-400 text-[10.5px]">{formattedDateStr}</span>
-                        </div>
+                        // Status badge styling
+                        const isPending = req.status === "pending" || req.status === "scheduled";
+                        const isConfirmed = req.status === "confirmed" || req.status === "contacted";
+                        const isCompleted = req.status === "completed" || req.status === "resolved";
+                        const isDeclined = req.status === "declined" || req.status === "cancelled";
 
-                        {/* Status Tag */}
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2.5 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider border ${
-                              isPending
-                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
-                                : isConfirmed
-                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                : isCompleted
-                                ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                                : "bg-stone-700 text-stone-300 border-stone-600"
+                        // Pre-formulated WhatsApp message link tailored for Vehicle vs Part
+                        const itemTitle = isPart ? (req.partTitle || "Motorsport Part") : (req.vehicleTitle || "Vehicle");
+                        const itemKindLabel = isPart ? "motorsport part enquiry" : (isTestDrive ? "test drive booking" : "vehicle callback request");
+                        const waText = encodeURIComponent(
+                          `Hello ${req.buyerName}, regarding your ${itemKindLabel} (#${req.refCode}) for "${itemTitle}" on AutoWorld. I am the seller and would like to assist you!`
+                        );
+                        const waUrl = `https://wa.me/${cleanPhone.length <= 10 ? '91' + cleanPhone : cleanPhone}?text=${waText}`;
+
+                        return (
+                          <motion.div
+                            key={req.refCode}
+                            layout
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className={`bg-[#FAF8F5] border-2 border-stone-900 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.85)] overflow-hidden relative ${
+                              isPart
+                                ? "border-l-8 border-l-blue-600"
+                                : isTestDrive
+                                ? "border-l-8 border-l-amber-500"
+                                : "border-l-8 border-l-emerald-600"
                             }`}
                           >
-                            STATUS: {req.status.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
+                            {/* Top Header Strip */}
+                            <div className="bg-stone-900 text-stone-100 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                              <div className="flex items-center gap-2">
+                                {isPart ? (
+                                  <span className="px-2.5 py-0.5 bg-blue-600 text-white font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                    <Wrench className="w-3 h-3 text-amber-300" /> PART ENQUIRY
+                                  </span>
+                                ) : isTestDrive ? (
+                                  <span className="px-2.5 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                    <Calendar className="w-3 h-3" /> VEHICLE TEST DRIVE
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-0.5 bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                    <Car className="w-3 h-3" /> VEHICLE CALLBACK
+                                  </span>
+                                )}
 
-                      <div className="p-5 space-y-4">
-                        {/* Vehicle Info Card Row */}
-                        <div className="flex items-center gap-3 p-3 bg-[#F4F1EA] border border-stone-300">
-                          {req.vehicleImage ? (
-                            <img
-                              src={req.vehicleImage}
-                              alt={req.vehicleTitle}
-                              className="w-16 h-12 object-cover border border-stone-400 shrink-0 bg-stone-900"
-                            />
-                          ) : (
-                            <div className="w-16 h-12 bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-400 shrink-0">
-                              <Car className="w-6 h-6" />
-                            </div>
-                          )}
+                                <span className="font-bold text-amber-400">#{req.refCode}</span>
+                                <span className="text-stone-500">•</span>
+                                <span className="text-stone-400 text-[10.5px]">{formattedDateStr}</span>
+                              </div>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <h4 className="font-serif font-black text-stone-950 text-sm uppercase truncate">
-                                {req.vehicleTitle}
-                              </h4>
-                              {req.vehiclePrice ? (
-                                <span className="font-serif font-bold text-xs text-amber-900 whitespace-nowrap bg-amber-500/20 px-2 py-0.5 border border-amber-600/30">
-                                  ₹{req.vehiclePrice.toLocaleString("en-IN")}
+                              {/* Status Tag */}
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`px-2.5 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider border ${
+                                    isPending
+                                      ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
+                                      : isConfirmed
+                                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                      : isCompleted
+                                      ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                                      : "bg-stone-700 text-stone-300 border-stone-600"
+                                  }`}
+                                >
+                                  STATUS: {req.status.toUpperCase()}
                                 </span>
-                              ) : null}
+                              </div>
                             </div>
-                            <p className="text-[10.5px] font-mono text-stone-600 truncate mt-0.5">
-                              Seller Listing: <strong className="text-stone-900">{req.sellerName || "AutoWorld Direct"}</strong>
-                            </p>
-                          </div>
-                        </div>
 
-                        {/* Buyer Details Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-sans">
-                          {/* Buyer Name & Phone */}
-                          <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
-                            <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
-                              <UserIcon className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
-                            </div>
-                            <div className="font-serif font-black text-stone-950 text-sm">
-                              {req.buyerName || "Interested Buyer"}
-                            </div>
-                            <div className="text-xs font-mono font-bold text-stone-800 flex items-center gap-1 pt-0.5">
-                              <Phone className="w-3.5 h-3.5 text-amber-700" />
-                              <a href={`tel:${req.phone}`} className="hover:underline hover:text-amber-900">
-                                {req.phone}
-                              </a>
-                            </div>
-                          </div>
+                            <div className="p-5 space-y-4">
+                              {/* Target Item (Vehicle vs Part) Info Card Row */}
+                              {isPart ? (
+                                <div className="flex items-center gap-3 p-3 bg-blue-50/70 border-2 border-blue-200">
+                                  {req.partImage ? (
+                                    <img
+                                      src={req.partImage}
+                                      alt={req.partTitle || "Motorsport Part"}
+                                      className="w-16 h-12 object-cover border border-blue-300 shrink-0 bg-stone-900"
+                                    />
+                                  ) : (
+                                    <div className="w-16 h-12 bg-stone-900 border border-blue-400 flex items-center justify-center text-amber-400 shrink-0">
+                                      <Wrench className="w-6 h-6 text-amber-400" />
+                                    </div>
+                                  )}
 
-                          {/* Date & Time Slot */}
-                          <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
-                            <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-amber-700" /> Appointment / Preferred Time
-                            </div>
-                            {isTestDrive ? (
-                              <div className="space-y-0.5 font-mono">
-                                <div className="font-bold text-stone-900">
-                                  📅 {req.preferredDate}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
+                                          PART
+                                        </span>
+                                        <h4 className="font-serif font-black text-stone-950 text-sm uppercase truncate">
+                                          {req.partTitle || "Performance Tuning Hardware"}
+                                        </h4>
+                                      </div>
+                                      {req.partPrice ? (
+                                        <span className="font-serif font-bold text-xs text-blue-950 whitespace-nowrap bg-blue-200/80 px-2 py-0.5 border border-blue-300">
+                                          ₹{req.partPrice.toLocaleString("en-IN")}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px] font-mono text-stone-600 mt-0.5">
+                                      {req.partCategory && (
+                                        <span>Category: <strong className="text-stone-900 capitalize">{req.partCategory}</strong></span>
+                                      )}
+                                      {req.partNumber && (
+                                        <span>P/N: <strong className="text-stone-900">{req.partNumber}</strong></span>
+                                      )}
+                                      <span>Seller: <strong className="text-stone-900">{req.sellerName || "AutoWorld Direct"}</strong></span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-[11px] text-stone-700">
-                                  ⏰ {req.timeSlot}
+                              ) : (
+                                <div className="flex items-center gap-3 p-3 bg-[#F4F1EA] border border-stone-300">
+                                  {req.vehicleImage ? (
+                                    <img
+                                      src={req.vehicleImage}
+                                      alt={req.vehicleTitle}
+                                      className="w-16 h-12 object-cover border border-stone-400 shrink-0 bg-stone-900"
+                                    />
+                                  ) : (
+                                    <div className="w-16 h-12 bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-400 shrink-0">
+                                      <Car className="w-6 h-6" />
+                                    </div>
+                                  )}
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="px-1.5 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
+                                          VEHICLE
+                                        </span>
+                                        <h4 className="font-serif font-black text-stone-950 text-sm uppercase truncate">
+                                          {req.vehicleTitle}
+                                        </h4>
+                                      </div>
+                                      {req.vehiclePrice ? (
+                                        <span className="font-serif font-bold text-xs text-amber-900 whitespace-nowrap bg-amber-500/20 px-2 py-0.5 border border-amber-600/30">
+                                          ₹{req.vehiclePrice.toLocaleString("en-IN")}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <p className="text-[10.5px] font-mono text-stone-600 truncate mt-0.5">
+                                      Seller Listing: <strong className="text-stone-900">{req.sellerName || "AutoWorld Direct"}</strong>
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Buyer Details Grid */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-sans">
+                                {/* Buyer Name & Phone */}
+                                <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                                  <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
+                                    <UserIcon className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
+                                  </div>
+                                  <div className="font-serif font-black text-stone-950 text-sm">
+                                    {req.buyerName || "Interested Buyer"}
+                                  </div>
+                                  <div className="text-xs font-mono font-bold text-stone-800 flex items-center gap-1 pt-0.5">
+                                    <Phone className="w-3.5 h-3.5 text-amber-700" />
+                                    <a href={`tel:${req.phone}`} className="hover:underline hover:text-amber-900">
+                                      {req.phone}
+                                    </a>
+                                  </div>
+                                </div>
+
+                                {/* Date & Time Slot */}
+                                <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                                  <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5 text-amber-700" /> Appointment / Preferred Time
+                                  </div>
+                                  {isTestDrive ? (
+                                    <div className="space-y-0.5 font-mono">
+                                      <div className="font-bold text-stone-900">
+                                        📅 {req.preferredDate}
+                                      </div>
+                                      <div className="text-[11px] text-stone-700">
+                                        ⏰ {req.timeSlot}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="font-mono text-stone-900 font-bold">
+                                      ⏰ Preferred Slot: {req.timeSlot}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Drive Type / Topic */}
+                                <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                                  <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" /> Enquiry Scope
+                                  </div>
+                                  {isPart ? (
+                                    <div className="font-mono font-bold text-blue-900 text-xs flex items-center gap-1">
+                                      <Wrench className="w-3.5 h-3.5 text-blue-700" /> Motorsport Part Order &amp; Fitment
+                                    </div>
+                                  ) : isTestDrive ? (
+                                    <div className="font-mono font-bold text-stone-900 uppercase text-xs">
+                                      {req.driveType === "doorstep" ? "🚗 Doorstep Test Drive" : "🏢 Showroom Visit"}
+                                    </div>
+                                  ) : (
+                                    <div className="font-mono font-bold text-stone-900 text-xs">
+                                      📞 Callback &amp; Vehicle Valuation
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                            ) : (
-                              <div className="font-mono text-stone-900 font-bold">
-                                ⏰ Preferred Slot: {req.timeSlot}
+
+                              {/* Doorstep Address or Notes */}
+                              {isTestDrive && req.address && (
+                                <div className="p-2.5 bg-amber-500/10 border border-amber-600/30 text-xs font-mono text-stone-800 flex items-start gap-2">
+                                  <MapPin className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                                  <div>
+                                    <strong className="uppercase text-[10px] text-amber-900 block">Doorstep Delivery Address:</strong>
+                                    <span>{req.address}</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {req.notes && (
+                                <div className="p-2.5 bg-[#F4F1EA] border border-stone-300 text-xs text-stone-800 font-medium space-y-0.5">
+                                  <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
+                                    Buyer Note / Request Detail:
+                                  </span>
+                                  <p className="italic">"{req.notes}"</p>
+                                </div>
+                              )}
+
+                              {/* Seller Internal Note Display */}
+                              {req.sellerNote && editingNoteForReq !== req.refCode && (
+                                <div className="p-3 bg-stone-900 text-amber-300 border border-stone-950 font-mono text-xs space-y-1 rounded-xs">
+                                  <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-400">
+                                    <span>📝 Seller Internal Note:</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingNoteForReq(req.refCode);
+                                        setSellerNoteInput(req.sellerNote || "");
+                                      }}
+                                      className="text-stone-400 hover:text-white underline cursor-pointer"
+                                    >
+                                      Edit Note
+                                    </button>
+                                  </div>
+                                  <p className="text-stone-200">{req.sellerNote}</p>
+                                </div>
+                              )}
+
+                              {/* Edit Seller Note Input Box */}
+                              {editingNoteForReq === req.refCode && (
+                                <div className="p-3 bg-amber-50 border-2 border-amber-500 space-y-2">
+                                  <label className="text-[10.5px] font-mono font-bold uppercase text-stone-900 block">
+                                    Add Internal Seller Note / Remarks:
+                                  </label>
+                                  <textarea
+                                    rows={2}
+                                    value={sellerNoteInput}
+                                    onChange={(e) => setSellerNoteInput(e.target.value)}
+                                    placeholder="e.g. Spoke with buyer on phone, confirmed dispatch or meeting time."
+                                    className="w-full p-2 bg-white border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingNoteForReq(null);
+                                        setSellerNoteInput("");
+                                      }}
+                                      className="px-3 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveSellerNote(req.kind, req.refCode, sellerNoteInput, req.id)}
+                                      className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-amber-400 text-xs font-mono font-bold uppercase cursor-pointer"
+                                    >
+                                      Save Note
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Seller Action Controls Bar */}
+                              <div className="pt-3 border-t border-stone-300 flex flex-wrap items-center justify-between gap-3">
+                                {/* Left: Contact Direct Actions */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <a
+                                    href={waUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    <span>WhatsApp Buyer</span>
+                                  </a>
+
+                                  <a
+                                    href={`tel:${req.phone}`}
+                                    className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                                  >
+                                    <Phone className="w-3.5 h-3.5 text-amber-400" />
+                                    <span>Call Direct</span>
+                                  </a>
+
+                                  {editingNoteForReq !== req.refCode && !req.sellerNote && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingNoteForReq(req.refCode);
+                                        setSellerNoteInput("");
+                                      }}
+                                      className="px-2.5 py-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-800 border border-stone-400 text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+                                    >
+                                      <Edit className="w-3.5 h-3.5 text-stone-600" />
+                                      <span>Add Note</span>
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Right: Update Request Status & Delete */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-mono font-bold uppercase text-stone-500 hidden sm:inline">
+                                    Update Status:
+                                  </span>
+
+                                  <select
+                                    value={req.status}
+                                    onChange={(e) => handleUpdateRequestStatus(req.kind, req.refCode, e.target.value, req.id)}
+                                    className="px-2.5 py-1.5 bg-[#F4F1EA] border border-stone-400 text-xs font-mono font-bold uppercase text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
+                                  >
+                                    <option value={isTestDrive ? "scheduled" : "pending"}>
+                                      {isTestDrive ? "SCHEDULED (PENDING)" : "PENDING"}
+                                    </option>
+                                    <option value={isTestDrive ? "confirmed" : "contacted"}>
+                                      {isTestDrive ? "CONFIRMED APPOINTMENT" : "CONTACTED BUYER"}
+                                    </option>
+                                    <option value={isTestDrive ? "completed" : "resolved"}>
+                                      {isTestDrive ? "TEST DRIVE COMPLETED" : "RESOLVED / CLOSED"}
+                                    </option>
+                                    <option value="declined">DECLINED / CANCELLED</option>
+                                  </select>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteRequest(req.kind, req.refCode, req.id)}
+                                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 cursor-pointer transition"
+                                    title="Delete request"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </div>
-                            )}
-                          </div>
-
-                          {/* Drive Type / Topic */}
-                          <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
-                            <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" /> Enquiry Type
                             </div>
-                            {isTestDrive ? (
-                              <div className="font-mono font-bold text-stone-900 uppercase text-xs">
-                                {req.driveType === "doorstep" ? "🚗 Doorstep Test Drive" : "🏢 Showroom Visit"}
-                              </div>
-                            ) : (
-                              <div className="font-mono font-bold text-stone-900 text-xs">
-                                📞 Callback & Valuation Inquiry
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Doorstep Address or Notes */}
-                        {isTestDrive && req.address && (
-                          <div className="p-2.5 bg-amber-500/10 border border-amber-600/30 text-xs font-mono text-stone-800 flex items-start gap-2">
-                            <MapPin className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                            <div>
-                              <strong className="uppercase text-[10px] text-amber-900 block">Doorstep Delivery Address:</strong>
-                              <span>{req.address}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {req.notes && (
-                          <div className="p-2.5 bg-[#F4F1EA] border border-stone-300 text-xs text-stone-800 font-medium space-y-0.5">
-                            <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
-                              Buyer Note / Request Detail:
-                            </span>
-                            <p className="italic">"{req.notes}"</p>
-                          </div>
-                        )}
-
-                        {/* Seller Internal Note Display */}
-                        {req.sellerNote && editingNoteForReq !== req.refCode && (
-                          <div className="p-3 bg-stone-900 text-amber-300 border border-stone-950 font-mono text-xs space-y-1 rounded-xs">
-                            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-400">
-                              <span>📝 Seller Internal Note:</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingNoteForReq(req.refCode);
-                                  setSellerNoteInput(req.sellerNote || "");
-                                }}
-                                className="text-stone-400 hover:text-white underline cursor-pointer"
-                              >
-                                Edit Note
-                              </button>
-                            </div>
-                            <p className="text-stone-200">{req.sellerNote}</p>
-                          </div>
-                        )}
-
-                        {/* Edit Seller Note Input Box */}
-                        {editingNoteForReq === req.refCode && (
-                          <div className="p-3 bg-amber-50 border-2 border-amber-500 space-y-2">
-                            <label className="text-[10.5px] font-mono font-bold uppercase text-stone-900 block">
-                              Add Internal Seller Note / Schedule Remarks:
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={sellerNoteInput}
-                              onChange={(e) => setSellerNoteInput(e.target.value)}
-                              placeholder="e.g. Spoke with buyer on phone, confirmed Sunday 3 PM doorstep delivery."
-                              className="w-full p-2 bg-white border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
-                            />
-                            <div className="flex justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingNoteForReq(null);
-                                  setSellerNoteInput("");
-                                }}
-                                className="px-3 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveSellerNote(req.kind, req.refCode, sellerNoteInput, req.id)}
-                                className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-amber-400 text-xs font-mono font-bold uppercase cursor-pointer"
-                              >
-                                Save Note
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Seller Action Controls Bar */}
-                        <div className="pt-3 border-t border-stone-300 flex flex-wrap items-center justify-between gap-3">
-                          {/* Left: Contact Direct Actions */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <a
-                              href={waUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              <span>WhatsApp Buyer</span>
-                            </a>
-
-                            <a
-                              href={`tel:${req.phone}`}
-                              className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                            >
-                              <Phone className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Call Direct</span>
-                            </a>
-
-                            {editingNoteForReq !== req.refCode && !req.sellerNote && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingNoteForReq(req.refCode);
-                                  setSellerNoteInput("");
-                                }}
-                                className="px-2.5 py-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-800 border border-stone-400 text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition"
-                              >
-                                <Edit className="w-3.5 h-3.5 text-stone-600" />
-                                <span>Add Note</span>
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Right: Update Request Status & Delete */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono font-bold uppercase text-stone-500 hidden sm:inline">
-                              Update Status:
-                            </span>
-
-                            <select
-                              value={req.status}
-                              onChange={(e) => handleUpdateRequestStatus(req.kind, req.refCode, e.target.value, req.id)}
-                              className="px-2.5 py-1.5 bg-[#F4F1EA] border border-stone-400 text-xs font-mono font-bold uppercase text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
-                            >
-                              <option value={isTestDrive ? "scheduled" : "pending"}>
-                                {isTestDrive ? "SCHEDULED (PENDING)" : "PENDING"}
-                              </option>
-                              <option value={isTestDrive ? "confirmed" : "contacted"}>
-                                {isTestDrive ? "CONFIRMED APPOINTMENT" : "CONTACTED BUYER"}
-                              </option>
-                              <option value={isTestDrive ? "completed" : "resolved"}>
-                                {isTestDrive ? "TEST DRIVE COMPLETED" : "RESOLVED / CLOSED"}
-                              </option>
-                              <option value="declined">DECLINED / CANCELLED</option>
-                            </select>
-
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRequest(req.kind, req.refCode, req.id)}
-                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 cursor-pointer transition"
-                              title="Delete request"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
                   );
-                })}
-              </div>
+                })()}
+              </>
             );
           })()}
         </div>
       )}
 
-      {/* VIEW MODE 2: VEHICLE LISTING WIZARD */}
+      {/* 5. VEHICLE LISTING WIZARD (DEDICATED DIV) */}
       {viewMode === "wizard" && (
-        <>
+        <div id="sell-view-list-vehicle" className="space-y-6 animate-in fade-in duration-200">
           {/* Admin Authority Banner */}
           {isAdmin && (
             <div className="mb-6 bg-stone-900 border-2 border-amber-500 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[4px_4px_0px_0px_rgba(245,158,11,0.3)]">
@@ -5395,7 +6425,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           </motion.div>
         </div>
       )}
-      </>
+      </div>
       )}
 
       {/* ADVANCED ANIMATED LOGIN REQUIRED POP-UP MODAL */}
@@ -5896,6 +6926,457 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-mono font-bold uppercase tracking-widest border border-red-800 cursor-pointer disabled:opacity-50"
                 >
                   {isDeleting ? "Deleting..." : "Confirm Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* EDIT PART LISTING MODAL */}
+      <AnimatePresence>
+        {editingPartListing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingPartListing(null)}
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-stone-300 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-5 h-5 text-amber-700" />
+                  <h3 className="text-xl font-serif font-black text-stone-900 uppercase">
+                    Edit Performance Part Specs
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingPartListing(null)}
+                  className="p-1 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditPartListing} className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                      Part Title / Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editPartForm.title || ""}
+                      onChange={(e) => setEditPartForm(prev => ({ ...prev, title: e.target.value }))}
+                      className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Price (₹ INR) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        value={editPartForm.price || ""}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-bold focus:border-stone-900 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Manufacturer / Brand *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editPartForm.brand || ""}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, brand: e.target.value }))}
+                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Category *
+                      </label>
+                      <select
+                        value={editPartForm.category || "Engine & Performance"}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, category: e.target.value as PartCategory }))}
+                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      >
+                        {PART_CATEGORIES.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Rarity Tier
+                      </label>
+                      <select
+                        value={editPartForm.rarity || "standard"}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, rarity: e.target.value as PartRarity }))}
+                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      >
+                        <option value="standard">Standard OEM / Street</option>
+                        <option value="enthusiast">Enthusiast Spec</option>
+                        <option value="race_spec">Race / Track Spec</option>
+                        <option value="legendary">Legendary / Rare</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Condition
+                      </label>
+                      <select
+                        value={editPartForm.condition ?? 5}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, condition: Number(e.target.value) as 1 | 2 | 3 | 4 | 5 }))}
+                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      >
+                        <option value={5}>5 - Brand New / Sealed</option>
+                        <option value={4}>4 - Like New / Mint</option>
+                        <option value={3}>3 - Good Working Condition</option>
+                        <option value={2}>2 - Fair / Refurbished</option>
+                        <option value={1}>1 - For Parts / Spares</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Part Number / SKU
+                      </label>
+                      <input
+                        type="text"
+                        value={editPartForm.partNumber || ""}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, partNumber: e.target.value }))}
+                        placeholder="e.g. HKS-70020-AT022"
+                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-mono focus:border-stone-900 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Compatible Vehicles / Fitment
+                      </label>
+                      <input
+                        type="text"
+                        value={editPartForm.compatibleVehicles || ""}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, compatibleVehicles: e.target.value }))}
+                        placeholder="e.g. Universal / Supra MK4 / Golf GTI"
+                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                      Description &amp; Specifications
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editPartForm.description || ""}
+                      onChange={(e) => setEditPartForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Seller Contact Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editPartForm.sellerName || ""}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, sellerName: e.target.value }))}
+                        className="w-full p-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Phone / WhatsApp
+                      </label>
+                      <input
+                        type="text"
+                        value={editPartForm.sellerPhone || ""}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, sellerPhone: e.target.value }))}
+                        className="w-full p-2 bg-white border border-stone-300 text-xs font-mono focus:border-stone-900 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                        Dispatch / City Location
+                      </label>
+                      <input
+                        type="text"
+                        value={editPartForm.location || ""}
+                        onChange={(e) => setEditPartForm(prev => ({ ...prev, location: e.target.value }))}
+                        className="w-full p-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Toggle in Modal */}
+                  <div className="pt-2">
+                    <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                      Part Status
+                    </label>
+                    <div className="flex gap-2">
+                      {(["active", "pending", "sold"] as const).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setEditPartForm(prev => ({ ...prev, status: st }))}
+                          className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider border cursor-pointer ${
+                            (editPartForm.status || editingPartListing.status) === st
+                              ? "bg-stone-900 text-white border-stone-950"
+                              : "bg-white text-stone-700 border-stone-300 hover:bg-stone-100"
+                          }`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-stone-300">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPartListing(null)}
+                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingPartEdit}
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingPartEdit ? "Saving..." : "Save Part Listing"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MANAGE PART PHOTOS MODAL */}
+      <AnimatePresence>
+        {photoManagingPartListing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPhotoManagingPartListing(null)}
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-stone-300 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-amber-700" />
+                  <h3 className="text-xl font-serif font-black text-stone-900 uppercase">
+                    Manage Part Photo Gallery
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPhotoManagingPartListing(null)}
+                  className="p-1 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePartPhotos} className="space-y-4">
+                <div className="space-y-3">
+                  <p className="text-xs text-stone-600 font-medium">
+                    Upload hardware photos or add direct image URLs. Drag to reorder (the first photo is your main cover thumbnail).
+                  </p>
+
+                  {/* Current Photos Grid */}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                    {managePartPhotosList.map((photo, idx) => (
+                      <div key={idx} className="relative aspect-square bg-stone-900 border border-stone-300 overflow-hidden group">
+                        <img src={photo.src} alt={photo.alt} className="w-full h-full object-cover" />
+                        {idx === 0 && (
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-extrabold uppercase">
+                            Cover
+                          </span>
+                        )}
+                        <div className="absolute inset-0 bg-stone-950/70 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                          {idx !== 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...managePartPhotosList];
+                                const [removed] = updated.splice(idx, 1);
+                                updated.unshift(removed);
+                                setManagePartPhotosList(updated);
+                              }}
+                              className="p-1 bg-stone-800 text-amber-400 hover:bg-stone-700 text-[10px] font-mono uppercase"
+                              title="Make Cover"
+                            >
+                              Cover
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManagePartPhotosList(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="p-1 bg-red-600 text-white hover:bg-red-700"
+                            title="Remove Photo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Upload via Local File */}
+                  <div className="pt-2">
+                    <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                      Upload from Device
+                    </label>
+                    <label className="border-2 border-dashed border-stone-400 p-4 flex flex-col items-center justify-center gap-1 hover:border-stone-900 cursor-pointer bg-white transition-colors">
+                      <Upload className="w-5 h-5 text-stone-500" />
+                      <span className="text-xs font-mono font-bold text-stone-700">Choose images to upload</span>
+                      <span className="text-[10px] text-stone-500">PNG, JPG, WEBP up to 5MB</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleAddPartPhotoFiles}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Upload via Direct URL */}
+                  <div>
+                    <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                      Or Add Image by URL
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={newPartPhotoUrlInput}
+                        onChange={(e) => setNewPartPhotoUrlInput(e.target.value)}
+                        className="flex-1 p-2 bg-white border border-stone-300 text-xs font-mono focus:border-stone-900 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddPartPhotoUrl}
+                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                      >
+                        Add URL
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-stone-300">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoManagingPartListing(null)}
+                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingPartPhotos}
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingPartPhotos ? "Saving Photos..." : "Save Photo Gallery"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DELETE PART CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {deletingPartListing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingPartListing(null)}
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans text-center space-y-4"
+            >
+              <div className="w-14 h-14 bg-red-100 border-2 border-red-300 rounded-full flex items-center justify-center text-red-600 mx-auto">
+                <Trash2 className="w-7 h-7" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-serif font-black text-stone-900 uppercase">
+                  Remove Part Permanently?
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed font-medium">
+                  Are you sure you want to delete <strong className="text-stone-950 font-bold">"{deletingPartListing.title}"</strong>? This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setDeletingPartListing(null)}
+                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingPart}
+                  onClick={handleConfirmDeletePart}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-mono font-bold uppercase tracking-widest border border-red-800 cursor-pointer disabled:opacity-50"
+                >
+                  {isDeletingPart ? "Deleting..." : "Confirm Delete"}
                 </button>
               </div>
             </motion.div>
