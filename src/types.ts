@@ -61,12 +61,15 @@ export type PartCategory =
   | "nitro"
   | "headlight"
   | "exhaust"
+  | "turbo"
   | "wheels"
   | "suspension"
-  | "turbo"
   | "brakes"
   | "ecu_tuning"
   | "body_kit"
+  | "interior"
+  | "audio"
+  | "custom_other"
   | "other";
 
 export type PartRarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
@@ -75,24 +78,34 @@ export interface Part {
   id: number | string;
   title: string;
   category: PartCategory;
+  customCategoryName?: string;
   rarity: PartRarity;
   condition: 1 | 2 | 3 | 4 | 5;
   brand: string;
   price: number;
   image: string;
   photos?: { src: string; alt: string }[];
+  compatibleMake?: string;
+  compatibleModel?: string;
+  suitableVehicles?: string[];
   compatibleVehicles: string;
+  purchaseDate?: string;
+  installationDifficulty?: "Easy (Plug & Play)" | "Moderate (Garage Tools)" | "Professional (Tuner Required)" | string;
+  performanceGain?: string;
+  shippingAvailable?: boolean;
+  inquiryCount?: number;
   description: string;
   specifications?: Record<string, string>;
   sellerName?: string;
   sellerPhone?: string;
   sellerEmail?: string;
   location?: string;
-  negotiable?: string;
+  negotiable?: "yes" | "no" | string;
   badge?: "verified" | "premium" | "hot" | null;
   status?: "pending" | "active" | "sold" | "hidden";
   isUserListing?: boolean;
   listingId?: string;
+  userId?: string;
   datePosted?: string;
   partNumber?: string;
   warranty?: string;
@@ -102,13 +115,22 @@ export interface UserPartListing {
   id: string;
   title: string;
   category: PartCategory;
+  customCategoryName?: string;
   rarity: PartRarity;
   condition: number;
   brand: string;
   price: number;
+  compatibleMake?: string;
+  compatibleModel?: string;
+  suitableVehicles?: string[];
   compatibleVehicles: string;
+  purchaseDate?: string;
+  installationDifficulty?: "Easy (Plug & Play)" | "Moderate (Garage Tools)" | "Professional (Tuner Required)" | string;
+  performanceGain?: string;
+  shippingAvailable?: boolean;
+  inquiryCount?: number;
   description: string;
-  negotiable: string;
+  negotiable: "yes" | "no" | string;
   sellerName: string;
   sellerEmail: string;
   sellerPhone: string;
@@ -528,18 +550,20 @@ export const ROAD_TAX_OPTIONS = [
 ];
 
 export const PART_CATEGORIES: { id: PartCategory; label: string; icon: string; description: string }[] = [
-  { id: "spoiler", label: "Spoilers & Aero Wings", icon: "Wind", description: "Pre-preg carbon fiber wings, active splitters, and ducktail diffusers" },
-  { id: "engine", label: "Crate Engines & Internals", icon: "Cpu", description: "Forged pistons, high-lift camshafts, and complete race-spec blocks" },
-  { id: "nitro", label: "Nitrous Oxide Systems", icon: "Zap", description: "Direct-port wet fogger systems, solenoid valves, and bottle warmers" },
-  { id: "headlight", label: "Matrix Laser Headlights", icon: "Lightbulb", description: "Adaptive laser clusters, tinted crystal lenses, and dynamic indicators" },
-  { id: "exhaust", label: "Titanium Exhaust Systems", icon: "Flame", description: "Valvetronic headers, decat downpipes, and scorched titanium tips" },
-  { id: "turbo", label: "Turbochargers & Blowers", icon: "Disc", description: "Dual ceramic ball-bearing turbos, blow-off valves, and intercoolers" },
-  { id: "wheels", label: "Forged Alloy Wheels", icon: "CircleDot", description: "Multi-piece forged center-lock and lightweight alloy wheel rims" },
-  { id: "suspension", label: "Coilovers & Air Bags", icon: "Activity", description: "Track-spec adjustable dampers, camber plates, and pneumatic air suspension" },
-  { id: "brakes", label: "Carbon Ceramic Brakes", icon: "Disc3", description: "Monobloc multi-piston calipers, slotted rotors, and race brake pads" },
-  { id: "ecu_tuning", label: "ECU & Standalone Tuners", icon: "Sliders", description: "Piggyback tuners, standalone engine management, and quick-shifters" },
-  { id: "body_kit", label: "Widebody & Carbon Kits", icon: "Layers", description: "Fender flares, vented carbon hoods, side skirts, and rear diffusers" },
-  { id: "other", label: "Cabin & Track Accessories", icon: "Wrench", description: "FIA-rated harness bars, bucket seats, gauges, and short shifters" }
+  { id: "spoiler", label: "Spoiler & Aero Wings", icon: "Wind", description: "Pre-preg dry carbon wings, GT swan necks, splitters, and ducktail diffusers" },
+  { id: "engine", label: "Engine Crate & Internals", icon: "Cpu", description: "Forged pistons, high-lift camshafts, and complete race-spec engine assemblies" },
+  { id: "nitro", label: "Nitrous Oxide Systems", icon: "Zap", description: "Direct-port wet fogger systems, solenoid valves, purge kits, and warmers" },
+  { id: "headlight", label: "Laser & LED Headlights", icon: "Lightbulb", description: "Adaptive laser clusters, dynamic sequential indicators, and smoked lenses" },
+  { id: "exhaust", label: "Titanium Exhaust Systems", icon: "Flame", description: "Valvetronic cat-back headers, decat downpipes, and scorched titanium tips" },
+  { id: "turbo", label: "Turbochargers & Superchargers", icon: "Disc", description: "Dual ceramic ball-bearing turbos, blow-off valves, and high-flow intercoolers" },
+  { id: "wheels", label: "Forged Alloy Wheels", icon: "CircleDot", description: "Multi-piece forged center-lock, monoblock lightweight track alloy rims" },
+  { id: "suspension", label: "Suspension & Coilovers", icon: "Activity", description: "Track-spec adjustable dampers, camber plates, and pneumatic air suspension" },
+  { id: "brakes", label: "Big Brake Kits & Carbon", icon: "Disc3", description: "Monobloc multi-piston calipers, floating carbon ceramic slotted rotors" },
+  { id: "ecu_tuning", label: "ECU Tuning & Standalone", icon: "Sliders", description: "Piggyback tuning boxes, standalone engine management, and quick-shifters" },
+  { id: "body_kit", label: "Widebody & Carbon Kits", icon: "Layers", description: "Fender flares, vented carbon hoods, side skirts, and aggressive rear diffusers" },
+  { id: "interior", label: "Interior & Cockpit", icon: "Sliders", description: "FIA-approved carbon bucket seats, harness bars, alcantara steering wheels, and gauges" },
+  { id: "audio", label: "High-End Audio Systems", icon: "Sliders", description: "Audiophile DSP amplifiers, component neodymium speakers, and custom subwoofers" },
+  { id: "custom_other", label: "Custom / Other Component", icon: "Wrench", description: "Bespoke fabricated hardware, track accessories, and custom motorsport gear" }
 ];
 
 export const PART_RARITY_TIERS: Record<PartRarity, { label: string; badgeClass: string; glowClass: string; bgClass: string; accentColor: string }> = {
@@ -623,7 +647,20 @@ export const DEFAULT_PARTS: Part[] = [
     brand: "Akrapovič",
     price: 85000,
     image: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Carbon GT Wing Top Profile" },
+      { src: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&auto=format&fit=crop&q=80", alt: "Billet Aluminum Mounting Feet" },
+      { src: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80", alt: "Dry Carbon Weave Close Up" }
+    ],
+    compatibleMake: "Universal",
+    compatibleModel: "Sports Coupe / Sedan / Universal Track",
+    suitableVehicles: ["Universal", "BMW 3 Series", "Mahindra Thar", "Toyota Supra", "Porsche 911"],
     compatibleVehicles: "Universal Track / Sports Coupes / BMW 3 Series / Thar Custom",
+    purchaseDate: "Brand New Unopened",
+    installationDifficulty: "Moderate (Garage Tools)",
+    performanceGain: "Downforce: +145 kg @ 180 km/h",
+    shippingAvailable: true,
+    inquiryCount: 42,
     description: "Ultra-rigid dry carbon autoclave weave swan-neck aerodynamic wing. Designed to generate over 145 kg of linear downforce at 180 km/h with 12-position billet aluminum angle adjustment mounts.",
     partNumber: "AKR-GTW-7740",
     warranty: "2 Years Manufacturer Replacement",
@@ -645,14 +682,66 @@ export const DEFAULT_PARTS: Part[] = [
   },
   {
     id: 2,
-    title: "NOS Direct-Port Multi-Point Nitrous System",
+    title: "Garrett GTX3582R Gen II Twin-Scroll Ball-Bearing Turbocharger",
+    category: "turbo",
+    rarity: "Legendary",
+    condition: 5,
+    brand: "Garrett Motion",
+    price: 165000,
+    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80", alt: "Garrett Gen II Billet Compressor" },
+      { src: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80", alt: "Twin Scroll Turbine Housing" }
+    ],
+    compatibleMake: "Universal",
+    compatibleModel: "2.0L - 4.5L Tuned Petrol/Diesel Engines",
+    suitableVehicles: ["Universal", "BMW 3 Series", "Toyota Fortuner", "Mahindra Thar", "Volkswagen Virtus"],
+    compatibleVehicles: "Universal Fitment / T4 Twin-Scroll Flange / 2.0L - 4.5L Engines",
+    purchaseDate: "1 Month Ago",
+    installationDifficulty: "Professional (Tuner Required)",
+    performanceGain: "+180 HP to +450 HP (Up to 850 HP Capacity)",
+    shippingAvailable: true,
+    inquiryCount: 38,
+    description: "Fully forged machined 10-blade point milled billet compressor wheel with dual ceramic ball bearing CHRA. Ceramic coated high-flow nickel alloy turbine housing for instantaneous spool-up response.",
+    partNumber: "GRT-GTX3582R-II",
+    warranty: "1 Year Official Garrett Warranty",
+    specifications: {
+      "Compressor Inducer": "66 mm Billet Aerofoil",
+      "Turbine Wheel Exducer": "68 mm Inconel Alloy",
+      "Bearing System": "Dual Ceramic Ball-Bearing",
+      "Cooling": "Water & Oil Cooled CHRA",
+      "Flange Type": "T4 Twin Scroll Divided"
+    },
+    badge: "hot",
+    sellerName: "BoostKraft Performance Hub",
+    sellerPhone: "+91 98450 77120",
+    sellerEmail: "tuning@boostkraft.co.in",
+    location: "Bengaluru, Karnataka",
+    negotiable: "yes",
+    status: "active"
+  },
+  {
+    id: 3,
+    title: "NOS Direct-Port Multi-Point Nitrous Delivery Kit",
     category: "nitro",
     rarity: "Epic",
     condition: 5,
     brand: "NOS (Holley)",
     price: 120000,
     image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=80", alt: "NOS 10lb Aluminum Bottle" },
+      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Solenoids and Fogger Nozzles" }
+    ],
+    compatibleMake: "Universal",
+    compatibleModel: "V6 / V8 / 4-Cylinder Petrol Performance Cars",
+    suitableVehicles: ["Universal", "Mahindra Thar Petrol", "BMW 3 Series", "Polo GT"],
     compatibleVehicles: "V6 / V8 / Tuned 4-Cylinder Petrol (Thar Petrol / BMW / Polo GT)",
+    purchaseDate: "Brand New Unopened",
+    installationDifficulty: "Professional (Tuner Required)",
+    performanceGain: "+75 HP to +150 HP Instant Shot",
+    shippingAvailable: true,
+    inquiryCount: 29,
     description: "Complete 10 lb blue aluminum bottle nitrous delivery kit with high-pressure braided stainless steel lines, purge valve kit, and programmable progressive micro-pulse controller delivering 75 HP to 150 HP instantaneous shots.",
     partNumber: "NOS-05130-V2",
     warranty: "1 Year Performance Warranty",
@@ -661,7 +750,7 @@ export const DEFAULT_PARTS: Part[] = [
       "Power Boost": "+75 BHP to +150 BHP Shot",
       "Injection Style": "Direct-Port Wet Fogger Nozzles",
       "Operating Pressure": "900 - 1050 PSI",
-      "Safety": "Dual Blow-Down Tubes & Electronic Fuel Pressure Safety Switch"
+      "Safety": "Dual Blow-Down Tubes & Fuel Pressure Switch"
     },
     badge: "hot",
     sellerName: "Apex Racing Bengaluru",
@@ -669,34 +758,6 @@ export const DEFAULT_PARTS: Part[] = [
     sellerEmail: "tuning@apexracing.co.in",
     location: "Bengaluru, Karnataka",
     negotiable: "yes",
-    status: "active"
-  },
-  {
-    id: 3,
-    title: "Cosworth Stage 3 Billet 3.0L Crate Engine Assembly",
-    category: "engine",
-    rarity: "Legendary",
-    condition: 5,
-    brand: "Cosworth Engineering",
-    price: 850000,
-    image: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80",
-    compatibleVehicles: "BMW 3/M3 / Toyota Supra / Bespoke Track Restomods",
-    description: "Fully balanced and blueprinted inline-6 closed-deck billet block. Loaded with forged Cosworth pistons, H-beam titanium rods, high-lift dual overhead cams, and inconel valvetrain rated for 720+ horsepower on 100 octane fuel.",
-    partNumber: "COS-ENG-I6-720",
-    warranty: "6 Months / 10,000 km Track Limited Warranty",
-    specifications: {
-      "Engine Displacement": "2,998 cc (3.0 Liters)",
-      "Peak Power Output": "720 BHP @ 7,600 RPM",
-      "Peak Torque": "860 Nm @ 3,200 RPM",
-      "Compression Ratio": "9.8:1 Forged Turbo Spec",
-      "Dry Weight": "164 kg"
-    },
-    badge: "premium",
-    sellerName: "Cosworth India Authorized",
-    sellerPhone: "+91 98110 55344",
-    sellerEmail: "desk@cosworthindia.com",
-    location: "Gurugram, NCR",
-    negotiable: "no",
     status: "active"
   },
   {
@@ -708,7 +769,19 @@ export const DEFAULT_PARTS: Part[] = [
     brand: "Bosch Motorsport",
     price: 68000,
     image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80", alt: "Matrix Laser Lens Active Beam" },
+      { src: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&auto=format&fit=crop&q=80", alt: "Thar Headlight Housing Fitment" }
+    ],
+    compatibleMake: "Mahindra",
+    compatibleModel: "Thar (2020-2024) / Wrangler / Defender 7-Inch",
+    suitableVehicles: ["Mahindra Thar", "Jeep Wrangler", "Land Rover Defender"],
     compatibleVehicles: "Mahindra Thar (2020-2024) / Wrangler / Defender Retrofit",
+    purchaseDate: "3 Months Ago",
+    installationDifficulty: "Easy (Plug & Play)",
+    performanceGain: "Visibility: 16,000 Lumens / 600m Laser Beam",
+    shippingAvailable: true,
+    inquiryCount: 51,
     description: "7-inch circular military-grade sealed projector headlights featuring active matrix laser diode high-beams reaching up to 600 meters. Includes sweeping dynamic amber sequential turn signals and integrated DRL halo rings.",
     partNumber: "BOS-LSR-701A",
     warranty: "3 Years Waterproofing Warranty",
@@ -736,7 +809,19 @@ export const DEFAULT_PARTS: Part[] = [
     brand: "Akrapovič",
     price: 340000,
     image: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80", alt: "Titanium Headers and Valved Mufflers" },
+      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Matte Carbon Fiber Tailpipe Sleeves" }
+    ],
+    compatibleMake: "BMW",
+    compatibleModel: "3 Series G20 (330i / M340i)",
+    suitableVehicles: ["BMW 3 Series G20", "BMW M340i xDrive", "BMW 4 Series"],
     compatibleVehicles: "BMW 3 Series G20 / Fortuner 2.8L / Custom Performance Sedans",
+    purchaseDate: "Brand New Unopened",
+    installationDifficulty: "Moderate (Garage Tools)",
+    performanceGain: "+14.2 HP @ 5,400 RPM / -12.4 kg Weight Saving",
+    shippingAvailable: true,
+    inquiryCount: 47,
     description: "Aerospace-grade ultralight titanium full cat-back exhaust with vacuum-actuated dual active valves. Delivers a deep resonant motorsport acoustics profile while shedding 12.4 kg compared to OEM stainless systems.",
     partNumber: "S-BM/T/10H",
     warranty: "3 Years Factory Acoustic Warranty",
@@ -764,7 +849,19 @@ export const DEFAULT_PARTS: Part[] = [
     brand: "BBS Motorsport",
     price: 290000,
     image: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80", alt: "BBS Super RS 19 Inch Front Wheel" },
+      { src: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80", alt: "Polished Step Lip and Gold Hardware" }
+    ],
+    compatibleMake: "Universal",
+    compatibleModel: "5x112 & 5x120 PCD Fitment",
+    suitableVehicles: ["Universal", "BMW 3 Series", "Mercedes C-Class", "Audi A4", "Skoda Octavia vRS", "Volkswagen Virtus"],
     compatibleVehicles: "5x112 / 5x120 Universal Bolt PCD (BMW, Mercedes, Audi, Skoda, Thar with adapter)",
+    purchaseDate: "6 Months Ago",
+    installationDifficulty: "Easy (Plug & Play)",
+    performanceGain: "Unsprung Weight: 8.85 kg per wheel",
+    shippingAvailable: true,
+    inquiryCount: 34,
     description: "Iconic timeless cross-spoke 2-piece forged aluminum wheel rim set. Diamond-cut polished lips with gold titanium hardware assembly bolts, providing extreme rotational rigidity and lightweight unsprung mass.",
     partNumber: "BBS-RS19-85ET35",
     warranty: "Lifetime Structural Integrity",

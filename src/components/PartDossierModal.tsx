@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { 
   X, ShieldCheck, Star, Sparkles, MapPin, Phone, Mail, 
   MessageCircle, Copy, Check, Wrench, Cpu, Zap, Flame, Disc, 
   Layers, Sliders, Activity, Wind, Lightbulb, Share2, Info, 
   ExternalLink, CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, Trash2,
   Lock, Eye, EyeOff, Save, ArrowLeft, CheckCircle, Home, Plus, Image as ImageIcon,
-  Edit2, Upload, ArrowUp, ArrowDown
+  Edit2, Upload, ArrowUp, ArrowDown, Heart
 } from "lucide-react";
 import { Part, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -23,6 +24,8 @@ interface PartDossierModalProps {
   clickCoordinates?: { x: number; y: number } | null;
   hasPaidPass?: boolean;
   onRequestPass?: () => void;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export const MOTORSPORT_IMAGE_PRESETS = [
@@ -46,7 +49,9 @@ export default function PartDossierModal({
   initialTab = "overview",
   clickCoordinates,
   hasPaidPass = false,
-  onRequestPass
+  onRequestPass,
+  isFavorited = false,
+  onToggleFavorite
 }: PartDossierModalProps) {
   // Check whether the logged-in user is the verified owner or an authorized administrator
   const isAuthorizedAdmin = Boolean(
@@ -87,6 +92,33 @@ export default function PartDossierModal({
 
   // Pinned Homepage status state
   const [isPinnedHome, setIsPinnedHome] = useState(false);
+
+  // Scroll Container Ref for instant scroll restoration
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Body scroll locking and escape key listener
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow === "hidden" ? "" : originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  // Reset internal modal scroll position to top whenever tab or part changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [activeTab, part?.id]);
 
   useEffect(() => {
     if (part) {
@@ -499,32 +531,30 @@ export default function PartDossierModal({
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-stone-950/85 backdrop-blur-md"
-        onClick={onClose}
-      >
+      <div className="fixed inset-0 z-[9999] overflow-y-auto font-sans" id="part-dossier-modal">
+        {/* Safe Backdrop */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.88, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.88, y: 20 }}
-          transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.85 }}
-          style={
-            clickCoordinates
-              ? {
-                  transformOrigin: `${clickCoordinates.x}px ${clickCoordinates.y}px`,
-                }
-              : undefined
-          }
-          onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-5xl bg-[#FAF8F5] text-[#1A1A1A] rounded-xl shadow-2xl border-2 border-stone-950 overflow-hidden my-auto max-h-[92vh] flex flex-col font-sans"
-        >
-          {/* Top Dossier Header */}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="fixed inset-0 bg-stone-950/85 backdrop-blur-md"
+          onClick={onClose}
+        />
+
+        {/* Centered Modal Scrollable Wrapper */}
+        <div className="min-h-full w-full flex items-center justify-center p-2 sm:p-4 pointer-events-none">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 14 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-5xl bg-[#FAF8F5] text-[#1A1A1A] rounded-xl shadow-2xl border-2 border-stone-950 overflow-hidden my-auto max-h-[92vh] flex flex-col font-sans pointer-events-auto z-10"
+          >
+            {/* Top Dossier Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b-2 border-stone-950 bg-[#F4F1EA] gap-3 shrink-0">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-700 font-extrabold">
@@ -541,6 +571,20 @@ export default function PartDossierModal({
             </div>
             
             <div className="flex items-center gap-2 self-end sm:self-auto">
+              {onToggleFavorite && (
+                <button
+                  onClick={onToggleFavorite}
+                  className={`p-1.5 rounded border transition cursor-pointer flex items-center gap-1 text-xs font-mono font-bold ${
+                    isFavorited
+                      ? "bg-red-600 border-red-500 text-white shadow-sm"
+                      : "bg-white hover:bg-stone-200 border-stone-400 text-stone-700 hover:text-red-500"
+                  }`}
+                  title={isFavorited ? "Saved to Favorites" : "Add to Favorites"}
+                >
+                  <Heart className={`w-4 h-4 ${isFavorited ? "fill-white text-white" : "text-stone-700"}`} />
+                  <span className="hidden sm:inline text-[10px] uppercase">{isFavorited ? "Saved" : "Save"}</span>
+                </button>
+              )}
               {adminStatusMessage && (
                 <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-1 rounded border border-emerald-300 animate-pulse">
                   {adminStatusMessage}
@@ -633,7 +677,7 @@ export default function PartDossierModal({
           </div>
 
           {/* Scrollable Content Body */}
-          <div className="overflow-y-auto flex-1 p-6 sm:p-8 space-y-6">
+          <div ref={scrollContainerRef} className="overflow-y-auto flex-1 p-6 sm:p-8 space-y-6">
             
             {/* 1. OVERVIEW TAB */}
             {activeTab === "overview" && (
@@ -1580,7 +1624,9 @@ export default function PartDossierModal({
           </div>
 
         </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
+      </div>
+    </div>
+  </AnimatePresence>,
+  document.body
+);
 }

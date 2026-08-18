@@ -26,6 +26,24 @@ async function startServer() {
     }
   });
 
+  // Discord Domain Verification Endpoints (HTTPS method & TXT mirror)
+  app.get("/.well-known/discord", (req, res) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.status(200).send("dh=7957b14f3aebbc703379dfeb5f2282c038782316");
+  });
+
+  app.get("/.well-known/discord.txt", (req, res) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.status(200).send("dh=7957b14f3aebbc703379dfeb5f2282c038782316");
+  });
+
+  app.get("/_discord", (req, res) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.status(200).send("dh=7957b14f3aebbc703379dfeb5f2282c038782316");
+  });
+
   // API endpoint for vehicle showcase data
   app.get("/api/vehicles", (req, res) => {
     try {

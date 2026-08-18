@@ -6,6 +6,7 @@ export type UserRole =
   | "Owner"
   | "Co-Owner"
   | "Super Admin"
+  | "Parts Specialist"
   | "Inventory Manager"
   | "Sales & Leads Specialist"
   | "Support Agent"
@@ -13,6 +14,245 @@ export type UserRole =
   | "Finance Specialist"
   | "Marketing & Social Media Lead"
   | "User";
+
+export interface RoleSOP {
+  clearanceLevel: "Level 5 (Super Root)" | "Level 4 (Executive)" | "Level 3 (Operational Lead)" | "Level 2 (Specialist Desk)" | "Level 1 (Support Desk)";
+  badgeColor: string;
+  coreResponsibilities: string[];
+  dailyTasks: string[];
+  sopGuidelines: string[];
+  quickActions: { label: string; tabTarget: string; actionDesc: string }[];
+}
+
+export const ROLE_SOPS: Record<UserRole, RoleSOP> = {
+  "Owner": {
+    clearanceLevel: "Level 5 (Super Root)",
+    badgeColor: "text-amber-500 bg-amber-500/10 border-amber-500/30",
+    coreResponsibilities: [
+      "Ultimate platform ownership, system architecture, database security rules and root ledger management",
+      "Executive role assignments, staff clearance level overrides, and access control governance",
+      "Global catalog price overrides, financial reconciliation, and dealer network compliance"
+    ],
+    dailyTasks: [
+      "Review daily audit logs and system transaction ledgers",
+      "Authorize high-value vehicle and prototype parts verification requests",
+      "Evaluate staff role performance and manage platform operational credentials"
+    ],
+    sopGuidelines: [
+      "Always verify user identity before escalating clearance to administrative roles.",
+      "Execute database rule deployments only during verified catalog maintenance windows.",
+      "Maintain strict oversight on financial ledger exports and Escrow vehicle disbursements."
+    ],
+    quickActions: [
+      { label: "Admin Operations Desk", tabTarget: "admin", actionDesc: "Full administrative suite access" },
+      { label: "Staff Office Suite", tabTarget: "office", actionDesc: "Manage staff roles and operational logs" }
+    ]
+  },
+  "Co-Owner": {
+    clearanceLevel: "Level 4 (Executive)",
+    badgeColor: "text-amber-400 bg-amber-500/10 border-amber-500/30",
+    coreResponsibilities: [
+      "Executive platform oversight and operational workflow management",
+      "Inventory verification audit, leads triage, and partner dealer management"
+    ],
+    dailyTasks: [
+      "Review flagged vehicle and parts submissions",
+      "Oversee customer VIP test drive approvals",
+      "Coordinate with Parts Specialists on high-rarity performance hardware authentication"
+    ],
+    sopGuidelines: [
+      "Enforce Auto World luxury editorial standards on all published media assets.",
+      "Escalate database schema and security modifications directly to the Owner."
+    ],
+    quickActions: [
+      { label: "Inventory Desk", tabTarget: "admin", actionDesc: "Inspect vehicle & parts catalog" },
+      { label: "Staff Office", tabTarget: "office", actionDesc: "Review team workflows" }
+    ]
+  },
+  "Super Admin": {
+    clearanceLevel: "Level 4 (Executive)",
+    badgeColor: "text-purple-400 bg-purple-500/10 border-purple-500/30",
+    coreResponsibilities: [
+      "Complete operational authority over listings, lead desks, customer reviews, and financing queries",
+      "Audit trail tracking and catalog content quality governance"
+    ],
+    dailyTasks: [
+      "Process pending user vehicle and performance parts listings within 2 hours of submission",
+      "Review reported suspicious buyer or seller accounts",
+      "Ensure all showcase photos meet minimum 1920x1080 resolution criteria"
+    ],
+    sopGuidelines: [
+      "Perform cross-checks on vehicle VINs against state transport databases before granting 'Verified' badge.",
+      "Check that performance parts include legitimate part numbers and manufacturer warranties."
+    ],
+    quickActions: [
+      { label: "Admin Console", tabTarget: "admin", actionDesc: "Manage platform data" },
+      { label: "Staff Lounge", tabTarget: "office", actionDesc: "View operational SOPs" }
+    ]
+  },
+  "Parts Specialist": {
+    clearanceLevel: "Level 2 (Specialist Desk)",
+    badgeColor: "text-amber-400 bg-amber-500/10 border-amber-500/30",
+    coreResponsibilities: [
+      "Dedicated management of the Motorsport Parts & Performance Hardware Marketplace",
+      "Authentication of high-performance components, OEM part numbers, turbo specs, and forged alloys",
+      "Grading parts by Condition (1-5 Stars) and Rarity Tiers (Common to Legendary Prototype)",
+      "Pinning top performance components to the Auto World curated homepage showcase"
+    ],
+    dailyTasks: [
+      "Review incoming user performance parts submissions for accurate fitment and vehicle compatibility",
+      "Audit hardware specifications: material grade, power gains (HP/Torque), and bolt patterns (PCD)",
+      "Verify seller contact authenticity and respond to technical buyer parts inquiries",
+      "Manage parts pricing integrity and identify rare/epic motorsport components"
+    ],
+    sopGuidelines: [
+      "Never approve a 'Legendary' or 'Epic' tier component without verified manufacturer part numbers.",
+      "Verify that downforce, horsepower, and torque claims are supported by dyno sheets or manufacturer specs.",
+      "Ensure universal vs vehicle-specific fitment flags are strictly accurate to prevent buyer misfits.",
+      "Update parts status to 'sold' immediately upon transaction confirmation to keep registry clean."
+    ],
+    quickActions: [
+      { label: "Motorsport Parts Desk", tabTarget: "admin", actionDesc: "Manage all motorsport parts listings" },
+      { label: "Browse Parts Catalog", tabTarget: "buy", actionDesc: "View live public parts inventory" },
+      { label: "List New Component", tabTarget: "sell", actionDesc: "Launch 5-step parts upload wizard" }
+    ]
+  },
+  "Inventory Manager": {
+    clearanceLevel: "Level 3 (Operational Lead)",
+    badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
+    coreResponsibilities: [
+      "Master vehicle catalog curation, stock levels, specs calibration, and 100-point inspection audits",
+      "Management of vehicle price adjustments, mileage updates, and premium featured slots"
+    ],
+    dailyTasks: [
+      "Inspect new vehicle intake submissions and assign accurate condition scoring",
+      "Verify RTO registration records, road tax status, and single-owner paperwork",
+      "Manage homepage featured showcase rotation weekly"
+    ],
+    sopGuidelines: [
+      "Vehicle mileage must be cross-referenced with service booklet records before certification.",
+      "Ensure all vehicle price listings are in standard INR (₹) notation with complete tax status."
+    ],
+    quickActions: [
+      { label: "Vehicle Catalog", tabTarget: "admin", actionDesc: "Edit vehicle registry" },
+      { label: "Showroom Inventory", tabTarget: "buy", actionDesc: "Review live showroom cars" }
+    ]
+  },
+  "Sales & Leads Specialist": {
+    clearanceLevel: "Level 2 (Specialist Desk)",
+    badgeColor: "text-blue-400 bg-blue-500/10 border-blue-500/30",
+    coreResponsibilities: [
+      "Direct buyer communication, VIP test-drive scheduling, price negotiation, and trade-in valuations",
+      "Conversion tracking for buyer leads and Secure Shield inspection bookings"
+    ],
+    dailyTasks: [
+      "Follow up on all new contact inquiries and WhatsApp buyer chats within 15 minutes",
+      "Schedule physical showroom viewing appointments and accompany VIP clients on test drives",
+      "Coordinate with finance desk on customer loan pre-approvals"
+    ],
+    sopGuidelines: [
+      "Collect valid driving license copies before handing over keys for test drives.",
+      "Document all buyer negotiation notes in the lead record."
+    ],
+    quickActions: [
+      { label: "Buyer Leads Desk", tabTarget: "admin", actionDesc: "View customer inquiry leads" },
+      { label: "Showroom Catalog", tabTarget: "buy", actionDesc: "Check available vehicle inventory" }
+    ]
+  },
+  "Support Agent": {
+    clearanceLevel: "Level 1 (Support Desk)",
+    badgeColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30",
+    coreResponsibilities: [
+      "Customer desk support, ticketing, inquiry routing, and general buyer inquiries",
+      "Showroom appointment assistance and user feedback tracking"
+    ],
+    dailyTasks: [
+      "Respond to platform feedback tickets and general contact forms",
+      "Assist buyers with account logins, saved garage items, and pass access",
+      "Route technical parts questions to the Parts Specialist"
+    ],
+    sopGuidelines: [
+      "Maintain a polite, professional, and luxury-tier communication tone at all times.",
+      "Escalate unresolved transaction disputes to Super Admin within 1 hour."
+    ],
+    quickActions: [
+      { label: "Support Inquiries", tabTarget: "admin", actionDesc: "Manage buyer tickets" },
+      { label: "Help Center", tabTarget: "home", actionDesc: "Review user FAQs" }
+    ]
+  },
+  "Content Moderator": {
+    clearanceLevel: "Level 2 (Specialist Desk)",
+    badgeColor: "text-rose-400 bg-rose-500/10 border-rose-500/30",
+    coreResponsibilities: [
+      "Editorial quality control, moderation of user submissions, customer reviews, and FAQ content"
+    ],
+    dailyTasks: [
+      "Review all public comments, seller descriptions, and uploaded images for policy compliance",
+      "Ensure zero profanity, misleading claims, or copyright infringement"
+    ],
+    sopGuidelines: [
+      "Reject listings with low-quality watermarked photos or blurry images.",
+      "Check seller descriptions for adherence to Auto World luxury tone standards."
+    ],
+    quickActions: [
+      { label: "Content Queue", tabTarget: "admin", actionDesc: "Audit listings and reviews" }
+    ]
+  },
+  "Finance Specialist": {
+    clearanceLevel: "Level 2 (Specialist Desk)",
+    badgeColor: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
+    coreResponsibilities: [
+      "EMI calculations, loan approvals, bank partner liaisons, and Escrow transaction handling"
+    ],
+    dailyTasks: [
+      "Process EMI financing applications and verify buyer income documents",
+      "Update bank interest rate tables and calculate personalized down-payment schedules"
+    ],
+    sopGuidelines: [
+      "Ensure all financial records adhere to RBI lending regulations.",
+      "Maintain strict confidentiality of buyer bank records and salary slips."
+    ],
+    quickActions: [
+      { label: "Financing Desk", tabTarget: "admin", actionDesc: "Manage loan requests" }
+    ]
+  },
+  "Marketing & Social Media Lead": {
+    clearanceLevel: "Level 2 (Specialist Desk)",
+    badgeColor: "text-pink-400 bg-pink-500/10 border-pink-500/30",
+    coreResponsibilities: [
+      "Showcase banner curation, social media announcements, promotional badges, and referral campaigns"
+    ],
+    dailyTasks: [
+      "Generate high-resolution social share cards for newly listed supercar & performance hardware",
+      "Track marketing campaign conversions and seasonal festival promotions"
+    ],
+    sopGuidelines: [
+      "Use approved typography (Fraunces serif & Plus Jakarta Sans) and brand gold accents.",
+      "Feature vehicles with verified high-demand badges for maximum engagement."
+    ],
+    quickActions: [
+      { label: "Marketing Hub", tabTarget: "admin", actionDesc: "Manage showcase promotions" }
+    ]
+  },
+  "User": {
+    clearanceLevel: "Level 1 (Support Desk)",
+    badgeColor: "text-stone-400 bg-stone-500/10 border-stone-500/30",
+    coreResponsibilities: [
+      "Standard client and registered enthusiast member of Auto World platform"
+    ],
+    dailyTasks: [
+      "Browse curated motor vehicles and motorsport hardware catalog",
+      "Manage personal Saved Garage, submit vehicle/parts listings, and request test drives"
+    ],
+    sopGuidelines: [
+      "Provide accurate vehicle & contact information when listing cars or components."
+    ],
+    quickActions: [
+      { label: "Browse Catalog", tabTarget: "buy", actionDesc: "Explore vehicles and parts" },
+      { label: "Saved Garage", tabTarget: "favorites", actionDesc: "View your saved fleet" }
+    ]
+  }
+};
 
 export interface UserProfile {
   uid: string;
@@ -51,6 +291,14 @@ export const ALL_ROLES: { id: UserRole; label: string; description: string; badg
     badgeBg: "bg-purple-500/15",
     textColor: "text-purple-400",
     borderColor: "border-purple-500/40"
+  },
+  {
+    id: "Parts Specialist",
+    label: "Parts Specialist",
+    description: "Motorsport & Hardware Lead. Authenticates performance parts, validates OEM numbers, assigns rarity tiers, and curates featured components.",
+    badgeBg: "bg-amber-500/15",
+    textColor: "text-amber-400",
+    borderColor: "border-amber-500/40"
   },
   {
     id: "Inventory Manager",
@@ -113,6 +361,7 @@ export const ALL_ROLES: { id: UserRole; label: string; description: string; badg
 export const ALL_ASSIGNABLE_ROLES: UserRole[] = [
   "Co-Owner",
   "Super Admin",
+  "Parts Specialist",
   "Inventory Manager",
   "Sales & Leads Specialist",
   "Support Agent",

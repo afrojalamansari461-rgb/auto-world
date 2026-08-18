@@ -104,11 +104,13 @@ service cloud.firestore {
         && incoming().id == existing().id
         && isValidPart(incoming())
         && incoming().diff(existing()).affectedKeys().hasOnly([
-          'title', 'category', 'rarity', 'condition', 'brand', 'price', 
-          'compatibleVehicles', 'description', 'negotiable', 'status', 
+          'title', 'category', 'customCategoryName', 'rarity', 'condition', 'brand', 'price', 
+          'compatibleVehicles', 'compatibleMake', 'compatibleModel', 'suitableVehicles',
+          'purchaseDate', 'installationDifficulty', 'performanceGain', 'shippingAvailable',
+          'inquiryCount', 'description', 'negotiable', 'status', 'badge', 'image',
           'photos', 'featured', 'urgent', 'verified', 'partNumber', 
           'warranty', 'specifications', 'location', 'sellerPhone', 'sellerEmail', 
-          'sellerName', 'updatedAt'
+          'sellerName', 'datePosted', 'createdAt', 'updatedAt'
         ])
       ) || isAdmin();
 
@@ -216,7 +218,9 @@ service cloud.firestore {
 
     function isValidUserFavorites(data) {
       return data.userId is string && data.userId == request.auth.uid
-        && data.favoriteIds is list && data.favoriteIds.size() <= 100;
+        && data.favoriteIds is list && data.favoriteIds.size() <= 100
+        && (!('favoritePartIds' in data) || (data.favoritePartIds is list && data.favoritePartIds.size() <= 200))
+        && (!('lastUpdated' in data) || (data.lastUpdated is string && data.lastUpdated.size() <= 60));
     }
 
     // 7. FEEDBACKS RULES

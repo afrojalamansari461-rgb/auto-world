@@ -125,13 +125,17 @@
     },
     "UserFavorites": {
       "title": "UserFavorites",
-      "description": "User saved/favorited list of vehicle and listing IDs",
+      "description": "User saved/favorited list of vehicle, listing, and motorsport hardware part IDs",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "favoriteIds": {
           "type": "array",
           "items": { "type": "integer" }
+        },
+        "favoritePartIds": {
+          "type": "array",
+          "items": { "type": "string" }
         },
         "lastUpdated": { "type": "string" }
       },

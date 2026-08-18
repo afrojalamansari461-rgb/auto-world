@@ -22,6 +22,8 @@ interface HomeTabProps {
   setSearchFilters: (filters: { type: string; priceRange: string; location: string }) => void;
   onQuickView: (vehicle: Vehicle) => void;
   onQuickViewPart?: (part: Part, coords?: { x: number; y: number }) => void;
+  favoritePartIds?: (string | number)[];
+  toggleFavoritePart?: (id: string | number) => void;
 }
 
 function getOverriddenVehicles(): Vehicle[] {
@@ -259,7 +261,9 @@ export default function HomeTab({
   toggleFavorite, 
   setSearchFilters, 
   onQuickView,
-  onQuickViewPart 
+  onQuickViewPart,
+  favoritePartIds = [],
+  toggleFavoritePart
 }: HomeTabProps) {
   const [activeSearchTab, setActiveSearchTab] = useState<"buy" | "sell">("buy");
   const [selectedType, setSelectedType] = useState("Any Type");
@@ -998,6 +1002,7 @@ export default function HomeTab({
                 badgeStyle = "bg-amber-950 text-amber-300 border-amber-400 ring-1 ring-amber-400/50 shadow-[0_0_22px_rgba(245,158,11,0.5)] animate-pulse";
               }
 
+              const isPartFav = favoritePartIds.some(fav => String(fav) === String(part.id) || (part.listingId && String(fav) === String(part.listingId)));
               const cleanPhone = (part.sellerPhone || "+919820011988").replace(/[^0-9]/g, "");
               const waMessage = encodeURIComponent(
                 `Hello ${part.sellerName || "Seller"}, I am inquiring about "${part.title}" (Ref #PART-AW0${part.id}, ₹${part.price.toLocaleString("en-IN")}) listed on Auto World Motorsport Marketplace.`
@@ -1048,6 +1053,30 @@ export default function HomeTab({
                     <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-stone-950/80 text-stone-200 text-[9px] font-mono uppercase tracking-widest rounded border border-stone-700">
                       {part.category.replace("_", " ")}
                     </div>
+
+                    {/* Interactive Wishlist Heart Button */}
+                    {toggleFavoritePart && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavoritePart(part.id);
+                        }}
+                        className={`absolute top-3 right-3 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md z-10 active:scale-90 ${
+                          isPartFav
+                            ? "bg-red-600 border-red-400 text-white shadow-red-600/40 scale-105"
+                            : "bg-stone-900/85 hover:bg-stone-900 text-stone-300 hover:text-white border-stone-700 hover:scale-105"
+                        }`}
+                        aria-label={isPartFav ? "Remove part from favorites" : "Save part to favorites"}
+                        title={isPartFav ? "Saved to Favorites" : "Add to Favorites"}
+                      >
+                        <Heart
+                          className={`w-4 h-4 transition-transform ${
+                            isPartFav ? "fill-white text-white scale-110" : "text-stone-300 hover:text-red-400"
+                          }`}
+                        />
+                      </button>
+                    )}
                   </div>
 
                   {/* Body Content */}

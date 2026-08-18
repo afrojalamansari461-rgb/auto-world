@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   Wrench, Zap, Tag, Trash2, Edit, Eye, ShieldCheck, 
   Sparkles, Star, Plus, Search, Filter, RefreshCw, 
@@ -1453,140 +1454,147 @@ export default function AdminPartsDesk({
       )}
 
       {/* 8. EDIT PART SPEC MODAL */}
-      {editingPart && (
-        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FAF8F5] border-2 border-stone-950 max-w-xl w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex items-center justify-between border-b-2 border-stone-950 pb-3">
-              <div>
-                <span className="text-[10px] font-mono uppercase text-amber-700 font-bold block">
-                  CALIBRATION DESK
-                </span>
-                <h3 className="text-lg font-serif font-black text-stone-950 uppercase">
-                  Edit Performance Part Specifications
-                </h3>
-              </div>
-              <button
-                onClick={() => setEditingPart(null)}
-                className="p-1.5 text-stone-500 hover:text-stone-950 rounded-full cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 font-sans text-xs">
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Hardware Title *</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
-                />
+      {editingPart && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto font-sans" id="admin-edit-part-modal">
+          <div 
+            className="fixed inset-0 bg-stone-950/80 backdrop-blur-xs transition-opacity"
+            onClick={() => setEditingPart(null)}
+          />
+          <div className="min-h-full w-full flex items-center justify-center p-3 sm:p-6 pointer-events-none">
+            <div className="relative z-10 my-auto pointer-events-auto bg-[#FAF8F5] border-2 border-stone-950 max-w-xl w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+              <div className="flex items-center justify-between border-b-2 border-stone-950 pb-3">
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-amber-700 font-bold block">
+                    CALIBRATION DESK
+                  </span>
+                  <h3 className="text-lg font-serif font-black text-stone-950 uppercase">
+                    Edit Performance Part Specifications
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setEditingPart(null)}
+                  className="p-1.5 text-stone-500 hover:text-stone-950 rounded-full cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-4 font-sans text-xs">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Brand *</label>
+                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Hardware Title *</label>
                   <input
                     type="text"
-                    value={editBrand}
-                    onChange={(e) => setEditBrand(e.target.value)}
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Brand *</label>
+                    <input
+                      type="text"
+                      value={editBrand}
+                      onChange={(e) => setEditBrand(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Price (₹ INR) *</label>
+                    <input
+                      type="text"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Category</label>
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
+                    >
+                      {PART_CATEGORIES.map(c => (
+                        <option key={c.id} value={c.id}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Rarity</label>
+                    <select
+                      value={editRarity}
+                      onChange={(e) => setEditRarity(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
+                    >
+                      <option value="Common">Common</option>
+                      <option value="Uncommon">Uncommon</option>
+                      <option value="Rare">Rare</option>
+                      <option value="Epic">Epic</option>
+                      <option value="Legendary">Legendary</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Compatible Chassis / Fitment</label>
+                  <input
+                    type="text"
+                    value={editFitment}
+                    onChange={(e) => setEditFitment(e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Price (₹ INR) *</label>
+                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Image URL</label>
                   <input
                     type="text"
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
+                    value={editImage}
+                    onChange={(e) => setEditImage(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Description</label>
+                  <textarea
+                    rows={3}
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Category</label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
-                  >
-                    {PART_CATEGORIES.map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Rarity</label>
-                  <select
-                    value={editRarity}
-                    onChange={(e) => setEditRarity(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
-                  >
-                    <option value="Common">Common</option>
-                    <option value="Uncommon">Uncommon</option>
-                    <option value="Rare">Rare</option>
-                    <option value="Epic">Epic</option>
-                    <option value="Legendary">Legendary</option>
-                  </select>
-                </div>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-300">
+                <button
+                  type="button"
+                  onClick={() => setEditingPart(null)}
+                  className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={isSaving}
+                  className="px-6 py-2 bg-stone-950 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{isSaving ? "Saving Specs..." : "Save Calibration"}</span>
+                </button>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Compatible Chassis / Fitment</label>
-                <input
-                  type="text"
-                  value={editFitment}
-                  onChange={(e) => setEditFitment(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Image URL</label>
-                <input
-                  type="text"
-                  value={editImage}
-                  onChange={(e) => setEditImage(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Description</label>
-                <textarea
-                  rows={3}
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-300">
-              <button
-                type="button"
-                onClick={() => setEditingPart(null)}
-                className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold uppercase tracking-wider cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                disabled={isSaving}
-                className="px-6 py-2 bg-stone-950 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1.5"
-              >
-                <Save className="w-3.5 h-3.5 text-amber-400" />
-                <span>{isSaving ? "Saving Specs..." : "Save Calibration"}</span>
-              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

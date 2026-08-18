@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import { Gauge, Zap, Cog, Calendar, Cpu, Palette, User, Shield, Bike, Activity, Layers } from "lucide-react";
 import { Vehicle } from "../types";
 import { CountUp } from "./CountUp";
@@ -7,6 +8,8 @@ interface SpecGridProps {
   vehicle: Vehicle;
   columnsClassName?: string;
   isCompact?: boolean;
+  animated?: boolean;
+  delayChildren?: number;
 }
 
 export interface SpecMetricItem {
@@ -19,10 +22,36 @@ export interface SpecMetricItem {
   badge?: string;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: (delay: number = 0.22) => ({
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.045,
+      delayChildren: delay,
+    },
+  }),
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12, scale: 0.97 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.32,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+};
+
 export const SpecGrid: React.FC<SpecGridProps> = ({
   vehicle,
   columnsClassName = "grid-cols-2 sm:grid-cols-3 gap-3",
-  isCompact = false
+  isCompact = false,
+  animated = true,
+  delayChildren = 0.22
 }) => {
   const isBicycle =
     vehicle.category === "bicycle" ||
@@ -173,16 +202,26 @@ export const SpecGrid: React.FC<SpecGridProps> = ({
           : [])
       ];
 
+  const Container = animated ? motion.div : "div";
+  const Item = animated ? motion.div : "div";
+
   return (
     <div className="space-y-3 font-sans">
       {/* Spec Grid */}
-      <div className={`grid ${columnsClassName} text-xs text-stone-800`}>
+      <Container
+        variants={animated ? containerVariants : undefined}
+        initial={animated ? "hidden" : undefined}
+        animate={animated ? "show" : undefined}
+        custom={delayChildren}
+        className={`grid ${columnsClassName} text-xs text-stone-800`}
+      >
         {metrics.map((item) => {
           const IconComponent = item.icon;
 
           return (
-            <div
+            <Item
               key={item.id}
+              variants={animated ? itemVariants : undefined}
               className="relative p-3.5 border border-stone-300 bg-[#FAF8F5] text-stone-900 flex flex-col justify-between"
             >
               {/* Category Header with Icon and Badge */}
@@ -205,10 +244,10 @@ export const SpecGrid: React.FC<SpecGridProps> = ({
                   {item.value}
                 </span>
               </div>
-            </div>
+            </Item>
           );
         })}
-      </div>
+      </Container>
     </div>
   );
 };

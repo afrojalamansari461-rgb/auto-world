@@ -29,6 +29,8 @@ interface BuyTabProps {
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   currentUser: FirebaseUser | null;
   onSignInClick: () => void;
+  favoritePartIds?: (string | number)[];
+  toggleFavoritePart?: (id: string | number) => void;
 }
 
 // Historical price trends in India (in Lakhs INR ex-showroom)
@@ -179,7 +181,19 @@ function getOverriddenParts(): Part[] {
   return list;
 }
 
-export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQuickView, onQuickViewPart, subscriptionActive, showToast, currentUser, onSignInClick }: BuyTabProps) {
+export default function BuyTab({ 
+  favorites, 
+  toggleFavorite, 
+  searchFilters, 
+  onQuickView, 
+  onQuickViewPart, 
+  subscriptionActive, 
+  showToast, 
+  currentUser, 
+  onSignInClick,
+  favoritePartIds = [],
+  toggleFavoritePart
+}: BuyTabProps) {
   // Mode switcher: "vehicles" | "parts"
   const [activeCatalogMode, setActiveCatalogMode] = useState<"vehicles" | "parts">("vehicles");
 
@@ -1015,8 +1029,20 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
   };
 
   const isPartFavorited = (part: Part): boolean => {
-    const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999;
-    return favorites.includes(numId) || favorites.includes(part.id as any) || favorites.includes(String(part.id) as any);
+    const partId = String(part.id);
+    const altId = part.isUserListing && part.listingId ? `user-part-${part.listingId}` : `part-${part.id}`;
+    const listingId = part.listingId ? String(part.listingId) : "";
+
+    const inPartFavs = favoritePartIds.some((fav) => {
+      const sFav = String(fav);
+      return sFav === partId || (altId && sFav === altId) || (listingId && sFav === listingId) || (typeof part.id === "number" && fav === part.id);
+    });
+    if (inPartFavs) return true;
+
+    const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5));
+    if (numId && favorites.includes(numId)) return true;
+
+    return false;
   };
 
   const filteredParts = partsList.filter((part) => {
@@ -2724,15 +2750,20 @@ export default function BuyTab({ favorites, toggleFavorite, searchFilters, onQui
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999;
-                            toggleFavorite(numId);
-                            if (isFavorite) {
+                            const currentlyFav = isPartFavorited(part);
+                            if (toggleFavoritePart) {
+                              toggleFavoritePart(part.id);
+                            } else {
+                              const numId = typeof part.id === "number" ? part.id : Number(String(part.id).replace(/\D/g, "").slice(0, 5)) || 999;
+                              toggleFavorite(numId);
+                            }
+                            if (currentlyFav) {
                               showToast(`Removed "${part.title}" from Wishlist`, "info");
                             } else {
                               showToast(`Saved "${part.title}" to Wishlist!`, "success");
                             }
                           }}
-                          className={`absolute top-3 right-3 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md active:scale-90 ${
+                          className={`absolute top-3 right-3 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md active:scale-90 z-10 ${
                             isFavorite
                               ? "bg-red-600 border-red-400 text-white shadow-red-600/40 scale-105"
                               : "bg-stone-900/85 hover:bg-stone-900 text-stone-300 hover:text-white border-stone-700 hover:scale-105"

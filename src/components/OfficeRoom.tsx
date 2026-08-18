@@ -4,12 +4,12 @@ import {
   Car, Search, Tag, Mail, Calculator, CheckCircle2, Eye, EyeOff, Wrench, Plus, 
   Filter, AlertCircle, Clock, Check, BarChart3, ChevronRight, RefreshCw, Award, 
   Phone, MessageSquare, DollarSign, Users, Lock, Unlock, FileText, HelpCircle, Info, ChevronDown, UserCheck,
-  Megaphone, Share2, Copy, Send, Image as ImageIcon, Target, TrendingUp, Globe, Heart, History
+  Megaphone, Share2, Copy, Send, Image as ImageIcon, Target, TrendingUp, Globe, Heart, History, BookOpen, CheckSquare, Square, ListTodo, ArrowUpRight
 } from "lucide-react";
 import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, handleFirestoreError, OperationType } from "../firebase";
-import { UserRole, ALL_ROLES, OWNER_EMAIL, subscribeToUserRoles, updateUserRole, UserProfile, THE_7_ASSIGNABLE_ROLES } from "../lib/userRoles";
+import { UserRole, ALL_ROLES, OWNER_EMAIL, subscribeToUserRoles, updateUserRole, UserProfile, THE_7_ASSIGNABLE_ROLES, ROLE_SOPS, ALL_ASSIGNABLE_ROLES } from "../lib/userRoles";
 import RoleBadge from "./RoleBadge";
 import { Vehicle, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -84,16 +84,42 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
 
   const canAccessStaffRoles = isOwner;
   const canAccessInventory = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Inventory Manager";
-  const canAccessParts = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Inventory Manager" || userRole === "Content Moderator";
+  const canAccessParts = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Inventory Manager" || userRole === "Parts Specialist" || userRole === "Content Moderator";
   const canAccessSales = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Sales & Leads Specialist";
   const canAccessSupport = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Support Agent";
   const canAccessModeration = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Content Moderator";
   const canAccessFinance = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Finance Specialist";
   const canAccessMarketing = isOwner || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Marketing & Social Media Lead";
 
+  // SOP Deck Active Role Selection & Interactive Checklist
+  const [selectedSopRole, setSelectedSopRole] = useState<UserRole>(
+    userRole !== "User" ? userRole : "Parts Specialist"
+  );
+  const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("autoworld_staff_completed_tasks");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleTaskCompletion = (taskKey: string) => {
+    setCompletedTasks(prev => {
+      const next = { ...prev, [taskKey]: !prev[taskKey] };
+      try {
+        localStorage.setItem("autoworld_staff_completed_tasks", JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
   // Auto-set initial active desk based on assigned user role
   useEffect(() => {
     if (userRole === "Inventory Manager") setActiveSubDesk("inventory");
+    else if (userRole === "Parts Specialist") setActiveSubDesk("parts");
     else if (userRole === "Sales & Leads Specialist") setActiveSubDesk("sales");
     else if (userRole === "Support Agent") setActiveSubDesk("support");
     else if (userRole === "Content Moderator") setActiveSubDesk("moderation");
@@ -435,6 +461,21 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
               </span>
             </button>
           )}
+
+          <button
+            onClick={() => setActiveSubDesk("sop")}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+              activeSubDesk === "sop"
+                ? "bg-amber-600 text-stone-950 font-black shadow-md border-b-2 border-amber-300"
+                : "bg-white text-stone-600 hover:text-stone-950 border border-stone-200"
+            }`}
+          >
+            <BookOpen className="w-4 h-4 text-amber-600" />
+            Operations & SOP Deck
+            <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-800 text-[10px] font-mono rounded-full font-bold">
+              Manual
+            </span>
+          </button>
 
           <button
             onClick={() => setActiveSubDesk("audit")}
@@ -1365,6 +1406,257 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
               currentUserRole={userRole}
               showToast={showToast}
             />
+          </div>
+        )}
+
+        {/* 10. STANDARD OPERATING PROCEDURES (SOP) & DUTIES MANUAL */}
+        {activeSubDesk === "sop" && (
+          <div className="space-y-8 font-sans">
+            {/* Header Banner */}
+            <div className="bg-[#FAF8F5] border border-stone-300 p-6 md:p-8 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="w-5 h-5 text-amber-600" />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-amber-800">
+                    Auto World Staff Governance Deck
+                  </span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-serif font-black text-stone-950">
+                  Standard Operating Procedures & Duties Manual
+                </h2>
+                <p className="text-xs text-stone-600 mt-1 max-w-2xl leading-relaxed">
+                  Interactive operational protocol guidelines, mandatory daily task checklists, and clearance governance across all Auto World department desks.
+                </p>
+              </div>
+
+              <div className="bg-white border border-stone-200 p-4 rounded-xl shadow-xs shrink-0 font-mono text-xs">
+                <div className="text-[10px] uppercase text-stone-400 font-bold mb-1">Your Authenticated Profile</div>
+                <div className="font-bold text-stone-900">{currentUser?.email || "staff@autoworld.com"}</div>
+                <div className="text-amber-700 font-black mt-0.5 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>{userRole}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Role Selection Navigator Tabs */}
+            <div className="bg-white border border-stone-200 p-3 rounded-xl shadow-sm overflow-x-auto scrollbar-none flex items-center gap-2">
+              {(Object.keys(ROLE_SOPS) as UserRole[]).map((rKey) => {
+                const isSelected = selectedSopRole === rKey;
+                const isMyRole = userRole === rKey;
+                const rSop = ROLE_SOPS[rKey];
+
+                return (
+                  <button
+                    key={rKey}
+                    onClick={() => setSelectedSopRole(rKey)}
+                    className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                      isSelected
+                        ? "bg-stone-950 text-white shadow-md font-mono"
+                        : "bg-[#FAF8F5] text-stone-600 hover:text-stone-950 hover:bg-stone-100 border border-stone-200"
+                    }`}
+                  >
+                    <span>{rKey}</span>
+                    {isMyRole && (
+                      <span className="px-1.5 py-0.2 bg-amber-500 text-stone-950 text-[9px] font-mono rounded font-black">
+                        YOU
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active Selected Role SOP Card */}
+            {(() => {
+              const currentSop = ROLE_SOPS[selectedSopRole] || ROLE_SOPS["Parts Specialist"];
+              const roleMeta = ALL_ROLES.find(r => r.id === selectedSopRole) || {
+                label: selectedSopRole,
+                description: "Auto World Platform Operations",
+                badgeBg: "bg-amber-100",
+                textColor: "text-amber-900",
+                borderColor: "border-amber-300"
+              };
+              const RoleIcon = selectedSopRole === "Owner" || selectedSopRole === "Co-Owner" || selectedSopRole === "Super Admin" 
+                ? ShieldCheck 
+                : selectedSopRole === "Parts Specialist" 
+                ? Wrench 
+                : selectedSopRole === "Inventory Manager" 
+                ? Car 
+                : selectedSopRole === "Sales & Leads Specialist" 
+                ? DollarSign 
+                : selectedSopRole === "Support Agent" 
+                ? MessageSquare 
+                : selectedSopRole === "Content Moderator" 
+                ? CheckCircle2 
+                : selectedSopRole === "Finance Specialist" 
+                ? Calculator 
+                : selectedSopRole === "Marketing & Social Media Lead" 
+                ? Megaphone 
+                : UserIcon;
+
+              const roleTaskKeys = currentSop.dailyTasks.map((_, idx) => `${selectedSopRole}-task-${idx}`);
+              const completedCount = roleTaskKeys.filter(k => completedTasks[k]).length;
+              const totalCount = roleTaskKeys.length;
+              const isAllDone = totalCount > 0 && completedCount === totalCount;
+
+              return (
+                <div className="space-y-6">
+                  {/* Role Meta Summary Card */}
+                  <div className="bg-white border border-stone-200 p-6 rounded-xl shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-100">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-amber-50 rounded-xl text-amber-700 border border-amber-200 shrink-0">
+                          <RoleIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-xl font-serif font-black text-stone-950">
+                              {roleMeta.label}
+                            </h3>
+                            <span className={`px-2.5 py-0.5 text-[10px] font-mono font-black uppercase rounded-full border ${currentSop.badgeColor}`}>
+                              {currentSop.clearanceLevel}
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-500 mt-0.5">
+                            {roleMeta.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Quick Action Navigation Links */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {currentSop.quickActions.map((qa, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (qa.tabTarget === "admin" || qa.tabTarget === "office") {
+                                if (qa.label.toLowerCase().includes("part") || qa.label.toLowerCase().includes("hardware")) {
+                                  setActiveSubDesk("parts");
+                                } else if (qa.label.toLowerCase().includes("inventory") || qa.label.toLowerCase().includes("catalog")) {
+                                  setActiveSubDesk("inventory");
+                                } else {
+                                  setActiveSubDesk("overview");
+                                }
+                              } else {
+                                setActiveTab(qa.tabTarget);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-stone-900 hover:bg-stone-850 text-white text-[11px] font-mono uppercase tracking-wider rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                            title={qa.actionDesc}
+                          >
+                            <span>{qa.label}</span>
+                            <ArrowUpRight className="w-3 h-3 text-amber-400" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Core Responsibilities Grid */}
+                    <div className="mt-5">
+                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-400 mb-3 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-amber-600" />
+                        <span>Core Role Responsibilities</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {currentSop.coreResponsibilities.map((resp, idx) => (
+                          <div key={idx} className="bg-[#FAF8F5] border border-stone-200 p-3.5 rounded-lg flex items-start gap-2.5">
+                            <span className="w-5 h-5 rounded-full bg-stone-200 text-stone-700 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
+                              {idx + 1}
+                            </span>
+                            <span className="text-xs text-stone-800 leading-relaxed font-sans">{resp}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2-Column Grid: Daily Tasks Checklist & Strict SOP Protocol Guidelines */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Column 1: Daily Tasks Checklist */}
+                    <div className="bg-white border border-stone-200 p-6 rounded-xl shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-100">
+                          <div className="flex items-center gap-2">
+                            <ListTodo className="w-4 h-4 text-blue-600" />
+                            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-950">
+                              Daily Duty Checklist
+                            </h4>
+                          </div>
+                          <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+                            isAllDone ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-stone-100 text-stone-600"
+                          }`}>
+                            {completedCount} / {totalCount} Completed
+                          </span>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {currentSop.dailyTasks.map((task, idx) => {
+                            const taskKey = `${selectedSopRole}-task-${idx}`;
+                            const isDone = Boolean(completedTasks[taskKey]);
+
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => toggleTaskCompletion(taskKey)}
+                                className={`w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3 cursor-pointer ${
+                                  isDone 
+                                    ? "bg-emerald-50/70 border-emerald-200 text-stone-500" 
+                                    : "bg-[#FAF8F5] border-stone-200 text-stone-800 hover:border-stone-300"
+                                }`}
+                              >
+                                <div className="mt-0.5 shrink-0">
+                                  {isDone ? (
+                                    <CheckSquare className="w-4 h-4 text-emerald-600" />
+                                  ) : (
+                                    <Square className="w-4 h-4 text-stone-400" />
+                                  )}
+                                </div>
+                                <span className={`text-xs leading-relaxed ${isDone ? "line-through text-stone-500" : "font-medium"}`}>
+                                  {task}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {isAllDone && (
+                        <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-emerald-800 text-xs font-mono font-bold">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>All daily operational responsibilities signed off!</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Column 2: Mandatory SOP Guidelines */}
+                    <div className="bg-white border border-stone-200 p-6 rounded-xl shadow-sm">
+                      <div className="flex items-center gap-2 pb-3 mb-4 border-b border-stone-100">
+                        <ShieldAlert className="w-4 h-4 text-rose-600" />
+                        <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-950">
+                          Mandatory Operational Protocols (SOP)
+                        </h4>
+                      </div>
+
+                      <div className="space-y-3">
+                        {currentSop.sopGuidelines.map((guide, idx) => (
+                          <div key={idx} className="p-3.5 bg-rose-50/40 border border-rose-100 rounded-lg flex items-start gap-2.5 text-xs text-stone-800 leading-relaxed">
+                            <span className="text-rose-600 font-bold font-mono">§{idx + 1}</span>
+                            <span>{guide}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-5 p-3.5 bg-[#FAF8F5] border border-stone-200 rounded-lg text-[11px] font-mono text-stone-600 leading-relaxed">
+                        <span className="font-bold text-stone-900 block mb-1">COMPLIANCE NOTICE:</span>
+                        Deviations from standard operational procedures are logged directly into the tamper-proof Audit Trail ledger.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
