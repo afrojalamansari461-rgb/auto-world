@@ -5,7 +5,8 @@ import {
   Sparkles, Star, Plus, Search, Filter, RefreshCw, 
   EyeOff, CheckCircle, ArrowUp, ArrowDown, Award,
   Cpu, Layers, AlertTriangle, ExternalLink, X, Check,
-  Home, Phone, Mail, MapPin, Package, Shield, Save, Flame, ArrowRight
+  Home, Phone, Mail, MapPin, Package, Shield, Save, Flame, ArrowRight,
+  Car, Link2, TrendingUp, BarChart3, Sliders
 } from "lucide-react";
 import { 
   Part, UserPartListing, PART_CATEGORIES, PART_BRANDS, 
@@ -20,6 +21,10 @@ import { doc, deleteDoc, updateDoc, addDoc, collection } from "firebase/firestor
 import { db } from "../firebase";
 import type { User as FirebaseUser } from "firebase/auth";
 import PartDossierModal from "./PartDossierModal";
+import VehicleCrossLinkingMatrix from "./parts/VehicleCrossLinkingMatrix";
+import StockSupplyChainDesk from "./parts/StockSupplyChainDesk";
+import ModerationApprovalQueue from "./parts/ModerationApprovalQueue";
+import PartAnalyticsDesk from "./parts/PartAnalyticsDesk";
 
 interface AdminPartsDeskProps {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -61,6 +66,9 @@ export default function AdminPartsDesk({
   const [rarityFilter, setRarityFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | "defaults" | "user" | "hidden">("all");
   const [isLoading, setIsLoading] = useState(true);
+
+  // Administrative Desk Sub-Views
+  const [deskActiveTab, setDeskActiveTab] = useState<"catalog" | "cross_linking" | "supply_chain" | "moderation" | "analytics">("catalog");
 
   // Bulk Selection State
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -641,6 +649,10 @@ export default function AdminPartsDesk({
     setActiveDossierPart(part);
   };
 
+  const handleOpenDossierDirect = (part: Part, tab: "overview" | "gallery" | "specs" | "contact" | "control" = "overview") => {
+    openDossierWithOrigin(part, tab);
+  };
+
   return (
     <div className="space-y-6 font-sans">
       
@@ -682,6 +694,90 @@ export default function AdminPartsDesk({
         </div>
       </div>
 
+      {/* SUB-DESK NAVIGATION TABS */}
+      {(() => {
+        const pendingCount = parts.filter(p => p.isUserListing && (p.moderationStatus === "pending_verification" || p.status === "pending")).length;
+        const lowStockCount = parts.filter(p => (p.stockStatus === "in_stock" || !p.stockStatus) && (p.stockCount !== undefined && p.stockCount <= 2)).length;
+
+        const tabs = [
+          { id: "catalog", label: "Catalog & Grid Hub", icon: Layers, badge: null },
+          { id: "cross_linking", label: "Vehicle Matcher Matrix", icon: Car, badge: null },
+          { id: "supply_chain", label: "Live Stock & Logistics", icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: "bg-red-500 text-white" },
+          { id: "moderation", label: "Moderation Queue", icon: ShieldCheck, badge: pendingCount > 0 ? `${pendingCount} Pending` : null, badgeColor: "bg-amber-500 text-stone-950" },
+          { id: "analytics", label: "Demand & Price Audit", icon: TrendingUp, badge: null }
+        ];
+
+        return (
+          <div className="flex items-center gap-1.5 border-b-2 border-stone-950 pb-2 overflow-x-auto">
+            {tabs.map(t => {
+              const Icon = t.icon;
+              const isActive = deskActiveTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    playSynthBeep(850, 0.05);
+                    setDeskActiveTab(t.id as any);
+                  }}
+                  className={`px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-2 transition cursor-pointer shrink-0 ${
+                    isActive
+                      ? "bg-stone-950 text-white border-stone-950 shadow-[3px_3px_0px_0px_rgba(217,119,6,1)]"
+                      : "bg-[#FAF8F5] text-stone-700 border-stone-300 hover:border-stone-950 hover:bg-white"
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? "text-amber-400" : "text-stone-500"}`} />
+                  <span>{t.label}</span>
+                  {t.badge && (
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${t.badgeColor}`}>
+                      {t.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* VIEW 1: VEHICLE CROSS-LINKING MATRIX */}
+      {deskActiveTab === "cross_linking" && (
+        <VehicleCrossLinkingMatrix
+          parts={parts}
+          onOpenPartDossier={(p, t) => handleOpenDossierDirect(p, t as any)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* VIEW 2: LIVE STOCK & SUPPLY CHAIN DESK */}
+      {deskActiveTab === "supply_chain" && (
+        <StockSupplyChainDesk
+          parts={parts}
+          onOpenPartDossier={(p, t) => handleOpenDossierDirect(p, t as any)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* VIEW 3: MODERATION APPROVAL QUEUE */}
+      {deskActiveTab === "moderation" && (
+        <ModerationApprovalQueue
+          parts={parts}
+          onOpenPartDossier={(p, t) => handleOpenDossierDirect(p, t as any)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* VIEW 4: PART ANALYTICS & PRICE AUDIT DESK */}
+      {deskActiveTab === "analytics" && (
+        <PartAnalyticsDesk
+          parts={parts}
+          onOpenPartDossier={(p, t) => handleOpenDossierDirect(p, t as any)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* VIEW 5: CORE CATALOG & GRID VIEW */}
+      {deskActiveTab === "catalog" && (
+        <>
       {/* 2. INLINE ADD HARDWARE INTAKE CONSOLE */}
       {showAddForm && (
         <div className="bg-[#FAF8F5] border-2 border-stone-950 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-4">
@@ -1436,6 +1532,8 @@ export default function AdminPartsDesk({
             );
           })}
         </div>
+      )}
+      </>
       )}
 
       {/* 7. FULL PART DOSSIER MODAL WITH TABS & CONTROL DESK */}

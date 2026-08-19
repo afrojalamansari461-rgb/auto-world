@@ -6,9 +6,13 @@ import {
   Layers, Sliders, Activity, Wind, Lightbulb, Share2, Info, 
   ExternalLink, CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, Trash2,
   Lock, Eye, EyeOff, Save, ArrowLeft, CheckCircle, Home, Plus, Image as ImageIcon,
-  Edit2, Upload, ArrowUp, ArrowDown, Heart
+  Edit2, Upload, ArrowUp, ArrowDown, Heart, FileText, Award, FileCheck, Clock, TrendingUp, BarChart3
 } from "lucide-react";
-import { Part, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES } from "../types";
+import { 
+  Part, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES,
+  COMMON_ENGINE_CODES, COMMON_CHASSIS_CODES, STOCK_STATUS_CONFIGS, 
+  PartStockStatus, DEFAULT_VEHICLES 
+} from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
@@ -81,6 +85,19 @@ export default function PartDossierModal({
   const [editPartNumber, setEditPartNumber] = useState("");
   const [editWarranty, setEditWarranty] = useState("");
   const [editImage, setEditImage] = useState("");
+
+  // New Performance & Supply Chain States
+  const [editEngineCodes, setEditEngineCodes] = useState<string[]>([]);
+  const [editChassisCodes, setEditChassisCodes] = useState<string[]>([]);
+  const [editStockCount, setEditStockCount] = useState<number>(1);
+  const [editStockStatus, setEditStockStatus] = useState<PartStockStatus>("in_stock");
+  const [editLeadTimeDays, setEditLeadTimeDays] = useState<string>("Dispatch in 24–48 Hours");
+  const [editDynoSheetUrl, setEditDynoSheetUrl] = useState<string>("");
+  const [editPerformanceGain, setEditPerformanceGain] = useState<string>("");
+  const [editCertType, setEditCertType] = useState<string>("FIA Homologated");
+  const [editCertNumber, setEditCertNumber] = useState<string>("");
+  const [editCertVerifiedBy, setEditCertVerifiedBy] = useState<string>("Auto World Technical Bureau");
+  const [showDynoModal, setShowDynoModal] = useState<boolean>(false);
   
   // Interactive Multi-Image Gallery State
   const [editPhotos, setEditPhotos] = useState<{ src: string; alt?: string }[]>([]);
@@ -132,6 +149,16 @@ export default function PartDossierModal({
       setEditDescription(part.description || "");
       setEditPartNumber(part.partNumber || "");
       setEditWarranty(part.warranty || "");
+      setEditEngineCodes(part.engineCodes ? [...part.engineCodes] : []);
+      setEditChassisCodes(part.chassisCodes ? [...part.chassisCodes] : []);
+      setEditStockCount(part.stockCount !== undefined ? part.stockCount : 1);
+      setEditStockStatus(part.stockStatus || "in_stock");
+      setEditLeadTimeDays(part.leadTimeDays || "Dispatch in 24–48 Hours");
+      setEditDynoSheetUrl(part.dynoSheetUrl || "");
+      setEditPerformanceGain(part.performanceGain || "");
+      setEditCertType(part.complianceCertificate?.certType || "FIA Homologated");
+      setEditCertNumber(part.complianceCertificate?.certNumber || "");
+      setEditCertVerifiedBy(part.complianceCertificate?.verifiedBy || "Auto World Technical Bureau");
       
       const initialPhotos: { src: string; alt?: string }[] = 
         part.photos && part.photos.length > 0 
@@ -474,6 +501,20 @@ export default function PartDossierModal({
       : (editImage.trim() ? [{ src: editImage.trim(), alt: editTitle || part.title }] : []);
     const primaryCover = editImage.trim() || finalPhotos[0]?.src || part.image;
 
+    const now = new Date().toISOString().split("T")[0];
+    let updatedPriceHistory = part.priceHistory ? [...part.priceHistory] : [];
+    if (numPrice !== part.price) {
+      updatedPriceHistory = [
+        {
+          price: numPrice,
+          date: now,
+          note: `Admin revised from ₹${part.price.toLocaleString("en-IN")}`,
+          changedBy: "Admin / Backoffice Desk"
+        },
+        ...updatedPriceHistory
+      ];
+    }
+
     const payload: Partial<Part> = {
       title: editTitle.trim() || part.title,
       brand: editBrand.trim() || part.brand,
@@ -486,7 +527,21 @@ export default function PartDossierModal({
       partNumber: editPartNumber.trim() || part.partNumber,
       warranty: editWarranty.trim() || part.warranty,
       image: primaryCover,
-      photos: finalPhotos
+      photos: finalPhotos,
+      engineCodes: editEngineCodes,
+      chassisCodes: editChassisCodes,
+      stockCount: Number(editStockCount) || 0,
+      stockStatus: editStockStatus,
+      leadTimeDays: editLeadTimeDays.trim(),
+      dynoSheetUrl: editDynoSheetUrl.trim(),
+      performanceGain: editPerformanceGain.trim(),
+      complianceCertificate: editCertNumber.trim() ? {
+        certType: editCertType,
+        certNumber: editCertNumber.trim(),
+        verifiedBy: editCertVerifiedBy.trim() || "Auto World Technical Bureau",
+        verifiedDate: now
+      } : undefined,
+      priceHistory: updatedPriceHistory.length > 0 ? updatedPriceHistory : undefined
     };
 
     try {
@@ -774,15 +829,61 @@ export default function PartDossierModal({
                         {part.title}
                       </h2>
 
-                      <div className="mt-3 flex items-baseline gap-3">
-                        <span className="text-3xl font-serif font-black text-stone-950">
-                          ₹{part.price.toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-xs font-mono text-stone-500 uppercase font-bold">
-                          INR Valuation
-                        </span>
+                      <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-baseline gap-3">
+                          <span className="text-3xl font-serif font-black text-stone-950">
+                            ₹{part.price.toLocaleString("en-IN")}
+                          </span>
+                          <span className="text-xs font-mono text-stone-500 uppercase font-bold">
+                            INR Valuation
+                          </span>
+                        </div>
+
+                        {/* Live Stock & Availability Status */}
+                        {(() => {
+                          const stockStatus = part.stockStatus || "in_stock";
+                          const cfg = STOCK_STATUS_CONFIGS[stockStatus] || STOCK_STATUS_CONFIGS.in_stock;
+                          const count = part.stockCount !== undefined ? part.stockCount : 1;
+                          const isLow = stockStatus === "in_stock" && count <= 2 && count > 0;
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase rounded border flex items-center gap-1.5 ${cfg.badgeClass}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${stockStatus === "in_stock" ? "bg-emerald-500" : stockStatus === "custom_order" ? "bg-amber-500" : "bg-red-500"}`} />
+                                <span>{cfg.label}</span>
+                                {stockStatus === "in_stock" && <span>({count} available)</span>}
+                              </span>
+                              {isLow && (
+                                <span className="px-2 py-1 bg-red-100 border border-red-300 text-red-800 text-[10px] font-mono font-extrabold uppercase rounded animate-pulse">
+                                  Low Stock Alert!
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
+
+                    {/* Engine & Chassis Quick Tags */}
+                    {((part.engineCodes && part.engineCodes.length > 0) || (part.chassisCodes && part.chassisCodes.length > 0)) && (
+                      <div className="p-3 bg-stone-950 text-stone-100 rounded border border-stone-800 space-y-2">
+                        <span className="text-[9px] font-mono uppercase tracking-widest text-amber-400 font-bold block">
+                          Interactive Fitment Matrix & Engine Mapping
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {part.engineCodes?.map(code => (
+                            <span key={code} className="px-2 py-0.5 bg-amber-400/20 border border-amber-400/50 text-amber-300 text-[10px] font-mono font-bold rounded">
+                              Engine: {code}
+                            </span>
+                          ))}
+                          {part.chassisCodes?.map(code => (
+                            <span key={code} className="px-2 py-0.5 bg-blue-500/20 border border-blue-400/50 text-blue-300 text-[10px] font-mono font-bold rounded">
+                              Chassis: {code}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Quick Specs Matrix */}
                     <div className="grid grid-cols-2 gap-2.5 p-3.5 bg-[#F4F1EA] border border-stone-300 rounded text-xs font-mono">
@@ -803,6 +904,30 @@ export default function PartDossierModal({
                         <strong className="text-stone-900 font-bold">{part.warranty || "Standard 6-Month Track Warranty"}</strong>
                       </div>
                     </div>
+
+                    {/* Dyno Gain & Homologation Certificate Badges */}
+                    {(part.performanceGain || part.complianceCertificate) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                        {part.performanceGain && (
+                          <div className="p-2.5 bg-amber-50 border border-amber-300 rounded flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-amber-600 shrink-0" />
+                            <div>
+                              <span className="text-[9px] text-amber-800 uppercase block font-bold">Dyno Verified Gain</span>
+                              <strong className="text-stone-900 text-[11px]">{part.performanceGain}</strong>
+                            </div>
+                          </div>
+                        )}
+                        {part.complianceCertificate && (
+                          <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded flex items-center gap-2">
+                            <Award className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <div>
+                              <span className="text-[9px] text-emerald-800 uppercase block font-bold">{part.complianceCertificate.certType}</span>
+                              <strong className="text-stone-900 text-[11px]">#{part.complianceCertificate.certNumber}</strong>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Fitment Box */}
                     <div className="p-3 bg-white border border-stone-300 rounded text-xs space-y-1">
@@ -992,6 +1117,122 @@ export default function PartDossierModal({
                           <span className="text-stone-100 font-bold">{val}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dyno Curve & Horsepower Calibration Record */}
+                <div className="p-5 bg-white border border-stone-300 rounded space-y-3">
+                  <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                    <div>
+                      <span className="text-[10px] font-mono font-bold uppercase text-amber-700 block">Performance Telemetry</span>
+                      <h4 className="text-sm font-serif font-black uppercase text-stone-950 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-amber-600" />
+                        Dyno Calibration Graph & Power Output
+                      </h4>
+                    </div>
+                    {part.performanceGain && (
+                      <span className="px-2.5 py-1 bg-amber-100 text-stone-950 border border-amber-300 rounded font-mono font-bold text-xs">
+                        {part.performanceGain}
+                      </span>
+                    )}
+                  </div>
+
+                  {part.dynoSheetUrl ? (
+                    <div className="space-y-2">
+                      <div 
+                        onClick={() => setShowDynoModal(true)}
+                        className="relative h-48 rounded border border-stone-300 overflow-hidden group cursor-pointer bg-stone-950 flex items-center justify-center"
+                      >
+                        <img 
+                          src={part.dynoSheetUrl} 
+                          alt="Dyno Sheet" 
+                          className="w-full h-full object-contain group-hover:scale-105 transition duration-300"
+                        />
+                        <div className="absolute inset-0 bg-stone-950/40 group-hover:bg-stone-950/20 transition flex items-center justify-center">
+                          <span className="px-3 py-1.5 bg-stone-900/90 text-white border border-stone-700 text-xs font-mono font-bold uppercase rounded flex items-center gap-1.5 shadow">
+                            <Eye className="w-3.5 h-3.5 text-amber-400" />
+                            Click to Enlarge High-Res Dyno Sheet
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-stone-500 block">
+                        Verified Dynojet / Mustang AWD chassis dyno output log.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-[#FAF8F5] border border-dashed border-stone-300 rounded text-center space-y-1">
+                      <BarChart3 className="w-6 h-6 text-stone-400 mx-auto" />
+                      <strong className="text-xs font-mono text-stone-700 block">Manufacturer Dyno Baseline Verified</strong>
+                      <p className="text-[11px] text-stone-500 font-sans">
+                        Component engineered to deliver {part.performanceGain || "optimised torque curve and peak thermal efficiency"} under continuous track loads.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Auto World Showroom Matched Vehicles */}
+                <div className="p-5 bg-white border border-stone-300 rounded space-y-3">
+                  <div className="border-b border-stone-200 pb-2">
+                    <span className="text-[10px] font-mono font-bold uppercase text-blue-700 block">Auto World Inventory Matcher</span>
+                    <h4 className="text-sm font-serif font-black uppercase text-stone-950">
+                      Compatible Vehicles Currently Listed in Showroom
+                    </h4>
+                  </div>
+
+                  {(() => {
+                    const matchedVehicles = DEFAULT_VEHICLES.filter(v => {
+                      const vStr = `${v.title} ${v.make || ""} ${v.fuel || ""}`.toLowerCase();
+                      const matchEngine = part.engineCodes?.some(c => vStr.includes(c.toLowerCase()));
+                      const matchChassis = part.chassisCodes?.some(c => vStr.includes(c.toLowerCase()));
+                      const matchFit = part.compatibleVehicles && vStr.includes(part.compatibleVehicles.toLowerCase().split(" ")[0]);
+                      return matchEngine || matchChassis || matchFit;
+                    });
+
+                    if (matchedVehicles.length === 0) {
+                      return (
+                        <div className="p-3 bg-[#FAF8F5] border border-stone-200 rounded text-xs font-mono text-stone-500">
+                          Universal motorsport fitment or direct custom fabrication required.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {matchedVehicles.slice(0, 4).map(v => (
+                          <div key={v.id} className="p-2.5 bg-[#FAF8F5] border border-stone-200 rounded flex items-center gap-3">
+                            <img src={v.image} alt={v.title} className="w-12 h-10 object-cover rounded border border-stone-300 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-[9px] font-mono font-bold text-amber-700 uppercase block">{v.year} {v.make}</span>
+                              <strong className="text-xs font-serif text-stone-950 block truncate">{v.title}</strong>
+                              <span className="text-[10px] font-mono text-stone-500">₹{v.price.toLocaleString("en-IN")}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Homologation Certificate Details */}
+                {part.complianceCertificate && (
+                  <div className="p-4 bg-emerald-50/70 border border-emerald-300 rounded space-y-2 font-mono text-xs">
+                    <div className="flex items-center justify-between border-b border-emerald-200 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-emerald-700" />
+                        <strong className="text-emerald-950 font-bold uppercase">{part.complianceCertificate.certType}</strong>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800">Accredited # {part.complianceCertificate.certNumber}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-emerald-900">
+                      <div>
+                        <span className="text-[9px] text-emerald-700 uppercase block">Certifying Body:</span>
+                        <span>{part.complianceCertificate.verifiedBy}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-emerald-700 uppercase block">Verification Timestamp:</span>
+                        <span>{part.complianceCertificate.verifiedDate || "2026-08-15"}</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1583,6 +1824,160 @@ export default function PartDossierModal({
                       />
                     </div>
 
+                    {/* SECTION: Engine & Chassis Fitment Matrix */}
+                    <div className="space-y-2 sm:col-span-2 p-3 bg-[#FAF8F5] border border-stone-300 rounded">
+                      <span className="text-[10px] font-mono font-bold uppercase text-stone-800 block">
+                        Engine Code Tags (Auto World Showroom Matcher):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {COMMON_ENGINE_CODES.map(code => {
+                          const isSel = editEngineCodes.includes(code);
+                          return (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => {
+                                if (isSel) {
+                                  setEditEngineCodes(editEngineCodes.filter(c => c !== code));
+                                } else {
+                                  setEditEngineCodes([...editEngineCodes, code]);
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold cursor-pointer transition ${
+                                isSel 
+                                  ? "bg-amber-400 text-stone-950 border border-amber-600 ring-1 ring-amber-400"
+                                  : "bg-white text-stone-700 border border-stone-300 hover:bg-stone-100"
+                              }`}
+                            >
+                              {isSel ? "✓ " : "+ "}{code}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <span className="text-[10px] font-mono font-bold uppercase text-stone-800 block pt-1">
+                        Chassis Code Tags:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {COMMON_CHASSIS_CODES.map(code => {
+                          const isSel = editChassisCodes.includes(code);
+                          return (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => {
+                                if (isSel) {
+                                  setEditChassisCodes(editChassisCodes.filter(c => c !== code));
+                                } else {
+                                  setEditChassisCodes([...editChassisCodes, code]);
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold cursor-pointer transition ${
+                                isSel 
+                                  ? "bg-blue-600 text-white border border-blue-700 ring-1 ring-blue-400"
+                                  : "bg-white text-stone-700 border border-stone-300 hover:bg-stone-100"
+                              }`}
+                            >
+                              {isSel ? "✓ " : "+ "}{code}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* SECTION: Supply Chain & Stock Tracking */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Inventory Stock Status</label>
+                      <select
+                        value={editStockStatus}
+                        onChange={(e) => setEditStockStatus(e.target.value as PartStockStatus)}
+                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none rounded"
+                      >
+                        <option value="in_stock">In Stock (Ready to Dispatch)</option>
+                        <option value="custom_order">Custom Order / Backorder</option>
+                        <option value="sold_out">Sold / Out of Stock</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Current Stock Units Available</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editStockCount}
+                        onChange={(e) => setEditStockCount(parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none rounded font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Lead Time / Dispatch Guarantee</label>
+                      <input
+                        type="text"
+                        value={editLeadTimeDays}
+                        onChange={(e) => setEditLeadTimeDays(e.target.value)}
+                        placeholder="e.g. Ships same business day via BlueDart Apex / 2–3 Weeks Backorder"
+                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-medium focus:border-stone-900 outline-none rounded"
+                      />
+                    </div>
+
+                    {/* SECTION: Dyno Curve & Homologation Certificate */}
+                    <div className="space-y-1 sm:col-span-2 p-3 bg-[#FAF8F5] border border-stone-300 rounded space-y-3">
+                      <span className="text-[10px] font-mono font-bold uppercase text-stone-800 block">
+                        Dyno Telemetry & Homologation Certification Attachments:
+                      </span>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-mono text-stone-600 block mb-1">Dyno Sheet High-Res Image URL:</label>
+                          <input
+                            type="text"
+                            value={editDynoSheetUrl}
+                            onChange={(e) => setEditDynoSheetUrl(e.target.value)}
+                            placeholder="https://images.unsplash.com/... (Dyno Chart)"
+                            className="w-full px-3 py-1.5 bg-white border border-stone-300 text-xs font-mono rounded outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono text-stone-600 block mb-1">Performance Gain Metric:</label>
+                          <input
+                            type="text"
+                            value={editPerformanceGain}
+                            onChange={(e) => setEditPerformanceGain(e.target.value)}
+                            placeholder="e.g. +145 WHP / +180 Nm TQ @ 1.8 Bar"
+                            className="w-full px-3 py-1.5 bg-white border border-stone-300 text-xs rounded outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono text-stone-600 block mb-1">Compliance Standard:</label>
+                          <select
+                            value={editCertType}
+                            onChange={(e) => setEditCertType(e.target.value)}
+                            className="w-full px-3 py-1.5 bg-white border border-stone-300 text-xs rounded outline-none"
+                          >
+                            <option value="FIA Homologated">FIA Homologated</option>
+                            <option value="TÜV Rheinland Certified">TÜV Rheinland Certified</option>
+                            <option value="ARAI Approved">ARAI Approved</option>
+                            <option value="AIS-004 Track Compliant">AIS-004 Track Compliant</option>
+                            <option value="OEM Factory Grade">OEM Factory Grade</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono text-stone-600 block mb-1">Certificate # / Accredit Serial:</label>
+                          <input
+                            type="text"
+                            value={editCertNumber}
+                            onChange={(e) => setEditCertNumber(e.target.value)}
+                            placeholder="e.g. FIA-GT3-2026-992-044"
+                            className="w-full px-3 py-1.5 bg-white border border-stone-300 text-xs font-mono rounded outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-1 sm:col-span-2">
                       <label className="text-[10px] font-mono font-bold uppercase text-stone-700 block">Engineering Narrative / Description</label>
                       <textarea
@@ -1625,6 +2020,44 @@ export default function PartDossierModal({
 
         </motion.div>
       </div>
+
+      {/* High-Res Dyno Sheet Fullscreen Inspection Modal */}
+      {showDynoModal && part.dynoSheetUrl && (
+        <div className="fixed inset-0 z-[100000] bg-stone-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-stone-900 border-2 border-stone-700 rounded-lg max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-3.5 bg-stone-950 border-b border-stone-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-stone-100">
+                  {part.title} — Dyno Calibration Sheet Telemetry
+                </span>
+              </div>
+              <button
+                onClick={() => setShowDynoModal(false)}
+                className="p-1 text-stone-400 hover:text-white rounded cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex items-center justify-center bg-stone-950">
+              <img
+                src={part.dynoSheetUrl}
+                alt="High Res Dyno Sheet"
+                className="max-w-full max-h-[70vh] object-contain rounded"
+              />
+            </div>
+            <div className="p-3 bg-stone-950 border-t border-stone-800 flex items-center justify-between text-xs font-mono text-stone-400">
+              <span>{part.performanceGain || "Peak Horsepower & Torque Telemetry Verified"}</span>
+              <button
+                onClick={() => setShowDynoModal(false)}
+                className="px-3 py-1 bg-stone-800 hover:bg-stone-700 text-white rounded cursor-pointer"
+              >
+                Close Inspection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   </AnimatePresence>,
   document.body

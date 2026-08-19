@@ -74,6 +74,26 @@ export type PartCategory =
 
 export type PartRarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
 
+export type PartStockStatus = "in_stock" | "custom_order" | "out_of_stock" | "sold_out";
+
+export interface PartPriceHistoryEntry {
+  price: number;
+  date: string;
+  note?: string;
+  updatedBy?: string;
+  changedBy?: string;
+}
+
+export interface PartComplianceCertificate {
+  type?: string; // e.g. "FIA Homologation", "TÜV Rheinland Certified", "ISO 9001:2015", "AIS-004 Automotive Certified"
+  certType?: string;
+  certNumber: string;
+  fileUrl?: string;
+  verifiedBy?: string;
+  verifiedDate?: string;
+  expiryDate?: string;
+}
+
 export interface Part {
   id: number | string;
   title: string;
@@ -89,11 +109,45 @@ export interface Part {
   compatibleModel?: string;
   suitableVehicles?: string[];
   compatibleVehicles: string;
+  
+  // 1. Compatibility & Vehicle Cross-Linking Matrix
+  engineCodes?: string[];
+  chassisCodes?: string[];
+  matchedVehicleIds?: (number | string)[];
+
+  // 2. Live Inventory & Supply Chain Status
+  stockCount?: number;
+  stockStatus?: PartStockStatus;
+  leadTime?: string;
+  leadTimeDays?: string;
+  lowStockThreshold?: number;
+
+  // 3. Community Submission & Moderation
+  moderationStatus?: "pending" | "approved" | "rejected" | "pending_verification" | "verified";
+  rejectionReason?: string;
+  isTunerVerified?: boolean;
+  verifiedTuner?: boolean;
+  isAutoWorldCertified?: boolean;
+  autoWorldCertified?: boolean;
+
+  // 4. Analytics & Lead Tracking
+  inquiryCount?: number;
+  bookmarkCount?: number;
+  bookmarksCount?: number;
+  viewsCount?: number;
+  impressionsCount?: number;
+  whatsappLeadsCount?: number;
+  priceHistory?: PartPriceHistoryEntry[];
+
+  // 5. Multi-Angle Gallery & Dyno / Certificate Attachments
+  dynoSheetUrl?: string;
+  dynoHpGain?: string;
+  complianceCertificate?: PartComplianceCertificate;
+
   purchaseDate?: string;
   installationDifficulty?: "Easy (Plug & Play)" | "Moderate (Garage Tools)" | "Professional (Tuner Required)" | string;
   performanceGain?: string;
   shippingAvailable?: boolean;
-  inquiryCount?: number;
   description: string;
   specifications?: Record<string, string>;
   sellerName?: string;
@@ -124,11 +178,38 @@ export interface UserPartListing {
   compatibleModel?: string;
   suitableVehicles?: string[];
   compatibleVehicles: string;
+  
+  // Compatibility & Fitment Tags
+  engineCodes?: string[];
+  chassisCodes?: string[];
+  matchedVehicleIds?: (number | string)[];
+
+  // Live Inventory & Stock Status
+  stockCount?: number;
+  stockStatus?: PartStockStatus;
+  leadTime?: string;
+
+  // Moderation & Verification
+  moderationStatus?: "pending" | "approved" | "rejected";
+  rejectionReason?: string;
+  isTunerVerified?: boolean;
+  isAutoWorldCertified?: boolean;
+
+  // Analytics & Logs
+  inquiryCount?: number;
+  bookmarkCount?: number;
+  viewsCount?: number;
+  priceHistory?: PartPriceHistoryEntry[];
+
+  // Dyno & Certificates
+  dynoSheetUrl?: string;
+  dynoHpGain?: string;
+  complianceCertificate?: PartComplianceCertificate;
+
   purchaseDate?: string;
   installationDifficulty?: "Easy (Plug & Play)" | "Moderate (Garage Tools)" | "Professional (Tuner Required)" | string;
   performanceGain?: string;
   shippingAvailable?: boolean;
-  inquiryCount?: number;
   description: string;
   negotiable: "yes" | "no" | string;
   sellerName: string;
@@ -637,6 +718,57 @@ export const PART_BRANDS = [
   "Custom / Bespoke"
 ];
 
+export const COMMON_ENGINE_CODES = [
+  "B58 3.0L Turbo (BMW)",
+  "EA888 Gen 3/4 2.0T (VAG / Skoda / Audi)",
+  "2JZ-GTE / 2JZ-GE 3.0L (Toyota)",
+  "mHawk 2.2L CRDe (Mahindra)",
+  "mStallion 2.0L TGDi (Mahindra)",
+  "1GD-FTV 2.8L D-4D (Toyota Fortuner/Hilux)",
+  "VR38DETT 3.8L Twin-Turbo (Nissan GT-R)",
+  "S58 3.0L Twin-Turbo (BMW M3 / M4)",
+  "K20C1 2.0L VTEC Turbo (Honda Type-R)",
+  "RB26DETT 2.6L Twin-Turbo (Nissan)",
+  "EJ25 / FA24 Boxer Turbo (Subaru STI/BRZ)",
+  "Universal / Multi-Platform"
+];
+
+export const COMMON_CHASSIS_CODES = [
+  "G20 / G80 (BMW 3-Series / M3)",
+  "MQB Platform (Octavia / Superb / Virtus / Golf)",
+  "Thar Gen-2 / Thar Roxx (Mahindra)",
+  "A90 / A91 (Toyota GR Supra)",
+  "AN160 / AN150 (Toyota Fortuner / Hilux)",
+  "992 / 991 (Porsche 911 Carrera & GT3)",
+  "W205 / W206 (Mercedes-Benz C-Class)",
+  "F87 / G87 (BMW M2 Coupe)",
+  "6R / 6C (Volkswagen Polo GT)",
+  "Universal Track / Custom Motorsport"
+];
+
+export const STOCK_STATUS_CONFIGS: Record<PartStockStatus, { label: string; badgeClass: string; desc: string }> = {
+  in_stock: {
+    label: "In Stock (Ready to Dispatch)",
+    badgeClass: "bg-emerald-500/10 text-emerald-700 border-emerald-300 dark:border-emerald-700 dark:text-emerald-300",
+    desc: "Component is packaged in central vault & ready for same-day dispatch."
+  },
+  custom_order: {
+    label: "Custom Order / Backorder",
+    badgeClass: "bg-amber-500/10 text-amber-700 border-amber-300 dark:border-amber-700 dark:text-amber-300",
+    desc: "Made-to-order or imported with scheduled freight lead time."
+  },
+  out_of_stock: {
+    label: "Out of Stock",
+    badgeClass: "bg-rose-500/10 text-rose-700 border-rose-300 dark:border-rose-700 dark:text-rose-300",
+    desc: "Currently exhausted from vault. Inquire for batch manufacturing queue."
+  },
+  sold_out: {
+    label: "Sold Out / Archived",
+    badgeClass: "bg-stone-500/10 text-stone-700 border-stone-300 dark:border-stone-700 dark:text-stone-300",
+    desc: "Unit sold out and closed from active inventory."
+  }
+};
+
 export const DEFAULT_PARTS: Part[] = [
   {
     id: 1,
@@ -656,11 +788,46 @@ export const DEFAULT_PARTS: Part[] = [
     compatibleModel: "Sports Coupe / Sedan / Universal Track",
     suitableVehicles: ["Universal", "BMW 3 Series", "Mahindra Thar", "Toyota Supra", "Porsche 911"],
     compatibleVehicles: "Universal Track / Sports Coupes / BMW 3 Series / Thar Custom",
+    
+    // Fitment & Linking
+    engineCodes: ["B58 3.0L Turbo (BMW)", "S58 3.0L Twin-Turbo (BMW M3 / M4)", "Universal / Multi-Platform"],
+    chassisCodes: ["G20 / G80 (BMW 3-Series / M3)", "A90 / A91 (Toyota GR Supra)", "Universal Track / Custom Motorsport"],
+    matchedVehicleIds: [1, 5],
+
+    // Inventory & Supply Chain
+    stockCount: 3,
+    stockStatus: "in_stock",
+    leadTime: "Immediate Dispatch (24h Express Freight)",
+    lowStockThreshold: 2,
+
+    // Moderation & Trust
+    moderationStatus: "approved",
+    isAutoWorldCertified: true,
+    isTunerVerified: true,
+
+    // Analytics
+    inquiryCount: 42,
+    bookmarkCount: 68,
+    viewsCount: 1240,
+    priceHistory: [
+      { price: 92000, date: "2025-11-15", note: "Initial Import Batch Valuation", updatedBy: "Admin Vault" },
+      { price: 85000, date: "2026-01-10", note: "Motorsport Season Festival Revision", updatedBy: "Auto World Desk" }
+    ],
+
+    // Dyno & Certifications
+    dynoSheetUrl: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800",
+    dynoHpGain: "Aerodynamic: +145 kg Linear Downforce @ 180 km/h",
+    complianceCertificate: {
+      type: "FIA GT Homologation Spec",
+      certNumber: "FIA-AERO-2025-0988",
+      verifiedBy: "Motorsport Aerodynamics Bureau",
+      expiryDate: "2029-12-31"
+    },
+
     purchaseDate: "Brand New Unopened",
     installationDifficulty: "Moderate (Garage Tools)",
     performanceGain: "Downforce: +145 kg @ 180 km/h",
     shippingAvailable: true,
-    inquiryCount: 42,
     description: "Ultra-rigid dry carbon autoclave weave swan-neck aerodynamic wing. Designed to generate over 145 kg of linear downforce at 180 km/h with 12-position billet aluminum angle adjustment mounts.",
     partNumber: "AKR-GTW-7740",
     warranty: "2 Years Manufacturer Replacement",
@@ -697,11 +864,46 @@ export const DEFAULT_PARTS: Part[] = [
     compatibleModel: "2.0L - 4.5L Tuned Petrol/Diesel Engines",
     suitableVehicles: ["Universal", "BMW 3 Series", "Toyota Fortuner", "Mahindra Thar", "Volkswagen Virtus"],
     compatibleVehicles: "Universal Fitment / T4 Twin-Scroll Flange / 2.0L - 4.5L Engines",
+    
+    // Fitment & Linking
+    engineCodes: ["B58 3.0L Turbo (BMW)", "EA888 Gen 3/4 2.0T (VAG / Skoda / Audi)", "2JZ-GTE / 2JZ-GE 3.0L (Toyota)", "mStallion 2.0L TGDi (Mahindra)"],
+    chassisCodes: ["G20 / G80 (BMW 3-Series / M3)", "MQB Platform (Octavia / Superb / Virtus / Golf)", "A90 / A91 (Toyota GR Supra)", "Thar Gen-2 / Thar Roxx (Mahindra)"],
+    matchedVehicleIds: [1, 2, 5],
+
+    // Inventory & Supply Chain
+    stockCount: 1,
+    stockStatus: "in_stock",
+    leadTime: "Low Stock Alert (1 Unit Remaining in Mumbai Vault)",
+    lowStockThreshold: 2,
+
+    // Moderation & Trust
+    moderationStatus: "approved",
+    isAutoWorldCertified: true,
+    isTunerVerified: true,
+
+    // Analytics
+    inquiryCount: 58,
+    bookmarkCount: 94,
+    viewsCount: 2180,
+    priceHistory: [
+      { price: 175000, date: "2025-10-01", note: "Gen-II Launch MSRP", updatedBy: "Garrett Distribution" },
+      { price: 165000, date: "2026-02-01", note: "Tier-1 Auto World Exclusive Partner Price", updatedBy: "Admin Vault" }
+    ],
+
+    // Dyno & Certifications
+    dynoSheetUrl: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800",
+    dynoHpGain: "+210 WHP / +280 Nm Peak Boost Gain",
+    complianceCertificate: {
+      type: "TÜV Rheinland Certified & ISO 9001",
+      certNumber: "TUV-DE-TURBO-77192",
+      verifiedBy: "TÜV Product Service GmbH",
+      expiryDate: "2030-06-30"
+    },
+
     purchaseDate: "1 Month Ago",
     installationDifficulty: "Professional (Tuner Required)",
     performanceGain: "+180 HP to +450 HP (Up to 850 HP Capacity)",
     shippingAvailable: true,
-    inquiryCount: 38,
     description: "Fully forged machined 10-blade point milled billet compressor wheel with dual ceramic ball bearing CHRA. Ceramic coated high-flow nickel alloy turbine housing for instantaneous spool-up response.",
     partNumber: "GRT-GTX3582R-II",
     warranty: "1 Year Official Garrett Warranty",
@@ -737,11 +939,45 @@ export const DEFAULT_PARTS: Part[] = [
     compatibleModel: "V6 / V8 / 4-Cylinder Petrol Performance Cars",
     suitableVehicles: ["Universal", "Mahindra Thar Petrol", "BMW 3 Series", "Polo GT"],
     compatibleVehicles: "V6 / V8 / Tuned 4-Cylinder Petrol (Thar Petrol / BMW / Polo GT)",
+    
+    // Fitment & Linking
+    engineCodes: ["mStallion 2.0L TGDi (Mahindra)", "B58 3.0L Turbo (BMW)", "Universal / Multi-Platform"],
+    chassisCodes: ["Thar Gen-2 / Thar Roxx (Mahindra)", "G20 / G80 (BMW 3-Series / M3)", "6R / 6C (Volkswagen Polo GT)"],
+    matchedVehicleIds: [1, 2],
+
+    // Inventory & Supply Chain
+    stockCount: 0,
+    stockStatus: "custom_order",
+    leadTime: "Custom Order Lead Time: 2–3 Weeks (US Holley Import)",
+    lowStockThreshold: 1,
+
+    // Moderation & Trust
+    moderationStatus: "approved",
+    isAutoWorldCertified: true,
+    isTunerVerified: true,
+
+    // Analytics
+    inquiryCount: 29,
+    bookmarkCount: 45,
+    viewsCount: 980,
+    priceHistory: [
+      { price: 120000, date: "2026-01-05", note: "Direct Import Price Tag", updatedBy: "Apex Racing" }
+    ],
+
+    // Dyno & Certifications
+    dynoSheetUrl: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800",
+    dynoHpGain: "+125 WHP Instantaneous Nitrous Shot Boost",
+    complianceCertificate: {
+      type: "DOT-3AL High Pressure Cylinder Spec",
+      certNumber: "DOT-3AL-1800-PSI",
+      verifiedBy: "US Department of Transportation Approved",
+      expiryDate: "2031-10-01"
+    },
+
     purchaseDate: "Brand New Unopened",
     installationDifficulty: "Professional (Tuner Required)",
     performanceGain: "+75 HP to +150 HP Instant Shot",
     shippingAvailable: true,
-    inquiryCount: 29,
     description: "Complete 10 lb blue aluminum bottle nitrous delivery kit with high-pressure braided stainless steel lines, purge valve kit, and programmable progressive micro-pulse controller delivering 75 HP to 150 HP instantaneous shots.",
     partNumber: "NOS-05130-V2",
     warranty: "1 Year Performance Warranty",
@@ -777,11 +1013,46 @@ export const DEFAULT_PARTS: Part[] = [
     compatibleModel: "Thar (2020-2024) / Wrangler / Defender 7-Inch",
     suitableVehicles: ["Mahindra Thar", "Jeep Wrangler", "Land Rover Defender"],
     compatibleVehicles: "Mahindra Thar (2020-2024) / Wrangler / Defender Retrofit",
+    
+    // Fitment & Linking
+    engineCodes: ["mHawk 2.2L CRDe (Mahindra)", "mStallion 2.0L TGDi (Mahindra)", "Universal / Multi-Platform"],
+    chassisCodes: ["Thar Gen-2 / Thar Roxx (Mahindra)"],
+    matchedVehicleIds: [2],
+
+    // Inventory & Supply Chain
+    stockCount: 4,
+    stockStatus: "in_stock",
+    leadTime: "Immediate Dispatch (Delhi NCR & All-India Delivery)",
+    lowStockThreshold: 2,
+
+    // Moderation & Trust
+    moderationStatus: "approved",
+    isAutoWorldCertified: true,
+    isTunerVerified: true,
+
+    // Analytics
+    inquiryCount: 51,
+    bookmarkCount: 82,
+    viewsCount: 1650,
+    priceHistory: [
+      { price: 72000, date: "2025-09-12", note: "Original List Price", updatedBy: "TharMods" },
+      { price: 68000, date: "2025-12-20", note: "Winter Offroad Promo Discount", updatedBy: "TharMods" }
+    ],
+
+    // Dyno & Certifications
+    dynoSheetUrl: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800",
+    dynoHpGain: "16,000 Lumens / 600m High-Beam Throw Range",
+    complianceCertificate: {
+      type: "AIS-004 Automotive Lighting Certified (ARAI / iCAT)",
+      certNumber: "AIS-004-DL-9844",
+      verifiedBy: "Automotive Research Association of India",
+      expiryDate: "2028-08-15"
+    },
+
     purchaseDate: "3 Months Ago",
     installationDifficulty: "Easy (Plug & Play)",
     performanceGain: "Visibility: 16,000 Lumens / 600m Laser Beam",
     shippingAvailable: true,
-    inquiryCount: 51,
     description: "7-inch circular military-grade sealed projector headlights featuring active matrix laser diode high-beams reaching up to 600 meters. Includes sweeping dynamic amber sequential turn signals and integrated DRL halo rings.",
     partNumber: "BOS-LSR-701A",
     warranty: "3 Years Waterproofing Warranty",
@@ -817,11 +1088,46 @@ export const DEFAULT_PARTS: Part[] = [
     compatibleModel: "3 Series G20 (330i / M340i)",
     suitableVehicles: ["BMW 3 Series G20", "BMW M340i xDrive", "BMW 4 Series"],
     compatibleVehicles: "BMW 3 Series G20 / Fortuner 2.8L / Custom Performance Sedans",
+    
+    // Fitment & Linking
+    engineCodes: ["B58 3.0L Turbo (BMW)", "S58 3.0L Twin-Turbo (BMW M3 / M4)"],
+    chassisCodes: ["G20 / G80 (BMW 3-Series / M3)", "F87 / G87 (BMW M2 Coupe)"],
+    matchedVehicleIds: [1],
+
+    // Inventory & Supply Chain
+    stockCount: 2,
+    stockStatus: "in_stock",
+    leadTime: "Immediate Dispatch (Insured Wooden Crate Freight)",
+    lowStockThreshold: 2,
+
+    // Moderation & Trust
+    moderationStatus: "approved",
+    isAutoWorldCertified: true,
+    isTunerVerified: true,
+
+    // Analytics
+    inquiryCount: 47,
+    bookmarkCount: 110,
+    viewsCount: 3100,
+    priceHistory: [
+      { price: 360000, date: "2025-08-10", note: "Euro Exchange Rate Adjustment", updatedBy: "Auto World Imports" },
+      { price: 340000, date: "2026-01-15", note: "Direct Dealership Inventory Stock Liquidation", updatedBy: "Supercar Sound Lab" }
+    ],
+
+    // Dyno & Certifications
+    dynoSheetUrl: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800",
+    dynoHpGain: "+14.2 WHP @ 5,400 RPM / -12.4 kg Net Weight Loss",
+    complianceCertificate: {
+      type: "EC/ECE Type-Approved Street Legal Acoustics",
+      certNumber: "e26*03*0049*00",
+      verifiedBy: "Slovenian National Automotive Authority",
+      expiryDate: "2032-12-31"
+    },
+
     purchaseDate: "Brand New Unopened",
     installationDifficulty: "Moderate (Garage Tools)",
     performanceGain: "+14.2 HP @ 5,400 RPM / -12.4 kg Weight Saving",
     shippingAvailable: true,
-    inquiryCount: 47,
     description: "Aerospace-grade ultralight titanium full cat-back exhaust with vacuum-actuated dual active valves. Delivers a deep resonant motorsport acoustics profile while shedding 12.4 kg compared to OEM stainless systems.",
     partNumber: "S-BM/T/10H",
     warranty: "3 Years Factory Acoustic Warranty",
@@ -857,11 +1163,46 @@ export const DEFAULT_PARTS: Part[] = [
     compatibleModel: "5x112 & 5x120 PCD Fitment",
     suitableVehicles: ["Universal", "BMW 3 Series", "Mercedes C-Class", "Audi A4", "Skoda Octavia vRS", "Volkswagen Virtus"],
     compatibleVehicles: "5x112 / 5x120 Universal Bolt PCD (BMW, Mercedes, Audi, Skoda, Thar with adapter)",
+    
+    // Fitment & Linking
+    engineCodes: ["B58 3.0L Turbo (BMW)", "EA888 Gen 3/4 2.0T (VAG / Skoda / Audi)", "Universal / Multi-Platform"],
+    chassisCodes: ["G20 / G80 (BMW 3-Series / M3)", "MQB Platform (Octavia / Superb / Virtus / Golf)", "W205 / W206 (Mercedes-Benz C-Class)"],
+    matchedVehicleIds: [1, 4],
+
+    // Inventory & Supply Chain
+    stockCount: 1,
+    stockStatus: "in_stock",
+    leadTime: "1 Complete Set (4 Wheels) in Chennai Vault",
+    lowStockThreshold: 1,
+
+    // Moderation & Trust
+    moderationStatus: "approved",
+    isAutoWorldCertified: true,
+    isTunerVerified: true,
+
+    // Analytics
+    inquiryCount: 34,
+    bookmarkCount: 76,
+    viewsCount: 1420,
+    priceHistory: [
+      { price: 310000, date: "2025-11-01", note: "Original German Consignment", updatedBy: "EuroWheels" },
+      { price: 290000, date: "2026-01-20", note: "Adjusted for Fast Clearance", updatedBy: "EuroWheels" }
+    ],
+
+    // Dyno & Certifications
+    dynoSheetUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800",
+    dynoHpGain: "Unsprung Mass Reduction: -3.8 kg Per Corner",
+    complianceCertificate: {
+      type: "JWL / VIA Japanese Light Alloy Wheel Standard",
+      certNumber: "JWL-VIA-BBS-1988",
+      verifiedBy: "Vehicle Inspection Association of Japan",
+      expiryDate: "2030-12-31"
+    },
+
     purchaseDate: "6 Months Ago",
     installationDifficulty: "Easy (Plug & Play)",
     performanceGain: "Unsprung Weight: 8.85 kg per wheel",
     shippingAvailable: true,
-    inquiryCount: 34,
     description: "Iconic timeless cross-spoke 2-piece forged aluminum wheel rim set. Diamond-cut polished lips with gold titanium hardware assembly bolts, providing extreme rotational rigidity and lightweight unsprung mass.",
     partNumber: "BBS-RS19-85ET35",
     warranty: "Lifetime Structural Integrity",
