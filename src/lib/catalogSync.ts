@@ -16,6 +16,7 @@ export interface AdminSettingsData {
   isEmiCalculatorEnabled?: boolean;
   isWhatsAppConnectEnabled?: boolean;
   isAiAssistantEnabled?: boolean;
+  isEngineSoundEnabled?: boolean;
   isSimranFreeModeEnabled?: boolean;
   isSmsNotificationsEnabled?: boolean;
   [key: string]: any;
@@ -167,6 +168,9 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       }
       if (settings.isAiAssistantEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_ai_assistant", JSON.stringify(settings.isAiAssistantEnabled));
+      }
+      if (settings.isEngineSoundEnabled !== undefined) {
+        localStorage.setItem("autoWorld_is_engine_sound", JSON.stringify(settings.isEngineSoundEnabled));
       }
       if (settings.isSimranFreeModeEnabled !== undefined) {
         localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(settings.isSimranFreeModeEnabled));
@@ -342,6 +346,7 @@ export function subscribeToRealtimeCatalog(
           isEmiCalculatorEnabled: data.isEmiCalculatorEnabled !== undefined ? Boolean(data.isEmiCalculatorEnabled) : true,
           isWhatsAppConnectEnabled: data.isWhatsAppConnectEnabled !== undefined ? Boolean(data.isWhatsAppConnectEnabled) : true,
           isAiAssistantEnabled: data.isAiAssistantEnabled !== undefined ? Boolean(data.isAiAssistantEnabled) : true,
+          isEngineSoundEnabled: data.isEngineSoundEnabled !== undefined ? Boolean(data.isEngineSoundEnabled) : true,
           isSimranFreeModeEnabled: data.isSimranFreeModeEnabled !== undefined ? Boolean(data.isSimranFreeModeEnabled) : false,
           footerEmail: data.footerEmail || undefined,
           footerPhone: data.footerPhone || undefined,

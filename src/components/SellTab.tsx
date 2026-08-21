@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User as UserIcon, ExternalLink, Wrench } from "lucide-react";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User as UserIcon, ExternalLink, Wrench, Volume2, VolumeX, Play, Square, Music, Disc3 } from "lucide-react";
 import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing, INDIAN_RTO_STATES, INSURANCE_STATUS_OPTIONS, PUCC_STATUS_OPTIONS, HYPOTHECATION_OPTIONS, STATE_NOC_OPTIONS, ROAD_TAX_OPTIONS, DEFAULT_PARTS, UserPartListing, PartCategory, PartRarity, PART_CATEGORIES, PART_RARITY_TIERS, PART_BRANDS, PART_CONDITION_LABELS } from "../types";
 import PartsUploadWizard from "./PartsUploadWizard";
 import AdminPartsDesk from "./AdminPartsDesk";
 import { getListingExpirationDetails } from "../lib/expirationManager";
 import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
+import { engineAudio } from "../lib/engineAudio";
 import type { User as FirebaseUser } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
@@ -2049,6 +2050,78 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [hasDraft, setHasDraft] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
 
+  // STEP 3 EXTENSION: Acoustic Engine & Exhaust Sound Note State (Upload Only)
+  const [includeEngineSound, setIncludeEngineSound] = useState(false);
+  const [engineSoundUrl, setEngineSoundUrl] = useState("");
+  const [engineSoundTitle, setEngineSoundTitle] = useState("");
+  const [engineSoundType, setEngineSoundType] = useState("custom");
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [previewAudioName, setPreviewAudioName] = useState("");
+  const [audioFileSize, setAudioFileSize] = useState<string>("");
+
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 950 * 1024) {
+      showToast("Audio file exceeds 950KB. Please select a short 5-15 second recording.", "error");
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64Audio = uploadEvent.target?.result as string;
+        if (base64Audio) {
+          setEngineSoundUrl(base64Audio);
+          const cleanName = file.name.replace(/\.[^/.]+$/, "");
+          setEngineSoundTitle(cleanName || "Authentic Engine Recording");
+          setEngineSoundType("custom");
+          setPreviewAudioName(file.name);
+          setAudioFileSize(`${(file.size / 1024).toFixed(1)} KB`);
+          setIncludeEngineSound(true);
+          showToast(`Engine audio "${file.name}" ready to attach!`, "success");
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Audio upload error:", err);
+      showToast("Failed to process audio file.", "error");
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = engineAudio.subscribe((state) => {
+      setIsPlayingAudio(state.isPlaying);
+    });
+    return () => {
+      unsubscribe();
+      engineAudio.stop();
+    };
+  }, []);
+
+  const handleTogglePlayAudio = async () => {
+    if (!engineSoundUrl) return;
+    if (isPlayingAudio) {
+      engineAudio.stop();
+      setIsPlayingAudio(false);
+    } else {
+      setIsPlayingAudio(true);
+      await engineAudio.play(engineSoundUrl, engineSoundType || "custom");
+    }
+  };
+
+  const handleRemoveUploadedAudio = () => {
+    engineAudio.stop();
+    setIsPlayingAudio(false);
+    setEngineSoundUrl("");
+    setEngineSoundTitle("");
+    setEngineSoundType("custom");
+    setPreviewAudioName("");
+    setAudioFileSize("");
+    showToast("Engine audio recording removed.", "info");
+  };
+
   // Restore auto-saved draft on mount
   useEffect(() => {
     try {
@@ -2092,6 +2165,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           if (d.locationStr !== undefined) setLocationStr(d.locationStr);
           if (d.featuredListing !== undefined) setFeaturedListing(d.featuredListing);
           if (d.urgentListing !== undefined) setUrgentListing(d.urgentListing);
+          if (d.includeEngineSound !== undefined) setIncludeEngineSound(d.includeEngineSound);
+          if (d.engineSoundUrl !== undefined) setEngineSoundUrl(d.engineSoundUrl);
+          if (d.engineSoundTitle !== undefined) setEngineSoundTitle(d.engineSoundTitle);
+          if (d.engineSoundType !== undefined) setEngineSoundType(d.engineSoundType);
+          if (d.previewAudioName !== undefined) setPreviewAudioName(d.previewAudioName);
           if (d.currentStep && d.currentStep <= 5) setCurrentStep(d.currentStep);
 
           const hasContent = Boolean(
@@ -2159,6 +2237,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       locationStr,
       featuredListing,
       urgentListing,
+      includeEngineSound,
+      engineSoundUrl,
+      engineSoundTitle,
+      engineSoundType,
+      previewAudioName,
       updatedAt: new Date().toISOString()
     };
 
@@ -2176,7 +2259,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     bikeGears, bicycleType, frameSize, gears, brakeType, frameMaterial,
     batteryCapacity, electricRange, driveType, photos, askingPrice,
     negotiable, sellerName, sellerEmail, sellerPhone, locationStr,
-    featuredListing, urgentListing
+    featuredListing, urgentListing, includeEngineSound,
+    engineSoundUrl, engineSoundTitle, engineSoundType, previewAudioName
   ]);
 
   // Publish Status details
@@ -2677,6 +2761,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         fastagStatus: sanitizeInput(fastagStatus || "Active & Linked"),
         stateNocAvailable: sanitizeInput(stateNocAvailable || "Pan-India Transferable (NOC Available)"),
         roadTaxStatus: sanitizeInput(roadTaxStatus || "Lifetime Road Tax Paid (LTT)"),
+        // Acoustic Engine & Exhaust Audio Note (Optional Immersion)
+        engineSoundUrl: includeEngineSound && engineSoundUrl ? sanitizeInput(engineSoundUrl) : undefined,
+        engineSoundTitle: includeEngineSound && engineSoundUrl ? sanitizeInput(engineSoundTitle || "Authentic Engine & Exhaust Note") : undefined,
+        engineSoundType: includeEngineSound && engineSoundUrl ? sanitizeInput(engineSoundType || "custom") : undefined,
         featured: featuredListing,
         urgent: urgentListing,
         photos: preparedPhotos,
@@ -2806,6 +2894,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setLocationStr("");
     setFeaturedListing(false);
     setUrgentListing(false);
+    setIncludeEngineSound(false);
+    setEngineSoundUrl("");
+    setEngineSoundTitle("");
+    setEngineSoundType("custom");
+    setIsPlayingAudio(false);
+    setPreviewAudioName("");
+    setAudioFileSize("");
+    engineAudio.stop();
     setCurrentStep(1);
 
     try {
@@ -6015,6 +6111,208 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 </div>
               </div>
             )}
+
+            {/* ACOUSTIC ENGINE & EXHAUST SOUND NOTE STUDIO (UPLOAD ONLY) */}
+            <div id="engine-sound-upload-studio" className="p-5 bg-stone-900 border-2 border-stone-800 text-[#F4F1EA] space-y-4">
+              <div className="flex items-start justify-between gap-3 border-b border-stone-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-sm bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                    <Volume2 className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-serif font-black uppercase tracking-wider text-stone-100 flex items-center gap-2">
+                      <span>Engine & Exhaust Sound Note</span>
+                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-amber-400 text-stone-950">Optional</span>
+                    </h3>
+                    <p className="text-[10px] text-stone-400 mt-0.5 leading-snug">
+                      Allow buyers to listen to cold starts, idle rhythm, and rev notes on your listing dossier.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Opt-in / Opt-out Choice */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncludeEngineSound(false);
+                    handleRemoveUploadedAudio();
+                  }}
+                  className={`p-3 border text-left cursor-pointer transition-all ${
+                    !includeEngineSound
+                      ? "bg-stone-800 border-amber-400/80 text-white shadow-sm ring-1 ring-amber-400/30"
+                      : "bg-stone-950/60 border-stone-800 text-stone-400 hover:border-stone-700 hover:text-stone-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-stone-200">
+                      Skip / No Audio Note
+                    </span>
+                    {!includeEngineSound && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                  </div>
+                  <p className="text-[9.5px] text-stone-405 leading-tight">
+                    Do not attach any audio clip. The listing will display standard vehicle specifications without audio controls.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncludeEngineSound(true);
+                  }}
+                  className={`p-3 border text-left cursor-pointer transition-all ${
+                    includeEngineSound
+                      ? "bg-stone-800 border-amber-400/80 text-white shadow-sm ring-1 ring-amber-400/30"
+                      : "bg-stone-950/60 border-stone-800 text-stone-400 hover:border-stone-700 hover:text-stone-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5" />
+                      Upload Engine Audio File
+                    </span>
+                    {includeEngineSound && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                  </div>
+                  <p className="text-[9.5px] text-stone-405 leading-tight">
+                    Upload an audio recording of your vehicle's engine start, idling, or exhaust notes (.mp3, .wav, .m4a).
+                  </p>
+                </button>
+              </div>
+
+              {/* Extended Sound Upload Panel (Rendered only if seller wants to upload engine sound) */}
+              {includeEngineSound && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-4 pt-2 border-t border-stone-800"
+                >
+                  {!engineSoundUrl ? (
+                    /* Dropzone / Upload Trigger */
+                    <div className="border-2 border-dashed border-stone-700 hover:border-amber-400/80 bg-stone-950/70 p-6 text-center transition-all">
+                      <div className="w-10 h-10 mx-auto mb-2.5 rounded-full bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-400">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <h4 className="text-xs font-mono font-bold uppercase text-stone-100 mb-1">
+                        Select Engine Sound Audio File
+                      </h4>
+                      <p className="text-[10px] text-stone-400 mb-3 max-w-md mx-auto leading-relaxed">
+                        Attach a cold start or exhaust rev recording. Recommended length: 5 to 15 seconds (max 950KB). Supports MP3, WAV, M4A, OGG.
+                      </p>
+
+                      <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-350 text-stone-950 text-[10px] font-mono font-black uppercase tracking-wider cursor-pointer shadow-sm transition">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Browse Audio Recording</span>
+                        <input
+                          type="file"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
+                          onChange={handleAudioFileUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    /* Active Uploaded Audio Details & Playback Preview */
+                    <div className="space-y-3 p-4 bg-stone-950/80 border border-stone-800">
+                      <div className="flex items-center justify-between flex-wrap gap-2 border-b border-stone-800 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <Disc3 className={`w-4 h-4 text-amber-400 ${isPlayingAudio ? "animate-spin" : ""}`} />
+                          <div>
+                            <span className="text-[10px] font-mono font-bold text-stone-100 block">
+                              {previewAudioName || "Attached Engine Sound Clip"}
+                            </span>
+                            {audioFileSize && (
+                              <span className="text-[8.5px] font-mono text-stone-400">
+                                Size: {audioFileSize} • Audio File Ready
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleTogglePlayAudio}
+                            className={`px-3 py-1.5 text-[9px] font-mono font-bold uppercase flex items-center gap-1.5 transition cursor-pointer border ${
+                              isPlayingAudio
+                                ? "bg-amber-400 text-stone-950 border-amber-300 animate-pulse"
+                                : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700"
+                            }`}
+                          >
+                            {isPlayingAudio ? (
+                              <>
+                                <Square className="w-3 h-3 fill-stone-950" />
+                                <span>Stop Audio</span>
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-3 h-3 fill-current text-amber-400" />
+                                <span>Test Audio</span>
+                              </>
+                            )}
+                          </button>
+
+                          <label className="px-2.5 py-1.5 bg-stone-850 hover:bg-stone-800 text-stone-300 border border-stone-700 text-[8.5px] font-mono uppercase font-bold cursor-pointer transition">
+                            <span>Change</span>
+                            <input
+                              type="file"
+                              accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
+                              onChange={handleAudioFileUpload}
+                              className="hidden"
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={handleRemoveUploadedAudio}
+                            className="p-1.5 text-stone-400 hover:text-red-400 hover:bg-stone-850 border border-transparent hover:border-red-500/30 transition cursor-pointer"
+                            title="Remove Audio"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sound Metadata Customization */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-mono uppercase text-stone-400 block font-bold">
+                            Audio Clip Label
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Cold Start & Exhaust Burble"
+                            value={engineSoundTitle}
+                            onChange={(e) => setEngineSoundTitle(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-700 text-xs text-stone-200 focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-mono uppercase text-stone-400 block font-bold">
+                            Sound Profile / Vehicle Category
+                          </label>
+                          <select
+                            value={engineSoundType || "custom"}
+                            onChange={(e) => setEngineSoundType(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-700 text-xs text-stone-200 focus:outline-none focus:border-amber-400 cursor-pointer"
+                          >
+                            <option value="custom">Custom Exhaust Clip</option>
+                            <option value="car">Sport Car / Sedan</option>
+                            <option value="suv">SUV / Off-Road</option>
+                            <option value="motorcycle">Motorcycle / Superbike</option>
+                            <option value="supercar">V8 / Supercar</option>
+                            <option value="diesel">Turbo Diesel</option>
+                            <option value="electric">EV / Electric Whine</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
 
             <div className="flex justify-between pt-5 border-t border-stone-200">
               <button

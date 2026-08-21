@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, SlidersHorizontal, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus, Wrench, Cpu, Flame, Disc, Layers, ShieldCheck, Tag, ChevronRight, Wind, CircleDot, Box, RotateCcw } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, SlidersHorizontal, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus, Wrench, Cpu, Flame, Disc, Layers, ShieldCheck, Tag, ChevronRight, Wind, CircleDot, Box, RotateCcw, Volume2, Music, Repeat } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, PART_CATEGORIES, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_BRANDS, UserPartListing } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
@@ -18,6 +18,8 @@ import { SavedSearchesModal } from "./SavedSearchesModal";
 import { CallbackModal } from "./CallbackModal";
 import { InlineEMICalculator } from "./InlineEMICalculator";
 import { UPIPaymentModal } from "./UPIPaymentModal";
+import AuctionTab from "./AuctionTab";
+import ExchangeTab from "./ExchangeTab";
 
 interface BuyTabProps {
   favorites: number[];
@@ -31,6 +33,10 @@ interface BuyTabProps {
   onSignInClick: () => void;
   favoritePartIds?: (string | number)[];
   toggleFavoritePart?: (id: string | number) => void;
+  activeSubTab?: "buy_vehicle" | "peer_to_peer" | "auction";
+  onSubTabChange?: (tab: "buy_vehicle" | "peer_to_peer" | "auction") => void;
+  isEngineSoundEnabled?: boolean;
+  onPlayEngineSound?: (url?: string, title?: string, type?: string) => void;
 }
 
 // Historical price trends in India (in Lakhs INR ex-showroom)
@@ -192,8 +198,23 @@ export default function BuyTab({
   currentUser, 
   onSignInClick,
   favoritePartIds = [],
-  toggleFavoritePart
+  toggleFavoritePart,
+  activeSubTab,
+  onSubTabChange,
+  isEngineSoundEnabled,
+  onPlayEngineSound
 }: BuyTabProps) {
+  // Buy Sub-Navigation: "buy_vehicle" | "peer_to_peer" | "auction"
+  const [internalSubTab, setInternalSubTab] = useState<"buy_vehicle" | "peer_to_peer" | "auction">("buy_vehicle");
+  const currentSubTab = activeSubTab !== undefined ? activeSubTab : internalSubTab;
+
+  const handleSubTabChange = (tab: "buy_vehicle" | "peer_to_peer" | "auction") => {
+    setInternalSubTab(tab);
+    if (onSubTabChange) {
+      onSubTabChange(tab);
+    }
+  };
+
   // Mode switcher: "vehicles" | "parts"
   const [activeCatalogMode, setActiveCatalogMode] = useState<"vehicles" | "parts">("vehicles");
 
@@ -1170,60 +1191,142 @@ export default function BuyTab({
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="bg-[#F4F1EA] text-[#1A1A1A] min-h-screen py-12 relative font-sans"
+      className="bg-[#F4F1EA] text-[#1A1A1A] min-h-screen py-10 relative font-sans"
     >
       
-      {/* Mini warning header box if not paid */}
-      {!hasPaidPass && (
-        <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 mb-8">
-          <div className="bg-[#E0DBCF] border border-stone-400 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="text-center sm:text-left">
-                <h4 className="text-sm font-serif font-black uppercase tracking-wider text-stone-900 font-sans">1st 3 Listings Free to View</h4>
-                <p className="text-sm md:text-xs text-stone-705 leading-snug">The first 3 cars on our registry are completely free to inspect. To unlock more cars in the catalog, activate your ₹1 premium account pass.</p>
-              </div>
-            </div>
+      {/* 3-TAB NAVBAR FOR BUY SECTION: BUY VEHICLE | CAR EXCHANGE | AUCTION */}
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 mb-6 sm:mb-8">
+        <div className="bg-stone-900/95 backdrop-blur-md p-1 sm:p-2 border border-stone-800 shadow-xl">
+          <div className="grid grid-cols-3 gap-1 sm:gap-2 w-full" role="tablist" aria-label="Buy Section Navigation">
+            {/* Tab 1: Buy Vehicle */}
             <button
-              onClick={() => setShowPaymentModal(true)}
-              className="px-5 py-3.5 bg-stone-900 text-[#F4F1EA] text-xs uppercase font-bold tracking-widest hover:bg-stone-850 cursor-pointer"
+              id="buy-subtab-vehicle"
+              type="button"
+              role="tab"
+              aria-selected={currentSubTab === "buy_vehicle"}
+              onClick={() => handleSubTabChange("buy_vehicle")}
+              className={`relative py-2.5 sm:py-3 px-1 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm font-extrabold uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 sm:gap-2 select-none text-center min-w-0 ${
+                currentSubTab === "buy_vehicle"
+                  ? "bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/20 border-b-2 border-amber-300"
+                  : "text-stone-300 hover:text-white hover:bg-stone-800/90"
+              }`}
             >
-              Activate Pass (₹1 Only)
+              <Car className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">Buy Vehicle</span>
+            </button>
+
+            {/* Tab 2: Car Exchange */}
+            <button
+              id="buy-subtab-car-exchange"
+              type="button"
+              role="tab"
+              aria-selected={currentSubTab === "peer_to_peer"}
+              onClick={() => handleSubTabChange("peer_to_peer")}
+              className={`relative py-2.5 sm:py-3 px-1 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm font-extrabold uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 sm:gap-2 select-none text-center min-w-0 ${
+                currentSubTab === "peer_to_peer"
+                  ? "bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/20 border-b-2 border-amber-300"
+                  : "text-stone-300 hover:text-white hover:bg-stone-800/90"
+              }`}
+            >
+              <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">Car Exchange</span>
+            </button>
+
+            {/* Tab 3: Auction */}
+            <button
+              id="buy-subtab-auction"
+              type="button"
+              role="tab"
+              aria-selected={currentSubTab === "auction"}
+              onClick={() => handleSubTabChange("auction")}
+              className={`relative py-2.5 sm:py-3 px-1 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm font-extrabold uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 sm:gap-2 select-none text-center min-w-0 ${
+                currentSubTab === "auction"
+                  ? "bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/20 border-b-2 border-amber-300"
+                  : "text-stone-300 hover:text-white hover:bg-stone-800/90"
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">Auction</span>
             </button>
           </div>
-        </motion.div>
+        </div>
+      </div>
+
+      {/* SUB-VIEW 1: CAR EXCHANGE */}
+      {currentSubTab === "peer_to_peer" && (
+        <ExchangeTab
+          currentUser={currentUser}
+          showToast={showToast}
+          onSignInClick={onSignInClick}
+        />
       )}
 
-      {/* Floating active permit counter if pass is paid */}
-      {hasPaidPass && (
-        <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 mb-8">
-          <div className="bg-[#FAF8F5] w-full p-4 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-stone-900 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span className="text-xs uppercase tracking-widest font-extrabold text-stone-900 font-mono">
-                {currentUser?.email === "afrojalamansari461@gmail.com"
-                  ? "SYSTEM OWNER ACCESS: UNRESTRICTED GLOBAL CATALOG ACCESS IS PERMANENTLY ENABLED"
-                  : "Premium Account Pass Active — Unrestricted 24-hour catalog access is enabled"}
-              </span>
-            </div>
-            {currentUser?.email === "afrojalamansari461@gmail.com" ? (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-emerald-200 shrink-0 self-start sm:self-auto animate-pulse">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>Infinity Access</span>
-              </div>
-            ) : (
-              countdownText && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-amber-200 shrink-0 self-start sm:self-auto">
-                  <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse shrink-0" />
-                  <span>Expires in: {countdownText}</span>
-                </div>
-              )
-            )}
-          </div>
-        </motion.div>
+      {/* SUB-VIEW 2: AUCTION */}
+      {currentSubTab === "auction" && (
+        <AuctionTab
+          currentUser={currentUser}
+          showToast={showToast}
+          onSignInClick={onSignInClick}
+          onSelectVehicle={onQuickView}
+          isEngineSoundEnabled={isEngineSoundEnabled}
+          onPlayEngineSound={onPlayEngineSound}
+        />
       )}
+
+      {/* SUB-VIEW 3: BUY VEHICLE / PARTS CATALOG */}
+      {currentSubTab === "buy_vehicle" && (
+        <>
+          {/* Mini warning header box if not paid */}
+          {!hasPaidPass && (
+            <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 mb-8">
+              <div className="bg-[#E0DBCF] border border-stone-400 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <h4 className="text-sm font-serif font-black uppercase tracking-wider text-stone-900 font-sans">1st 3 Listings Free to View</h4>
+                    <p className="text-sm md:text-xs text-stone-705 leading-snug">The first 3 cars on our registry are completely free to inspect. To unlock more cars in the catalog, activate your ₹1 premium account pass.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="px-5 py-3.5 bg-stone-900 text-[#F4F1EA] text-xs uppercase font-bold tracking-widest hover:bg-stone-850 cursor-pointer"
+                >
+                  Activate Pass (₹1 Only)
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Floating active permit counter if pass is paid */}
+          {hasPaidPass && (
+            <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-4 mb-8">
+              <div className="bg-[#FAF8F5] w-full p-4 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-stone-900 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span className="text-xs uppercase tracking-widest font-extrabold text-stone-900 font-mono">
+                    {currentUser?.email === "afrojalamansari461@gmail.com"
+                      ? "SYSTEM OWNER ACCESS: UNRESTRICTED GLOBAL CATALOG ACCESS IS PERMANENTLY ENABLED"
+                      : "Premium Account Pass Active — Unrestricted 24-hour catalog access is enabled"}
+                  </span>
+                </div>
+                {currentUser?.email === "afrojalamansari461@gmail.com" ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-emerald-200 shrink-0 self-start sm:self-auto animate-pulse">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span>Infinity Access</span>
+                  </div>
+                ) : (
+                  countdownText && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-mono font-bold uppercase tracking-wider border border-amber-200 shrink-0 self-start sm:self-auto">
+                      <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse shrink-0" />
+                      <span>Expires in: {countdownText}</span>
+                    </div>
+                  )
+                )}
+              </div>
+            </motion.div>
+          )}
 
       <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
         {/* DUAL CATALOG MODE SWITCHER: VEHICLES VS. VEHICLE PARTS */}
@@ -2264,6 +2367,16 @@ export default function BuyTab({
                             {car.badge}
                           </span>
                         )}
+
+                        {/* Audio Engine Sound Indicator on Card Image (ONLY IF car.engineSoundUrl exists) */}
+                        {car.engineSoundUrl && (
+                          <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 z-10">
+                            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-stone-950/90 text-amber-400 text-[8px] sm:text-[8.5px] font-mono font-bold uppercase tracking-wider border border-amber-400/60 backdrop-blur-xs flex items-center gap-1.5 shadow-sm">
+                              <Volume2 className="w-3 h-3 text-amber-400 shrink-0" />
+                              <span>Engine Audio</span>
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="p-3.5 sm:p-5 md:p-6 flex-1 flex flex-col justify-between min-w-0 w-full">
@@ -2306,6 +2419,21 @@ export default function BuyTab({
                             </button>
 
                             <div className="flex items-center gap-1">
+                              {car.engineSoundUrl && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onQuickView(car);
+                                  }}
+                                  className="px-2 py-1 bg-amber-400 hover:bg-amber-350 text-stone-950 text-[9px] font-extrabold uppercase rounded transition cursor-pointer flex items-center gap-1 shrink-0 shadow-xs"
+                                  title="Listen to Engine in Dossier"
+                                >
+                                  <Volume2 className="w-3 h-3" />
+                                  <span>Listen</span>
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -2928,6 +3056,8 @@ export default function BuyTab({
         </div>
       )}
     </motion.div>
+    </>
+    )}
 
       {/* DETAILED DAILY PERMIT UPI GATEWAY MODAL */}
       <UPIPaymentModal

@@ -9,6 +9,8 @@ import BuyTab from "./components/BuyTab";
 import SellTab from "./components/SellTab";
 import PremiumTab from "./components/PremiumTab";
 import ContactTab from "./components/ContactTab";
+import AuctionTab from "./components/AuctionTab";
+import ExchangeTab from "./components/ExchangeTab";
 import { AnimatedFavoriteHeart } from "./components/AnimatedFavoriteHeart";
 import { EMICalculator } from "./components/EMICalculator";
 import { CallbackModal } from "./components/CallbackModal";
@@ -30,6 +32,7 @@ import { saveCatalogOverride, saveAdminSettingsToFirestore, subscribeToRealtimeC
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
 import { SpecGrid } from "./components/SpecGrid";
+import { EngineSoundPlayer } from "./components/EngineSoundPlayer";
 import { syncUserToFirestore, subscribeToCurrentRole, UserRole, OWNER_EMAIL } from "./lib/userRoles";
 
 const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
@@ -130,6 +133,14 @@ export default function App() {
   const [isSecureShieldEnabled, setIsSecureShieldEnabled] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem("autoWorld_is_secure_shield");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+  const [isEngineSoundEnabled, setIsEngineSoundEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_engine_sound");
       return stored !== null ? JSON.parse(stored) : true;
     } catch (e) {
       return true;
@@ -575,6 +586,10 @@ export default function App() {
         setIsSecureShieldEnabled(adminSettings.isSecureShieldEnabled);
         localStorage.setItem("autoWorld_is_secure_shield", JSON.stringify(adminSettings.isSecureShieldEnabled));
       }
+      if (adminSettings.isEngineSoundEnabled !== undefined) {
+        setIsEngineSoundEnabled(adminSettings.isEngineSoundEnabled);
+        localStorage.setItem("autoWorld_is_engine_sound", JSON.stringify(adminSettings.isEngineSoundEnabled));
+      }
       if (adminSettings.isSimranFreeModeEnabled !== undefined) {
         setIsSimranFreeModeEnabled(adminSettings.isSimranFreeModeEnabled);
         localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(adminSettings.isSimranFreeModeEnabled));
@@ -587,6 +602,10 @@ export default function App() {
         const storedShield = localStorage.getItem("autoWorld_is_secure_shield");
         if (storedShield !== null) {
           setIsSecureShieldEnabled(JSON.parse(storedShield));
+        }
+        const storedEngineSound = localStorage.getItem("autoWorld_is_engine_sound");
+        if (storedEngineSound !== null) {
+          setIsEngineSoundEnabled(JSON.parse(storedEngineSound));
         }
         const storedSimran = localStorage.getItem("autoWorld_is_simran_free_mode");
         if (storedSimran !== null) {
@@ -1325,6 +1344,7 @@ export default function App() {
                 showToast={showToast}
                 currentUser={currentUser}
                 onSignInClick={() => setActiveTab("login")}
+                isEngineSoundEnabled={isEngineSoundEnabled}
               />
             )}
 
@@ -1334,6 +1354,23 @@ export default function App() {
                 subscriptionActive={subscriptionActive}
                 showToast={showToast}
                 currentUser={currentUser}
+                onSignInClick={() => setActiveTab("login")}
+              />
+            )}
+
+            {activeTab === "auction" && (
+              <AuctionTab
+                currentUser={currentUser}
+                showToast={showToast}
+                onSignInClick={() => setActiveTab("login")}
+                isEngineSoundEnabled={isEngineSoundEnabled}
+              />
+            )}
+
+            {activeTab === "exchange" && (
+              <ExchangeTab
+                currentUser={currentUser}
+                showToast={showToast}
                 onSignInClick={() => setActiveTab("login")}
               />
             )}
@@ -1412,21 +1449,19 @@ export default function App() {
           <Modal
             isOpen={Boolean(selectedVehicle)}
             onClose={() => setSelectedVehicle(null)}
-            containerClassName="w-full max-w-4xl max-h-[92vh] flex justify-end"
-            overlayClassName="bg-stone-950/85 backdrop-blur-sm"
+            containerClassName="w-full max-w-4xl max-h-[92vh] flex justify-center"
+            overlayClassName="bg-stone-950/80 backdrop-blur-md"
           >
             <motion.div
-              initial={{ opacity: 0, x: 64, scale: 0.92 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 48, scale: 0.94 }}
+              initial={{ opacity: 0, y: 32, scale: 0.97, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: 20, scale: 0.98, filter: "blur(2px)" }}
               transition={{
-                type: "spring",
-                stiffness: 340,
-                damping: 28,
-                mass: 0.85
+                duration: 0.38,
+                ease: [0.16, 1, 0.3, 1]
               }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#FAF8F5] w-full max-w-4xl shadow-2xl relative max-h-[92vh] flex flex-col border border-stone-300"
+              className="bg-[#FAF8F5] w-full max-w-4xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] relative max-h-[92vh] flex flex-col border-2 border-stone-950 overflow-hidden"
             >
             {/* Close trigger */}
             <button
@@ -1842,6 +1877,16 @@ export default function App() {
                     </div>
                   );
                 })()}
+
+                {/* IMMERSIVE ENGINE & EXHAUST ACOUSTIC PLAYER (CONDITIONAL ON ADMIN TOGGLE & VEHICLE AUDIO) */}
+                {isEngineSoundEnabled && selectedVehicle.engineSoundUrl && (
+                  <EngineSoundPlayer
+                    soundUrl={selectedVehicle.engineSoundUrl}
+                    soundTitle={selectedVehicle.engineSoundTitle}
+                    soundType={selectedVehicle.engineSoundType}
+                    vehicleTitle={selectedVehicle.title}
+                  />
+                )}
                 
                 <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-start gap-2.5">
                   <Info className="w-5 h-5 text-stone-900 shrink-0 mt-0.5" />

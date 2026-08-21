@@ -6,6 +6,8 @@ export type UserRole =
   | "Owner"
   | "Co-Owner"
   | "Super Admin"
+  | "Auction Floor Director"
+  | "Trade-In & Exchange Valuer"
   | "Parts Specialist"
   | "Inventory Manager"
   | "Sales & Leads Specialist"
@@ -88,6 +90,51 @@ export const ROLE_SOPS: Record<UserRole, RoleSOP> = {
     quickActions: [
       { label: "Admin Console", tabTarget: "admin", actionDesc: "Manage platform data" },
       { label: "Staff Lounge", tabTarget: "office", actionDesc: "View operational SOPs" }
+    ]
+  },
+  "Auction Floor Director": {
+    clearanceLevel: "Level 3 (Operational Lead)",
+    badgeColor: "text-amber-300 bg-amber-500/10 border-amber-500/40",
+    coreResponsibilities: [
+      "Live Flash Auction floor curation, weekly 24-hour drop schedules, and reserve price governance",
+      "Real-time bid stream monitoring, anti-sniping protection enforcement, and winner settlement authorization",
+      "Verification of reserve price indicators and transparent public bidding feed records"
+    ],
+    dailyTasks: [
+      "Schedule and launch weekly 24-hour verified flash auctions for certified premium supercars and collector vehicles",
+      "Monitor live floor bids, verify bidder security deposits, and resolve tie-break bids",
+      "Settle completed auctions, generate winning lot digital certificates, and trigger Escrow vehicle handovers"
+    ],
+    sopGuidelines: [
+      "Never initiate a flash auction without a certified 100-point inspection and verified RTO NOC clearance.",
+      "Ensure reserve price indicators dynamically update in real time to guarantee transparent bidding floor trust.",
+      "Lock finalized winning bids immediately upon countdown timer expiry."
+    ],
+    quickActions: [
+      { label: "Live Auction Floor", tabTarget: "auction", actionDesc: "Monitor active bidding floor" },
+      { label: "Auction Admin Desk", tabTarget: "admin", actionDesc: "Configure auction timers & reserves" }
+    ]
+  },
+  "Trade-In & Exchange Valuer": {
+    clearanceLevel: "Level 3 (Operational Lead)",
+    badgeColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/40",
+    coreResponsibilities: [
+      "Peer-to-Peer Car Exchange Hub moderation and mutual trade-in matchmaking governance",
+      "Algorithmic valuation delta verification (calculating cash differences between vehicle pairs)",
+      "Inspection and mutual trade agreement certification between swapping car owners"
+    ],
+    dailyTasks: [
+      "Review incoming vehicle exchange requests and verify offered vehicle condition parity",
+      "Audit automated value delta calculations to ensure fair trade-in economics for both parties",
+      "Facilitate P2P trade offers, inspect mutual vehicle dossiers, and certify swap agreements"
+    ],
+    sopGuidelines: [
+      "Validate both vehicles' RTO hypothecation status prior to approving trade-in match agreements.",
+      "Ensure cash difference directions (who pays whom how much) are transparently disclosed to both parties."
+    ],
+    quickActions: [
+      { label: "P2P Exchange Hub", tabTarget: "exchange", actionDesc: "Inspect live trade-in swipe matches" },
+      { label: "Exchange Operations", tabTarget: "admin", actionDesc: "Manage trade-in listings & offers" }
     ]
   },
   "Parts Specialist": {
@@ -293,6 +340,22 @@ export const ALL_ROLES: { id: UserRole; label: string; description: string; badg
     borderColor: "border-purple-500/40"
   },
   {
+    id: "Auction Floor Director",
+    label: "Auction Floor Director",
+    description: "Live Bidding Floor Master. Oversees weekly 24-hour flash auctions, reserve indicators, real-time bid streams, anti-sniping timers, and winning lot settlements.",
+    badgeBg: "bg-amber-500/15",
+    textColor: "text-amber-300",
+    borderColor: "border-amber-500/40"
+  },
+  {
+    id: "Trade-In & Exchange Valuer",
+    label: "Trade-In & Exchange Valuer",
+    description: "P2P Car Swap & Match Specialist. Audits vehicle condition equivalence, certifies algorithmic cash delta calculations, and moderates swap offers.",
+    badgeBg: "bg-cyan-500/15",
+    textColor: "text-cyan-400",
+    borderColor: "border-cyan-500/40"
+  },
+  {
     id: "Parts Specialist",
     label: "Parts Specialist",
     description: "Motorsport & Hardware Lead. Authenticates performance parts, validates OEM numbers, assigns rarity tiers, and curates featured components.",
@@ -361,6 +424,8 @@ export const ALL_ROLES: { id: UserRole; label: string; description: string; badg
 export const ALL_ASSIGNABLE_ROLES: UserRole[] = [
   "Co-Owner",
   "Super Admin",
+  "Auction Floor Director",
+  "Trade-In & Exchange Valuer",
   "Parts Specialist",
   "Inventory Manager",
   "Sales & Leads Specialist",

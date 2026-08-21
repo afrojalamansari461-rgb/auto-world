@@ -187,12 +187,79 @@
         "email": { "type": "string" },
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
-        "role": { "type": "string", "enum": ["Owner", "Super Admin", "Inventory Manager", "Sales & Leads Specialist", "Support Agent", "Content Moderator", "Finance Specialist", "User"] },
+        "role": { "type": "string", "enum": ["Owner", "Co-Owner", "Super Admin", "Auction Floor Director", "Trade-In & Exchange Valuer", "Parts Specialist", "Inventory Manager", "Sales & Leads Specialist", "Support Agent", "Content Moderator", "Finance Specialist", "Marketing & Social Media Lead", "User"] },
         "status": { "type": "string", "enum": ["active", "suspended"] },
         "createdAt": { "type": "string" },
         "lastLogin": { "type": "string" }
       },
       "required": ["uid", "email", "role"]
+    },
+    "Auction": {
+      "title": "Auction",
+      "description": "Weekly timed 24-hour flash auction for verified premium cars with live countdown and bid stream",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "integer" },
+        "image": { "type": "string" },
+        "startingBid": { "type": "integer" },
+        "currentBid": { "type": "integer" },
+        "bidCount": { "type": "integer" },
+        "minIncrement": { "type": "integer" },
+        "reservePrice": { "type": "integer" },
+        "isReserveMet": { "type": "boolean" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["live", "upcoming", "ended", "settled"] },
+        "sellerUid": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "sellerEmail": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "required": ["id", "title", "make", "model", "year", "startingBid", "currentBid", "endTime", "status", "sellerUid"]
+    },
+    "ExchangeRequest": {
+      "title": "ExchangeRequest",
+      "description": "Peer-to-peer car exchange and trade-in listing with delta calculation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "creatorUid": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorEmail": { "type": "string" },
+        "creatorPhone": { "type": "string" },
+        "cashDirection": { "type": "string", "enum": ["pay_difference", "receive_difference", "even_swap"] },
+        "cashDelta": { "type": "integer" },
+        "status": { "type": "string", "enum": ["active", "matched", "completed", "cancelled"] },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "creatorUid", "creatorName", "cashDirection", "status", "createdAt"]
+    },
+    "TradeOffer": {
+      "title": "TradeOffer",
+      "description": "A mutual trade offer submitted against an exchange listing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "exchangeRequestId": { "type": "string" },
+        "targetCreatorUid": { "type": "string" },
+        "proposerUid": { "type": "string" },
+        "proposerName": { "type": "string" },
+        "proposerEmail": { "type": "string" },
+        "proposerPhone": { "type": "string" },
+        "calculatedDelta": { "type": "integer" },
+        "cashDirection": { "type": "string", "enum": ["proposer_pays", "proposer_receives", "even_swap"] },
+        "cashOfferAmount": { "type": "integer" },
+        "note": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "countered"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "exchangeRequestId", "targetCreatorUid", "proposerUid", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -207,6 +274,18 @@
     "parts": {
       "schema": "UserPartListing",
       "description": "Global collection containing all curated automotive performance parts and aftermarket upgrades"
+    },
+    "auctions": {
+      "schema": "Auction",
+      "description": "Live flash auctions for verified premium cars with timer and bidding floor"
+    },
+    "exchanges": {
+      "schema": "ExchangeRequest",
+      "description": "Peer-to-peer swap hub for direct vehicle trade-in matching"
+    },
+    "trade_offers": {
+      "schema": "TradeOffer",
+      "description": "Mutual vehicle trade-in proposals and deal negotiations between car owners"
     },
     "messages": {
       "schema": "Message",

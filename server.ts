@@ -8,6 +8,34 @@ import { DEFAULT_VEHICLES } from "./src/types";
 
 dotenv.config();
 
+// Process-level crash prevention guards
+process.on("uncaughtException", (err) => {
+  console.error("[Server Uncaught Exception]:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[Server Unhandled Rejection]:", reason);
+});
+
+// Lazy Gemini SDK client initialization
+let aiClient: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey.trim() === "" || apiKey === "MY_GEMINI_API_KEY") {
+    return null;
+  }
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        }
+      }
+    });
+  }
+  return aiClient;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -16,14 +44,13 @@ async function startServer() {
   app.use(compression({ level: 6, threshold: 0 }));
   app.use(express.json());
 
-  // Gemini Setup
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
+  // Cloud Run / Ingress Health Check Endpoints
+  app.get(["/api/health", "/health", "/healthz"], (req, res) => {
+    res.status(200).json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      service: "Auto World Marketplace"
+    });
   });
 
   // Discord Domain Verification Endpoints (HTTPS method & TXT mirror)
@@ -62,8 +89,9 @@ async function startServer() {
         return res.status(400).json({ error: "Missing or invalid text" });
       }
 
-      // Check if GEMINI_API_KEY is missing or invalid, or run immediately
-      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "MY_GEMINI_API_KEY") {
+      // Check if GEMINI_API_KEY is configured
+      const ai = getGeminiClient();
+      if (!ai) {
         throw new Error("Missing or placeholder Gemini API key");
       }
 
@@ -161,8 +189,9 @@ Text to analyze: "${text}"`;
         return res.status(400).json({ error: "Content is required for SEO analysis" });
       }
 
-      // Check if GEMINI_API_KEY is missing or invalid, or run immediately
-      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "MY_GEMINI_API_KEY") {
+      // Check if GEMINI_API_KEY is configured
+      const ai = getGeminiClient();
+      if (!ai) {
         throw new Error("Missing or placeholder Gemini API key");
       }
 
@@ -296,8 +325,9 @@ Your response must be a JSON object with this exact structure:
     try {
       const { make, model, year, description, transmission, fuelType, mileage, photosCount, photosInfo } = req.body;
 
-      // Check if GEMINI_API_KEY is missing or invalid, or run immediately
-      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "MY_GEMINI_API_KEY") {
+      // Check if GEMINI_API_KEY is configured
+      const ai = getGeminiClient();
+      if (!ai) {
         throw new Error("Missing or placeholder Gemini API key");
       }
 
@@ -821,7 +851,7 @@ Format your output STRICTLY as a JSON object, with the following schema:
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distPath, {
       maxAge: '1d',
       setHeaders: (res, filePath) => {
@@ -837,7 +867,12 @@ Format your output STRICTLY as a JSON object, with the following schema:
     app.get('*', (req, res) => {
       // Prevent browser caching on index.html so users always get the latest code updates
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      res.sendFile(indexPath, (err) => {
+        if (err && !res.headersSent) {
+          res.status(200).send("<!DOCTYPE html><html><head><title>Auto World</title></head><body><div id='root'>Loading Auto World...</div></body></html>");
+        }
+      });
     });
   }
 

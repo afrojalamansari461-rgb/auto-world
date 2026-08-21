@@ -53,6 +53,10 @@ export interface Vehicle {
   driveType?: string;
   doors?: string;
   seats?: string;
+  // Acoustic & Engine Sound Note Profile
+  engineSoundUrl?: string;
+  engineSoundTitle?: string;
+  engineSoundType?: string;
 }
 
 export type PartCategory =
@@ -288,6 +292,10 @@ export interface UserListing {
   fastagStatus?: string;
   stateNocAvailable?: string;
   roadTaxStatus?: string;
+  // Acoustic & Engine Sound Note Profile
+  engineSoundUrl?: string;
+  engineSoundTitle?: string;
+  engineSoundType?: string;
 }
 
 export interface Subscription {
@@ -336,6 +344,9 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     roadTaxStatus: "Lifetime Road Tax Paid (LTT)",
     description: "Muscular and iconic Mahindra Thar 4x4 LX. Pure adventure machinery with heavy key diesel torque, modern hardtop cabin design, Apple CarPlay integration, dual airbags, and high-clearance offroad specs.",
     features: ["ABS", "Airbags", "Bluetooth", "Backup Camera", "4WD Terrain Control", "Climate Control"],
+    engineSoundUrl: "preset:diesel_mhawk",
+    engineSoundTitle: "2.2L mHawk Turbo Diesel Cold Start & Throttle",
+    engineSoundType: "diesel",
     sellerName: "Rajesh Kumar (Elite Motors)",
     sellerPhone: "+91 98230 44556",
     sellerEmail: "rajesh@elitemotors.co.in",
@@ -406,6 +417,9 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     roadTaxStatus: "Lifetime Road Tax Paid (LTT)",
     description: "Timeless classic mechanical engineering. Butter-smooth 349cc J-series cruiser engine, pristine signature chrome-black detailing, dual-channel responsive ABS, and single-owner vintage aesthetics.",
     features: ["ABS", "Fuel Injection", "Retro Spoke Wheels", "Vintage Styling"],
+    engineSoundUrl: "preset:re_single_thump",
+    engineSoundTitle: "349cc J-Series Signature Exhaust Thump",
+    engineSoundType: "motorcycle",
     sellerName: "Vikram Singh",
     sellerPhone: "+91 70144 33221",
     sellerEmail: "vikram.singh@gmail.com",
@@ -511,6 +525,9 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     roadTaxStatus: "Lifetime Road Tax Paid (LTT)",
     description: "Elite performance and comfort parameters. Custom imported Luxury Line featuring high-grade leather upholstery, ambient glass cockpit panels, active dynamic drive profiles, and verified service record archives.",
     features: ["Power Steering", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Toggle Sports Modes", "Sunroof/Moonroof"],
+    engineSoundUrl: "preset:bmw_twinpower_turbo",
+    engineSoundTitle: "2.0L TwinPower Turbocharged Revs & Burble",
+    engineSoundType: "i4_turbo",
     sellerName: "Amitabh Shah (Shah Luxury Imports)",
     sellerPhone: "+91 99201 55667",
     sellerEmail: "amitabh@shahimports.in",
@@ -1222,4 +1239,402 @@ export const DEFAULT_PARTS: Part[] = [
     status: "active"
   }
 ];
+
+export interface AuctionBid {
+  id: string;
+  bidderUid: string;
+  bidderName: string;
+  bidderPhoto?: string;
+  amount: number;
+  timestamp: string;
+  isAutoBid?: boolean;
+}
+
+export interface Auction {
+  id: string;
+  title: string;
+  vehicleRefId?: number | string;
+  make: string;
+  model: string;
+  year: number;
+  image: string;
+  photos: { src: string; alt: string }[];
+  startingBid: number;
+  currentBid: number;
+  bidCount: number;
+  minIncrement: number;
+  reservePrice: number;
+  isReserveMet: boolean;
+  startTime: string;
+  endTime: string;
+  status: "live" | "upcoming" | "ended" | "settled";
+  bids: AuctionBid[];
+  sellerUid: string;
+  sellerName: string;
+  sellerPhone: string;
+  sellerEmail: string;
+  location: string;
+  condition: number;
+  mileage: string;
+  fuel: string;
+  transmission: string;
+  engineSoundUrl?: string;
+  engineSoundTitle?: string;
+  engineSoundType?: string;
+  specs?: Record<string, string>;
+  highlights?: string[];
+  verifiedOnly?: boolean;
+  winnerUid?: string;
+  winnerName?: string;
+  winningBid?: number;
+  featured?: boolean;
+}
+
+export interface OfferedTradeVehicle {
+  title: string;
+  make: string;
+  model: string;
+  year: number;
+  valuation: number;
+  mileage: string;
+  fuel: string;
+  condition: number;
+  image: string;
+  photos?: { src: string; alt: string }[];
+  engine?: string;
+  transmission?: string;
+  location?: string;
+  rtoCode?: string;
+  description?: string;
+  features?: string[];
+}
+
+export interface DesiredTradeVehicle {
+  targetMake?: string;
+  targetModel?: string;
+  targetType?: string;
+  yearMin?: number;
+  yearMax?: number;
+  maxCashAdded?: number;
+  minCashReceived?: number;
+  notes?: string;
+}
+
+export interface ExchangeRequest {
+  id: string;
+  creatorUid: string;
+  creatorName: string;
+  creatorEmail: string;
+  creatorPhone: string;
+  creatorPhoto?: string;
+  offeredVehicle: OfferedTradeVehicle;
+  desiredVehicle: DesiredTradeVehicle;
+  cashDirection: "pay_difference" | "receive_difference" | "even_swap";
+  cashDelta: number;
+  status: "active" | "matched" | "completed" | "cancelled";
+  offersCount?: number;
+  location: string;
+  createdAt: string;
+  updatedAt?: string;
+  badge?: "verified" | "hot" | "vip";
+}
+
+export interface TradeOffer {
+  id: string;
+  exchangeRequestId: string;
+  targetCreatorUid: string;
+  proposerUid: string;
+  proposerName: string;
+  proposerEmail: string;
+  proposerPhone: string;
+  proposerVehicle: OfferedTradeVehicle;
+  calculatedDelta: number;
+  cashDirection: "proposer_pays" | "proposer_receives" | "even_swap";
+  cashOfferAmount: number;
+  note: string;
+  status: "pending" | "accepted" | "rejected" | "countered";
+  createdAt: string;
+}
+
+export const DEFAULT_AUCTIONS: Auction[] = [
+  {
+    id: "auc-001",
+    title: "2023 Porsche 911 Carrera S (992)",
+    make: "Porsche",
+    model: "911 Carrera S",
+    year: 2023,
+    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80", alt: "Guards Red 911 Front 3/4" },
+      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Aerokit Rear Spoiler Profile" },
+      { src: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&auto=format&fit=crop&q=80", alt: "RS Spyder Wheel Detail" }
+    ],
+    startingBid: 12500000,
+    currentBid: 14850000,
+    bidCount: 14,
+    minIncrement: 50000,
+    reservePrice: 15000000,
+    isReserveMet: false,
+    startTime: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 10 * 3600 * 1000).toISOString(),
+    status: "live",
+    bids: [
+      { id: "b1", bidderUid: "bidder-3", bidderName: "Vikram Singhania", amount: 13000000, timestamp: "4 hours ago" },
+      { id: "b2", bidderUid: "bidder-2", bidderName: "Karan Oberoi", amount: 13800000, timestamp: "2 hours ago" },
+      { id: "b3", bidderUid: "bidder-1", bidderName: "Rohit Malhotra", amount: 14500000, timestamp: "45 mins ago" },
+      { id: "b4", bidderUid: "bidder-4", bidderName: "Aditya Roy", amount: 14850000, timestamp: "8 mins ago" }
+    ],
+    sellerUid: "afrojalamansari461@gmail.com",
+    sellerName: "Auto World Vault Direct",
+    sellerPhone: "+91 98200 44112",
+    sellerEmail: "auctions@autoworld.in",
+    location: "Mumbai, Maharashtra",
+    condition: 5,
+    mileage: "4,850 km",
+    fuel: "Petrol",
+    transmission: "8-Speed PDK",
+    engineSoundUrl: "preset:bmw_twinpower_turbo",
+    engineSoundTitle: "3.0L Twin-Turbo Flat-Six High Revs",
+    engineSoundType: "supercar",
+    specs: {
+      "Engine": "3.0L Twin-Turbo Boxer 6 (443 HP)",
+      "0-100 km/h": "3.5 Seconds (Sport Chrono)",
+      "Top Speed": "308 km/h",
+      "Interior": "Black Club Leather with Crayon Stitching",
+      "Exhaust": "Sport Exhaust System with Silver Tailpipes",
+      "RTO": "MH-01 (Mumbai South - Single Owner)"
+    },
+    highlights: [
+      "Zero accident record with 111-point Porsche official inspection",
+      "Sport Chrono Package with Mode Switch & Track Precision App",
+      "Full Body PPF (XPEL Ultimate Plus) with 10-year warranty",
+      "Factory Sports Exhaust with active Valvetronic flaps"
+    ],
+    verifiedOnly: true,
+    featured: true
+  },
+  {
+    id: "auc-002",
+    title: "2022 BMW M3 Competition xDrive",
+    make: "BMW",
+    model: "M3 Competition",
+    year: 2022,
+    image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80", alt: "Isle of Man Green Exterior" },
+      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Carbon Bucket Cockpit" }
+    ],
+    startingBid: 8200000,
+    currentBid: 9650000,
+    bidCount: 19,
+    minIncrement: 50000,
+    reservePrice: 9500000,
+    isReserveMet: true,
+    startTime: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
+    status: "live",
+    bids: [
+      { id: "bm1", bidderUid: "bidder-7", bidderName: "Siddharth Jain", amount: 8800000, timestamp: "6 hours ago" },
+      { id: "bm2", bidderUid: "bidder-8", bidderName: "Anand Mahindra Club", amount: 9200000, timestamp: "3 hours ago" },
+      { id: "bm3", bidderUid: "bidder-9", bidderName: "Rohan Kapoor", amount: 9650000, timestamp: "12 mins ago" }
+    ],
+    sellerUid: "afrojalamansari461@gmail.com",
+    sellerName: "Motorsport Heritage Delhi",
+    sellerPhone: "+91 98110 55890",
+    sellerEmail: "m3@autoworld.in",
+    location: "New Delhi (DL)",
+    condition: 5,
+    mileage: "11,200 km",
+    fuel: "Petrol",
+    transmission: "M Steptronic with Drivelogic",
+    engineSoundUrl: "preset:bmw_twinpower_turbo",
+    engineSoundTitle: "3.0L S58 Twin-Turbo Inline-6 M Exhaust",
+    engineSoundType: "i4_turbo",
+    specs: {
+      "Engine": "3.0L S58 M TwinPower Turbo (503 HP)",
+      "Drivetrain": "M xDrive with 2WD Drift Mode",
+      "0-100 km/h": "3.4 Seconds",
+      "Color": "Isle of Man Green Metallic",
+      "Seats": "M Carbon Fiber Bucket Seats"
+    },
+    highlights: [
+      "Reserve Price MET! Current highest bidder will win when timer expires",
+      "BMW Service Inclusive Plus active till 2027",
+      "M Carbon Exterior Package & Carbon Ceramic Brakes",
+      "Harman Kardon Surround Sound & Head-Up Display"
+    ],
+    verifiedOnly: true,
+    featured: true
+  },
+  {
+    id: "auc-003",
+    title: "2023 Land Rover Defender 110 V8 Carpathian Edition",
+    make: "Land Rover",
+    model: "Defender 110 V8",
+    year: 2023,
+    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      { src: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80", alt: "Carpathian Grey Satin Defender" }
+    ],
+    startingBid: 16000000,
+    currentBid: 16000000,
+    bidCount: 0,
+    minIncrement: 100000,
+    reservePrice: 18500000,
+    isReserveMet: false,
+    startTime: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 28 * 3600 * 1000).toISOString(),
+    status: "upcoming",
+    bids: [],
+    sellerUid: "afrojalamansari461@gmail.com",
+    sellerName: "Royal British Motors",
+    sellerPhone: "+91 98450 11990",
+    sellerEmail: "defender@autoworld.in",
+    location: "Bengaluru, Karnataka",
+    condition: 5,
+    mileage: "8,900 km",
+    fuel: "Petrol Supercharged",
+    transmission: "8-Speed Automatic",
+    engineSoundUrl: "preset:diesel_mhawk",
+    engineSoundTitle: "5.0L Supercharged V8 Deep Roar",
+    engineSoundType: "diesel",
+    specs: {
+      "Engine": "5.0L Supercharged V8 (518 HP / 625 Nm)",
+      "Color": "Carpathian Grey with Satin Protective Wrap",
+      "Wheels": "22-Inch Gloss Black Style 5098",
+      "Offroad": "Electronic Air Suspension & Terrain Response 2 with Dynamic Mode"
+    },
+    highlights: [
+      "Bidding floor opens in 4 hours! Pre-register your bid token",
+      "Quad outboard-mounted satin chrome exhaust pipes",
+      "Ebony Windsor Leather with Dinamica Suedecloth accents",
+      "ClearSight Ground View and 3D Surround Camera"
+    ],
+    verifiedOnly: true,
+    featured: false
+  }
+];
+
+export const DEFAULT_EXCHANGES: ExchangeRequest[] = [
+  {
+    id: "exc-001",
+    creatorUid: "trade-user-1",
+    creatorName: "Rahul Deshmukh",
+    creatorEmail: "rahul.deshmukh@gmail.com",
+    creatorPhone: "+91 98220 11456",
+    offeredVehicle: {
+      title: "2023 Mahindra Thar 4x4 LX Hardtop (Diesel AT)",
+      make: "Mahindra",
+      model: "Thar",
+      year: 2023,
+      valuation: 1650000,
+      mileage: "12,400 km",
+      fuel: "Diesel",
+      condition: 5,
+      image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&auto=format&fit=crop&q=80",
+      engine: "2.2L mHawk Diesel (130 bhp)",
+      transmission: "Automatic 4x4",
+      location: "Pune, Maharashtra",
+      rtoCode: "MH-12",
+      description: "Mint Napoli Black Thar with upgraded 7-inch Matrix LED headlamps, King shocks, and custom rear captain seats. Single owner, clean insurance.",
+      features: ["4x4 Terrain Mode", "Apple CarPlay", "Hard Top", "Offroad Bumper", "Reverse Cam"]
+    },
+    desiredVehicle: {
+      targetMake: "BMW",
+      targetModel: "3 Series / X1 / 5 Series",
+      targetType: "car",
+      yearMin: 2019,
+      yearMax: 2023,
+      maxCashAdded: 2500000,
+      notes: "Looking to swap my adventure Thar for a German luxury sedan or compact SUV. Happy to pay cash difference up to ₹25 Lakhs for low-mileage BMW or Audi."
+    },
+    cashDirection: "pay_difference",
+    cashDelta: 2400000, // E.g. Thar (₹16.5L) vs BMW 3-Series (₹40.5L) = Owner pays ₹24.0 Lakhs
+    status: "active",
+    offersCount: 3,
+    location: "Pune / Mumbai Corridor",
+    createdAt: new Date(Date.now() - 2 * 86400 * 1000).toISOString(),
+    badge: "hot"
+  },
+  {
+    id: "exc-002",
+    creatorUid: "trade-user-2",
+    creatorName: "Amanjot Singh Gill",
+    creatorEmail: "aman.gill@gmail.com",
+    creatorPhone: "+91 98140 77233",
+    offeredVehicle: {
+      title: "2021 BMW 330i M-Sport (Sunset Orange)",
+      make: "BMW",
+      model: "3 Series",
+      year: 2021,
+      valuation: 4100000,
+      mileage: "24,000 km",
+      fuel: "Petrol",
+      condition: 5,
+      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80",
+      engine: "2.0L TwinPower Turbo Petrol (258 bhp)",
+      transmission: "8-Speed Steptronic Sport",
+      location: "Chandigarh (CH)",
+      rtoCode: "CH-01",
+      description: "Pristine Sunset Orange 330i M-Sport with Harman Kardon audio, sunroof, wireless CarPlay, brand new Michelin Pilot Sport 4 tyres.",
+      features: ["M-Sport Aero Kit", "Sunroof", "Head-Up Display", "Adaptive Suspension", "M Brakes"]
+    },
+    desiredVehicle: {
+      targetMake: "Toyota",
+      targetModel: "Fortuner 4x4 / Hilux",
+      targetType: "suv",
+      yearMin: 2021,
+      yearMax: 2024,
+      minCashReceived: 500000,
+      notes: "Need a rugged high-ground clearance 4x4 SUV for Himachal estate visits. Will swap for Fortuner Legender / 4x4 with cash difference in my favor or even swap."
+    },
+    cashDirection: "receive_difference",
+    cashDelta: 700000, // E.g. BMW (₹41L) vs Fortuner (₹34L) = Proposer pays Aman ₹7.0 Lakhs
+    status: "active",
+    offersCount: 5,
+    location: "Chandigarh / Delhi NCR",
+    createdAt: new Date(Date.now() - 1 * 86400 * 1000).toISOString(),
+    badge: "verified"
+  },
+  {
+    id: "exc-003",
+    creatorUid: "trade-user-3",
+    creatorName: "Shreya Venkat",
+    creatorEmail: "shreya.v@gmail.com",
+    creatorPhone: "+91 98401 22987",
+    offeredVehicle: {
+      title: "2023 Tata Nexon EV Max XZ+ Lux",
+      make: "Tata",
+      model: "Nexon",
+      year: 2023,
+      valuation: 1550000,
+      mileage: "18,200 km",
+      fuel: "Electric",
+      condition: 5,
+      image: "https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=800&auto=format&fit=crop&q=80",
+      engine: "40.5 kWh High Voltage Ziptron EV",
+      transmission: "Single-Speed Automatic",
+      location: "Bengaluru, Karnataka",
+      rtoCode: "KA-01",
+      description: "Single-owner EV Max with 453 km ARAI range, 7.2 kW AC fast home wallbox charger included, ventilated leatherette seats.",
+      features: ["Ventilated Seats", "Wireless Charger", "Electronic Parking Brake", "Sunroof"]
+    },
+    desiredVehicle: {
+      targetMake: "Hyundai / Kia",
+      targetModel: "Creta SX(O) Turbo / Seltos GTX+",
+      targetType: "suv",
+      yearMin: 2022,
+      yearMax: 2024,
+      notes: "Switching from EV back to turbo-petrol SUV due to highway relocations. Looking for an even swap or minor cash delta."
+    },
+    cashDirection: "even_swap",
+    cashDelta: 0,
+    status: "active",
+    offersCount: 2,
+    location: "Bengaluru, Karnataka",
+    createdAt: new Date(Date.now() - 4 * 86400 * 1000).toISOString(),
+    badge: "vip"
+  }
+];
+
 

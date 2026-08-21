@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Car, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert, ShieldCheck, Heart, Building2 } from "lucide-react";
+import { Car, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert, ShieldCheck, Heart, Building2, Zap, Repeat } from "lucide-react";
 import { User } from "firebase/auth";
 import { auth, signOut } from "../firebase";
 import { motion } from "motion/react";
@@ -216,57 +216,63 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
               )}
             </div>
 
-            {/* Right Actions Section - Shown on tablet/desktop (md+) */}
-            <div className="hidden md:flex items-center gap-1.5 xl:gap-2.5 shrink-0">
+            {/* Right Actions Section - Responsive for Mobile, Tablet & Desktop */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {currentUser ? (
-                <motion.div 
+                <div 
                   id="user-profile-menu" 
-                  layout
-                  className="flex items-center gap-1.5 p-1 pl-2 bg-stone-100 hover:bg-stone-200/70 rounded-full border border-stone-200/90 transition shadow-2xs shrink-0 max-w-[180px] md:max-w-[200px] xl:max-w-none"
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:pl-2 pl-1.5 bg-stone-100/95 hover:bg-stone-200/80 rounded-full border border-stone-300 shadow-2xs shrink-0 max-w-[210px] xs:max-w-[240px] sm:max-w-[320px] md:max-w-[380px]"
                 >
+                  {/* Profile Picture (PFP) */}
                   {currentUser.photoURL ? (
-                    <img src={currentUser.photoURL} alt={currentUser.displayName || "User Avatar"} className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full border border-stone-300 object-cover shrink-0" referrerPolicy="no-referrer" />
+                    <img 
+                      src={currentUser.photoURL} 
+                      alt={currentUser.displayName || currentUser.email || "User Avatar"} 
+                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-stone-300 object-cover shrink-0" 
+                      referrerPolicy="no-referrer" 
+                    />
                   ) : (
-                    <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center text-[10px] font-bold shrink-0">
-                      {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0">
+                      {currentUser.displayName 
+                        ? currentUser.displayName.charAt(0).toUpperCase() 
+                        : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")}
                     </div>
                   )}
-                  <div className="flex items-center min-w-0">
-                    <span className="text-[10px] xl:text-[11px] font-bold uppercase tracking-wider text-stone-900 truncate max-w-[50px] md:max-w-[70px] lg:max-w-[100px] xl:max-w-[120px]">
-                      {currentUser.displayName || "User"}
+
+                  {/* Email ID */}
+                  <div className="flex items-center min-w-0 pr-0.5">
+                    <span 
+                      title={currentUser.email || currentUser.displayName || "User"}
+                      className="text-[9px] xs:text-[10px] sm:text-[11px] font-bold text-stone-800 truncate max-w-[65px] xs:max-w-[85px] sm:max-w-[140px] md:max-w-[180px] font-mono leading-tight"
+                    >
+                      {currentUser.email || currentUser.displayName || "User"}
                     </span>
                   </div>
+
+                  {/* Beside Email: Sign Out Button */}
                   <button 
                     onClick={handleSignOut} 
                     title="Sign Out"
                     aria-label="Sign out of AutoWorld account" 
-                    className="flex items-center gap-1 px-2 xl:px-2.5 py-1 bg-red-100/90 hover:bg-red-600 hover:text-white text-red-700 font-bold text-[9.5px] xl:text-[10px] uppercase tracking-wider rounded-full transition cursor-pointer shrink-0"
+                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-red-100 hover:bg-red-600 hover:text-white text-red-700 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider rounded-full transition-colors cursor-pointer shrink-0"
                   >
-                    <LogOut className="w-3 h-3 shrink-0" />
-                    <span className="hidden lg:inline">Sign Out</span>
+                    <LogOut className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                    <span className="whitespace-nowrap">Sign Out</span>
                   </button>
-                </motion.div>
+                </div>
               ) : (
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={onSignInClick}
                   aria-label="Sign in to your account"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-stone-800 hover:text-stone-950 hover:bg-stone-900/5 rounded-full transition-all cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-800 hover:text-stone-950 border border-stone-800 hover:bg-stone-900 hover:text-[#f4f2ec] rounded-full transition-all cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
                 >
                   <LogIn className="w-3.5 h-3.5 text-stone-600" />
-                  Sign In
+                  <span>Sign In</span>
                 </motion.button>
               )}
             </div>
-
-            {/* Mobile Right-Side Action (Sign In Only) */}
-            <button
-              onClick={currentUser ? handleSignOut : onSignInClick}
-              className="md:hidden text-[10px] font-bold uppercase tracking-widest border border-stone-800 px-3 py-1.5 rounded-full hover:bg-stone-900 hover:text-[#f4f2ec] transition-colors duration-200 shrink-0 cursor-pointer"
-            >
-              {currentUser ? "Sign Out" : "Sign In"}
-            </button>
           </div>
         </div>
       </nav>

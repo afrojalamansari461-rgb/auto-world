@@ -6,7 +6,8 @@ import {
   Crown, ExternalLink, Sparkles, Filter, Check, Eye, Plus, Award, 
   Clock, Settings, AlertCircle, Wrench, EyeOff, History, Home, ArrowUp, ArrowDown,
   Sliders, Shield, ShieldCheck, Calculator, HelpCircle, Info,
-  Upload, FolderPlus, UploadCloud, Image, Users, UserCheck, Briefcase, Smartphone, Bell, Send
+  Upload, FolderPlus, UploadCloud, Image, Users, UserCheck, Briefcase, Smartphone, Bell, Send, Volume2,
+  Zap, Repeat
 } from "lucide-react";
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
@@ -37,6 +38,8 @@ import {
 import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
 import AdminPartsDesk from "./AdminPartsDesk";
+import AdminAuctionDesk from "./AdminAuctionDesk";
+import AdminExchangeDesk from "./AdminExchangeDesk";
 import RoleBadge from "./RoleBadge";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -117,7 +120,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     currentRole: UserRole;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "parts" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles" | "sms">("inventory");
+  const [activeSubSection, setActiveSubSection] = useState<"inventory" | "parts" | "auction" | "exchange" | "leads" | "payments" | "feedback" | "audit" | "content" | "roles" | "sms">("inventory");
 
   // Mobile SMS & Notification System States (+91 7666232753)
   const [smsSettings, setSmsSettings] = useState<SmsSettings>(() => getSmsSettings());
@@ -310,6 +313,15 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
     }
   });
 
+  const [isEngineSoundEnabled, setIsEngineSoundEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("autoWorld_is_engine_sound");
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
   const handleToggleFreePass = async () => {
     const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
     if (!isOwner) {
@@ -346,7 +358,7 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
   };
 
   const handleToggleFeature = async (
-    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isSimranFreeModeEnabled" | "isFeaturedBoosterEnabled" | "isUrgentHotStampEnabled" | "isSmartMatcherEnabled",
+    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isEngineSoundEnabled" | "isSimranFreeModeEnabled" | "isFeaturedBoosterEnabled" | "isUrgentHotStampEnabled" | "isSmartMatcherEnabled",
     currentVal: boolean,
     setter: React.Dispatch<React.SetStateAction<boolean>>,
     label: string,
@@ -764,6 +776,10 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         if (data.isAiAssistantEnabled !== undefined) {
           setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
           localStorage.setItem("autoWorld_is_ai_assistant", JSON.stringify(Boolean(data.isAiAssistantEnabled)));
+        }
+        if (data.isEngineSoundEnabled !== undefined) {
+          setIsEngineSoundEnabled(Boolean(data.isEngineSoundEnabled));
+          localStorage.setItem("autoWorld_is_engine_sound", JSON.stringify(Boolean(data.isEngineSoundEnabled)));
         }
         if (data.isSimranFreeModeEnabled !== undefined) {
           setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
@@ -2891,6 +2907,45 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               </button>
             </div>
 
+            {/* 6. Immersive Engine Sound & Exhaust Acoustics Toggle */}
+            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
+              isEngineSoundEnabled
+                ? "bg-stone-900 text-stone-100 border-amber-500/60 shadow-md"
+                : "bg-stone-100 text-stone-600 border-stone-300"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Volume2 className={`w-4 h-4 ${isEngineSoundEnabled ? "text-amber-400" : "text-stone-400"}`} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">
+                      Engine Sound & Exhaust Acoustics
+                    </h4>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
+                    isEngineSoundEnabled ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-stone-200 text-stone-500"
+                  }`}>
+                    {isEngineSoundEnabled ? "LIVE ON APP" : "PAUSED"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
+                  Interactive real exhaust rev acoustic synthesizer & audio engine player in vehicle dossiers.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleFeature("isEngineSoundEnabled", isEngineSoundEnabled, setIsEngineSoundEnabled, "Engine Sound System", "autoWorld_is_engine_sound")}
+                className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
+                  isEngineSoundEnabled
+                    ? "bg-amber-500 hover:bg-amber-400 text-stone-950 border-amber-400 shadow-sm"
+                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isEngineSoundEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
+                <span>{isEngineSoundEnabled ? "[ ON ] ENGINE SOUND ENABLED" : "[ OFF ] ENGINE SOUND DISABLED"}</span>
+              </button>
+            </div>
+
             {/* 5. Simran Mode: Blur & Disable Premium Tab with Bollywood/Hollywood Pop-up */}
             <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 col-span-1 md:col-span-2 ${
               isSimranFreeModeEnabled
@@ -3131,114 +3186,163 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
         </div>
 
         {/* SECTION CONTROL SWITCHER */}
-        <div className="border border-stone-300 bg-[#FAF8F5] mb-8 p-1 flex flex-wrap sm:flex-nowrap">
+        <div className="border border-stone-300 bg-[#FAF8F5] mb-8 p-1.5 overflow-x-auto scrollbar-thin flex items-center gap-1.5 shadow-2xs">
           <button
             onClick={() => setActiveSubSection("inventory")}
-            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "inventory"
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-stone-900 text-white shadow-xs"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
             }`}
           >
-            <Tag className="w-4 h-4 shrink-0" />
-            Inventory ({aggregateInventoryList.length})
+            <Tag className="w-3.5 h-3.5 shrink-0" />
+            <span>Inventory</span>
+            <span className={`px-1.5 py-0.2 text-[10px] font-mono font-bold rounded ${
+              activeSubSection === "inventory" ? "bg-stone-700 text-white" : "bg-stone-200 text-stone-800"
+            }`}>
+              {aggregateInventoryList.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveSubSection("parts")}
-            className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "parts"
-                ? "bg-amber-600 text-stone-950 shadow-md font-black border-b-2 border-amber-300"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-amber-500 text-stone-950 shadow-xs font-black"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
             }`}
           >
-            <Wrench className="w-4 h-4 shrink-0 text-amber-600" />
-            Parts Desk
+            <Wrench className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+            <span>Parts Desk</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("auction")}
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
+              activeSubSection === "auction"
+                ? "bg-amber-500 text-stone-950 shadow-xs font-black"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+            <span>Flash Auctions</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubSection("exchange")}
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
+              activeSubSection === "exchange"
+                ? "bg-cyan-600 text-white shadow-xs font-black"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
+            }`}
+          >
+            <Repeat className="w-3.5 h-3.5 shrink-0 text-cyan-600" />
+            <span>Car Exchange Hub</span>
           </button>
           
           <button
             onClick={() => setActiveSubSection("leads")}
-            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "leads"
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-stone-900 text-white shadow-xs"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
             }`}
           >
-            <MessageSquare className="w-4 h-4 shrink-0" />
-            Buyer Inquiries ({messages.length})
+            <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+            <span>Buyer Inquiries</span>
+            <span className={`px-1.5 py-0.2 text-[10px] font-mono font-bold rounded ${
+              activeSubSection === "leads" ? "bg-stone-700 text-white" : "bg-stone-200 text-stone-800"
+            }`}>
+              {messages.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveSubSection("payments")}
-            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "payments"
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-stone-900 text-white shadow-xs"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
             }`}
           >
-            <Crown className="w-4 h-4 shrink-0" />
-            Pass Purchases ({passes.length})
+            <Crown className="w-3.5 h-3.5 shrink-0" />
+            <span>Pass Purchases</span>
+            <span className={`px-1.5 py-0.2 text-[10px] font-mono font-bold rounded ${
+              activeSubSection === "payments" ? "bg-stone-700 text-white" : "bg-stone-200 text-stone-800"
+            }`}>
+              {passes.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveSubSection("feedback")}
-            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "feedback"
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-stone-900 text-white shadow-xs"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
             }`}
           >
-            <MessageSquare className="w-4 h-4 shrink-0 text-emerald-600" />
-            User Feedback ({feedbacks.length})
+            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+            <span>User Feedback</span>
+            <span className={`px-1.5 py-0.2 text-[10px] font-mono font-bold rounded ${
+              activeSubSection === "feedback" ? "bg-stone-700 text-white" : "bg-emerald-100 text-emerald-900"
+            }`}>
+              {feedbacks.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveSubSection("audit")}
-            className={`flex-1 min-w-[120px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "audit"
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-stone-900 text-white shadow-xs"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
             }`}
           >
-            <History className="w-4 h-4 shrink-0 text-amber-600" />
-            Audit Logs
+            <History className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+            <span>Audit Logs</span>
           </button>
 
           {isOwner && (
             <button
               onClick={() => setActiveSubSection("roles")}
-              className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+              className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
                 activeSubSection === "roles"
-                  ? "bg-amber-600 text-stone-950 shadow-md font-black border-b-2 border-amber-300"
-                  : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                  ? "bg-amber-500 text-stone-950 shadow-xs font-black"
+                  : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
               }`}
             >
-              <Users className="w-4 h-4 shrink-0 text-stone-900" />
-              User Roles ({usersList.length})
+              <Users className="w-3.5 h-3.5 shrink-0 text-stone-900" />
+              <span>User Roles</span>
+              <span className={`px-1.5 py-0.2 text-[10px] font-mono font-bold rounded ${
+                activeSubSection === "roles" ? "bg-stone-900 text-amber-300" : "bg-stone-200 text-stone-800"
+              }`}>
+                {usersList.length}
+              </span>
             </button>
           )}
 
           <button
             onClick={() => setActiveSubSection("content")}
-            className={`flex-1 min-w-[140px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "content"
-                ? "bg-purple-900 text-white shadow-md border-b-2 border-amber-400"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-purple-900 text-white shadow-xs"
+                : "text-stone-700 hover:text-stone-950 hover:bg-stone-200/60"
             }`}
           >
-            <Sliders className="w-4 h-4 shrink-0 text-amber-400" />
-            Edit Mode (Content)
+            <Sliders className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+            <span>Edit Mode (Content)</span>
           </button>
 
           <button
             onClick={() => setActiveSubSection("sms")}
-            className={`flex-1 min-w-[150px] py-3 text-center text-xs uppercase tracking-widest font-extrabold transition cursor-pointer flex items-center justify-center gap-2 ${
+            className={`shrink-0 px-3.5 py-2.5 text-center text-xs uppercase tracking-wider font-extrabold transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
               activeSubSection === "sms"
-                ? "bg-emerald-950 text-emerald-300 shadow-md border-b-2 border-emerald-400 font-black"
-                : "text-stone-700 hover:text-stone-900 hover:bg-emerald-50/50"
+                ? "bg-emerald-950 text-emerald-300 shadow-xs font-black"
+                : "text-stone-700 hover:text-stone-950 hover:bg-emerald-50/50"
             }`}
           >
-            <Smartphone className="w-4 h-4 shrink-0 text-emerald-500 animate-pulse" />
+            <Smartphone className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
             <span>SMS Alerts</span>
             <span className={`px-1.5 py-0.5 text-[8.5px] font-mono font-bold rounded ${
               smsSettings.isSmsEnabled ? "bg-emerald-500 text-stone-950" : "bg-stone-300 text-stone-700"
@@ -3269,123 +3373,23 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
               </div>
             )}
 
+            {/* SUBSECTION: LIVE AUCTION DESK */}
+            {activeSubSection === "auction" && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <AdminAuctionDesk showToast={showToast} />
+              </div>
+            )}
+
+            {/* SUBSECTION: TRADE-IN & P2P SWAPS DESK */}
+            {activeSubSection === "exchange" && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <AdminExchangeDesk showToast={showToast} />
+              </div>
+            )}
+
             {/* SUBSECTION 1: INVENTORY MANAGEMENT */}
             {activeSubSection === "inventory" && (
               <div className="space-y-6">
-
-                {/* HOME PAGE FEATURED SHOWCASE MANAGEMENT PANEL */}
-                <div className="bg-stone-900 text-[#F4F1EA] border-2 border-stone-950 p-5 space-y-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Home className="w-5 h-5 text-amber-500" />
-                        <h2 className="text-xs sm:text-sm font-serif font-black uppercase text-white tracking-tight">Home Page Featured Showcase ({homeFeaturedIds.length})</h2>
-                      </div>
-                      <p className="text-[10px] text-stone-400 uppercase tracking-widest font-mono mt-0.5">Select and pin items directly displayed in the home tab featured collections</p>
-                    </div>
-                    {homeFeaturedIds.length > 0 && (
-                      <button
-                        onClick={() => {
-                          playSynthBeep(400, 0.15, "sawtooth");
-                          setConfirmModal({
-                            isOpen: true,
-                            title: "CLEAR HOME SHOWCASE",
-                            message: "Are you sure you want to reset the Home Page Showcase? It will revert to showing the default first 3 active vehicles.",
-                            onConfirm: () => {
-                              setHomeFeaturedIds([]);
-                              localStorage.removeItem("autoWorld_home_featured_ids");
-                              window.dispatchEvent(new Event("autoWorld_db_update"));
-                              triggerHudAlert("SHOWCASE RESET", "Home Page Featured Showcase has been reset to defaults.", "restore");
-                            }
-                          });
-                        }}
-                        className="px-3 py-1.5 border border-stone-700 hover:bg-stone-800 text-stone-305 hover:text-white text-[9px] font-mono font-bold uppercase cursor-pointer"
-                      >
-                        Reset to Defaults
-                      </button>
-                    )}
-                  </div>
-
-                  {homeFeaturedIds.length === 0 ? (
-                    <div className="text-center py-4 border border-dashed border-stone-800 rounded-sm">
-                      <p className="text-stone-400 text-[10px] uppercase font-mono">No custom home page items chosen. The system is displaying the first 3 active defaults.</p>
-                      <p className="text-stone-500 text-[9px] uppercase font-mono mt-1">Click the "🏠 Pin to Home" button on any vehicle card below to start customizing your home tab!</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                      {homeFeaturedIds.map((key, idx) => {
-                        // find the corresponding item in aggregateList. We map both defaults and listings to their matches
-                        const item = [
-                          ...allDefaultsMapped.map(v => ({ ...v, uniqueKey: `default-${v.id}` })),
-                          ...userListingsMapped.map(v => ({ ...v, uniqueKey: `user-${v.listingId}` }))
-                        ].find(v => v.uniqueKey === key);
-
-                        if (!item) return null;
-                        return (
-                          <div key={key} className="bg-stone-950 p-2 border border-stone-800 flex flex-col justify-between space-y-2 group relative">
-                            <div className="relative aspect-video bg-stone-900 overflow-hidden">
-                              <img src={item.image} alt={item.title} className="w-full h-full object-cover animate-in fade-in" referrerPolicy="no-referrer" />
-                              <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-stone-900/90 text-white font-mono text-[7px] border border-stone-800">
-                                #{idx + 1}
-                              </span>
-                            </div>
-                            <div className="space-y-0.5">
-                              <h4 className="text-[10px] font-bold uppercase tracking-tight text-white line-clamp-1">{item.title}</h4>
-                              <p className="text-stone-400 text-[8px] font-mono">₹{item.price.toLocaleString()}</p>
-                            </div>
-
-                            {/* Precise Ordering Controls */}
-                            <div className="flex items-center justify-between gap-1 bg-stone-900 p-1 border border-stone-850">
-                              {/* Move Up */}
-                              <button
-                                disabled={idx === 0}
-                                onClick={() => moveHomeFeaturedItem(idx, "up")}
-                                className="p-1 bg-stone-950 hover:bg-stone-800 text-stone-400 hover:text-amber-400 disabled:opacity-20 disabled:hover:bg-stone-950 disabled:hover:text-stone-400 cursor-pointer rounded-sm border border-stone-800 transition"
-                                title="Move Position Up"
-                              >
-                                <ArrowUp className="w-3 h-3" />
-                              </button>
-
-                              {/* Rank Select */}
-                              <div className="flex items-center gap-1">
-                                <span className="text-[7px] font-mono text-stone-500 uppercase tracking-widest">Rank</span>
-                                <select
-                                  value={idx + 1}
-                                  onChange={(e) => setHomeFeaturedItemRank(idx, e.target.value)}
-                                  className="bg-stone-950 text-amber-500 hover:text-amber-400 border border-stone-800 font-mono text-[9px] py-0.5 px-1 rounded-sm focus:outline-none focus:border-amber-500 cursor-pointer text-center font-bold"
-                                  title="Change precise display rank position"
-                                >
-                                  {Array.from({ length: homeFeaturedIds.length }).map((_, rankIdx) => (
-                                    <option key={rankIdx} value={rankIdx + 1}>
-                                      {rankIdx + 1}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              {/* Move Down */}
-                              <button
-                                disabled={idx === homeFeaturedIds.length - 1}
-                                onClick={() => moveHomeFeaturedItem(idx, "down")}
-                                className="p-1 bg-stone-950 hover:bg-stone-800 text-stone-400 hover:text-amber-400 disabled:opacity-20 disabled:hover:bg-stone-950 disabled:hover:text-stone-400 cursor-pointer rounded-sm border border-stone-800 transition"
-                                title="Move Position Down"
-                              >
-                                <ArrowDown className="w-3 h-3" />
-                              </button>
-                            </div>
-
-                            <button
-                              onClick={() => handleToggleHomeFeatured(key, item.title)}
-                              className="w-full py-1 bg-stone-900 hover:bg-red-950 text-stone-400 hover:text-red-200 text-[8px] font-mono font-bold uppercase border border-stone-800 cursor-pointer"
-                            >
-                              Unpin
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
 
                 {/* ADVANCED GLOBAL VEHICLES COMMAND & CONTROL DECK */}
                 <div className="bg-[#FAF8F5] border-2 border-stone-900 p-5 space-y-4 shadow-[4px_4px_0px_0px_rgba(168,85,247,0.15)]">
@@ -4321,23 +4325,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                     Hot Deal
                                   </button>
 
-                                  {/* Home Page Featured Showcase control */}
-                                  <button
-                                    onClick={(e) => {
-                                      handleToggleHomeFeatured(`user-${item.listingId}`, item.title);
-                                      spawnParticles(e, '#f59e0b', homeFeaturedIds.includes(`user-${item.listingId}`) ? '-HOME' : '+HOME', '🏠');
-                                    }}
-                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
-                                      homeFeaturedIds.includes(`user-${item.listingId}`)
-                                        ? "bg-[#D97706] text-white border-[#B45309]"
-                                        : "bg-[#FAF8F5] hover:bg-stone-100 border-stone-300 text-stone-700"
-                                    }`}
-                                    title="Pin or unpin this listing to the Home Page Featured Showcase"
-                                  >
-                                    <Home className="w-3.5 h-3.5" />
-                                    {homeFeaturedIds.includes(`user-${item.listingId}`) ? "🏠 Pinned" : "🏠 Pin Home"}
-                                  </button>
-
                                   {/* Absolute Deletion */}
                                   <button
                                     onClick={() => handleDeleteListing(item.listingId!)}
@@ -4399,23 +4386,6 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
                                     title="Set hot deal tag"
                                   >
                                     Hot Deal
-                                  </button>
-
-                                  {/* Home Page Featured Showcase control */}
-                                  <button
-                                    onClick={(e) => {
-                                      handleToggleHomeFeatured(`default-${item.id}`, item.title);
-                                      spawnParticles(e, '#f59e0b', homeFeaturedIds.includes(`default-${item.id}`) ? '-HOME' : '+HOME', '🏠');
-                                    }}
-                                    className={`px-2.5 py-1.5 border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer flex items-center gap-1 font-mono transition ${
-                                      homeFeaturedIds.includes(`default-${item.id}`)
-                                        ? "bg-[#D97706] text-white border-[#B45309]"
-                                        : "bg-[#FAF8F5] hover:bg-stone-100 border-stone-300 text-stone-700"
-                                    }`}
-                                    title="Pin or unpin this vehicle to the Home Page Featured Showcase"
-                                  >
-                                    <Home className="w-3.5 h-3.5" />
-                                    {homeFeaturedIds.includes(`default-${item.id}`) ? "🏠 Pinned" : "🏠 Pin Home"}
                                   </button>
 
                                   {/* Restore / Hide toggle */}

@@ -297,5 +297,29 @@ service cloud.firestore {
       allow read, update: if true;
       allow delete: if isRegisteredUser() || isAdmin();
     }
+
+    // 15. LIVE FLASH AUCTIONS & BIDDING FLOOR RULES
+    match /auctions/{auctionId} {
+      allow read: if true;
+      allow create: if isRegisteredUser() || isAdmin();
+      allow update: if isRegisteredUser() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 16. PEER-TO-PEER CAR EXCHANGES & TRADE-IN RULES
+    match /exchanges/{exchangeId} {
+      allow read: if true;
+      allow create: if isRegisteredUser() || isAdmin();
+      allow update: if isRegisteredUser() || isAdmin();
+      allow delete: if (isRegisteredUser() && existing().creatorUid == request.auth.uid) || isAdmin();
+    }
+
+    // 17. TRADE OFFERS & PROPOSALS RULES
+    match /trade_offers/{offerId} {
+      allow read: if isRegisteredUser() || isAdmin();
+      allow create: if isRegisteredUser() || isAdmin();
+      allow update: if isRegisteredUser() || isAdmin();
+      allow delete: if isRegisteredUser() || isAdmin();
+    }
   }
 }
