@@ -1250,6 +1250,8 @@ export interface AuctionBid {
   isAutoBid?: boolean;
 }
 
+export type AuctionStatus = "live" | "upcoming" | "ended" | "settled" | "paused";
+
 export interface Auction {
   id: string;
   title: string;
@@ -1267,7 +1269,7 @@ export interface Auction {
   isReserveMet: boolean;
   startTime: string;
   endTime: string;
-  status: "live" | "upcoming" | "ended" | "settled";
+  status: AuctionStatus;
   bids: AuctionBid[];
   sellerUid: string;
   sellerName: string;
@@ -1288,6 +1290,35 @@ export interface Auction {
   winnerName?: string;
   winningBid?: number;
   featured?: boolean;
+  // Executive Director & Role-Based Control Fields
+  scheduledStartTime?: string;
+  scheduledEndTime?: string;
+  autoGoLive?: boolean;
+  isPaused?: boolean;
+  pauseReason?: string;
+  buyNowPrice?: number;
+  antiSnipingMinutes?: number;
+  floorNotice?: string;
+  floorNoticeTimestamp?: string;
+  controlledByRole?: string[];
+  depositRequired?: number;
+  extendedMinutesTotal?: number;
+  directorNotes?: string;
+  // FIFO Queue & First-Come First-Served Scheduling
+  submittedAt?: string;
+  queuePosition?: number;
+  intermissionGapMinutes?: number;
+  isWinnerDeclared?: boolean;
+  concludedAt?: string;
+}
+
+export interface AuctionGlobalSettings {
+  intermissionGapMinutes: number; // Configurable intermission gap between auctions (e.g., 15, 30, 60 mins)
+  autoQueueAdvance: boolean; // Auto-launch next FIFO lot after intermission
+  defaultLotDurationHours: number; // default 24h
+  allowConsignorSubmissions: boolean;
+  updatedBy?: string;
+  updatedAt?: string;
 }
 
 export interface OfferedTradeVehicle {
@@ -1411,7 +1442,9 @@ export const DEFAULT_AUCTIONS: Auction[] = [
       "Factory Sports Exhaust with active Valvetronic flaps"
     ],
     verifiedOnly: true,
-    featured: true
+    featured: true,
+    submittedAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
+    queuePosition: 1
   },
   {
     id: "auc-002",
@@ -1464,7 +1497,9 @@ export const DEFAULT_AUCTIONS: Auction[] = [
       "Harman Kardon Surround Sound & Head-Up Display"
     ],
     verifiedOnly: true,
-    featured: true
+    featured: true,
+    submittedAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+    queuePosition: 2
   },
   {
     id: "auc-003",
@@ -1484,6 +1519,7 @@ export const DEFAULT_AUCTIONS: Auction[] = [
     isReserveMet: false,
     startTime: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
     endTime: new Date(Date.now() + 28 * 3600 * 1000).toISOString(),
+    scheduledStartTime: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
     status: "upcoming",
     bids: [],
     sellerUid: "afrojalamansari461@gmail.com",
@@ -1511,7 +1547,9 @@ export const DEFAULT_AUCTIONS: Auction[] = [
       "ClearSight Ground View and 3D Surround Camera"
     ],
     verifiedOnly: true,
-    featured: false
+    featured: false,
+    submittedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+    queuePosition: 3
   }
 ];
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, SlidersHorizontal, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus, Wrench, Cpu, Flame, Disc, Layers, ShieldCheck, Tag, ChevronRight, Wind, CircleDot, Box, RotateCcw, Volume2, Music, Repeat } from "lucide-react";
+import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, SlidersHorizontal, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus, Wrench, Cpu, Flame, Disc, Layers, ShieldCheck, Tag, ChevronRight, Wind, CircleDot, Box, RotateCcw, Volume2, Music, Repeat, Navigation, LocateFixed, ArrowUpDown } from "lucide-react";
 import { Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, PART_CATEGORIES, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_BRANDS, UserPartListing } from "../types";
+import { INDIAN_CITIES_REGISTRY, getProximityInfo, resolveLocationToCoords, calculateHaversineDistance, CityHub } from "../lib/locationUtils";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
@@ -255,6 +256,9 @@ export default function BuyTab({
   const [locationValue, setLocationValue] = useState(searchFilters.location || "");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [proximityHub, setProximityHub] = useState<string>("mumbai");
+  const [userCustomCoords, setUserCustomCoords] = useState<{ lat: number; lon: number; name: string } | null>(null);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
 
   // Recent Searches state
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -673,8 +677,48 @@ export default function BuyTab({
   useEffect(() => {
     if (searchFilters.type) setSelectedType(searchFilters.type);
     if (searchFilters.priceRange) setSelectedPriceRange(searchFilters.priceRange);
-    if (searchFilters.location) setLocationValue(searchFilters.location);
+    if (searchFilters.location) {
+      setLocationValue(searchFilters.location);
+      const res = resolveLocationToCoords(searchFilters.location);
+      if (res.hub) {
+        setProximityHub(res.hub.id);
+      }
+    }
   }, [searchFilters]);
+
+  // Live GPS geolocation detector
+  const handleDetectGPS = () => {
+    if (!navigator.geolocation) {
+      showToast("Geolocation is not supported by your browser.", "error");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        let nearestHub = INDIAN_CITIES_REGISTRY[0];
+        let minD = Infinity;
+        for (const hub of INDIAN_CITIES_REGISTRY) {
+          const d = calculateHaversineDistance(latitude, longitude, hub.lat, hub.lon);
+          if (d < minD) {
+            minD = d;
+            nearestHub = hub;
+          }
+        }
+        setUserCustomCoords({ lat: latitude, lon: longitude, name: `${nearestHub.name} (Live GPS)` });
+        setProximityHub(nearestHub.id);
+        setSortBy("nearest");
+        setIsLocating(false);
+        showToast(`📍 Proximity locked near ${nearestHub.name}! Inventory sorted nearest first.`, "success");
+      },
+      (error) => {
+        setIsLocating(false);
+        console.warn("Geolocation detection error:", error);
+        showToast("Could not detect GPS location. You can select your city hub from the list.", "info");
+      },
+      { timeout: 9000, enableHighAccuracy: true }
+    );
+  };
 
   // Simple synth tone generator for tactical audios
   const playSynthBeep = (freq = 800, duration = 0.1, type: OscillatorType = "sine") => {
@@ -996,6 +1040,16 @@ export default function BuyTab({
       return bPremium - aPremium; // 1 (Premium) goes before 0
     }
 
+    if (sortBy === "nearest") {
+      const refTarget = userCustomCoords || proximityHub;
+      const distA = getProximityInfo(a.location, refTarget).distanceKm;
+      const distB = getProximityInfo(b.location, refTarget).distanceKm;
+      if (distA !== distB) {
+        return distA - distB; // Closest / nearest inventory first
+      }
+      return b.year - a.year;
+    }
+
     if (sortBy === "price-low") return a.price - b.price;
     if (sortBy === "price-high") return b.price - a.price;
     if (sortBy === "mileage") {
@@ -1014,6 +1068,9 @@ export default function BuyTab({
     setSelectedType("Any Type");
     setLocationValue("");
     setSearchQuery("");
+    setSortBy("newest");
+    setProximityHub("mumbai");
+    setUserCustomCoords(null);
   };
 
   // --- Parts Filtering & Sorting Logic ---
@@ -2239,42 +2296,124 @@ export default function BuyTab({
 
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-stone-250">
-            <div className="flex flex-wrap bg-stone-200/80 p-1 rounded-md gap-1 w-full sm:w-auto">
-              {[
-                { id: "newest", label: "Newest Year" },
-                { id: "price-low", label: "Price: Low to High" },
-                { id: "price-high", label: "Price: High to Low" },
-                { id: "mileage", label: "Lowest Mileage" }
-              ].map((btn) => (
-                <button
-                  key={btn.id}
-                  onClick={() => setSortBy(btn.id)}
-                  className={`px-3 py-2 text-[11px] font-bold tracking-wider transition cursor-pointer rounded-md ${
-                    sortBy === btn.id ? "bg-stone-950 text-white shadow-sm" : "text-stone-700 hover:text-stone-950"
-                  }`}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 pt-5 border-t border-stone-250">
+            {/* Left side: Sort Dropdown & Quick Toggles */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Sort By Dropdown */}
+              <div className="flex items-center gap-2 bg-[#F4F1EA] border border-stone-300 px-3 py-2 rounded-md shadow-xs">
+                <ArrowUpDown aria-hidden="true" className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                <label htmlFor="buy-sort-dropdown" className="text-[11px] font-bold uppercase tracking-wider text-stone-600 shrink-0">
+                  Sort By:
+                </label>
+                <select
+                  id="buy-sort-dropdown"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-stone-950 focus:outline-none cursor-pointer pr-1"
                 >
-                  {btn.label}
-                </button>
-              ))}
+                  <option value="newest">Newest Year</option>
+                  <option value="nearest">📍 Nearest Location (Proximity)</option>
+                  <option value="price-low">💰 Price: Low to High</option>
+                  <option value="price-high">💎 Price: High to Low</option>
+                  <option value="mileage">⚡ Lowest Mileage</option>
+                </select>
+              </div>
+
+              {/* Quick Sort Pills */}
+              <div className="flex flex-wrap bg-stone-200/80 p-1 rounded-md gap-1">
+                {[
+                  { id: "nearest", label: "Nearest First", icon: MapPin },
+                  { id: "newest", label: "Newest Year", icon: Calendar },
+                  { id: "price-low", label: "Price: Low → High", icon: DollarSign },
+                  { id: "price-high", label: "Price: High → Low", icon: DollarSign },
+                  { id: "mileage", label: "Lowest Mileage", icon: Gauge }
+                ].map((btn) => {
+                  const Icon = btn.icon;
+                  const isActive = sortBy === btn.id;
+                  return (
+                    <button
+                      key={btn.id}
+                      onClick={() => setSortBy(btn.id)}
+                      className={`px-2.5 py-1.5 text-[10.5px] font-bold tracking-wider transition cursor-pointer rounded-md flex items-center gap-1 ${
+                        isActive
+                          ? "bg-stone-950 text-white shadow-sm"
+                          : "text-stone-700 hover:text-stone-950 hover:bg-stone-300/60"
+                      }`}
+                    >
+                      <Icon className="w-3 h-3 shrink-0" />
+                      <span>{btn.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Right side: Location Proximity Hub Selector & Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Location Proximity Hub Selector */}
+              <div className={`flex items-center gap-1.5 p-1 rounded-md border transition-all ${
+                sortBy === "nearest"
+                  ? "bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/30"
+                  : "bg-white border-stone-300"
+              }`}>
+                <div className="flex items-center gap-1 pl-1.5">
+                  <LocateFixed className={`w-3.5 h-3.5 shrink-0 ${sortBy === "nearest" ? "text-amber-600 animate-pulse" : "text-stone-500"}`} />
+                  <span className="text-[10px] font-mono uppercase font-bold text-stone-600 hidden sm:inline">
+                    Reference Hub:
+                  </span>
+                </div>
+
+                <select
+                  id="buy-location-hub-select"
+                  aria-label="Select reference city hub for location sorting"
+                  value={proximityHub}
+                  onChange={(e) => {
+                    setProximityHub(e.target.value);
+                    setUserCustomCoords(null);
+                    if (sortBy !== "nearest") {
+                      setSortBy("nearest");
+                    }
+                  }}
+                  className="bg-transparent text-xs font-bold text-stone-950 focus:outline-none cursor-pointer py-1 px-1 max-w-[150px] sm:max-w-none truncate"
+                >
+                  {INDIAN_CITIES_REGISTRY.map((hub) => (
+                    <option key={hub.id} value={hub.id}>
+                      {hub.name} ({hub.state})
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={handleDetectGPS}
+                  disabled={isLocating}
+                  className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-amber-400 text-[10px] font-mono font-bold uppercase rounded transition cursor-pointer flex items-center gap-1 shrink-0 disabled:opacity-50"
+                  title="Detect GPS coordinates to sort vehicles closest to you"
+                >
+                  {isLocating ? (
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Navigation className="w-3 h-3 text-amber-400" />
+                  )}
+                  <span className="hidden sm:inline">{isLocating ? "Detecting..." : "Live GPS"}</span>
+                </button>
+              </div>
+
               <button
                 onClick={() => setIsSavedSearchesOpen(true)}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition shadow-xs"
+                className="flex-1 sm:flex-none px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition shadow-xs"
                 title="Save current search criteria and manage alert notifications"
               >
                 <Bell className="w-3.5 h-3.5 text-stone-950" />
-                <span>Saved Search Alerts</span>
+                <span className="hidden sm:inline">Saved Alerts</span>
               </button>
 
               <button
                 onClick={handleResetFilters}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition shadow-xs"
+                className="flex-1 sm:flex-none px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition shadow-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Reset Filters</span>
+                <span className="hidden sm:inline">Reset</span>
               </button>
             </div>
           </div>
@@ -2304,6 +2443,7 @@ export default function BuyTab({
                 <AnimatePresence mode="popLayout">
                   {displayedVehicles.map((car, idx) => {
                     const isFav = favorites.includes(car.id);
+                    const proximityInfo = getProximityInfo(car.location, userCustomCoords || proximityHub);
                     return (
                       <motion.div
                         key={car.id}
@@ -2466,7 +2606,7 @@ export default function BuyTab({
                         <div className="pt-2.5 sm:pt-3 border-t border-stone-200 mt-auto flex flex-col gap-2.5 sm:gap-3 min-w-0 w-full">
                           {/* Valuation & Location Header */}
                           <div className="flex flex-wrap items-end justify-between gap-1.5 min-w-0 w-full">
-                            <div className="min-w-0 max-w-[65%] sm:max-w-none">
+                            <div className="min-w-0 max-w-[60%] sm:max-w-none">
                               <span className="text-[8.5px] sm:text-[10px] text-stone-400 block uppercase font-mono font-medium tracking-wider">
                                 Valuation
                               </span>
@@ -2474,9 +2614,15 @@ export default function BuyTab({
                                 ₹{car.price.toLocaleString("en-IN")}
                               </span>
                             </div>
-                            <span className="text-[8.5px] sm:text-[10px] font-mono text-stone-600 bg-stone-200/70 px-2 py-0.5 border border-stone-300 uppercase font-bold rounded-xs shrink-0 truncate max-w-[120px] sm:max-w-none">
-                              {car.location || "India"}
-                            </span>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className="text-[8.5px] sm:text-[10px] font-mono text-stone-600 bg-stone-200/70 px-2 py-0.5 border border-stone-300 uppercase font-bold rounded-xs shrink-0 truncate max-w-[120px] sm:max-w-none">
+                                {car.location || "India"}
+                              </span>
+                              <span className={`text-[8px] sm:text-[9px] font-mono px-1.5 py-0.5 border uppercase font-bold rounded-xs flex items-center gap-1 ${proximityInfo.badgeColor}`}>
+                                <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                <span>{proximityInfo.isSameCity ? "Same City" : `${proximityInfo.distanceKm} km`}</span>
+                              </span>
+                            </div>
                           </div>
 
                           {/* Row 1 (Secondary Actions): Favorite, Dossier, EMI Calc */}

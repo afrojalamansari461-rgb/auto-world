@@ -57,6 +57,7 @@ import {
 interface AdminPanelProps {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
   currentUser: User | null;
+  userRole?: UserRole;
   onQuickView: (vehicle: Vehicle, editMode?: boolean) => void;
   setActiveTab: (tab: string) => void;
 }
@@ -105,7 +106,7 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   return null;
 };
 
-export default function AdminPanel({ showToast, currentUser, onQuickView, setActiveTab }: AdminPanelProps) {
+export default function AdminPanel({ showToast, currentUser, userRole, onQuickView, setActiveTab }: AdminPanelProps) {
   const [listings, setListings] = useState<UserListing[]>([]);
   const [messages, setMessages] = useState<FirestoreMessage[]>([]);
   const [passes, setPasses] = useState<FirestoreBuyerPass[]>([]);
@@ -3376,7 +3377,11 @@ export default function AdminPanel({ showToast, currentUser, onQuickView, setAct
             {/* SUBSECTION: LIVE AUCTION DESK */}
             {activeSubSection === "auction" && (
               <div className="space-y-6 animate-in fade-in duration-200">
-                <AdminAuctionDesk showToast={showToast} />
+                <AdminAuctionDesk 
+                  showToast={showToast}
+                  currentUser={currentUser}
+                  userRole={userRole}
+                />
               </div>
             )}
 

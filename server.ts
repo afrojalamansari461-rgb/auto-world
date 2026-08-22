@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import compression from "compression";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { DEFAULT_VEHICLES } from "./src/types";
@@ -845,6 +844,7 @@ Format your output STRICTLY as a JSON object, with the following schema:
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

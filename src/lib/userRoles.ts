@@ -548,3 +548,40 @@ export function subscribeToCurrentRole(uid: string, onRoleChange: (role: UserRol
     }
   );
 }
+
+// Authorized roles that can control, schedule, launch, pause, and moderate auctions
+export const AUCTION_CONTROLLER_ROLES: UserRole[] = [
+  "Owner",
+  "Co-Owner",
+  "Super Admin",
+  "Auction Floor Director"
+];
+
+/**
+ * Checks if a given user has authority to manage auctions globally
+ */
+export function canManageAuctions(role?: UserRole, userEmail?: string | null): boolean {
+  if (userEmail && userEmail.toLowerCase() === OWNER_EMAIL.toLowerCase()) {
+    return true;
+  }
+  if (!role) return false;
+  return AUCTION_CONTROLLER_ROLES.includes(role);
+}
+
+/**
+ * Checks if a given user can control a specific auction lot
+ */
+export function canControlAuctionLot(
+  lot?: { sellerUid?: string; controlledByRole?: string[] } | null,
+  role?: UserRole,
+  userEmail?: string | null,
+  userUid?: string | null
+): boolean {
+  if (canManageAuctions(role, userEmail)) return true;
+  if (!lot) return false;
+  if (userEmail && lot.sellerUid && lot.sellerUid.toLowerCase() === userEmail.toLowerCase()) return true;
+  if (userUid && lot.sellerUid && lot.sellerUid === userUid) return true;
+  if (lot.controlledByRole && role && lot.controlledByRole.includes(role)) return true;
+  return false;
+}
+

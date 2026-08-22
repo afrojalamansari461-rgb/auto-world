@@ -1,6 +1,6 @@
 {
   "name": "Auto World",
-  "description": "A premium vehicle marketplace for buying, selling, and managing listings.",
+  "description": "A luxury exotic vehicle marketplace and scheduled 24-hour flash auction platform with real-time collector leaderboard rankings, dynamic user relative position tracking, automated post-auction winner clearance, and FIFO lot queueing.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

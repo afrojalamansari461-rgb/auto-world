@@ -1361,6 +1361,7 @@ export default function App() {
             {activeTab === "auction" && (
               <AuctionTab
                 currentUser={currentUser}
+                userRole={userRole}
                 showToast={showToast}
                 onSignInClick={() => setActiveTab("login")}
                 isEngineSoundEnabled={isEngineSoundEnabled}
@@ -1409,6 +1410,7 @@ export default function App() {
               <AdminPanel 
                 showToast={showToast} 
                 currentUser={currentUser} 
+                userRole={userRole}
                 onQuickView={handleQuickView}
                 setActiveTab={setActiveTab}
               />

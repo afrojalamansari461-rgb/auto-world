@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Car, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert, ShieldCheck, Heart, Building2, Zap, Repeat } from "lucide-react";
+import { Car, Crown, Phone, Home, Search, Tag, Mail, LogIn, LogOut, User as UserIcon, ShieldAlert, ShieldCheck, Heart, Building2 } from "lucide-react";
 import { User } from "firebase/auth";
 import { auth, signOut } from "../firebase";
 import { motion } from "motion/react";
@@ -69,7 +69,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
     { id: "buy", label: "BUY", icon: Search },
     { id: "sell", label: "SELL", icon: Tag },
     { id: "premium", label: "PREMIUM", icon: Crown },
-    { id: "favorites", label: "FAVORITES", icon: Heart },
+    { id: "favorites", label: "SAVED", icon: Heart },
     { id: "contact", label: "CONTACT", icon: Mail },
   ];
 
