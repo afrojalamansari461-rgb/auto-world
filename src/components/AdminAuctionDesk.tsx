@@ -611,9 +611,6 @@ export default function AdminAuctionDesk({ showToast, currentUser, userRole }: A
       mileage: formMileage,
       fuel: formFuel,
       transmission: formTransmission,
-      engineSoundUrl: "preset:bmw_twinpower_turbo",
-      engineSoundTitle: `${formMake} High-Rev Performance Soundtrack`,
-      engineSoundType: "supercar",
       highlights: formHighlights.split(",").map(h => h.trim()).filter(Boolean),
       verifiedOnly: true,
       featured: true

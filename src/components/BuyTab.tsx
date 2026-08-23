@@ -36,8 +36,6 @@ interface BuyTabProps {
   toggleFavoritePart?: (id: string | number) => void;
   activeSubTab?: "buy_vehicle" | "peer_to_peer" | "auction";
   onSubTabChange?: (tab: "buy_vehicle" | "peer_to_peer" | "auction") => void;
-  isEngineSoundEnabled?: boolean;
-  onPlayEngineSound?: (url?: string, title?: string, type?: string) => void;
 }
 
 // Historical price trends in India (in Lakhs INR ex-showroom)
@@ -201,9 +199,7 @@ export default function BuyTab({
   favoritePartIds = [],
   toggleFavoritePart,
   activeSubTab,
-  onSubTabChange,
-  isEngineSoundEnabled,
-  onPlayEngineSound
+  onSubTabChange
 }: BuyTabProps) {
   // Buy Sub-Navigation: "buy_vehicle" | "peer_to_peer" | "auction"
   const [internalSubTab, setInternalSubTab] = useState<"buy_vehicle" | "peer_to_peer" | "auction">("buy_vehicle");
@@ -1253,8 +1249,8 @@ export default function BuyTab({
       
       {/* 3-TAB NAVBAR FOR BUY SECTION: BUY VEHICLE | CAR EXCHANGE | AUCTION */}
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 mb-6 sm:mb-8">
-        <div className="bg-stone-900/95 backdrop-blur-md p-1 sm:p-2 border border-stone-800 shadow-xl">
-          <div className="grid grid-cols-3 gap-1 sm:gap-2 w-full" role="tablist" aria-label="Buy Section Navigation">
+        <div className="bg-stone-950/95 border border-stone-800 p-1.5 sm:p-2 rounded-2xl shadow-xl backdrop-blur-md">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 w-full" role="tablist" aria-label="Buy Section Navigation">
             {/* Tab 1: Buy Vehicle */}
             <button
               id="buy-subtab-vehicle"
@@ -1262,13 +1258,13 @@ export default function BuyTab({
               role="tab"
               aria-selected={currentSubTab === "buy_vehicle"}
               onClick={() => handleSubTabChange("buy_vehicle")}
-              className={`relative py-2.5 sm:py-3 px-1 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm font-extrabold uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 sm:gap-2 select-none text-center min-w-0 ${
+              className={`relative py-2.5 sm:py-3 px-2 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none text-center min-w-0 rounded-xl ${
                 currentSubTab === "buy_vehicle"
-                  ? "bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/20 border-b-2 border-amber-300"
-                  : "text-stone-300 hover:text-white hover:bg-stone-800/90"
+                  ? "bg-white text-stone-950 font-black shadow-md border border-white"
+                  : "text-stone-400 hover:text-white hover:bg-white/10 hover:backdrop-blur-xs font-bold border border-transparent"
               }`}
             >
-              <Car className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <Car className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${currentSubTab === "buy_vehicle" ? "text-stone-950" : "text-stone-400"}`} />
               <span className="truncate">Buy Vehicle</span>
             </button>
 
@@ -1279,13 +1275,13 @@ export default function BuyTab({
               role="tab"
               aria-selected={currentSubTab === "peer_to_peer"}
               onClick={() => handleSubTabChange("peer_to_peer")}
-              className={`relative py-2.5 sm:py-3 px-1 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm font-extrabold uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 sm:gap-2 select-none text-center min-w-0 ${
+              className={`relative py-2.5 sm:py-3 px-2 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none text-center min-w-0 rounded-xl ${
                 currentSubTab === "peer_to_peer"
-                  ? "bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/20 border-b-2 border-amber-300"
-                  : "text-stone-300 hover:text-white hover:bg-stone-800/90"
+                  ? "bg-white text-stone-950 font-black shadow-md border border-white"
+                  : "text-stone-400 hover:text-white hover:bg-white/10 hover:backdrop-blur-xs font-bold border border-transparent"
               }`}
             >
-              <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <Repeat className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${currentSubTab === "peer_to_peer" ? "text-stone-950" : "text-stone-400"}`} />
               <span className="truncate">Car Exchange</span>
             </button>
 
@@ -1296,13 +1292,13 @@ export default function BuyTab({
               role="tab"
               aria-selected={currentSubTab === "auction"}
               onClick={() => handleSubTabChange("auction")}
-              className={`relative py-2.5 sm:py-3 px-1 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm font-extrabold uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 sm:gap-2 select-none text-center min-w-0 ${
+              className={`relative py-2.5 sm:py-3 px-2 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none text-center min-w-0 rounded-xl ${
                 currentSubTab === "auction"
-                  ? "bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/20 border-b-2 border-amber-300"
-                  : "text-stone-300 hover:text-white hover:bg-stone-800/90"
+                  ? "bg-white text-stone-950 font-black shadow-md border border-white"
+                  : "text-stone-400 hover:text-white hover:bg-white/10 hover:backdrop-blur-xs font-bold border border-transparent"
               }`}
             >
-              <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${currentSubTab === "auction" ? "text-stone-950" : "text-stone-400"}`} />
               <span className="truncate">Auction</span>
             </button>
           </div>
@@ -1325,8 +1321,6 @@ export default function BuyTab({
           showToast={showToast}
           onSignInClick={onSignInClick}
           onSelectVehicle={onQuickView}
-          isEngineSoundEnabled={isEngineSoundEnabled}
-          onPlayEngineSound={onPlayEngineSound}
         />
       )}
 
@@ -2507,16 +2501,6 @@ export default function BuyTab({
                             {car.badge}
                           </span>
                         )}
-
-                        {/* Audio Engine Sound Indicator on Card Image (ONLY IF car.engineSoundUrl exists) */}
-                        {car.engineSoundUrl && (
-                          <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 z-10">
-                            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-stone-950/90 text-amber-400 text-[8px] sm:text-[8.5px] font-mono font-bold uppercase tracking-wider border border-amber-400/60 backdrop-blur-xs flex items-center gap-1.5 shadow-sm">
-                              <Volume2 className="w-3 h-3 text-amber-400 shrink-0" />
-                              <span>Engine Audio</span>
-                            </span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="p-3.5 sm:p-5 md:p-6 flex-1 flex flex-col justify-between min-w-0 w-full">
@@ -2559,21 +2543,6 @@ export default function BuyTab({
                             </button>
 
                             <div className="flex items-center gap-1">
-                              {car.engineSoundUrl && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onQuickView(car);
-                                  }}
-                                  className="px-2 py-1 bg-amber-400 hover:bg-amber-350 text-stone-950 text-[9px] font-extrabold uppercase rounded transition cursor-pointer flex items-center gap-1 shrink-0 shadow-xs"
-                                  title="Listen to Engine in Dossier"
-                                >
-                                  <Volume2 className="w-3 h-3" />
-                                  <span>Listen</span>
-                                </button>
-                              )}
-
                               <button
                                 type="button"
                                 onClick={(e) => {

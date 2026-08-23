@@ -314,15 +314,6 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
     }
   });
 
-  const [isEngineSoundEnabled, setIsEngineSoundEnabled] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem("autoWorld_is_engine_sound");
-      return stored !== null ? JSON.parse(stored) : true;
-    } catch (e) {
-      return true;
-    }
-  });
-
   const handleToggleFreePass = async () => {
     const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
     if (!isOwner) {
@@ -359,7 +350,7 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
   };
 
   const handleToggleFeature = async (
-    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isEngineSoundEnabled" | "isSimranFreeModeEnabled" | "isFeaturedBoosterEnabled" | "isUrgentHotStampEnabled" | "isSmartMatcherEnabled",
+    key: "isSecureShieldEnabled" | "isEmiCalculatorEnabled" | "isWhatsAppConnectEnabled" | "isAiAssistantEnabled" | "isSimranFreeModeEnabled" | "isFeaturedBoosterEnabled" | "isUrgentHotStampEnabled" | "isSmartMatcherEnabled",
     currentVal: boolean,
     setter: React.Dispatch<React.SetStateAction<boolean>>,
     label: string,
@@ -777,10 +768,6 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
         if (data.isAiAssistantEnabled !== undefined) {
           setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
           localStorage.setItem("autoWorld_is_ai_assistant", JSON.stringify(Boolean(data.isAiAssistantEnabled)));
-        }
-        if (data.isEngineSoundEnabled !== undefined) {
-          setIsEngineSoundEnabled(Boolean(data.isEngineSoundEnabled));
-          localStorage.setItem("autoWorld_is_engine_sound", JSON.stringify(Boolean(data.isEngineSoundEnabled)));
         }
         if (data.isSimranFreeModeEnabled !== undefined) {
           setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
@@ -2905,45 +2892,6 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
               >
                 <span className={`w-2.5 h-2.5 rounded-full ${isSmartMatcherEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
                 <span>{isSmartMatcherEnabled ? "[ ON ] SMART MATCHER ENABLED" : "[ OFF ] SMART MATCHER DISABLED"}</span>
-              </button>
-            </div>
-
-            {/* 6. Immersive Engine Sound & Exhaust Acoustics Toggle */}
-            <div className={`p-4 border-2 transition-all flex flex-col justify-between space-y-3 ${
-              isEngineSoundEnabled
-                ? "bg-stone-900 text-stone-100 border-amber-500/60 shadow-md"
-                : "bg-stone-100 text-stone-600 border-stone-300"
-            }`}>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Volume2 className={`w-4 h-4 ${isEngineSoundEnabled ? "text-amber-400" : "text-stone-400"}`} />
-                    <h4 className="text-xs font-bold uppercase tracking-wider">
-                      Engine Sound & Exhaust Acoustics
-                    </h4>
-                  </div>
-                  <span className={`px-2 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-widest ${
-                    isEngineSoundEnabled ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-stone-200 text-stone-500"
-                  }`}>
-                    {isEngineSoundEnabled ? "LIVE ON APP" : "PAUSED"}
-                  </span>
-                </div>
-                <p className="text-[10px] text-stone-400 leading-relaxed font-mono">
-                  Interactive real exhaust rev acoustic synthesizer & audio engine player in vehicle dossiers.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleToggleFeature("isEngineSoundEnabled", isEngineSoundEnabled, setIsEngineSoundEnabled, "Engine Sound System", "autoWorld_is_engine_sound")}
-                className={`w-full py-2.5 px-3 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition border ${
-                  isEngineSoundEnabled
-                    ? "bg-amber-500 hover:bg-amber-400 text-stone-950 border-amber-400 shadow-sm"
-                    : "bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600"
-                }`}
-              >
-                <span className={`w-2.5 h-2.5 rounded-full ${isEngineSoundEnabled ? "bg-stone-950 animate-ping" : "bg-stone-500"}`} />
-                <span>{isEngineSoundEnabled ? "[ ON ] ENGINE SOUND ENABLED" : "[ OFF ] ENGINE SOUND DISABLED"}</span>
               </button>
             </div>
 

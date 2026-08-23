@@ -53,10 +53,6 @@ export interface Vehicle {
   driveType?: string;
   doors?: string;
   seats?: string;
-  // Acoustic & Engine Sound Note Profile
-  engineSoundUrl?: string;
-  engineSoundTitle?: string;
-  engineSoundType?: string;
 }
 
 export type PartCategory =
@@ -277,6 +273,8 @@ export interface UserListing {
   createdAt?: string;
   status: "pending" | "active" | "sold" | "hidden";
   userId?: string;
+  sellerUserId?: string;
+  sellerUid?: string;
   engine?: string;
   color?: string;
   owners?: string;
@@ -292,10 +290,6 @@ export interface UserListing {
   fastagStatus?: string;
   stateNocAvailable?: string;
   roadTaxStatus?: string;
-  // Acoustic & Engine Sound Note Profile
-  engineSoundUrl?: string;
-  engineSoundTitle?: string;
-  engineSoundType?: string;
 }
 
 export interface Subscription {
@@ -344,9 +338,6 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     roadTaxStatus: "Lifetime Road Tax Paid (LTT)",
     description: "Muscular and iconic Mahindra Thar 4x4 LX. Pure adventure machinery with heavy key diesel torque, modern hardtop cabin design, Apple CarPlay integration, dual airbags, and high-clearance offroad specs.",
     features: ["ABS", "Airbags", "Bluetooth", "Backup Camera", "4WD Terrain Control", "Climate Control"],
-    engineSoundUrl: "preset:diesel_mhawk",
-    engineSoundTitle: "2.2L mHawk Turbo Diesel Cold Start & Throttle",
-    engineSoundType: "diesel",
     sellerName: "Rajesh Kumar (Elite Motors)",
     sellerPhone: "+91 98230 44556",
     sellerEmail: "rajesh@elitemotors.co.in",
@@ -417,9 +408,6 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     roadTaxStatus: "Lifetime Road Tax Paid (LTT)",
     description: "Timeless classic mechanical engineering. Butter-smooth 349cc J-series cruiser engine, pristine signature chrome-black detailing, dual-channel responsive ABS, and single-owner vintage aesthetics.",
     features: ["ABS", "Fuel Injection", "Retro Spoke Wheels", "Vintage Styling"],
-    engineSoundUrl: "preset:re_single_thump",
-    engineSoundTitle: "349cc J-Series Signature Exhaust Thump",
-    engineSoundType: "motorcycle",
     sellerName: "Vikram Singh",
     sellerPhone: "+91 70144 33221",
     sellerEmail: "vikram.singh@gmail.com",
@@ -525,9 +513,6 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     roadTaxStatus: "Lifetime Road Tax Paid (LTT)",
     description: "Elite performance and comfort parameters. Custom imported Luxury Line featuring high-grade leather upholstery, ambient glass cockpit panels, active dynamic drive profiles, and verified service record archives.",
     features: ["Power Steering", "ABS", "Airbags", "Bluetooth", "Backup Camera", "Toggle Sports Modes", "Sunroof/Moonroof"],
-    engineSoundUrl: "preset:bmw_twinpower_turbo",
-    engineSoundTitle: "2.0L TwinPower Turbocharged Revs & Burble",
-    engineSoundType: "i4_turbo",
     sellerName: "Amitabh Shah (Shah Luxury Imports)",
     sellerPhone: "+91 99201 55667",
     sellerEmail: "amitabh@shahimports.in",
@@ -1280,9 +1265,6 @@ export interface Auction {
   mileage: string;
   fuel: string;
   transmission: string;
-  engineSoundUrl?: string;
-  engineSoundTitle?: string;
-  engineSoundType?: string;
   specs?: Record<string, string>;
   highlights?: string[];
   verifiedOnly?: boolean;
@@ -1368,6 +1350,21 @@ export interface ExchangeRequest {
   createdAt: string;
   updatedAt?: string;
   badge?: "verified" | "hot" | "vip";
+  userId?: string;
+  sellerEmail?: string;
+  currentCarTitle?: string;
+  currentCarImage?: string;
+  currentCarEstimatedValue?: number;
+  currentCarMileage?: string;
+  desiredMake?: string;
+  desiredModel?: string;
+  desiredMinYear?: number;
+  desiredFuelType?: string;
+  desiredTransmission?: string;
+  desiredCarValueRange?: { min: number; max: number };
+  offeringDelta?: number;
+  requestingDelta?: number;
+  notes?: string;
 }
 
 export interface TradeOffer {
@@ -1424,9 +1421,6 @@ export const DEFAULT_AUCTIONS: Auction[] = [
     mileage: "4,850 km",
     fuel: "Petrol",
     transmission: "8-Speed PDK",
-    engineSoundUrl: "preset:bmw_twinpower_turbo",
-    engineSoundTitle: "3.0L Twin-Turbo Flat-Six High Revs",
-    engineSoundType: "supercar",
     specs: {
       "Engine": "3.0L Twin-Turbo Boxer 6 (443 HP)",
       "0-100 km/h": "3.5 Seconds (Sport Chrono)",
@@ -1480,9 +1474,6 @@ export const DEFAULT_AUCTIONS: Auction[] = [
     mileage: "11,200 km",
     fuel: "Petrol",
     transmission: "M Steptronic with Drivelogic",
-    engineSoundUrl: "preset:bmw_twinpower_turbo",
-    engineSoundTitle: "3.0L S58 Twin-Turbo Inline-6 M Exhaust",
-    engineSoundType: "i4_turbo",
     specs: {
       "Engine": "3.0L S58 M TwinPower Turbo (503 HP)",
       "Drivetrain": "M xDrive with 2WD Drift Mode",
@@ -1531,9 +1522,6 @@ export const DEFAULT_AUCTIONS: Auction[] = [
     mileage: "8,900 km",
     fuel: "Petrol Supercharged",
     transmission: "8-Speed Automatic",
-    engineSoundUrl: "preset:diesel_mhawk",
-    engineSoundTitle: "5.0L Supercharged V8 Deep Roar",
-    engineSoundType: "diesel",
     specs: {
       "Engine": "5.0L Supercharged V8 (518 HP / 625 Nm)",
       "Color": "Carpathian Grey with Satin Protective Wrap",

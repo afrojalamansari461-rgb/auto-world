@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User as UserIcon, ExternalLink, Wrench, Volume2, VolumeX, Play, Square, Music, Disc3 } from "lucide-react";
-import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing, INDIAN_RTO_STATES, INSURANCE_STATUS_OPTIONS, PUCC_STATUS_OPTIONS, HYPOTHECATION_OPTIONS, STATE_NOC_OPTIONS, ROAD_TAX_OPTIONS, DEFAULT_PARTS, UserPartListing, PartCategory, PartRarity, PART_CATEGORIES, PART_RARITY_TIERS, PART_BRANDS, PART_CONDITION_LABELS } from "../types";
+import { Car, Tag, Sparkles, Upload, Trash2, Check, ArrowLeft, ArrowRight, Star, Heart, DollarSign, Calendar, Eye, MapPin, Phone, Mail, FileText, CheckCircle2, Crown, LogIn, ShieldAlert, Lock, X, AlertTriangle, Edit, Image as ImageIcon, Plus, Search, Filter, RefreshCw, Layers, ShieldCheck, CheckCircle, ChevronDown, ChevronUp, PhoneCall, MessageSquare, Clock, UserCheck, Send, CheckSquare, XCircle, User as UserIcon, ExternalLink, Wrench, Repeat, ArrowLeftRight } from "lucide-react";
+import { VEHICLE_MAKES, VEHICLE_MODELS, UserListing, INDIAN_RTO_STATES, INSURANCE_STATUS_OPTIONS, PUCC_STATUS_OPTIONS, HYPOTHECATION_OPTIONS, STATE_NOC_OPTIONS, ROAD_TAX_OPTIONS, DEFAULT_PARTS, UserPartListing, PartCategory, PartRarity, PART_CATEGORIES, PART_RARITY_TIERS, PART_BRANDS, PART_CONDITION_LABELS, ExchangeRequest, TradeOffer } from "../types";
 import PartsUploadWizard from "./PartsUploadWizard";
 import AdminPartsDesk from "./AdminPartsDesk";
+import { ExchangeListingWizard } from "./ExchangeListingWizard";
 import { getListingExpirationDetails } from "../lib/expirationManager";
 import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
-import { engineAudio } from "../lib/engineAudio";
 import type { User as FirebaseUser } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
@@ -946,13 +946,24 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [confettiKey, setConfettiKey] = useState(0);
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
 
-  // View Mode: "wizard" (List a Vehicle) vs "list_part" (List a Part) vs "my_catalog" (Vehicle Catalog) vs "part_desk" (Part Desk) vs "requests" (Buyer Requests & Leads)
-  const [viewMode, setViewMode] = useState<"wizard" | "list_part" | "my_catalog" | "part_desk" | "requests" | "parts">(() => {
+  // Prefill vehicle for exchange listing if launched from vehicle catalog
+  const [exchangeInitialVehicle, setExchangeInitialVehicle] = useState<Partial<UserListing> | null>(null);
+
+  // View Mode: "wizard" (List a Vehicle) vs "list_part" (List a Part) vs "list_exchange" (List for Exchange) vs "my_catalog" (Vehicle Catalog) vs "part_desk" (Part Desk) vs "exchange_desk" (Exchange Desk) vs "requests" (Buyer Requests & Leads)
+  const [viewMode, setViewMode] = useState<"wizard" | "list_part" | "list_exchange" | "my_catalog" | "part_desk" | "exchange_desk" | "requests" | "parts">(() => {
     try {
       const initMode = sessionStorage.getItem("autoWorld_sell_initial_mode");
       if (initMode === "part" || initMode === "parts" || initMode === "list_part") {
         sessionStorage.removeItem("autoWorld_sell_initial_mode");
         return "list_part";
+      }
+      if (initMode === "exchange" || initMode === "list_exchange") {
+        sessionStorage.removeItem("autoWorld_sell_initial_mode");
+        return "list_exchange";
+      }
+      if (initMode === "exchange_desk") {
+        sessionStorage.removeItem("autoWorld_sell_initial_mode");
+        return "exchange_desk";
       }
       if (initMode === "part_desk") {
         sessionStorage.removeItem("autoWorld_sell_initial_mode");
@@ -969,6 +980,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     } catch (e) {}
     return "wizard";
   });
+
+  // User's own exchange requests state
+  const [userExchanges, setUserExchanges] = useState<ExchangeRequest[]>([]);
+  const [isLoadingUserExchanges, setIsLoadingUserExchanges] = useState(false);
 
   // Performance Parts Count State for Desk Badge
   const [totalPartsCount, setTotalPartsCount] = useState<number>(() => DEFAULT_PARTS.length);
@@ -1184,6 +1199,81 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     return () => unsubParts();
   }, [currentUser]);
 
+  // Real-time listener for user's exchange listings in Firestore
+  useEffect(() => {
+    if (!currentUser || currentUser.isAnonymous) {
+      setUserExchanges([]);
+      return;
+    }
+
+    setIsLoadingUserExchanges(true);
+    const exchangesRef = collection(db, "exchanges");
+
+    const unsubExchanges = onSnapshot(exchangesRef, (snapshot) => {
+      const allExchanges: ExchangeRequest[] = [];
+      const userUid = currentUser.uid;
+      const userEmail = currentUser.email?.toLowerCase();
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const isOwner = data.creatorUid === userUid ||
+          data.userId === userUid ||
+          (data.creatorEmail && userEmail && String(data.creatorEmail).toLowerCase() === userEmail) ||
+          (data.sellerEmail && userEmail && String(data.sellerEmail).toLowerCase() === userEmail) ||
+          (data.ownerEmail && userEmail && String(data.ownerEmail).toLowerCase() === userEmail);
+
+        if (isOwner) {
+          allExchanges.push({
+            id: docSnap.id,
+            ...data
+          } as ExchangeRequest);
+        }
+      });
+
+      // Also check local storage for offline / cached items
+      try {
+        const stored = localStorage.getItem("autoworld_exchanges");
+        if (stored) {
+          const localItems: ExchangeRequest[] = JSON.parse(stored);
+          localItems.forEach((localItem) => {
+            const isOwner = localItem.creatorUid === userUid ||
+              localItem.userId === userUid ||
+              (localItem.creatorEmail && userEmail && String(localItem.creatorEmail).toLowerCase() === userEmail) ||
+              (localItem.sellerEmail && userEmail && String(localItem.sellerEmail).toLowerCase() === userEmail);
+            if (isOwner && !allExchanges.some(item => String(item.id) === String(localItem.id))) {
+              allExchanges.push(localItem);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Local storage fallback read error for exchanges:", e);
+      }
+
+      allExchanges.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setUserExchanges(allExchanges);
+      setIsLoadingUserExchanges(false);
+    }, (err) => {
+      console.warn("User exchanges snapshot listener error:", err);
+      try {
+        const stored = localStorage.getItem("autoworld_exchanges");
+        if (stored) {
+          const localItems: ExchangeRequest[] = JSON.parse(stored);
+          const userEmail = currentUser.email?.toLowerCase();
+          const filtered = localItems.filter(p =>
+            p.creatorUid === currentUser.uid ||
+            p.userId === currentUser.uid ||
+            (p.creatorEmail && userEmail && p.creatorEmail.toLowerCase() === userEmail) ||
+            (p.sellerEmail && userEmail && p.sellerEmail.toLowerCase() === userEmail)
+          );
+          setUserExchanges(filtered);
+        }
+      } catch (e) {}
+      setIsLoadingUserExchanges(false);
+    });
+
+    return () => unsubExchanges();
+  }, [currentUser]);
+
   // Real-time listener for test drives & callback requests
   useEffect(() => {
     setIsLoadingRequests(true);
@@ -1388,6 +1478,53 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     } catch (err) {
       console.error("Error deleting request:", err);
       showToast("Removed request locally", "info");
+    }
+  };
+
+  // Delete / Close Exchange Listing Handler
+  const handleDeleteExchange = async (exchangeId: string) => {
+    try {
+      if (db) {
+        await deleteDoc(doc(db, "exchanges", exchangeId));
+      }
+      setUserExchanges(prev => prev.filter(e => e.id !== exchangeId));
+      try {
+        const stored = localStorage.getItem("autoworld_exchanges");
+        if (stored) {
+          const list: ExchangeRequest[] = JSON.parse(stored);
+          const filtered = list.filter(e => e.id !== exchangeId);
+          localStorage.setItem("autoworld_exchanges", JSON.stringify(filtered));
+        }
+      } catch (e) {}
+      showToast("Exchange listing closed and removed.", "info");
+    } catch (err) {
+      console.error("Failed to delete exchange:", err);
+      showToast("Failed to delete exchange listing.", "error");
+    }
+  };
+
+  // Quick Status Toggle Handler for Exchanges
+  const handleQuickExchangeStatusChange = async (exchangeId: string, newStatus: "active" | "matched" | "completed" | "cancelled") => {
+    try {
+      if (db) {
+        await updateDoc(doc(db, "exchanges", exchangeId), {
+          status: newStatus,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      setUserExchanges(prev => prev.map(e => e.id === exchangeId ? { ...e, status: newStatus } : e));
+      try {
+        const stored = localStorage.getItem("autoworld_exchanges");
+        if (stored) {
+          const list: ExchangeRequest[] = JSON.parse(stored);
+          const updated = list.map(e => e.id === exchangeId ? { ...e, status: newStatus } : e);
+          localStorage.setItem("autoworld_exchanges", JSON.stringify(updated));
+        }
+      } catch (e) {}
+      showToast(`Exchange status updated to ${newStatus.toUpperCase()}`, "success");
+    } catch (err) {
+      console.error("Failed to update exchange status:", err);
+      showToast("Updated exchange status locally.", "info");
     }
   };
 
@@ -2050,78 +2187,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   const [hasDraft, setHasDraft] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
 
-  // STEP 3 EXTENSION: Acoustic Engine & Exhaust Sound Note State (Upload Only)
-  const [includeEngineSound, setIncludeEngineSound] = useState(false);
-  const [engineSoundUrl, setEngineSoundUrl] = useState("");
-  const [engineSoundTitle, setEngineSoundTitle] = useState("");
-  const [engineSoundType, setEngineSoundType] = useState("custom");
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [previewAudioName, setPreviewAudioName] = useState("");
-  const [audioFileSize, setAudioFileSize] = useState<string>("");
-
-  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 950 * 1024) {
-      showToast("Audio file exceeds 950KB. Please select a short 5-15 second recording.", "error");
-      return;
-    }
-
-    try {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const base64Audio = uploadEvent.target?.result as string;
-        if (base64Audio) {
-          setEngineSoundUrl(base64Audio);
-          const cleanName = file.name.replace(/\.[^/.]+$/, "");
-          setEngineSoundTitle(cleanName || "Authentic Engine Recording");
-          setEngineSoundType("custom");
-          setPreviewAudioName(file.name);
-          setAudioFileSize(`${(file.size / 1024).toFixed(1)} KB`);
-          setIncludeEngineSound(true);
-          showToast(`Engine audio "${file.name}" ready to attach!`, "success");
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error("Audio upload error:", err);
-      showToast("Failed to process audio file.", "error");
-    }
-  };
-
-  useEffect(() => {
-    const unsubscribe = engineAudio.subscribe((state) => {
-      setIsPlayingAudio(state.isPlaying);
-    });
-    return () => {
-      unsubscribe();
-      engineAudio.stop();
-    };
-  }, []);
-
-  const handleTogglePlayAudio = async () => {
-    if (!engineSoundUrl) return;
-    if (isPlayingAudio) {
-      engineAudio.stop();
-      setIsPlayingAudio(false);
-    } else {
-      setIsPlayingAudio(true);
-      await engineAudio.play(engineSoundUrl, engineSoundType || "custom");
-    }
-  };
-
-  const handleRemoveUploadedAudio = () => {
-    engineAudio.stop();
-    setIsPlayingAudio(false);
-    setEngineSoundUrl("");
-    setEngineSoundTitle("");
-    setEngineSoundType("custom");
-    setPreviewAudioName("");
-    setAudioFileSize("");
-    showToast("Engine audio recording removed.", "info");
-  };
-
   // Restore auto-saved draft on mount
   useEffect(() => {
     try {
@@ -2165,11 +2230,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           if (d.locationStr !== undefined) setLocationStr(d.locationStr);
           if (d.featuredListing !== undefined) setFeaturedListing(d.featuredListing);
           if (d.urgentListing !== undefined) setUrgentListing(d.urgentListing);
-          if (d.includeEngineSound !== undefined) setIncludeEngineSound(d.includeEngineSound);
-          if (d.engineSoundUrl !== undefined) setEngineSoundUrl(d.engineSoundUrl);
-          if (d.engineSoundTitle !== undefined) setEngineSoundTitle(d.engineSoundTitle);
-          if (d.engineSoundType !== undefined) setEngineSoundType(d.engineSoundType);
-          if (d.previewAudioName !== undefined) setPreviewAudioName(d.previewAudioName);
           if (d.currentStep && d.currentStep <= 5) setCurrentStep(d.currentStep);
 
           const hasContent = Boolean(
@@ -2237,11 +2297,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       locationStr,
       featuredListing,
       urgentListing,
-      includeEngineSound,
-      engineSoundUrl,
-      engineSoundTitle,
-      engineSoundType,
-      previewAudioName,
       updatedAt: new Date().toISOString()
     };
 
@@ -2259,8 +2314,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     bikeGears, bicycleType, frameSize, gears, brakeType, frameMaterial,
     batteryCapacity, electricRange, driveType, photos, askingPrice,
     negotiable, sellerName, sellerEmail, sellerPhone, locationStr,
-    featuredListing, urgentListing, includeEngineSound,
-    engineSoundUrl, engineSoundTitle, engineSoundType, previewAudioName
+    featuredListing, urgentListing
   ]);
 
   // Publish Status details
@@ -2761,10 +2815,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         fastagStatus: sanitizeInput(fastagStatus || "Active & Linked"),
         stateNocAvailable: sanitizeInput(stateNocAvailable || "Pan-India Transferable (NOC Available)"),
         roadTaxStatus: sanitizeInput(roadTaxStatus || "Lifetime Road Tax Paid (LTT)"),
-        // Acoustic Engine & Exhaust Audio Note (Optional Immersion)
-        engineSoundUrl: includeEngineSound && engineSoundUrl ? sanitizeInput(engineSoundUrl) : undefined,
-        engineSoundTitle: includeEngineSound && engineSoundUrl ? sanitizeInput(engineSoundTitle || "Authentic Engine & Exhaust Note") : undefined,
-        engineSoundType: includeEngineSound && engineSoundUrl ? sanitizeInput(engineSoundType || "custom") : undefined,
         featured: featuredListing,
         urgent: urgentListing,
         photos: preparedPhotos,
@@ -2894,14 +2944,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     setLocationStr("");
     setFeaturedListing(false);
     setUrgentListing(false);
-    setIncludeEngineSound(false);
-    setEngineSoundUrl("");
-    setEngineSoundTitle("");
-    setEngineSoundType("custom");
-    setIsPlayingAudio(false);
-    setPreviewAudioName("");
-    setAudioFileSize("");
-    engineAudio.stop();
     setCurrentStep(1);
 
     try {
@@ -3049,6 +3091,37 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 </span>
               </div>
             </button>
+
+            {/* 3RD BUTTON: LIST FOR EXCHANGE */}
+            <button
+              type="button"
+              id="sell-tab-btn-list-exchange"
+              onClick={() => {
+                setExchangeInitialVehicle(null);
+                setViewMode("list_exchange");
+              }}
+              className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
+                viewMode === "list_exchange"
+                  ? "bg-stone-100 text-stone-950 border-white font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-stone-300"
+                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-stone-400 hover:text-white"
+              }`}
+            >
+              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                viewMode === "list_exchange" ? "bg-stone-950 text-white" : "bg-stone-900 text-stone-200 group-hover:bg-stone-950"
+              }`}>
+                <Repeat className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex flex-col items-start leading-tight text-left">
+                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
+                  List for Exchange
+                </span>
+                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
+                  viewMode === "list_exchange" ? "text-stone-900 font-bold" : "text-stone-400"
+                }`}>
+                  P2P Car Swap &amp; Trade
+                </span>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -3060,7 +3133,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             Catalogs &amp; Leads:
           </span>
           <div className="flex flex-wrap items-center gap-2">
-            {/* 3RD BUTTON: VEHICLE CATALOG */}
+            {/* VEHICLE CATALOG */}
             <button
               type="button"
               id="sell-tab-btn-my-vehicles"
@@ -3082,7 +3155,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               )}
             </button>
 
-            {/* 4TH BUTTON: PART CATALOG */}
+            {/* PART CATALOG */}
             <button
               type="button"
               id="sell-tab-btn-part-desk"
@@ -3102,7 +3175,29 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               </span>
             </button>
 
-            {/* 5TH BUTTON: BUYER REQUESTS */}
+            {/* EXCHANGE DESK */}
+            <button
+              type="button"
+              id="sell-tab-btn-exchange-desk"
+              onClick={() => setViewMode("exchange_desk")}
+              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
+                viewMode === "exchange_desk"
+                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
+                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
+              }`}
+            >
+              <Repeat className="w-3.5 h-3.5 text-stone-300" />
+              <span>Exchange Desk</span>
+              {userExchanges.length > 0 && (
+                <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
+                  viewMode === "exchange_desk" ? "bg-stone-950 text-amber-400" : "bg-stone-700 text-white"
+                }`}>
+                  {userExchanges.length}
+                </span>
+              )}
+            </button>
+
+            {/* BUYER REQUESTS */}
             <button
               type="button"
               id="sell-tab-btn-buyer-requests"
@@ -3187,6 +3282,347 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 setViewMode("part_desk");
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* LIST VEHICLE FOR EXCHANGE (P2P SWAP WIZARD) */}
+      {viewMode === "list_exchange" && (
+        <div id="sell-view-list-exchange" className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-stone-900 bg-stone-200 px-2.5 py-1 border border-stone-400 mb-2">
+                  <Repeat className="w-3.5 h-3.5 text-stone-900" />
+                  <span>Peer-to-Peer Vehicle Swap &amp; Trade-In Desk</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
+                  List Car for Exchange
+                </h2>
+                <p className="text-stone-600 text-xs mt-1 font-medium">
+                  {exchangeInitialVehicle
+                    ? `Converting "${exchangeInitialVehicle.title || `${exchangeInitialVehicle.year} ${exchangeInitialVehicle.make} ${exchangeInitialVehicle.model}`}" to a peer-to-peer exchange listing.`
+                    : "Specify your car, state your desired trade models, set algorithmic delta valuation, and publish to the active marketplace swap floor."}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("exchange_desk")}
+                  className="px-4 py-2.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-stone-950 shadow-sm cursor-pointer shrink-0 transition"
+                >
+                  <Repeat className="w-4 h-4 text-stone-300" />
+                  <span>Exchange Desk ({userExchanges.length}) →</span>
+                </button>
+              </div>
+            </div>
+
+            <ExchangeListingWizard
+              currentUser={currentUser}
+              onSignInClick={onSignInClick}
+              showToast={showToast}
+              initialVehicle={exchangeInitialVehicle}
+              onSuccess={(createdReq) => {
+                setExchangeInitialVehicle(null);
+                setViewMode("exchange_desk");
+                showToast("Your vehicle is now live on the Exchange Market!", "success");
+              }}
+              onCancel={() => {
+                setExchangeInitialVehicle(null);
+                setViewMode("my_catalog");
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* EXCHANGE DESK (MY EXCHANGE LISTINGS & TRADE MANAGEMENT) */}
+      {viewMode === "exchange_desk" && (
+        <div id="sell-view-exchange-desk" className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-stone-900 bg-stone-200 px-2.5 py-1 border border-stone-400 mb-2">
+                  <Repeat className="w-3.5 h-3.5 text-stone-900" />
+                  <span>Peer-to-Peer Exchange Management</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black text-stone-950 uppercase tracking-tight">
+                  My Car Exchange Desk
+                </h2>
+                <p className="text-stone-600 text-xs mt-1 font-medium">
+                  Track all your listed vehicles available for trade, manage deal statuses, and check real-time trade delta calculations.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExchangeInitialVehicle(null);
+                    setViewMode("list_exchange");
+                  }}
+                  className="px-4 py-2.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-stone-950 shadow-sm cursor-pointer shrink-0 transition"
+                >
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  <span>+ List Another for Exchange</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("exchange")}
+                  className="px-4 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border border-stone-400 cursor-pointer shrink-0 transition"
+                >
+                  <ArrowLeftRight className="w-4 h-4 text-stone-700" />
+                  <span>Open Full Match Floor →</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
+                    My Active Swaps
+                  </span>
+                  <span className="text-2xl font-serif font-black text-stone-950">
+                    {userExchanges.filter(e => e.status === "active").length}
+                  </span>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-stone-900 text-amber-400 flex items-center justify-center">
+                  <Repeat className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
+                    Total Exchange Posts
+                  </span>
+                  <span className="text-2xl font-serif font-black text-stone-950">
+                    {userExchanges.length}
+                  </span>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-stone-200 text-stone-800 flex items-center justify-center">
+                  <Tag className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
+                    Market Match Guarantee
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-800 flex items-center gap-1 mt-1">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Verified RTO Valuation
+                  </span>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                  <Check className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* List of User Exchanges */}
+            <div className="pt-4 space-y-4">
+              {isLoadingUserExchanges ? (
+                <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
+                  <RefreshCw className="w-8 h-8 text-stone-600 animate-spin mx-auto" />
+                  <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
+                    Loading your exchange listings...
+                  </p>
+                </div>
+              ) : userExchanges.length === 0 ? (
+                <div className="p-12 text-center bg-[#FAF8F5] border-2 border-stone-300 space-y-4">
+                  <div className="w-14 h-14 bg-stone-200 rounded-full flex items-center justify-center text-stone-600 mx-auto">
+                    <Repeat className="w-7 h-7 text-stone-700" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-base font-serif font-black uppercase text-stone-900">
+                      No Car Exchange Listings Yet
+                    </h4>
+                    <p className="text-xs text-stone-600 max-w-md mx-auto font-medium leading-relaxed">
+                      You haven't listed any vehicle for swap. Post your car now with desired target models and cash delta preferences to find instant swap partners.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExchangeInitialVehicle(null);
+                        setViewMode("list_exchange");
+                      }}
+                      className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-stone-950 transition active:scale-95"
+                    >
+                      <Plus className="w-4 h-4 text-amber-400" />
+                      <span>List Car for Exchange</span>
+                    </button>
+                    {userListings.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("my_catalog")}
+                        className="px-5 py-3 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer border border-stone-400 transition"
+                      >
+                        <Tag className="w-4 h-4 text-stone-700" />
+                        <span>Select From My Vehicles ({userListings.length})</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {userExchanges.map((ex) => {
+                    const status = ex.status || "active";
+                    const isOfferingDelta = (ex.offeringDelta || 0) > 0;
+                    const isRequestingDelta = (ex.requestingDelta || 0) > 0;
+
+                    return (
+                      <div
+                        key={ex.id}
+                        className="bg-[#FAF8F5] border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] flex flex-col justify-between overflow-hidden"
+                      >
+                        <div>
+                          {/* Image & Header */}
+                          <div className="relative aspect-video bg-stone-900 overflow-hidden">
+                            <img
+                              src={ex.currentCarImage || "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800"}
+                              alt={ex.currentCarTitle}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-stone-950/30" />
+
+                            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                              <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs ${
+                                status === "active" ? "bg-emerald-500 text-stone-950" :
+                                status === "matched" ? "bg-amber-500 text-stone-950" :
+                                status === "completed" ? "bg-stone-800 text-stone-200" :
+                                "bg-red-600 text-white"
+                              }`}>
+                                {status.toUpperCase()}
+                              </span>
+                              <span className="px-2 py-1 bg-stone-950/80 text-white text-[9px] font-mono font-bold uppercase tracking-wider border border-white/20 backdrop-blur-xs flex items-center gap-1">
+                                <Repeat className="w-3 h-3 text-amber-400" /> P2P SWAP
+                              </span>
+                            </div>
+
+                            <div className="absolute bottom-3 left-3 right-3 text-white">
+                              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 block font-bold">
+                                Your Car Offered:
+                              </span>
+                              <h3 className="font-serif font-black text-lg uppercase leading-tight truncate">
+                                {ex.currentCarTitle}
+                              </h3>
+                              <div className="flex items-center gap-3 text-[11px] font-mono text-stone-300 mt-0.5 font-bold">
+                                <span>₹{(ex.currentCarEstimatedValue || 0).toLocaleString("en-IN")} Est. Value</span>
+                                <span>•</span>
+                                <span>{ex.currentCarMileage || "N/A"} km</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Swap Details */}
+                          <div className="p-5 space-y-4">
+                            {/* Desired Trade Box */}
+                            <div className="p-3.5 bg-[#F4F1EA] border border-stone-300 space-y-2">
+                              <div className="flex items-center justify-between text-[10px] font-mono uppercase font-bold text-stone-600 border-b border-stone-300 pb-1">
+                                <span className="flex items-center gap-1 text-stone-900">
+                                  <ArrowLeftRight className="w-3.5 h-3.5 text-stone-700" /> Desired Target Vehicle:
+                                </span>
+                                <span>Target Budget: ₹{(ex.desiredCarValueRange?.max || 0).toLocaleString("en-IN")} Max</span>
+                              </div>
+
+                              <div className="font-serif font-black text-stone-950 text-base uppercase">
+                                {ex.desiredMake} {ex.desiredModel} ({ex.desiredMinYear}+)
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 text-[10.5px] font-mono text-stone-700 font-bold">
+                                {ex.desiredFuelType && ex.desiredFuelType !== "Any" && (
+                                  <span className="px-2 py-0.5 bg-stone-200 border border-stone-300">
+                                    Fuel: {ex.desiredFuelType}
+                                  </span>
+                                )}
+                                {ex.desiredTransmission && ex.desiredTransmission !== "Any" && (
+                                  <span className="px-2 py-0.5 bg-stone-200 border border-stone-300">
+                                    Gearbox: {ex.desiredTransmission}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Cash Delta Terms */}
+                            <div className="p-3 bg-stone-900 text-white font-mono text-xs space-y-1">
+                              <div className="text-[10px] uppercase tracking-widest text-stone-400 font-bold">
+                                Cash Delta Terms:
+                              </div>
+                              <div className="text-amber-400 font-bold text-sm">
+                                {isOfferingDelta
+                                  ? `You will pay ₹${(ex.offeringDelta || 0).toLocaleString("en-IN")} cash difference`
+                                  : isRequestingDelta
+                                  ? `You expect ₹${(ex.requestingDelta || 0).toLocaleString("en-IN")} cash delta from trade partner`
+                                  : "Even Trade (₹0 Delta Expectation)"}
+                              </div>
+                            </div>
+
+                            {ex.notes && (
+                              <p className="text-xs text-stone-600 font-medium line-clamp-2 italic">
+                                "{ex.notes}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions Footer */}
+                        <div className="p-5 pt-0 space-y-3">
+                          {/* Quick Status Bar */}
+                          <div className="pt-3 border-t border-stone-200 flex items-center justify-between text-xs">
+                            <span className="text-[10px] font-mono font-bold uppercase text-stone-500">
+                              Swap Status:
+                            </span>
+                            <div className="flex gap-1">
+                              {(["active", "matched", "completed"] as const).map((st) => (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  onClick={() => handleQuickExchangeStatusChange(ex.id, st)}
+                                  className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
+                                    status === st
+                                      ? "bg-stone-900 text-white border-stone-950 font-extrabold"
+                                      : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
+                                  }`}
+                                >
+                                  {st}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab("exchange")}
+                              className="py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 border border-amber-600 cursor-pointer shadow-xs transition"
+                            >
+                              <Search className="w-3.5 h-3.5 text-stone-950" />
+                              <span>Find Matches</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteExchange(ex.id)}
+                              className="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                              <span>Close Listing</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -3620,23 +4056,43 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
 
                             {/* Buyer Enquiries Button for this Vehicle */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedVehicleIdFilter(String(listing.id));
-                                setViewMode("requests");
-                              }}
-                              className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-amber-600 cursor-pointer shadow-xs transition"
-                            >
-                              <span className="flex items-center gap-1.5">
-                                <PhoneCall className="w-4 h-4 text-stone-900" />
-                                <span>View Buyer Enquiries</span>
-                              </span>
-                              <span className="px-2 py-0.5 bg-stone-950 text-amber-400 text-[10px] rounded-full font-black">
-                                {testDriveRequests.filter(t => String(t.listingId) === String(listing.id) || String(t.vehicleId) === String(listing.id)).length +
-                                 callbackRequests.filter(c => String(c.listingId) === String(listing.id) || String(c.vehicleId) === String(listing.id)).length} Leads
-                              </span>
-                            </button>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedVehicleIdFilter(String(listing.id));
+                                  setViewMode("requests");
+                                }}
+                                className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-amber-600 cursor-pointer shadow-xs transition"
+                              >
+                                <span className="flex items-center gap-1.5 truncate">
+                                  <PhoneCall className="w-3.5 h-3.5 text-stone-900 shrink-0" />
+                                  <span className="truncate">Enquiries</span>
+                                </span>
+                                <span className="px-1.5 py-0.5 bg-stone-950 text-amber-400 text-[9.5px] rounded-full font-black shrink-0">
+                                  {testDriveRequests.filter(t => String(t.listingId) === String(listing.id) || String(t.vehicleId) === String(listing.id)).length +
+                                   callbackRequests.filter(c => String(c.listingId) === String(listing.id) || String(c.vehicleId) === String(listing.id)).length}
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExchangeInitialVehicle(listing);
+                                  setViewMode("list_exchange");
+                                  showToast(`Loaded ${listing.title} into Car Exchange Desk!`, "info");
+                                }}
+                                className="w-full py-2 px-3 bg-stone-900 hover:bg-stone-850 text-stone-100 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-stone-950 cursor-pointer shadow-xs transition"
+                              >
+                                <span className="flex items-center gap-1.5 truncate">
+                                  <Repeat className="w-3.5 h-3.5 text-stone-300 shrink-0" />
+                                  <span className="truncate">Post for Swap</span>
+                                </span>
+                                <span className="text-[9px] text-stone-400 uppercase tracking-widest shrink-0">
+                                  Trade →
+                                </span>
+                              </button>
+                            </div>
 
                             {/* Action Control Buttons */}
                             <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200">
@@ -6111,208 +6567,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 </div>
               </div>
             )}
-
-            {/* ACOUSTIC ENGINE & EXHAUST SOUND NOTE STUDIO (UPLOAD ONLY) */}
-            <div id="engine-sound-upload-studio" className="p-5 bg-stone-900 border-2 border-stone-800 text-[#F4F1EA] space-y-4">
-              <div className="flex items-start justify-between gap-3 border-b border-stone-800 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-sm bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                    <Volume2 className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-serif font-black uppercase tracking-wider text-stone-100 flex items-center gap-2">
-                      <span>Engine & Exhaust Sound Note</span>
-                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-amber-400 text-stone-950">Optional</span>
-                    </h3>
-                    <p className="text-[10px] text-stone-400 mt-0.5 leading-snug">
-                      Allow buyers to listen to cold starts, idle rhythm, and rev notes on your listing dossier.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Opt-in / Opt-out Choice */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIncludeEngineSound(false);
-                    handleRemoveUploadedAudio();
-                  }}
-                  className={`p-3 border text-left cursor-pointer transition-all ${
-                    !includeEngineSound
-                      ? "bg-stone-800 border-amber-400/80 text-white shadow-sm ring-1 ring-amber-400/30"
-                      : "bg-stone-950/60 border-stone-800 text-stone-400 hover:border-stone-700 hover:text-stone-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-stone-200">
-                      Skip / No Audio Note
-                    </span>
-                    {!includeEngineSound && <Check className="w-3.5 h-3.5 text-amber-400" />}
-                  </div>
-                  <p className="text-[9.5px] text-stone-405 leading-tight">
-                    Do not attach any audio clip. The listing will display standard vehicle specifications without audio controls.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIncludeEngineSound(true);
-                  }}
-                  className={`p-3 border text-left cursor-pointer transition-all ${
-                    includeEngineSound
-                      ? "bg-stone-800 border-amber-400/80 text-white shadow-sm ring-1 ring-amber-400/30"
-                      : "bg-stone-950/60 border-stone-800 text-stone-400 hover:border-stone-700 hover:text-stone-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                      <Upload className="w-3.5 h-3.5" />
-                      Upload Engine Audio File
-                    </span>
-                    {includeEngineSound && <Check className="w-3.5 h-3.5 text-amber-400" />}
-                  </div>
-                  <p className="text-[9.5px] text-stone-405 leading-tight">
-                    Upload an audio recording of your vehicle's engine start, idling, or exhaust notes (.mp3, .wav, .m4a).
-                  </p>
-                </button>
-              </div>
-
-              {/* Extended Sound Upload Panel (Rendered only if seller wants to upload engine sound) */}
-              {includeEngineSound && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  transition={{ duration: 0.25 }}
-                  className="space-y-4 pt-2 border-t border-stone-800"
-                >
-                  {!engineSoundUrl ? (
-                    /* Dropzone / Upload Trigger */
-                    <div className="border-2 border-dashed border-stone-700 hover:border-amber-400/80 bg-stone-950/70 p-6 text-center transition-all">
-                      <div className="w-10 h-10 mx-auto mb-2.5 rounded-full bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-400">
-                        <Upload className="w-5 h-5" />
-                      </div>
-                      <h4 className="text-xs font-mono font-bold uppercase text-stone-100 mb-1">
-                        Select Engine Sound Audio File
-                      </h4>
-                      <p className="text-[10px] text-stone-400 mb-3 max-w-md mx-auto leading-relaxed">
-                        Attach a cold start or exhaust rev recording. Recommended length: 5 to 15 seconds (max 950KB). Supports MP3, WAV, M4A, OGG.
-                      </p>
-
-                      <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-350 text-stone-950 text-[10px] font-mono font-black uppercase tracking-wider cursor-pointer shadow-sm transition">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Browse Audio Recording</span>
-                        <input
-                          type="file"
-                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
-                          onChange={handleAudioFileUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  ) : (
-                    /* Active Uploaded Audio Details & Playback Preview */
-                    <div className="space-y-3 p-4 bg-stone-950/80 border border-stone-800">
-                      <div className="flex items-center justify-between flex-wrap gap-2 border-b border-stone-800 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <Disc3 className={`w-4 h-4 text-amber-400 ${isPlayingAudio ? "animate-spin" : ""}`} />
-                          <div>
-                            <span className="text-[10px] font-mono font-bold text-stone-100 block">
-                              {previewAudioName || "Attached Engine Sound Clip"}
-                            </span>
-                            {audioFileSize && (
-                              <span className="text-[8.5px] font-mono text-stone-400">
-                                Size: {audioFileSize} • Audio File Ready
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={handleTogglePlayAudio}
-                            className={`px-3 py-1.5 text-[9px] font-mono font-bold uppercase flex items-center gap-1.5 transition cursor-pointer border ${
-                              isPlayingAudio
-                                ? "bg-amber-400 text-stone-950 border-amber-300 animate-pulse"
-                                : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700"
-                            }`}
-                          >
-                            {isPlayingAudio ? (
-                              <>
-                                <Square className="w-3 h-3 fill-stone-950" />
-                                <span>Stop Audio</span>
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-3 h-3 fill-current text-amber-400" />
-                                <span>Test Audio</span>
-                              </>
-                            )}
-                          </button>
-
-                          <label className="px-2.5 py-1.5 bg-stone-850 hover:bg-stone-800 text-stone-300 border border-stone-700 text-[8.5px] font-mono uppercase font-bold cursor-pointer transition">
-                            <span>Change</span>
-                            <input
-                              type="file"
-                              accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
-                              onChange={handleAudioFileUpload}
-                              className="hidden"
-                            />
-                          </label>
-
-                          <button
-                            type="button"
-                            onClick={handleRemoveUploadedAudio}
-                            className="p-1.5 text-stone-400 hover:text-red-400 hover:bg-stone-850 border border-transparent hover:border-red-500/30 transition cursor-pointer"
-                            title="Remove Audio"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Sound Metadata Customization */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-mono uppercase text-stone-400 block font-bold">
-                            Audio Clip Label
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Cold Start & Exhaust Burble"
-                            value={engineSoundTitle}
-                            onChange={(e) => setEngineSoundTitle(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-700 text-xs text-stone-200 focus:outline-none focus:border-amber-400"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-mono uppercase text-stone-400 block font-bold">
-                            Sound Profile / Vehicle Category
-                          </label>
-                          <select
-                            value={engineSoundType || "custom"}
-                            onChange={(e) => setEngineSoundType(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-700 text-xs text-stone-200 focus:outline-none focus:border-amber-400 cursor-pointer"
-                          >
-                            <option value="custom">Custom Exhaust Clip</option>
-                            <option value="car">Sport Car / Sedan</option>
-                            <option value="suv">SUV / Off-Road</option>
-                            <option value="motorcycle">Motorcycle / Superbike</option>
-                            <option value="supercar">V8 / Supercar</option>
-                            <option value="diesel">Turbo Diesel</option>
-                            <option value="electric">EV / Electric Whine</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </div>
 
             <div className="flex justify-between pt-5 border-t border-stone-200">
               <button

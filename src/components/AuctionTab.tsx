@@ -23,8 +23,6 @@ interface AuctionTabProps {
   showToast?: (msg: string, type?: "success" | "error" | "info") => void;
   onSignInClick: () => void;
   onSelectVehicle?: (vehicle: Vehicle) => void;
-  onPlayEngineSound?: (url?: string, title?: string, type?: string) => void;
-  isEngineSoundEnabled?: boolean;
 }
 
 // Live Countdown Helper Component
@@ -89,9 +87,7 @@ export default function AuctionTab({
   userRole,
   showToast,
   onSignInClick,
-  onSelectVehicle,
-  onPlayEngineSound,
-  isEngineSoundEnabled
+  onSelectVehicle
 }: AuctionTabProps) {
   const [auctions, setAuctions] = useState<Auction[]>(() => {
     try {
@@ -547,6 +543,14 @@ export default function AuctionTab({
       setIsNoticeModalOpen(false);
     }
   }, [activeAuctionDetail?.id, activeAuctionDetail?.floorNotice, activeAuctionDetail?.floorNoticeTimestamp, dismissedNoticeKey]);
+
+  const handleCloseNoticeModal = () => {
+    if (activeAuctionDetail) {
+      const noticeKey = `${activeAuctionDetail.id}_${activeAuctionDetail.floorNotice}_${activeAuctionDetail.floorNoticeTimestamp || ""}`;
+      setDismissedNoticeKey(noticeKey);
+    }
+    setIsNoticeModalOpen(false);
+  };
 
   // Executive Floor Operations (Restricted to Owner & Authorized Roles)
   const handleDirectGoLive = async () => {
@@ -1409,20 +1413,6 @@ export default function AuctionTab({
                     )}
                   </div>
 
-                  {/* Engine Acoustic Player Button */}
-                  {activeAuctionDetail.engineSoundUrl && onPlayEngineSound && (
-                    <button
-                      onClick={() => onPlayEngineSound(
-                        activeAuctionDetail.engineSoundUrl,
-                        activeAuctionDetail.engineSoundTitle,
-                        activeAuctionDetail.engineSoundType
-                      )}
-                      className="absolute bottom-4 left-4 px-3.5 py-1.5 bg-stone-900/90 backdrop-blur-md hover:bg-stone-900 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg cursor-pointer transition-all hover:scale-105"
-                    >
-                      <Volume2 className="w-4 h-4 text-amber-400 animate-pulse" /> Listen to Exhaust Note
-                    </button>
-                  )}
-
                   {/* Live Timer Pill */}
                   <div className="absolute bottom-4 right-4 bg-stone-950/90 backdrop-blur-md px-3.5 py-1.5 rounded-lg border border-stone-700 shadow-xl">
                     <AuctionCountdown 
@@ -1966,94 +1956,44 @@ export default function AuctionTab({
         )}
       </AnimatePresence>
 
-      {/* 1. Official Live Floor Notice Pop-up Modal (Website Editorial Theme) */}
+      {/* 1. Official Live Floor Notice Pop-up Modal (Proper Sized, Aesthetic Top-Positioned Editorial Box) */}
       <AnimatePresence>
         {isNoticeModalOpen && activeAuctionDetail?.floorNotice && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
+          <div
+            id="auction-notice-backdrop"
+            onClick={handleCloseNoticeModal}
+            className="fixed inset-0 z-[100] flex items-start justify-center pt-16 sm:pt-24 md:pt-28 px-4 pb-8 bg-stone-950/70 backdrop-blur-sm cursor-pointer overflow-y-auto animate-in fade-in duration-200"
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              initial={{ opacity: 0, scale: 0.96, y: -15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-[#FAF8F5] max-w-lg w-full border-2 border-stone-900 shadow-[8px_8px_0px_0px_rgba(28,25,23,1)] relative overflow-hidden font-mono"
+              exit={{ opacity: 0, scale: 0.96, y: -15 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#FAF8F5] max-w-xl sm:max-w-2xl w-full border-2 border-stone-900 rounded-2xl shadow-[10px_10px_0px_0px_rgba(28,25,23,0.9)] overflow-hidden cursor-default my-auto sm:my-0"
             >
-              {/* Header */}
-              <div className="bg-stone-900 text-white px-5 py-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                  <span className="font-bold text-xs uppercase tracking-wider">AutoWorld Floor Broadcast</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {activeAuctionDetail.floorNoticeTimestamp && (
-                    <span className="text-[11px] text-stone-300 bg-stone-800 px-2 py-0.5 border border-stone-700">
-                      {activeAuctionDetail.floorNoticeTimestamp}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => {
-                      const noticeKey = `${activeAuctionDetail.id}_${activeAuctionDetail.floorNotice}_${activeAuctionDetail.floorNoticeTimestamp || ""}`;
-                      setDismissedNoticeKey(noticeKey);
-                      setIsNoticeModalOpen(false);
-                    }}
-                    className="text-stone-400 hover:text-white ml-2 text-base font-bold cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
+              {/* Upper Side: Auction Status & Corner Close Button */}
+              <div className="bg-stone-950 text-white px-6 py-4 flex items-center justify-between border-b border-stone-800">
+                <span className="font-serif font-black text-sm sm:text-base uppercase tracking-widest text-stone-100 flex items-center gap-2">
+                  Auction Status
+                </span>
+                <button
+                  type="button"
+                  id="auction-notice-corner-close-btn"
+                  onClick={handleCloseNoticeModal}
+                  className="text-stone-400 hover:text-white p-1.5 hover:bg-stone-800/80 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                  aria-label="Close Notice"
+                  title="Close Notice"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Body */}
-              <div className="p-6 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-3 bg-stone-900 text-white shrink-0">
-                    <Megaphone className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-red-700 tracking-wider block">
-                      Live Auction Room Alert
-                    </span>
-                    <h3 className="font-serif font-black text-xl text-stone-900 mt-0.5">
-                      Lot #{activeAuctionDetail.id} Notice
-                    </h3>
-                    <p className="text-xs text-stone-600 font-sans mt-0.5">
-                      {activeAuctionDetail.title}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Notice text box */}
-                <div className="bg-white border-2 border-stone-300 p-4 shadow-xs">
-                  <p className="text-stone-900 text-sm font-semibold leading-relaxed whitespace-pre-wrap font-mono">
-                    "{activeAuctionDetail.floorNotice}"
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-stone-200">
-                  {isAuthorizedDirector && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsNoticeModalOpen(false);
-                        setNoticeEditText(activeAuctionDetail.floorNotice || "");
-                        setIsEditNoticeModalOpen(true);
-                      }}
-                      className="py-2.5 px-4 bg-white hover:bg-stone-100 text-stone-900 border border-stone-400 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs"
-                    >
-                      <Edit3 className="w-3.5 h-3.5 text-stone-700" /> Edit Notice
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const noticeKey = `${activeAuctionDetail.id}_${activeAuctionDetail.floorNotice}_${activeAuctionDetail.floorNoticeTimestamp || ""}`;
-                      setDismissedNoticeKey(noticeKey);
-                      setIsNoticeModalOpen(false);
-                    }}
-                    className="ml-auto py-2.5 px-6 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs"
-                  >
-                    Acknowledge & Continue
-                  </button>
-                </div>
+              {/* Below: Notice Content */}
+              <div className="p-6 sm:p-8">
+                <p className="text-stone-900 text-sm sm:text-base font-semibold leading-relaxed whitespace-pre-wrap font-mono select-text">
+                  {activeAuctionDetail.floorNotice}
+                </p>
               </div>
             </motion.div>
           </div>

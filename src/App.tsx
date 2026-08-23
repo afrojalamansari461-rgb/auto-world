@@ -32,7 +32,6 @@ import { saveCatalogOverride, saveAdminSettingsToFirestore, subscribeToRealtimeC
 import { CountUp } from "./components/CountUp";
 import { AdminGrandEntry } from "./components/AdminGrandEntry";
 import { SpecGrid } from "./components/SpecGrid";
-import { EngineSoundPlayer } from "./components/EngineSoundPlayer";
 import { syncUserToFirestore, subscribeToCurrentRole, UserRole, OWNER_EMAIL } from "./lib/userRoles";
 
 const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
@@ -133,14 +132,6 @@ export default function App() {
   const [isSecureShieldEnabled, setIsSecureShieldEnabled] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem("autoWorld_is_secure_shield");
-      return stored !== null ? JSON.parse(stored) : true;
-    } catch (e) {
-      return true;
-    }
-  });
-  const [isEngineSoundEnabled, setIsEngineSoundEnabled] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem("autoWorld_is_engine_sound");
       return stored !== null ? JSON.parse(stored) : true;
     } catch (e) {
       return true;
@@ -586,10 +577,6 @@ export default function App() {
         setIsSecureShieldEnabled(adminSettings.isSecureShieldEnabled);
         localStorage.setItem("autoWorld_is_secure_shield", JSON.stringify(adminSettings.isSecureShieldEnabled));
       }
-      if (adminSettings.isEngineSoundEnabled !== undefined) {
-        setIsEngineSoundEnabled(adminSettings.isEngineSoundEnabled);
-        localStorage.setItem("autoWorld_is_engine_sound", JSON.stringify(adminSettings.isEngineSoundEnabled));
-      }
       if (adminSettings.isSimranFreeModeEnabled !== undefined) {
         setIsSimranFreeModeEnabled(adminSettings.isSimranFreeModeEnabled);
         localStorage.setItem("autoWorld_is_simran_free_mode", JSON.stringify(adminSettings.isSimranFreeModeEnabled));
@@ -602,10 +589,6 @@ export default function App() {
         const storedShield = localStorage.getItem("autoWorld_is_secure_shield");
         if (storedShield !== null) {
           setIsSecureShieldEnabled(JSON.parse(storedShield));
-        }
-        const storedEngineSound = localStorage.getItem("autoWorld_is_engine_sound");
-        if (storedEngineSound !== null) {
-          setIsEngineSoundEnabled(JSON.parse(storedEngineSound));
         }
         const storedSimran = localStorage.getItem("autoWorld_is_simran_free_mode");
         if (storedSimran !== null) {
@@ -1344,7 +1327,6 @@ export default function App() {
                 showToast={showToast}
                 currentUser={currentUser}
                 onSignInClick={() => setActiveTab("login")}
-                isEngineSoundEnabled={isEngineSoundEnabled}
               />
             )}
 
@@ -1364,7 +1346,6 @@ export default function App() {
                 userRole={userRole}
                 showToast={showToast}
                 onSignInClick={() => setActiveTab("login")}
-                isEngineSoundEnabled={isEngineSoundEnabled}
               />
             )}
 
@@ -1880,16 +1861,6 @@ export default function App() {
                   );
                 })()}
 
-                {/* IMMERSIVE ENGINE & EXHAUST ACOUSTIC PLAYER (CONDITIONAL ON ADMIN TOGGLE & VEHICLE AUDIO) */}
-                {isEngineSoundEnabled && selectedVehicle.engineSoundUrl && (
-                  <EngineSoundPlayer
-                    soundUrl={selectedVehicle.engineSoundUrl}
-                    soundTitle={selectedVehicle.engineSoundTitle}
-                    soundType={selectedVehicle.engineSoundType}
-                    vehicleTitle={selectedVehicle.title}
-                  />
-                )}
-                
                 <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-start gap-2.5">
                   <Info className="w-5 h-5 text-stone-900 shrink-0 mt-0.5" />
                   <p className="text-[10px] text-stone-605 uppercase font-sans font-bold tracking-wider leading-relaxed">
