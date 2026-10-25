@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import compression from "compression";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -68,6 +69,52 @@ async function startServer() {
   app.get("/_discord", (req, res) => {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.status(200).send("dh=7957b14f3aebbc703379dfeb5f2282c038782316");
+  });
+
+  // Open Graph & Social Media Sharing Image Endpoints (Direct with CORS & cache headers)
+  app.get(["/og-image.jpg", "/og-image.jpeg"], (req, res) => {
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400, must-revalidate");
+    const filePath = path.resolve(process.cwd(), "dist/og-image.jpg");
+    const fallbackPath = path.resolve(process.cwd(), "public/og-image.jpg");
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+    if (fs.existsSync(fallbackPath)) {
+      return res.sendFile(fallbackPath);
+    }
+    res.status(404).send("Image not found");
+  });
+
+  app.get("/og-image.png", (req, res) => {
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400, must-revalidate");
+    const filePath = path.resolve(process.cwd(), "dist/og-image.png");
+    const fallbackPath = path.resolve(process.cwd(), "public/og-image.png");
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+    if (fs.existsSync(fallbackPath)) {
+      return res.sendFile(fallbackPath);
+    }
+    res.status(404).send("Image not found");
+  });
+
+  app.get("/autoworld-logo.jpg", (req, res) => {
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400, must-revalidate");
+    const filePath = path.resolve(process.cwd(), "dist/autoworld-logo.jpg");
+    const fallbackPath = path.resolve(process.cwd(), "public/autoworld-logo.jpg");
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+    if (fs.existsSync(fallbackPath)) {
+      return res.sendFile(fallbackPath);
+    }
+    res.status(404).send("Image not found");
   });
 
   // API endpoint for vehicle showcase data

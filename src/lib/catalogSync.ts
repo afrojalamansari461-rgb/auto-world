@@ -2,6 +2,10 @@ import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, setDoc, onSnapshot, collection, getDoc } from "firebase/firestore";
 import { UserListing, UserPartListing } from "../types";
 
+export const DEFAULT_FAMPAY_UPI_ID = "7666232753@fam";
+export const DEFAULT_FAMPAY_NAME = "Afroj Alam Ansari";
+export const DEFAULT_FAMPAY_PHONE = "+91 7666232753";
+
 export interface AdminSettingsData {
   hiddenDefaultIds: number[];
   removedDefaultIds: number[];
@@ -18,6 +22,9 @@ export interface AdminSettingsData {
   isAiAssistantEnabled?: boolean;
   isSimranFreeModeEnabled?: boolean;
   isSmsNotificationsEnabled?: boolean;
+  fampayUpiId?: string;
+  fampayAccountName?: string;
+  fampayPhone?: string;
   [key: string]: any;
   footerEmail?: string;
   footerPhone?: string;
@@ -109,10 +116,16 @@ export async function loadAdminSettingsFromFirestore(): Promise<Partial<AdminSet
     const storedBadges = localStorage.getItem("autoWorld_part_badges");
     const storedHidden = localStorage.getItem("autoWorld_hidden_parts");
     const storedHome = localStorage.getItem("autoworld_home_featured_parts");
+    const storedFamPayUpi = localStorage.getItem("autoWorld_fampay_upi");
+    const storedFamPayName = localStorage.getItem("autoWorld_fampay_name");
+    const storedFamPayPhone = localStorage.getItem("autoWorld_fampay_phone");
     return {
       partBadges: storedBadges ? JSON.parse(storedBadges) : {},
       hiddenPartIds: storedHidden ? JSON.parse(storedHidden) : [],
-      homeFeaturedPartIds: storedHome ? JSON.parse(storedHome) : ["1", "2", "3"]
+      homeFeaturedPartIds: storedHome ? JSON.parse(storedHome) : ["1", "2", "3"],
+      fampayUpiId: (storedFamPayUpi && storedFamPayUpi !== "afrojalamansari461@fam") ? storedFamPayUpi : DEFAULT_FAMPAY_UPI_ID,
+      fampayAccountName: storedFamPayName || DEFAULT_FAMPAY_NAME,
+      fampayPhone: storedFamPayPhone || DEFAULT_FAMPAY_PHONE
     };
   } catch (e) {
     return {};
@@ -219,14 +232,85 @@ export async function saveAdminSettingsToFirestore(settings: Partial<AdminSettin
       if (settings.showroomAddress !== undefined) {
         localStorage.setItem("autoWorld_showroom_address", settings.showroomAddress);
       }
+      if (settings.fampayUpiId !== undefined) {
+        localStorage.setItem("autoWorld_fampay_upi", settings.fampayUpiId);
+      }
+      if (settings.fampayAccountName !== undefined) {
+        localStorage.setItem("autoWorld_fampay_name", settings.fampayAccountName);
+      }
+      if (settings.fampayPhone !== undefined) {
+        localStorage.setItem("autoWorld_fampay_phone", settings.fampayPhone);
+      }
     } catch (e) {
       console.warn("Local storage settings sync error:", e);
     }
 
+    window.dispatchEvent(new Event("autoWorld_fampay_config_changed"));
     window.dispatchEvent(new Event("autoWorld_db_update"));
   } catch (err) {
     console.error("Failed to save admin settings to Firestore:", err);
     handleFirestoreError(err, OperationType.WRITE, "admin_settings/catalog");
+  }
+}
+
+// 2b. Helper getters and setters for the global FamPay merchant receiver account
+export function getSiteFamPayConfig(): { upiId: string; payeeName: string; phone: string } {
+  try {
+    const customUpi = localStorage.getItem("autoWorld_fampay_upi");
+    const customName = localStorage.getItem("autoWorld_fampay_name");
+    const customPhone = localStorage.getItem("autoWorld_fampay_phone");
+    const upiId = (customUpi && customUpi.trim() && customUpi.trim() !== "afrojalamansari461@fam")
+      ? customUpi.trim()
+      : DEFAULT_FAMPAY_UPI_ID;
+    const payeeName = (customName && customName.trim()) ? customName.trim() : DEFAULT_FAMPAY_NAME;
+    const phone = (customPhone && customPhone.trim()) ? customPhone.trim() : DEFAULT_FAMPAY_PHONE;
+    return {
+      upiId,
+      payeeName,
+      phone,
+    };
+  } catch {
+    return {
+      upiId: DEFAULT_FAMPAY_UPI_ID,
+      payeeName: DEFAULT_FAMPAY_NAME,
+      phone: DEFAULT_FAMPAY_PHONE,
+    };
+  }
+}
+
+export function setSiteFamPayConfig(
+  upiIdOrConfig: string | { upiId: string; payeeName?: string; phone?: string },
+  payeeNameParam?: string,
+  phoneParam?: string
+) {
+  try {
+    let upi = "";
+    let name = "";
+    let ph = "";
+
+    if (typeof upiIdOrConfig === "object" && upiIdOrConfig !== null) {
+      upi = upiIdOrConfig.upiId || "";
+      name = upiIdOrConfig.payeeName || "";
+      ph = upiIdOrConfig.phone || "";
+    } else if (typeof upiIdOrConfig === "string") {
+      upi = upiIdOrConfig;
+      name = payeeNameParam || "";
+      ph = phoneParam || "";
+    }
+
+    if (upi) {
+      localStorage.setItem("autoWorld_fampay_upi", upi.trim());
+    }
+    if (name) {
+      localStorage.setItem("autoWorld_fampay_name", name.trim());
+    }
+    if (ph) {
+      localStorage.setItem("autoWorld_fampay_phone", ph.trim());
+    }
+    window.dispatchEvent(new Event("autoWorld_fampay_config_changed"));
+    window.dispatchEvent(new Event("autoWorld_db_update"));
+  } catch (e) {
+    console.warn("Failed to cache FamPay config locally:", e);
   }
 }
 
@@ -355,8 +439,18 @@ export function subscribeToRealtimeCatalog(
           heroBadge: data.heroBadge || undefined,
           announcementText: data.announcementText || undefined,
           isAnnouncementEnabled: data.isAnnouncementEnabled !== undefined ? Boolean(data.isAnnouncementEnabled) : false,
-          showroomAddress: data.showroomAddress || undefined
+          showroomAddress: data.showroomAddress || undefined,
+          fampayUpiId: data.fampayUpiId || undefined,
+          fampayAccountName: data.fampayAccountName || undefined,
+          fampayPhone: data.fampayPhone || undefined
         };
+        if (data.fampayUpiId) {
+          try {
+            localStorage.setItem("autoWorld_fampay_upi", data.fampayUpiId);
+            if (data.fampayAccountName) localStorage.setItem("autoWorld_fampay_name", data.fampayAccountName);
+            if (data.fampayPhone) localStorage.setItem("autoWorld_fampay_phone", data.fampayPhone);
+          } catch (e) {}
+        }
       }
       emit();
     },

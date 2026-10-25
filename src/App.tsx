@@ -54,7 +54,7 @@ const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => 
     return [
       { src: baseImg, alt: `${title} - Side Profile` },
       { src: "https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&auto=format&fit=crop&q=80", alt: `${title} - Gears & Chain` },
-      { src: "https://images.unsplash.com/photo-1502744688674-c619d388682d?w=800&auto=format&fit=crop&q=80", alt: `${title} - Front Handlebars` },
+      { src: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=800&auto=format&fit=crop&q=80", alt: `${title} - Front Handlebars` },
     ];
   } else if (category === "suv" || lowerMake.includes("mahindra") || lowerMake.includes("tata") || lowerMake.includes("toyota")) {
     return [
@@ -1525,7 +1525,7 @@ export default function App() {
                       <div className="aspect-video bg-stone-900 border border-stone-300 overflow-hidden relative">
                         <img
                           src={editImage}
-                          alt="Preview"
+                          alt={editTitle ? `${editTitle} vehicle photo preview` : "Vehicle listing photo preview"}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
@@ -1771,58 +1771,72 @@ export default function App() {
                   return (
                     <div className="space-y-3">
                       {/* Main slide frame */}
-                      <div className="relative aspect-video border border-stone-300 overflow-hidden bg-stone-900 group">
-                        <img
-                          src={images[currentImageIndex]?.src || selectedVehicle.image}
-                          alt={images[currentImageIndex]?.alt || selectedVehicle.title}
-                          decoding="async"
-                          className="w-full h-full object-cover select-none transition-all duration-300"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
-                          }}
-                        />
+                      <div className="relative aspect-video border border-stone-300/80 rounded-2xl overflow-hidden bg-stone-950 group shadow-md">
+                        <AnimatePresence initial={false}>
+                          <motion.img
+                            key={currentImageIndex}
+                            src={images[currentImageIndex]?.src || selectedVehicle.image}
+                            alt={images[currentImageIndex]?.alt || selectedVehicle.title}
+                            decoding="async"
+                            initial={{ opacity: 0, scale: 1.015 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.99 }}
+                            transition={{
+                              opacity: { duration: 0.35, ease: "easeInOut" },
+                              scale: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }
+                            }}
+                            className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
+                            }}
+                          />
+                        </AnimatePresence>
                         
                         {/* Overlay badge info */}
                         {selectedVehicle.badge && (
-                          <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-widest border border-stone-700">
+                          <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-900/90 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-widest border border-stone-700/80 rounded-lg backdrop-blur-xs shadow-xs">
                             {selectedVehicle.badge}
                           </span>
                         )}
 
                         {/* Slide counter */}
                         {hasMultiple && (
-                          <span className="absolute bottom-4 right-4 z-10 px-2 py-1 bg-stone-900/80 backdrop-blur-sm text-stone-100 font-mono text-[10px] font-bold border border-stone-700 select-none">
+                          <span className="absolute bottom-4 right-4 z-10 px-2.5 py-1 bg-stone-900/85 backdrop-blur-md text-stone-100 font-mono text-[10px] font-bold border border-stone-700/80 rounded-lg select-none shadow-xs">
                             {currentImageIndex + 1} / {images.length}
                           </span>
                         )}
 
                         {/* Keyboard navigation Hint */}
                         {hasMultiple && (
-                          <span className="absolute bottom-4 left-4 z-10 px-2 py-1 bg-stone-900/80 backdrop-blur-sm text-stone-300 font-mono text-[9px] font-bold border border-stone-700/80 select-none hidden sm:inline-block">
+                          <span className="absolute bottom-4 left-4 z-10 px-2.5 py-1 bg-stone-900/85 backdrop-blur-md text-stone-300 font-mono text-[9px] font-bold border border-stone-700/80 rounded-lg select-none hidden sm:inline-block shadow-xs">
                             Use ← / → keys
                           </span>
                         )}
 
                         {/* Left arrow navigation */}
                         {hasMultiple && (
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.08 }}
+                            whileTap={{ scale: 0.92 }}
                             onClick={handlePrev}
                             aria-label="Previous photo"
-                            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white border border-stone-700 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 cursor-pointer"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white rounded-xl border border-stone-700/80 backdrop-blur-xs transition shadow-lg cursor-pointer"
                           >
                             <ChevronLeft className="w-5 h-5" />
-                          </button>
+                          </motion.button>
                         )}
 
                         {/* Right arrow navigation */}
                         {hasMultiple && (
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.08 }}
+                            whileTap={{ scale: 0.92 }}
                             onClick={handleNext}
                             aria-label="Next photo"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white border border-stone-700 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 cursor-pointer"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white rounded-xl border border-stone-700/80 backdrop-blur-xs transition shadow-lg cursor-pointer"
                           >
                             <ChevronRight className="w-5 h-5" />
-                          </button>
+                          </motion.button>
                         )}
                       </div>
 
@@ -2210,7 +2224,10 @@ export default function App() {
                           Direct Email
                         </a>
                         <a
-                          href={`https://wa.me/${(modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556').replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
+                          href={`https://wa.me/${(() => {
+                            const raw = (modalSellerInfo ? modalSellerInfo.phone : '+91 98230 44556').replace(/\D/g, '');
+                            return raw.length === 10 ? `91${raw}` : raw;
+                          })()}?text=${encodeURIComponent(
                             `Hi! I'm interested in the vehicle you listed on Auto World:\n\n` +
                             `🚗 *${selectedVehicle.title}*\n` +
                             `• Ref Code: AW-${selectedVehicle.id}\n` +
@@ -2353,57 +2370,67 @@ export default function App() {
                 return (
                   <div className="space-y-4">
                     {/* Large Main Slide Frame */}
-                    <div className="relative aspect-video max-h-[500px] border-2 border-stone-900 overflow-hidden bg-stone-950 group shadow-lg">
-                      <motion.img
-                        key={currentImageIndex}
-                        initial={{ opacity: 0.7, scale: 1.03 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
-                        src={images[currentImageIndex]?.src || selectedVehicle.image}
-                        alt={images[currentImageIndex]?.alt || selectedVehicle.title}
-                        decoding="async"
-                        className="w-full h-full object-cover select-none"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
-                        }}
-                      />
+                    <div className="relative aspect-video max-h-[520px] border border-stone-300/80 rounded-2xl overflow-hidden bg-stone-950 group shadow-xl">
+                      <AnimatePresence initial={false}>
+                        <motion.img
+                          key={currentImageIndex}
+                          src={images[currentImageIndex]?.src || selectedVehicle.image}
+                          alt={images[currentImageIndex]?.alt || selectedVehicle.title}
+                          decoding="async"
+                          initial={{ opacity: 0, scale: 1.015 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.99 }}
+                          transition={{
+                            opacity: { duration: 0.35, ease: "easeInOut" },
+                            scale: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }
+                          }}
+                          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800';
+                          }}
+                        />
+                      </AnimatePresence>
 
                       {/* Slide overlay info */}
                       <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
                         {selectedVehicle.badge && (
-                          <span className="px-3 py-1 bg-stone-900 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-widest border border-stone-700">
+                          <span className="px-3 py-1 bg-stone-900/90 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-widest border border-stone-700/80 rounded-lg backdrop-blur-xs shadow-xs">
                             {selectedVehicle.badge}
                           </span>
                         )}
-                        <span className="px-3 py-1 bg-amber-500 text-stone-950 text-[9px] font-mono font-bold uppercase tracking-widest border border-amber-600">
+                        <span className="px-3 py-1 bg-amber-500 text-stone-950 text-[9px] font-mono font-bold uppercase tracking-widest border border-amber-600/40 rounded-lg shadow-xs">
                           HD Inspection Photo
                         </span>
                       </div>
 
                       {hasMultiple && (
-                        <span className="absolute bottom-4 right-4 z-10 px-3 py-1 bg-stone-900/90 backdrop-blur-sm text-stone-100 font-mono text-xs font-bold border border-stone-700 select-none">
+                        <span className="absolute bottom-4 right-4 z-10 px-3 py-1 bg-stone-900/85 backdrop-blur-md text-stone-100 font-mono text-xs font-bold border border-stone-700/80 rounded-lg select-none shadow-xs">
                           {currentImageIndex + 1} of {images.length}
                         </span>
                       )}
 
                       {hasMultiple && (
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.92 }}
                           onClick={handlePrev}
                           aria-label="Previous photo"
-                          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 flex items-center justify-center bg-stone-950/85 hover:bg-stone-900 text-white border border-stone-700 transition cursor-pointer shadow-md"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 flex items-center justify-center bg-stone-950/85 hover:bg-stone-900 text-white border border-stone-700/80 rounded-xl backdrop-blur-xs transition cursor-pointer shadow-lg"
                         >
                           <ChevronLeft className="w-6 h-6" />
-                        </button>
+                        </motion.button>
                       )}
 
                       {hasMultiple && (
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.92 }}
                           onClick={handleNext}
                           aria-label="Next photo"
-                          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 flex items-center justify-center bg-stone-950/85 hover:bg-stone-900 text-white border border-stone-700 transition cursor-pointer shadow-md"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 flex items-center justify-center bg-stone-950/85 hover:bg-stone-900 text-white border border-stone-700/80 rounded-xl backdrop-blur-xs transition cursor-pointer shadow-lg"
                         >
                           <ChevronRight className="w-6 h-6" />
-                        </button>
+                        </motion.button>
                       )}
                     </div>
 

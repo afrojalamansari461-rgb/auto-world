@@ -21,7 +21,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { 
   auth, 
   signInWithPopup, 
-  googleProvider 
+  googleProvider,
+  isAuthPopupCancellation
 } from "../firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { subscribeToRealtimeCatalog, saveAdminSettingsToFirestore } from "../lib/catalogSync";
@@ -201,10 +202,27 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
         else navigate("/");
       }, 1000);
     } catch (error: any) {
-      console.error("Google registration failed:", error);
-      const msg = "Google sign-up was canceled or encountered an issue.";
-      setErrorMessage(msg);
-      if (showToast) showToast(msg, "error");
+      if (isAuthPopupCancellation(error)) {
+        console.info("[Auth] Google sign-up popup was dismissed or closed before completion.");
+        setErrorMessage(null);
+      } else {
+        const errCode = error?.code || "";
+        const errMsg = error?.message || "";
+        if (errCode === "auth/unauthorized-domain" || errMsg.includes("unauthorized-domain")) {
+          const msg = "Current domain is pending authorization in Firebase. Please sign up using Email/Password.";
+          setErrorMessage(msg);
+          if (showToast) showToast(msg, "error");
+        } else if (errCode === "auth/popup-blocked" || errMsg.includes("popup-blocked")) {
+          const msg = "Sign-up popup was blocked by browser. Please enable popups or sign up with Email/Password.";
+          setErrorMessage(msg);
+          if (showToast) showToast(msg, "error");
+        } else {
+          console.warn("[Auth] Google registration notice:", error);
+          const msg = "Google sign-up encountered an issue. Please try again or use Email/Password.";
+          setErrorMessage(msg);
+          if (showToast) showToast(msg, "error");
+        }
+      }
     } finally {
       setIsGoogleSigningIn(false);
     }

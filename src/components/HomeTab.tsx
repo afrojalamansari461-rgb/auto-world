@@ -723,7 +723,7 @@ export default function HomeTab({
               {/* SELL CONTEXT */}
               {activeSearchTab === "sell" && (
                 <div className="text-center py-4 space-y-4">
-                  <h3 className="text-base font-bold text-stone-950">Sell Your Car Commission-Free</h3>
+                  <h2 className="text-base font-bold text-stone-950">Sell Your Car Commission-Free</h2>
                   <p className="text-xs text-stone-600 leading-relaxed max-w-sm mx-auto font-sans font-medium">
                     Post your vehicle details, add photos, set your price, and connect directly with verified buyers.
                   </p>
@@ -786,7 +786,7 @@ export default function HomeTab({
                 onMouseEnter={() => setHoveredCardId(car.id)}
                 onMouseLeave={() => setHoveredCardId(null)}
                 whileHover={{ scale: 1.025, y: -6, transition: { type: "spring", stiffness: 300, damping: 20 } }}
-                className="bg-[#FAF8F5] border border-stone-900/15 overflow-hidden flex flex-col group transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl hover:border-stone-400 relative animate-in fade-in zoom-in-95"
+                className="bg-[#FAF8F5] border border-stone-900/15 rounded-xl overflow-hidden flex flex-col group transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl hover:border-stone-400 relative animate-in fade-in zoom-in-95"
               >
                 {/* Media frame */}
                 <div className="relative h-56 overflow-hidden bg-stone-200 grayscale-20 hover:grayscale-0 transition-all duration-500">
@@ -1018,7 +1018,7 @@ export default function HomeTab({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4 }}
-                  className="bg-[#FAF8F5] border border-stone-300 flex flex-col justify-between group overflow-hidden transition-all duration-300 hover:border-amber-700 hover:shadow-xl relative"
+                  className="bg-[#FAF8F5] border border-stone-300 rounded-xl flex flex-col justify-between group overflow-hidden transition-all duration-300 hover:border-amber-700 hover:shadow-xl relative"
                 >
                   {/* Top Image Showcase with Zoom on Hover */}
                   <div className="relative h-60 w-full overflow-hidden bg-stone-900 border-b border-stone-250">
@@ -1216,7 +1216,7 @@ export default function HomeTab({
               viewport={{ once: true }}
               transition={{ delay: idx * 0.1, type: "spring", stiffness: 90, damping: 15 }}
               whileHover={{ scale: 1.03, y: -4 }}
-              className="bg-[#FAF8F5] p-8 border border-stone-900/20 transition-all shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between"
+              className="bg-[#FAF8F5] p-8 border border-stone-900/20 rounded-xl transition-all shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between"
             >
               <div>
                 <div className="text-3xl font-serif font-light text-stone-600 border-b border-stone-300 pb-3 mb-4 flex justify-between items-baseline">
@@ -1269,7 +1269,7 @@ export default function HomeTab({
           <span className="text-[10px] tracking-[0.3em] font-sans font-bold uppercase block text-stone-800">Auto World Premium</span>
           <h2 className="text-4xl md:text-5xl font-serif font-black tracking-tight text-stone-950">Upgrade to Premium Membership</h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left text-xs font-sans font-semibold text-stone-900 bg-[#F4F1EA]/80 p-5 border border-stone-400 rounded-sm shadow-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left text-xs font-sans font-semibold text-stone-900 bg-[#F4F1EA]/80 p-5 border border-stone-400 rounded-xl shadow-xs">
             <div className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-stone-900 text-amber-300 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
               <span>Direct Phone & WhatsApp Numbers</span>
@@ -1291,7 +1291,7 @@ export default function HomeTab({
           <div className="pt-2">
             <button
               onClick={() => setActiveTab("premium")}
-              className="px-8 py-4 bg-stone-950 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest transition cursor-pointer shadow-md"
+              className="px-8 py-4 bg-stone-950 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest transition cursor-pointer shadow-md rounded-xl"
             >
               View Premium Plans
             </button>

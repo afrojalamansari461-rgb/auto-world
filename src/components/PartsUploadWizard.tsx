@@ -65,7 +65,7 @@ const MOTORSPORT_IMAGE_PRESETS = [
   { label: "Titanium Exhaust", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800" },
   { label: "Ceramic Brakes", url: "https://images.unsplash.com/photo-1600793575654-910699b5e4d4?w=800" },
   { label: "Forged Racing Wheels", url: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800" },
-  { label: "Coilover Suspension", url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800" }
+  { label: "Coilover Suspension", url: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=800" }
 ];
 
 export default function PartsUploadWizard({
@@ -853,7 +853,7 @@ export default function PartsUploadWizard({
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {photos.map((photo, idx) => (
                       <div key={photo.id} className="relative rounded-lg overflow-hidden border-2 border-stone-300 bg-stone-900 group h-32">
-                        <img src={photo.src} alt="Hardware" className="w-full h-full object-cover" />
+                        <img src={photo.src} alt={title ? `${title} photo ${idx + 1}` : `Hardware component photo ${idx + 1}`} className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => handleRemovePhoto(photo.id)}

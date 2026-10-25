@@ -256,7 +256,9 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-4 h-4 text-stone-500 shrink-0" />
-                <span className="font-mono">{footerPhone}</span>
+                <a href={`tel:${footerPhone.replace(/[^0-9+]/g, '')}`} className="font-mono text-stone-300 hover:text-white transition hover:underline" aria-label={`Call Auto World customer concierge at ${footerPhone}`}>
+                  {footerPhone}
+                </a>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-stone-500 shrink-0" />
@@ -268,13 +270,14 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
 
             {/* Social Network */}
             <div className="flex items-center gap-2.5 mt-6 pt-6 border-t border-stone-900">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-stone-600 mr-2">Channels:</span>
+              <span className="text-[10px] uppercase font-mono tracking-wider text-stone-400 mr-2">Channels:</span>
               <a 
                 href="https://facebook.com" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-[#1877F2] hover:text-white hover:border-[#1877F2] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(24,119,242,0.3)] cursor-pointer" 
                 title="Facebook Connect"
+                aria-label="Connect with Auto World on Facebook"
               >
                 <Facebook className="w-4 h-4 transition-transform duration-300" />
               </a>
@@ -284,6 +287,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 rel="noopener noreferrer"
                 className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-white hover:text-black hover:border-white hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(255,255,255,0.15)] cursor-pointer" 
                 title="X Channel"
+                aria-label="Follow Auto World on X"
               >
                 <span className="text-[13px] font-sans font-bold transition-transform duration-300 select-none">𝕏</span>
               </a>
@@ -292,6 +296,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 target="_blank" 
                 rel="noopener noreferrer"
                 title="Follow Afroj on Instagram"
+                aria-label="Follow Auto World and Afroj on Instagram"
                 className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-gradient-to-tr hover:from-[#405DE6] hover:via-[#E1306C] hover:to-[#F77737] hover:text-white hover:border-transparent hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(225,48,108,0.3)] cursor-pointer"
               >
                 <Instagram className="w-4 h-4 transition-transform duration-300" />
@@ -302,6 +307,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 rel="noopener noreferrer"
                 className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,119,181,0.3)] cursor-pointer" 
                 title="Linkedin Registry"
+                aria-label="View Auto World on LinkedIn"
               >
                 <Linkedin className="w-4 h-4 transition-transform duration-300" />
               </a>

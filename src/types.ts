@@ -860,7 +860,7 @@ export const DEFAULT_PARTS: Part[] = [
     image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
     photos: [
       { src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80", alt: "Garrett Gen II Billet Compressor" },
-      { src: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80", alt: "Twin Scroll Turbine Housing" }
+      { src: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80", alt: "Twin Scroll Turbine Housing" }
     ],
     compatibleMake: "Universal",
     compatibleModel: "2.0L - 4.5L Tuned Petrol/Diesel Engines",

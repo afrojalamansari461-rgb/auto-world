@@ -12,7 +12,7 @@ import {
 import { collection, getDocs, deleteDoc, doc, updateDoc, addDoc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { db, storage, ref, uploadBytesResumable, getDownloadURL, handleFirestoreError, OperationType } from "../firebase";
-import { saveAdminSettingsToFirestore, saveCatalogOverride } from "../lib/catalogSync";
+import { saveAdminSettingsToFirestore, saveCatalogOverride, getSiteFamPayConfig, setSiteFamPayConfig } from "../lib/catalogSync";
 import { 
   SmsAlert, 
   SmsSettings, 
@@ -130,6 +130,9 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
   const [smsCategoryFilter, setSmsCategoryFilter] = useState<string>("all");
 
   // Content Customizer (Edit Mode) States
+  const [famPayUpiId, setFamPayUpiId] = useState<string>(() => getSiteFamPayConfig().upiId);
+  const [famPayAccountName, setFamPayAccountName] = useState<string>(() => getSiteFamPayConfig().payeeName);
+  const [famPayPhone, setFamPayPhone] = useState<string>(() => getSiteFamPayConfig().phone);
   const [footerEmail, setFooterEmail] = useState<string>(() => localStorage.getItem("autoWorld_footer_email") || "afrojalamansari461@gmail.com");
   const [footerPhone, setFooterPhone] = useState<string>(() => localStorage.getItem("autoWorld_footer_phone") || "+91 98765 43210");
   const [showroomAddress, setShowroomAddress] = useState<string>(() => localStorage.getItem("autoWorld_showroom_address") || "123 Auto Avenue, Corporate Square, Mumbai, Maharashtra 400001");
@@ -785,6 +788,15 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
           setIsSmartMatcherEnabled(Boolean(data.isSmartMatcherEnabled));
           localStorage.setItem("autoWorld_is_smart_matcher", JSON.stringify(Boolean(data.isSmartMatcherEnabled)));
         }
+        if (data.fampayUpiId) {
+          setFamPayUpiId(data.fampayUpiId);
+        }
+        if (data.fampayAccountName) {
+          setFamPayAccountName(data.fampayAccountName);
+        }
+        if (data.fampayPhone) {
+          setFamPayPhone(data.fampayPhone);
+        }
         if (data.footerEmail) {
           setFooterEmail(data.footerEmail);
           localStorage.setItem("autoWorld_footer_email", data.footerEmail);
@@ -966,6 +978,9 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
         if (data.isAiAssistantEnabled !== undefined) setIsAiAssistantEnabled(Boolean(data.isAiAssistantEnabled));
         if (data.isSimranFreeModeEnabled !== undefined) setIsSimranFreeModeEnabled(Boolean(data.isSimranFreeModeEnabled));
         if (data.isSmartMatcherEnabled !== undefined) setIsSmartMatcherEnabled(Boolean(data.isSmartMatcherEnabled));
+        if (data.fampayUpiId) setFamPayUpiId(data.fampayUpiId);
+        if (data.fampayAccountName) setFamPayAccountName(data.fampayAccountName);
+        if (data.fampayPhone) setFamPayPhone(data.fampayPhone);
         if (data.footerEmail) setFooterEmail(data.footerEmail);
         if (data.footerPhone) setFooterPhone(data.footerPhone);
         if (data.showroomAddress) setShowroomAddress(data.showroomAddress);
@@ -2066,6 +2081,33 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
   };
 
   // Content Customizer Handlers
+  const handleSaveFamPaySettings = async (upiVal: string, nameVal: string, phoneVal: string) => {
+    const cleanUpi = upiVal.trim();
+    const cleanName = nameVal.trim() || "Auto World Merchant";
+    const cleanPhone = phoneVal.trim() || "+91 7666232753";
+    if (!cleanUpi) {
+      showToast("Please enter a valid FamPay UPI ID (e.g. yourname@fam)", "error");
+      return;
+    }
+    setSiteFamPayConfig({ upiId: cleanUpi, payeeName: cleanName, phone: cleanPhone });
+    setFamPayUpiId(cleanUpi);
+    setFamPayAccountName(cleanName);
+    setFamPayPhone(cleanPhone);
+    try {
+      await saveAdminSettingsToFirestore({
+        fampayUpiId: cleanUpi,
+        fampayAccountName: cleanName,
+        fampayPhone: cleanPhone
+      });
+      window.dispatchEvent(new Event("autoWorld_fampay_config_changed"));
+      window.dispatchEvent(new Event("autoWorld_db_update"));
+      showToast("FamPay receiver account deployed! All website payments will route here.", "success");
+      triggerHudAlert("FAMPAY GATEWAY LIVE", `Payouts routed to ${cleanUpi} (${cleanName})`, "verified");
+    } catch (err: any) {
+      showToast("Error saving FamPay settings.", "error");
+    }
+  };
+
   const handleSaveFooterSettings = async (emailVal: string, phoneVal: string) => {
     setFooterEmail(emailVal);
     setFooterPhone(phoneVal);
@@ -4654,6 +4696,102 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
                   </span>
                 </div>
 
+                {/* 0. FAMPAY MERCHANT RECEIVER GATEWAY (WHOLE WEBSITE PAYMENTS) */}
+                <div className="bg-[#FAF8F5] border-2 border-emerald-900/60 p-6 shadow-[5px_5px_0px_0px_rgba(5,150,105,0.4)] space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-emerald-900/20 pb-3 gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-md">
+                        ₹
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-mono font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                          <span>FamPay Merchant Receiver Account</span>
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-mono font-black uppercase rounded">
+                            Active Live
+                          </span>
+                        </h3>
+                        <p className="text-[10px] text-emerald-800 font-mono">
+                          Direct receiver for all customer payments, daily passes (₹1), inspections (₹199), and UPI QR scans across Auto World.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-emerald-700 font-mono bg-emerald-50 px-2 py-1 border border-emerald-200">
+                      VPA: <strong className="text-emerald-900">{famPayUpiId}</strong>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700 flex items-center gap-1">
+                        <span>Your FamPay UPI ID:</span>
+                        <span className="text-emerald-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={famPayUpiId}
+                        onChange={(e) => setFamPayUpiId(e.target.value)}
+                        placeholder="e.g. 7666232753@fam"
+                        className="w-full p-2.5 bg-white border-2 border-emerald-900/50 text-xs font-mono font-bold text-emerald-950 focus:bg-emerald-50/40 outline-none"
+                      />
+                      <span className="text-[9px] text-stone-500 font-mono block">
+                        FamPay handles end with <strong className="text-stone-700">@fam</strong>
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Payee / Account Name:
+                      </label>
+                      <input
+                        type="text"
+                        value={famPayAccountName}
+                        onChange={(e) => setFamPayAccountName(e.target.value)}
+                        placeholder="e.g. Afroj Alam Ansari"
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono font-bold text-stone-900 focus:bg-stone-50 outline-none"
+                      />
+                      <span className="text-[9px] text-stone-500 font-mono block">
+                        Displayed to buyers on FamPay/UPI app confirmation
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700">
+                        Linked Mobile Phone:
+                      </label>
+                      <input
+                        type="text"
+                        value={famPayPhone}
+                        onChange={(e) => setFamPayPhone(e.target.value)}
+                        placeholder="e.g. +91 7666232753"
+                        className="w-full p-2.5 bg-white border-2 border-stone-900 text-xs font-mono focus:bg-stone-50 outline-none"
+                      />
+                      <span className="text-[9px] text-stone-500 font-mono block">
+                        For SMS payout alerts and verification
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded text-xs font-mono text-emerald-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Real-Time UPI Intent String Preview:</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-700 break-all select-all font-mono">
+                        upi://pay?pa={famPayUpiId}&pn={encodeURIComponent(famPayAccountName)}&cu=INR&tn=Auto+World+Order
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveFamPaySettings(famPayUpiId, famPayAccountName, famPayPhone)}
+                      className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-mono font-bold uppercase tracking-widest border-2 border-emerald-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                    >
+                      <Check className="w-4 h-4 text-emerald-300" />
+                      Save & Deploy FamPay Account
+                    </button>
+                  </div>
+                </div>
+
                 {/* 1. FOOTER & HEADQUARTERS CONTACT DETAILS CARD */}
                 <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-4">
                   <div className="flex items-center justify-between border-b border-stone-300 pb-3">
@@ -4950,7 +5088,7 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
                     <div className="relative h-40 w-full overflow-hidden border border-stone-800 bg-black flex items-end p-4">
                       <img 
                         src={loginCarImage || "/monochrome-car.jpg"} 
-                        alt="Preview" 
+                        alt="Authentication hero banner preview" 
                         className="absolute inset-0 w-full h-full object-cover opacity-60"
                         onError={(e) => { (e.target as any).src = "/monochrome-car.jpg"; }}
                       />

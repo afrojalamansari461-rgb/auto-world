@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Shield, CheckCircle2, Award, Check } from "lucide-react";
 import { UPIPaymentModal } from "./UPIPaymentModal";
+import { getSiteFamPayConfig } from "../lib/catalogSync";
 
 interface SecureShieldCardProps {
   vehicleTitle?: string;
@@ -124,6 +125,8 @@ export function SecureShieldCard({
         amount={199}
         itemTitle={`Secure Shield Inspection: ${vehicleTitle}`}
         itemDescription="150-point physical inspection certification, RTO documentation & legal clearance guarantee."
+        defaultUpiId={getSiteFamPayConfig().upiId}
+        payeeName={getSiteFamPayConfig().payeeName}
       />
     </>
   );

@@ -11,7 +11,8 @@ import {
   googleProvider, 
   signInAnonymously, 
   updateProfile,
-  firebaseConfig
+  firebaseConfig,
+  isAuthPopupCancellation
 } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -102,32 +103,32 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
       }
       onClose();
     } catch (err: any) {
-      const errCode = err.code || "auth/unknown";
-      const isExpectedAuthIssue = ["auth/unauthorized-domain", "auth/popup-blocked", "auth/popup-closed-by-user", "auth/user-cancelled"].includes(errCode);
-      if (isExpectedAuthIssue) {
-        console.warn("Google auth configuration warning:", err);
-      } else {
-        console.error("Google auth failed:", err);
+      if (isAuthPopupCancellation(err)) {
+        console.info("[Google Auth] Sign-in popup was dismissed or closed before completion.");
+        return;
       }
-      const errMsg = err.message || "";
+
+      const errCode = err?.code || "auth/unknown";
+      const errMsg = err?.message || "";
 
       // Only trigger diagnostic console for true setup issues
       if (errCode === "auth/operation-not-allowed" || errCode === "auth/configuration-not-found" || errCode === "auth/unauthorized-domain") {
+        console.warn("Google auth configuration warning:", err);
         setFirebaseError({ code: errCode, message: errMsg, type: "auth" });
         setShowTroubleshoot(true);
+      } else {
+        console.warn("Google auth notice:", err);
       }
       
-      if (err.code === "auth/unauthorized-domain") {
+      if (errCode === "auth/unauthorized-domain" || errMsg.includes("unauthorized-domain")) {
         setUnauthorizedDomainError(true);
         showToast("Domain unauthorized by Firebase. Please use Email/Password option instead.", "error");
-      } else if (err.code === "auth/popup-blocked") {
+      } else if (errCode === "auth/popup-blocked" || errMsg.includes("popup-blocked")) {
         showToast("Popup blocked. Please permit popups or use Email/Password sign-in.", "error");
-      } else if (err.code === "auth/popup-closed-by-user") {
-        showToast("Sign-in popup closed by user before completion. If this persists, please use Email Pass Auth or open in a new tab.", "info");
       } else if (errMsg.includes("INTERNAL ASSERTION FAILED") || errMsg.includes("Pending promise was never set")) {
         showToast("Auth state conflicts in the iframe sandbox. Please Reload the page or open in a New Tab to login.", "error");
       } else {
-        showToast(err.message || "An error occurred during Google authentication.", "error");
+        showToast(errMsg || "An error occurred during Google authentication.", "error");
       }
     } finally {
       setIsSigningInGoogle(false);
@@ -352,6 +353,7 @@ export default function SignInModal({ isOpen, onClose, showToast }: SignInModalP
         {/* Close Button */}
         <button
           onClick={onClose}
+          aria-label="Close modal"
           className="absolute top-4 right-4 text-stone-950 hover:text-purple-700 font-mono text-lg cursor-pointer transition-colors duration-200 z-50 p-1"
         >
           <X className="w-5 h-5" />

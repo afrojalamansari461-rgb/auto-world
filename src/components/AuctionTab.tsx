@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Zap, Clock, ShieldCheck, Flame, ChevronRight, TrendingUp, 
   Gavel, CheckCircle2, AlertCircle, ArrowUpRight, Award, 
-  Volume2, Eye, Filter, Sparkles, RefreshCw, Trophy, 
+  Volume2, VolumeX, Eye, Filter, Sparkles, RefreshCw, Trophy, 
   Car, User, ArrowRight, Check, History, Info, Lock,
   Megaphone, Pause, Calendar, DollarSign, AlertTriangle,
   Play, Edit3, X, Sliders, ShieldAlert, ListOrdered,
-  Timer, Hourglass, Layers, FileText, CheckCheck
+  Timer, Hourglass, Layers, FileText, CheckCheck, Bot, Radio
 } from "lucide-react";
 import { Auction, AuctionBid, DEFAULT_AUCTIONS, Vehicle } from "../types";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -16,6 +16,18 @@ import { User as FirebaseUser } from "firebase/auth";
 import { UserRole, canControlAuctionLot, canManageAuctions, OWNER_EMAIL } from "../lib/userRoles";
 import { PostAuctionResult } from "./PostAuctionResult";
 import { AuctionLeaderboard, getOrdinalSuffix } from "./AuctionLeaderboard";
+import { AutoBidModal } from "./AutoBidModal";
+import { InspectionReportModal } from "./InspectionReportModal";
+import { 
+  playGavelStrike, 
+  playBidSuccessChime, 
+  playOutbidWarning, 
+  playCountdownTick, 
+  playVictoryFanfare, 
+  playEngineRevSound, 
+  isAuctionSoundEnabled, 
+  setAuctionSoundEnabled 
+} from "../utils/auctionSound";
 
 interface AuctionTabProps {
   currentUser: FirebaseUser | null;
@@ -41,6 +53,10 @@ function AuctionCountdown({ endTime, onExpire }: { endTime: string; onExpire?: (
         setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isExpired: true });
         if (onExpire) onExpire();
         return;
+      }
+      const totalSecs = Math.floor(diff / 1000);
+      if (totalSecs <= 10 && totalSecs > 0) {
+        playCountdownTick(totalSecs <= 3);
       }
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -109,6 +125,59 @@ export default function AuctionTab({
   const [bidSuccess, setBidSuccess] = useState<string | null>(null);
   const [isSubmittingBid, setIsSubmittingBid] = useState(false);
   const [isProposeModalOpen, setIsProposeModalOpen] = useState(false);
+
+  // Sound Engine & FX State
+  const [soundOn, setSoundOn] = useState<boolean>(() => isAuctionSoundEnabled());
+
+  const handleToggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setAuctionSoundEnabled(next);
+    if (next) {
+      playBidSuccessChime();
+    }
+  };
+
+  // Proxy Auto-Bid Bot State (Per-Auction Ceiling)
+  const [userProxyBids, setUserProxyBids] = useState<Record<string, number>>(() => {
+    try {
+      const stored = localStorage.getItem("autoworld_user_proxy_bids");
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [isAutoBidModalOpen, setIsAutoBidModalOpen] = useState(false);
+
+  // 100-Point Inspection Report Modal State
+  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
+
+  // Simulated Engine Audio & RPM Gauge
+  const [isRevvingEngine, setIsRevvingEngine] = useState(false);
+
+  const handleRevEngine = () => {
+    setIsRevvingEngine(true);
+    playEngineRevSound();
+    setTimeout(() => {
+      setIsRevvingEngine(false);
+    }, 2500);
+  };
+
+  // Floating Live Reactions Feed
+  const [liveReactions, setLiveReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
+
+  const handleSendReaction = (emoji: string) => {
+    const newReaction = {
+      id: `react_${Date.now()}_${Math.random()}`,
+      emoji,
+      x: Math.floor(Math.random() * 60) + 20 // 20% to 80% horizontal spread
+    };
+    setLiveReactions(prev => [...prev.slice(-15), newReaction]);
+    playBidSuccessChime();
+    setTimeout(() => {
+      setLiveReactions(prev => prev.filter(r => r.id !== newReaction.id));
+    }, 2000);
+  };
 
   // Scheduling & Intermission State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -755,16 +824,34 @@ export default function AuctionTab({
 
     const isReserveNowMet = amount >= activeAuctionDetail.reservePrice;
     const updatedBids = [newBid, ...(activeAuctionDetail.bids || [])];
+    
+    // Anti-Snipe Overtime: Check if bid is submitted with less than 2 minutes remaining
+    let newEndTime = activeAuctionDetail.endTime;
+    let antiSnipeTriggered = false;
+    const remainingMillis = new Date(activeAuctionDetail.endTime).getTime() - Date.now();
+    if (remainingMillis > 0 && remainingMillis < 120000) {
+      newEndTime = new Date(Date.now() + 120000).toISOString();
+      antiSnipeTriggered = true;
+    }
+
     const updatedAuction: Auction = {
       ...activeAuctionDetail,
       currentBid: amount,
       bidCount: (activeAuctionDetail.bidCount || 0) + 1,
       isReserveMet: isReserveNowMet,
+      endTime: newEndTime,
       bids: updatedBids,
       winnerUid: currentUser.uid,
       winnerName: currentUser.displayName || "Top Bidder",
       winningBid: amount
     };
+
+    // Sound FX
+    playGavelStrike();
+    playBidSuccessChime();
+    if (isReserveNowMet && !activeAuctionDetail.isReserveMet) {
+      setTimeout(playVictoryFanfare, 400);
+    }
 
     try {
       // 1. Update Firestore
@@ -772,6 +859,7 @@ export default function AuctionTab({
         currentBid: amount,
         bidCount: updatedAuction.bidCount,
         isReserveMet: isReserveNowMet,
+        endTime: newEndTime,
         bids: updatedBids,
         winnerUid: currentUser.uid,
         winnerName: currentUser.displayName || "Top Bidder",
@@ -781,7 +869,13 @@ export default function AuctionTab({
       // 2. Update local state
       setAuctions((prev) => prev.map((a) => (a.id === activeAuctionDetail.id ? updatedAuction : a)));
       setSelectedAuction(updatedAuction);
-      setBidSuccess(`Bid of ₹${amount.toLocaleString("en-IN")} successfully confirmed on the live floor!`);
+      
+      const successMsg = antiSnipeTriggered
+        ? `🔥 Bid ₹${amount.toLocaleString("en-IN")} placed! ⏱️ Anti-Snipe Overtime activated (+2 mins added).`
+        : `Bid of ₹${amount.toLocaleString("en-IN")} successfully confirmed on the live floor!`;
+      
+      setBidSuccess(successMsg);
+      if (showToast) showToast(successMsg, "success");
       setExactCustomBid("");
       setTimeout(() => setBidSuccess(null), 6000);
     } catch (err) {
@@ -793,6 +887,33 @@ export default function AuctionTab({
       setTimeout(() => setBidSuccess(null), 6000);
     } finally {
       setIsSubmittingBid(false);
+    }
+  };
+
+  // Proxy Auto-Bid Handler
+  const handleSaveAutoBid = (maxAmount: number | null) => {
+    if (!activeAuctionDetail) return;
+    const updated = { ...userProxyBids };
+    if (maxAmount === null) {
+      delete updated[activeAuctionDetail.id];
+      if (showToast) showToast("🤖 Auto-Bid Bot disabled for this lot.", "info");
+    } else {
+      updated[activeAuctionDetail.id] = maxAmount;
+      if (showToast) showToast(`🤖 Auto-Bid Bot active up to ₹${maxAmount.toLocaleString("en-IN")}!`, "success");
+      
+      // If user is currently outbid and ceiling permits, auto-counter immediately
+      if (activeAuctionDetail.currentBid < maxAmount) {
+        const nextMin = activeAuctionDetail.currentBid + (activeAuctionDetail.minIncrement || 50000);
+        if (nextMin <= maxAmount) {
+          handlePlaceBid(nextMin);
+        }
+      }
+    }
+    setUserProxyBids(updated);
+    try {
+      localStorage.setItem("autoworld_user_proxy_bids", JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -952,6 +1073,20 @@ export default function AuctionTab({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleToggleSound}
+                className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer ${
+                  soundOn
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm"
+                    : "bg-stone-800 text-stone-400 border-stone-700 hover:bg-stone-700"
+                }`}
+                title="Toggle Auction Audio FX (Gavel strikes, engine sound, chimes)"
+              >
+                {soundOn ? <Volume2 className="w-4 h-4 text-amber-400 animate-pulse" /> : <VolumeX className="w-4 h-4 text-stone-400" />}
+                <span>{soundOn ? "Audio FX: ON" : "Audio FX: MUTED"}</span>
+              </button>
+
               <button
                 id="propose-auction-btn"
                 onClick={() => setIsProposeModalOpen(true)}
@@ -1379,8 +1514,21 @@ export default function AuctionTab({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/30 pointer-events-none" />
 
+                  {/* Floating Live Reactions Layer */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                    {liveReactions.map((r) => (
+                      <div
+                        key={r.id}
+                        style={{ left: `${r.x}%` }}
+                        className="absolute bottom-6 text-3xl animate-bounce"
+                      >
+                        {r.emoji}
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Badges Overlay */}
-                  <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
+                  <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 z-10">
                     <span className="px-3 py-1 bg-stone-950/80 backdrop-blur-md border border-amber-500/40 text-amber-400 text-xs font-bold rounded-md uppercase tracking-wider flex items-center gap-1.5 shadow-md">
                       <Zap className="w-3.5 h-3.5 fill-amber-400" /> Lot #{activeAuctionDetail.id}
                     </span>
@@ -1414,11 +1562,46 @@ export default function AuctionTab({
                   </div>
 
                   {/* Live Timer Pill */}
-                  <div className="absolute bottom-4 right-4 bg-stone-950/90 backdrop-blur-md px-3.5 py-1.5 rounded-lg border border-stone-700 shadow-xl">
+                  <div className="absolute bottom-4 right-4 bg-stone-950/90 backdrop-blur-md px-3.5 py-1.5 rounded-lg border border-stone-700 shadow-xl z-10">
                     <AuctionCountdown 
                       endTime={activeAuctionDetail.endTime} 
                       onExpire={() => handleAutomateLotSettlement(activeAuctionDetail.id)}
                     />
+                  </div>
+                </div>
+
+                {/* Live Floor Reaction Bar & Engine Rev Button */}
+                <div className="p-3 bg-stone-950 text-white flex flex-wrap items-center justify-between gap-3 border-t border-stone-800">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-stone-400 uppercase font-bold tracking-wider mr-1">Floor Vibes:</span>
+                    {["🔥", "🚀", "🏎️", "💎", "👑", "⚡"].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => handleSendReaction(emoji)}
+                        className="w-8 h-8 rounded-lg bg-stone-900 hover:bg-stone-800 hover:scale-110 active:scale-95 transition-all flex items-center justify-center text-sm cursor-pointer border border-stone-800"
+                        title={`Send ${emoji} reaction to the floor`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRevEngine}
+                      disabled={isRevvingEngine}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        isRevvingEngine
+                          ? "bg-amber-500 text-stone-950 animate-pulse"
+                          : "bg-stone-900 hover:bg-stone-800 text-amber-400 border border-amber-500/30"
+                      }`}
+                      title="Simulate high-RPM twin-turbo engine rev sound"
+                    >
+                      <Radio className="w-3.5 h-3.5" />
+                      <span>{isRevvingEngine ? "🔊 Revving Exhaust..." : "🔊 Rev Twin-Turbo Exhaust"}</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1473,6 +1656,16 @@ export default function AuctionTab({
                           </div>
                         ))}
                       </div>
+
+                      {/* 100-Point Inspection Dossier Button */}
+                      <button
+                        type="button"
+                        onClick={() => setIsInspectionModalOpen(true)}
+                        className="w-full mt-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>View 100-Point Certified Inspection Dossier & OBD-II Health</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1692,6 +1885,36 @@ export default function AuctionTab({
                         </button>
                       </div>
                     )}
+
+                    {/* Proxy Auto-Bid Bot (AI Floor Defense) */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsAutoBidModalOpen(true)}
+                        className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                          userProxyBids[activeAuctionDetail.id]
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm"
+                            : "bg-stone-900 hover:bg-stone-800 text-stone-300 border-stone-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Bot className="w-4 h-4 text-amber-400 shrink-0" />
+                          <div className="text-left">
+                            <span className="block font-bold text-white">
+                              {userProxyBids[activeAuctionDetail.id] ? "Proxy Auto-Bid Bot: ACTIVE" : "Proxy Auto-Bid Bot"}
+                            </span>
+                            <span className="text-[10px] text-stone-400 font-normal">
+                              {userProxyBids[activeAuctionDetail.id] 
+                                ? `Defending floor up to ₹${userProxyBids[activeAuctionDetail.id].toLocaleString("en-IN")}`
+                                : "Auto-defend floor with incremental counter-bids"}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2 py-1 bg-stone-950 rounded border border-stone-700 text-amber-400 shrink-0">
+                          {userProxyBids[activeAuctionDetail.id] ? "EDIT CEILING" : "CONFIGURE"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Bidder Protection Notice */}
@@ -2222,6 +2445,53 @@ export default function AuctionTab({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Auto-Bid Bot Modal */}
+      {activeAuctionDetail && (
+        <AutoBidModal
+          isOpen={isAutoBidModalOpen}
+          onClose={() => setIsAutoBidModalOpen(false)}
+          auction={activeAuctionDetail}
+          currentAutoBidAmount={userProxyBids[activeAuctionDetail.id] || null}
+          onSaveAutoBid={handleSaveAutoBid}
+          minAllowed={activeAuctionDetail.currentBid + (activeAuctionDetail.minIncrement || 50000)}
+        />
+      )}
+
+      {/* 100-Point Inspection Dossier Modal */}
+      {activeAuctionDetail && (
+        <InspectionReportModal
+          isOpen={isInspectionModalOpen}
+          onClose={() => setIsInspectionModalOpen(false)}
+          vehicle={{
+            id: activeAuctionDetail.id,
+            title: activeAuctionDetail.title,
+            make: activeAuctionDetail.make,
+            model: activeAuctionDetail.model,
+            year: activeAuctionDetail.year,
+            price: activeAuctionDetail.currentBid,
+            originalPrice: activeAuctionDetail.reservePrice,
+            mileage: activeAuctionDetail.mileage || "12,000 km",
+            fuel: activeAuctionDetail.fuel || "Petrol",
+            transmission: activeAuctionDetail.transmission || "Automatic",
+            location: activeAuctionDetail.location || "Mumbai",
+            image: activeAuctionDetail.image,
+            photos: activeAuctionDetail.photos || [{ src: activeAuctionDetail.image, alt: activeAuctionDetail.title }],
+            category: "supercar",
+            features: activeAuctionDetail.highlights || [
+              "100-Point AutoWorld Certified",
+              "Clear RTO NOC",
+              "Single Owner Registry"
+            ],
+            description: `${activeAuctionDetail.year} ${activeAuctionDetail.make} ${activeAuctionDetail.model} featured on the AutoWorld 24-Hour Live Flash Auction floor.`,
+            condition: "certified-pre-owned",
+            isSold: activeAuctionDetail.status === "settled",
+            isLiveAuction: activeAuctionDetail.status === "live",
+            rating: 4.9,
+            reviewCount: 42
+          }}
+        />
+      )}
     </div>
   );
 }

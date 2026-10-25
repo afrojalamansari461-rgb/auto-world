@@ -19,7 +19,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { 
   auth, 
   signInWithPopup, 
-  googleProvider 
+  googleProvider,
+  isAuthPopupCancellation
 } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { subscribeToRealtimeCatalog, saveAdminSettingsToFirestore } from "../lib/catalogSync";
@@ -199,12 +200,30 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
         else navigate("/");
       }, 1200);
     } catch (error: any) {
-      console.error("Google auth failed:", error);
       setIsTransitioning(false);
       setIsLoginSuccess(false);
-      const msg = "Google sign-in was canceled or encountered an issue.";
-      setErrorMessage(msg);
-      if (showToast) showToast(msg, "error");
+
+      if (isAuthPopupCancellation(error)) {
+        console.info("[Auth] Google sign-in popup was dismissed or closed before completion.");
+        setErrorMessage(null);
+      } else {
+        const errCode = error?.code || "";
+        const errMsg = error?.message || "";
+        if (errCode === "auth/unauthorized-domain" || errMsg.includes("unauthorized-domain")) {
+          const msg = "Current domain is pending authorization in Firebase. Please sign in using Email/Password.";
+          setErrorMessage(msg);
+          if (showToast) showToast(msg, "error");
+        } else if (errCode === "auth/popup-blocked" || errMsg.includes("popup-blocked")) {
+          const msg = "Sign-in popup was blocked by browser. Please enable popups or sign in with Email/Password.";
+          setErrorMessage(msg);
+          if (showToast) showToast(msg, "error");
+        } else {
+          console.warn("[Auth] Google sign-in notice:", error);
+          const msg = "Google sign-in encountered an issue. Please try again or use Email/Password.";
+          setErrorMessage(msg);
+          if (showToast) showToast(msg, "error");
+        }
+      }
     } finally {
       setIsGoogleSigningIn(false);
     }

@@ -194,6 +194,23 @@ export interface NhtsaResponse<T> {
   Results: T[];
 }
 
+// Curated global automotive manufacturers for immediate zero-latency fallback
+export const CURATED_GLOBAL_MAKES: string[] = [
+  "Acura", "Alfa Romeo", "Alpine", "Aston Martin", "Audi", "Austin", "Bajaj", 
+  "Bentley", "BharatBenz", "BMW", "Bugatti", "Buick", "BYD", "Cadillac", "Caterham", 
+  "Chevrolet", "Chrysler", "Citroën", "Cupra", "Dacia", "Daewoo", "Daihatsu", "Datsun", 
+  "Dodge", "DS Automobiles", "Ducati", "Eicher", "Ferrari", "Fiat", "Fisker", 
+  "Force Motors", "Ford", "Genesis", "GMC", "Harley-Davidson", "Hero", "Hero Cycles", 
+  "Honda", "Hummer", "Hyundai", "Indian", "Infiniti", "Isuzu", "Jaguar", "Jeep", 
+  "Kawasaki", "Kia", "Koenigsegg", "KTM", "Lada", "Lamborghini", "Lancia", "Land Rover", 
+  "Lexus", "Lincoln", "Lotus", "Lucid", "Mahindra", "Maserati", "Maybach", "Mazda", 
+  "McLaren", "Mercedes-Benz", "MG", "Mini", "Mitsubishi", "Morgan", "NIO", "Nissan", 
+  "Noble", "Opel", "Pagani", "Peugeot", "Polestar", "Pontiac", "Porsche", "Ram", 
+  "Renault", "Rimac", "Rivian", "Rolls-Royce", "Royal Enfield", "Saab", "Saleen", 
+  "Seat", "Shelby", "Skoda", "Smart", "Subaru", "Suzuki", "Tata", "Tesla", "Toyota", 
+  "Triumph", "TVS", "Vauxhall", "Volkswagen", "Volvo", "Yamaha"
+];
+
 // Hardcoded years from 1990 up to the current year (2026) in descending order
 const CURRENT_NHTSA_YEAR = 2026;
 const NHTSA_YEARS = Array.from(
@@ -409,7 +426,7 @@ function SearchableMakeSelect({
             setTimeout(() => inputRef.current?.focus(), 50);
           }
         }}
-        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none transition text-left active:bg-stone-200"
+        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 cursor-pointer flex items-center justify-between select-none transition-all text-left active:bg-stone-200"
       >
         <div className="flex items-center gap-2 overflow-hidden">
           <Tag className="w-4 h-4 text-stone-500 shrink-0" aria-hidden="true" />
@@ -436,7 +453,7 @@ function SearchableMakeSelect({
                 setModel("");
                 setCustomMake("");
               }}
-              className="p-1 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition active:scale-95"
+              className="p-1 hover:bg-stone-300 rounded-full text-stone-600 hover:text-stone-900 transition active:scale-95"
               title="Clear selection"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -454,10 +471,10 @@ function SearchableMakeSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden max-h-[380px] flex flex-col"
+            className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[380px] flex flex-col"
           >
             {/* Live Search Input Field */}
-            <div className="p-2.5 bg-stone-100 border-b border-stone-200 shrink-0">
+            <div className="p-2.5 bg-stone-50 border-b border-stone-200 shrink-0">
               <div className="relative flex items-center">
                 <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 pointer-events-none" aria-hidden="true" />
                 <input
@@ -472,7 +489,7 @@ function SearchableMakeSelect({
                   }}
                   placeholder="Type brand name (e.g. Toyota, BMW, Tata)..."
                   aria-label="Filter manufacturer list"
-                  className="w-full pl-8 pr-8 py-2 bg-white border border-stone-300 text-sm sm:text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
+                  className="w-full pl-8 pr-8 py-2 bg-white border border-stone-300 rounded-xl text-sm sm:text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
                 />
                 {searchTerm && (
                   <button
@@ -495,7 +512,7 @@ function SearchableMakeSelect({
                       key={`chip-${brand}`}
                       type="button"
                       onClick={() => handleSelectMake(brand)}
-                      className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-stone-900 hover:text-white border border-stone-300 text-stone-800 transition shrink-0 rounded-sm active:scale-95"
+                      className="px-2.5 py-1 text-[10px] font-bold bg-white hover:bg-stone-900 hover:text-white border border-stone-300 text-stone-800 transition shrink-0 rounded-full active:scale-95"
                     >
                       {brand}
                     </button>
@@ -727,7 +744,7 @@ function SearchableModelSelect({
             setTimeout(() => inputRef.current?.focus(), 50);
           }
         }}
-        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 text-xs font-semibold focus:outline-none focus:border-stone-900 cursor-pointer flex items-center justify-between select-none transition text-left disabled:opacity-50 disabled:bg-stone-200 disabled:cursor-not-allowed disabled:hover:border-stone-300 active:bg-stone-200"
+        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 hover:border-stone-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 cursor-pointer flex items-center justify-between select-none transition-all text-left disabled:opacity-50 disabled:bg-stone-200 disabled:cursor-not-allowed disabled:hover:border-stone-300 active:bg-stone-200"
       >
         <div className="flex items-center gap-2 overflow-hidden">
           {isDisabled && (!year || !make) ? (
@@ -763,7 +780,7 @@ function SearchableModelSelect({
                 setModel("");
                 setCustomModel("");
               }}
-              className="p-1 hover:bg-stone-300 rounded text-stone-600 hover:text-stone-900 transition active:scale-95"
+              className="p-1 hover:bg-stone-300 rounded-full text-stone-600 hover:text-stone-900 transition active:scale-95"
               title="Clear selection"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -781,10 +798,10 @@ function SearchableModelSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-stone-900 shadow-2xl z-50 overflow-hidden max-h-[380px] flex flex-col"
+            className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[380px] flex flex-col"
           >
             {/* Live Search Input Field */}
-            <div className="p-2.5 bg-stone-100 border-b border-stone-200 shrink-0">
+            <div className="p-2.5 bg-stone-50 border-b border-stone-200 shrink-0">
               <div className="relative flex items-center">
                 <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 pointer-events-none" aria-hidden="true" />
                 <input
@@ -799,7 +816,7 @@ function SearchableModelSelect({
                   }}
                   placeholder={`Search ${make} models...`}
                   aria-label="Filter vehicle model list"
-                  className="w-full pl-8 pr-8 py-2 bg-white border border-stone-300 text-sm sm:text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
+                  className="w-full pl-8 pr-8 py-2 bg-white border border-stone-300 rounded-xl text-sm sm:text-xs font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition"
                 />
                 {searchTerm && (
                   <button
@@ -1986,8 +2003,17 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   // ----------------------------------------------------
   // NHTSA vPIC API States & Cascading Fetching Logic
   // ----------------------------------------------------
-  // Local state for storing list of makes fetched from NHTSA API
-  const [nhtsaMakes, setNhtsaMakes] = useState<string[]>([]);
+  // Local state for storing list of makes (initialized with curated list for 0ms delay)
+  const [nhtsaMakes, setNhtsaMakes] = useState<string[]>(() => {
+    try {
+      const cached = sessionStorage.getItem("autoworld_nhtsa_makes");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return CURATED_GLOBAL_MAKES;
+  });
   const [isLoadingMakes, setIsLoadingMakes] = useState<boolean>(false);
   const [makesError, setMakesError] = useState<string | null>(null);
 
@@ -1998,22 +2024,43 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
   /**
    * Effect 1: Fetch all vehicle makes from NHTSA vPIC API on component mount.
-   * Endpoint: https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=json
+   * Uses AbortController with 4s timeout and graceful fallback to curated directory.
    */
   useEffect(() => {
     let isMounted = true;
     const fetchNhtsaMakes = async () => {
+      // Return early if already populated from session storage
+      try {
+        const cached = sessionStorage.getItem("autoworld_nhtsa_makes");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (isMounted) {
+              setNhtsaMakes(parsed);
+              setIsLoadingMakes(false);
+            }
+            return;
+          }
+        }
+      } catch {}
+
       setIsLoadingMakes(true);
       setMakesError(null);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
       try {
-        const response = await fetch("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=json");
+        const response = await fetch("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=json", {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
         if (!response.ok) {
           throw new Error(`NHTSA API HTTP Error: ${response.status}`);
         }
         const data: NhtsaResponse<NhtsaMakeItem> = await response.json();
         if (isMounted && data && Array.isArray(data.Results)) {
-          // Extract Make_Name, trim whitespace, deduplicate, and sort alphabetically
-          const uniqueMakes = new Set<string>();
+          const uniqueMakes = new Set<string>(CURATED_GLOBAL_MAKES);
           data.Results.forEach((item) => {
             if (item.Make_Name && item.Make_Name.trim()) {
               uniqueMakes.add(item.Make_Name.trim());
@@ -2021,11 +2068,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           });
           const sortedMakes = Array.from(uniqueMakes).sort((a, b) => a.localeCompare(b));
           setNhtsaMakes(sortedMakes);
+          try {
+            sessionStorage.setItem("autoworld_nhtsa_makes", JSON.stringify(sortedMakes));
+          } catch {}
         }
-      } catch (err: any) {
-        console.error("Failed to load vehicle makes from NHTSA API:", err);
+      } catch {
+        clearTimeout(timeoutId);
+        // Seamless fallback to comprehensive curated makes list
         if (isMounted) {
-          setMakesError("Could not fetch NHTSA makes. Local brand options available.");
+          setNhtsaMakes(CURATED_GLOBAL_MAKES);
         }
       } finally {
         if (isMounted) {
@@ -2043,7 +2094,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
   /**
    * Effect 2: Cascading fetch models when both a Make and Year are selected.
    * Endpoint: https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{make}/modelyear/{year}?format=json
-   * Note: Automatically clears selected model state when Make or Year changes.
    */
   useEffect(() => {
     let isMounted = true;
@@ -2061,28 +2111,58 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
     const fetchNhtsaModels = async () => {
       setIsLoadingModels(true);
+      const localModels = VEHICLE_MODELS[make] || [];
+
+      // Check cache first
+      const cacheKey = `autoworld_models_${make}_${year}`;
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (isMounted) {
+              setNhtsaModels(parsed);
+              setIsLoadingModels(false);
+            }
+            return;
+          }
+        }
+      } catch {}
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       try {
         const url = `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/${encodeURIComponent(make)}/modelyear/${year}?format=json`;
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (!response.ok) {
           throw new Error(`NHTSA API HTTP Error: ${response.status}`);
         }
         const data: NhtsaResponse<NhtsaModelItem> = await response.json();
         if (isMounted && data && Array.isArray(data.Results)) {
-          // Extract Model_Name, trim whitespace, deduplicate, and sort alphabetically
-          const uniqueModels = new Set<string>();
+          const uniqueModels = new Set<string>(localModels);
           data.Results.forEach((item) => {
             if (item.Model_Name && item.Model_Name.trim()) {
               uniqueModels.add(item.Model_Name.trim());
             }
           });
           const sortedModels = Array.from(uniqueModels).sort((a, b) => a.localeCompare(b));
-          setNhtsaModels(sortedModels);
+          const finalModels = sortedModels.length > 0 ? sortedModels : localModels;
+          setNhtsaModels(finalModels);
+          try {
+            if (finalModels.length > 0) {
+              sessionStorage.setItem(cacheKey, JSON.stringify(finalModels));
+            }
+          } catch {}
         }
-      } catch (err: any) {
-        console.error(`Failed to fetch models for ${make} (${year}) from NHTSA:`, err);
+      } catch {
+        clearTimeout(timeoutId);
+        // Seamless fallback to local curated model database for this make
         if (isMounted) {
-          setModelsError(`Failed to fetch models for ${make} (${year}).`);
+          if (localModels.length > 0) {
+            setNhtsaModels(localModels);
+          }
         }
       } finally {
         if (isMounted) {
@@ -3028,230 +3108,269 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       {/* SELLER MODE & DESK CONTROL SWITCHER BAR */}
       <div 
         id="sell-tab-mode-switcher-bar"
-        className="mb-8 bg-stone-900 p-3 sm:p-4 border-2 border-stone-950 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]"
+        className="mb-8 bg-gradient-to-b from-stone-900 via-stone-900 to-stone-950 border border-stone-800/80 rounded-2xl font-sans shadow-xl shadow-stone-950/25 overflow-hidden transition-all duration-300"
       >
-        {/* GROUP 1: LISTING & CREATION (DEDICATED DIV) */}
-        <div id="seller-action-creation-group" className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold px-1 hidden md:inline">
-            Create:
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* 1ST BUTTON: LIST VEHICLE */}
-            <button
-              type="button"
-              id="sell-tab-btn-list-vehicle"
-              onClick={() => setViewMode("wizard")}
-              className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
-                viewMode === "wizard"
-                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
-                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
-              }`}
-            >
-              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                viewMode === "wizard" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
-              }`}>
-                <Car className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex flex-col items-start leading-tight text-left">
-                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
-                  List Vehicle
-                </span>
-                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
-                  viewMode === "wizard" ? "text-stone-900 font-bold" : "text-stone-400"
-                }`}>
-                  Cars &amp; SUVs
-                </span>
-              </div>
-            </button>
+        {/* TOP STATUS BAR: WORKSPACE IDENTITY & AUTH STATUS */}
+        <div className="px-5 py-3 bg-stone-950/90 border-b border-stone-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0 ring-4 ring-amber-400/20" />
+            <span className="text-[10.5px] font-mono uppercase tracking-[0.2em] font-extrabold text-stone-200">
+              Seller Control Hub
+            </span>
+            <span className="text-stone-700 font-mono text-xs">|</span>
+            <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-semibold">
+              {viewMode === "wizard" ? "Listing Vehicle" :
+               viewMode === "list_part" || (viewMode as string) === "parts" ? "Listing Hardware" :
+               viewMode === "list_exchange" ? "Listing Trade" :
+               viewMode === "my_catalog" ? "Vehicle Catalog" :
+               viewMode === "part_desk" ? "Parts Catalog" :
+               viewMode === "exchange_desk" ? "Exchange Desk" :
+               viewMode === "requests" ? "Buyer Inquiries" : "Active Desk"}
+            </span>
+          </div>
 
-            {/* 2ND BUTTON: LIST PART */}
-            <button
-              type="button"
-              id="sell-tab-btn-list-part"
-              onClick={() => setViewMode("list_part")}
-              className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
-                viewMode === "list_part" || (viewMode as string) === "parts"
-                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
-                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
-              }`}
-            >
-              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                viewMode === "list_part" || (viewMode as string) === "parts" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
-              }`}>
-                <Wrench className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex flex-col items-start leading-tight text-left">
-                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
-                  List Part
-                </span>
-                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
-                  viewMode === "list_part" || (viewMode as string) === "parts" ? "text-stone-900 font-bold" : "text-stone-400"
-                }`}>
-                  Hardware &amp; Tuning
+          {/* GROUP 3: AUTH / SELLER PROFILE STATUS */}
+          <div id="seller-action-auth-status" className="flex items-center">
+            {currentUser && !currentUser.isAnonymous ? (
+              <div className="text-[10.5px] font-mono text-stone-300 px-3 py-1.5 bg-stone-900/90 border border-stone-750/70 rounded-full flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 ring-2 ring-emerald-400/20" />
+                <span className="truncate max-w-[220px]">
+                  Seller: <strong className="text-amber-400 font-bold">{currentUser.displayName || currentUser.email}</strong>
                 </span>
               </div>
-            </button>
-
-            {/* 3RD BUTTON: LIST FOR EXCHANGE */}
-            <button
-              type="button"
-              id="sell-tab-btn-list-exchange"
-              onClick={() => {
-                setExchangeInitialVehicle(null);
-                setViewMode("list_exchange");
-              }}
-              className={`group relative px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer border ${
-                viewMode === "list_exchange"
-                  ? "bg-stone-100 text-stone-950 border-white font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-stone-300"
-                  : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-stone-400 hover:text-white"
-              }`}
-            >
-              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                viewMode === "list_exchange" ? "bg-stone-950 text-white" : "bg-stone-900 text-stone-200 group-hover:bg-stone-950"
-              }`}>
-                <Repeat className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex flex-col items-start leading-tight text-left">
-                <span className="font-extrabold text-[11px] tracking-wider flex items-center gap-1">
-                  List for Exchange
-                </span>
-                <span className={`text-[8.5px] font-sans uppercase tracking-widest ${
-                  viewMode === "list_exchange" ? "text-stone-900 font-bold" : "text-stone-400"
-                }`}>
-                  P2P Car Swap &amp; Trade
-                </span>
-              </div>
-            </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onSignInClick}
+                className="text-[10.5px] font-mono text-amber-400 hover:text-amber-300 px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/30 hover:border-amber-400 rounded-full flex items-center gap-1.5 cursor-pointer w-full sm:w-auto justify-center transition-all duration-200"
+              >
+                <LogIn className="w-3 h-3" />
+                <span>Sign In to Manage Inventory</span>
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="h-8 w-px bg-stone-750 hidden xl:block mx-1" />
-
-        {/* GROUP 2: MANAGEMENT CATALOGS & LEADS (DEDICATED DIV) */}
-        <div id="seller-action-management-group" className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold px-1 hidden md:inline">
-            Catalogs &amp; Leads:
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* VEHICLE CATALOG */}
-            <button
-              type="button"
-              id="sell-tab-btn-my-vehicles"
-              onClick={() => setViewMode("my_catalog")}
-              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
-                viewMode === "my_catalog"
-                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
-                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5 text-stone-400" />
-              <span>Vehicle Catalog</span>
-              {userListings.length > 0 && (
-                <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
-                  viewMode === "my_catalog" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
-                }`}>
-                  {userListings.length}
-                </span>
-              )}
-            </button>
-
-            {/* PART CATALOG */}
-            <button
-              type="button"
-              id="sell-tab-btn-part-desk"
-              onClick={() => setViewMode("part_desk")}
-              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
-                viewMode === "part_desk"
-                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
-                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5 text-amber-400" />
-              <span>Part Catalog</span>
-              <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
-                viewMode === "part_desk" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
-              }`}>
-                {currentUser && !currentUser.isAnonymous ? userPartListings.length : totalPartsCount}
+        {/* WORKSPACE NAVIGATION BODY */}
+        <div className="p-4 sm:p-5 space-y-4">
+          {/* TIER 1: CREATION ACTIONS */}
+          <div id="seller-action-creation-group" className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-300 font-extrabold flex items-center gap-1.5">
+                <span className="text-amber-400 font-black">+</span> Create New Listings
               </span>
-            </button>
-
-            {/* EXCHANGE DESK */}
-            <button
-              type="button"
-              id="sell-tab-btn-exchange-desk"
-              onClick={() => setViewMode("exchange_desk")}
-              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
-                viewMode === "exchange_desk"
-                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
-                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-              }`}
-            >
-              <Repeat className="w-3.5 h-3.5 text-stone-300" />
-              <span>Exchange Desk</span>
-              {userExchanges.length > 0 && (
-                <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
-                  viewMode === "exchange_desk" ? "bg-stone-950 text-amber-400" : "bg-stone-700 text-white"
-                }`}>
-                  {userExchanges.length}
-                </span>
-              )}
-            </button>
-
-            {/* BUYER REQUESTS */}
-            <button
-              type="button"
-              id="sell-tab-btn-buyer-requests"
-              onClick={() => setViewMode("requests")}
-              className={`px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border relative ${
-                viewMode === "requests"
-                  ? "bg-stone-100 text-stone-950 border-white font-extrabold shadow-inner"
-                  : "bg-stone-850 hover:bg-stone-800 text-stone-300 border-stone-700 hover:text-white"
-              }`}
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-amber-400" />
-              <span>Buyer Requests</span>
-              {(ownerTDs.length + ownerCBs.length) > 0 && (
-                <span className={`px-1.5 py-0.2 text-[9.5px] font-mono font-black rounded-full ${
-                  totalPendingReqsCount > 0
-                    ? "bg-red-600 text-white animate-pulse"
-                    : viewMode === "requests"
-                    ? "bg-stone-950 text-amber-400"
-                    : "bg-amber-500 text-stone-950"
-                }`}>
-                  {totalPendingReqsCount > 0 ? `${totalPendingReqsCount} NEW` : ownerTDs.length + ownerCBs.length}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* GROUP 3: AUTH / SELLER PROFILE STATUS (DEDICATED DIV) */}
-        <div id="seller-action-auth-status" className="flex items-center">
-          {currentUser && !currentUser.isAnonymous ? (
-            <div className="text-[10.5px] font-mono text-stone-300 px-3 py-1.5 bg-stone-800 border border-stone-700 flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span className="truncate">Seller: <strong className="text-amber-400">{currentUser.displayName || currentUser.email}</strong></span>
+              <span className="text-[9.5px] font-mono text-stone-400 uppercase tracking-wider">Step-by-step Wizards</span>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onSignInClick}
-              className="text-[10.5px] font-mono text-amber-400 hover:text-amber-300 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer w-full sm:w-auto justify-center"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In to Control Listings</span>
-            </button>
-          )}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+              {/* 1ST BUTTON: LIST VEHICLE */}
+              <button
+                type="button"
+                id="sell-tab-btn-list-vehicle"
+                onClick={() => setViewMode("wizard")}
+                className={`group relative p-3 sm:p-3.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-3 transition-all duration-200 cursor-pointer rounded-xl border text-left active:scale-[0.99] ${
+                  viewMode === "wizard"
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 border-amber-400 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-300/50"
+                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-200 border-stone-750/70 hover:border-amber-500/40 hover:text-white"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                  viewMode === "wizard" ? "bg-stone-950 text-amber-400 shadow-xs" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
+                }`}>
+                  <Car className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-extrabold text-[11.5px] tracking-wider truncate">
+                    List Vehicle
+                  </span>
+                  <span className={`text-[9px] font-sans uppercase tracking-wider truncate ${
+                    viewMode === "wizard" ? "text-stone-950/90 font-bold" : "text-stone-400"
+                  }`}>
+                    Cars &amp; SUVs
+                  </span>
+                </div>
+              </button>
+
+              {/* 2ND BUTTON: LIST PART */}
+              <button
+                type="button"
+                id="sell-tab-btn-list-part"
+                onClick={() => setViewMode("list_part")}
+                className={`group relative p-3 sm:p-3.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-3 transition-all duration-200 cursor-pointer rounded-xl border text-left active:scale-[0.99] ${
+                  viewMode === "list_part" || (viewMode as string) === "parts"
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 border-amber-400 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-300/50"
+                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-200 border-stone-750/70 hover:border-amber-500/40 hover:text-white"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                  viewMode === "list_part" || (viewMode as string) === "parts" ? "bg-stone-950 text-amber-400 shadow-xs" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
+                }`}>
+                  <Wrench className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-extrabold text-[11.5px] tracking-wider truncate">
+                    List Part
+                  </span>
+                  <span className={`text-[9px] font-sans uppercase tracking-wider truncate ${
+                    viewMode === "list_part" || (viewMode as string) === "parts" ? "text-stone-950/90 font-bold" : "text-stone-400"
+                  }`}>
+                    Hardware &amp; Tuning
+                  </span>
+                </div>
+              </button>
+
+              {/* 3RD BUTTON: LIST FOR EXCHANGE */}
+              <button
+                type="button"
+                id="sell-tab-btn-list-exchange"
+                onClick={() => {
+                  setExchangeInitialVehicle(null);
+                  setViewMode("list_exchange");
+                }}
+                className={`group relative p-3 sm:p-3.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-3 transition-all duration-200 cursor-pointer rounded-xl border text-left active:scale-[0.99] ${
+                  viewMode === "list_exchange"
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 border-amber-400 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-300/50"
+                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-200 border-stone-750/70 hover:border-amber-500/40 hover:text-white"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                  viewMode === "list_exchange" ? "bg-stone-950 text-amber-400 shadow-xs" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
+                }`}>
+                  <Repeat className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-extrabold text-[11.5px] tracking-wider truncate">
+                    List for Exchange
+                  </span>
+                  <span className={`text-[9px] font-sans uppercase tracking-wider truncate ${
+                    viewMode === "list_exchange" ? "text-stone-950/90 font-bold" : "text-stone-400"
+                  }`}>
+                    P2P Swap &amp; Trade
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* TIER 2: MANAGEMENT CATALOGS & LEADS */}
+          <div id="seller-action-management-group" className="pt-3.5 border-t border-stone-800/80 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-300 font-extrabold flex items-center gap-1.5">
+                <Tag className="w-3 h-3 text-amber-400" /> Manage Catalogs &amp; Active Leads
+              </span>
+              <span className="text-[9.5px] font-mono text-stone-400 uppercase tracking-wider">Desks &amp; Status</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+              {/* VEHICLE CATALOG */}
+              <button
+                type="button"
+                id="sell-tab-btn-my-vehicles"
+                onClick={() => setViewMode("my_catalog")}
+                className={`p-2.5 sm:p-3 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-between gap-1.5 transition-all duration-200 cursor-pointer rounded-xl border active:scale-[0.99] ${
+                  viewMode === "my_catalog"
+                    ? "bg-[#FAF8F5] text-stone-950 border-white font-extrabold shadow-sm"
+                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-200 border-stone-750/70 hover:border-stone-650 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Tag className={`w-3.5 h-3.5 shrink-0 ${viewMode === "my_catalog" ? "text-stone-900" : "text-stone-400"}`} />
+                  <span className="truncate text-[11px]">Cars</span>
+                </div>
+                {userListings.length > 0 && (
+                  <span className={`px-2 py-0.5 text-[9px] font-mono font-black rounded-full shrink-0 shadow-xs ${
+                    viewMode === "my_catalog" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
+                  }`}>
+                    {userListings.length}
+                  </span>
+                )}
+              </button>
+
+              {/* PART CATALOG */}
+              <button
+                type="button"
+                id="sell-tab-btn-part-desk"
+                onClick={() => setViewMode("part_desk")}
+                className={`p-2.5 sm:p-3 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-between gap-1.5 transition-all duration-200 cursor-pointer rounded-xl border active:scale-[0.99] ${
+                  viewMode === "part_desk"
+                    ? "bg-[#FAF8F5] text-stone-950 border-white font-extrabold shadow-sm"
+                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-200 border-stone-750/70 hover:border-stone-650 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Layers className={`w-3.5 h-3.5 shrink-0 ${viewMode === "part_desk" ? "text-stone-900" : "text-amber-400"}`} />
+                  <span className="truncate text-[11px]">Parts</span>
+                </div>
+                <span className={`px-2 py-0.5 text-[9px] font-mono font-black rounded-full shrink-0 shadow-xs ${
+                  viewMode === "part_desk" ? "bg-stone-950 text-amber-400" : "bg-amber-500 text-stone-950"
+                }`}>
+                  {currentUser && !currentUser.isAnonymous ? userPartListings.length : totalPartsCount}
+                </span>
+              </button>
+
+              {/* EXCHANGE DESK */}
+              <button
+                type="button"
+                id="sell-tab-btn-exchange-desk"
+                onClick={() => setViewMode("exchange_desk")}
+                className={`p-2.5 sm:p-3 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-between gap-1.5 transition-all duration-200 cursor-pointer rounded-xl border active:scale-[0.99] ${
+                  viewMode === "exchange_desk"
+                    ? "bg-[#FAF8F5] text-stone-950 border-white font-extrabold shadow-sm"
+                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-200 border-stone-750/70 hover:border-stone-650 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Repeat className={`w-3.5 h-3.5 shrink-0 ${viewMode === "exchange_desk" ? "text-stone-900" : "text-stone-300"}`} />
+                  <span className="truncate text-[11px]">Trades</span>
+                </div>
+                {userExchanges.length > 0 && (
+                  <span className={`px-2 py-0.5 text-[9px] font-mono font-black rounded-full shrink-0 shadow-xs ${
+                    viewMode === "exchange_desk" ? "bg-stone-950 text-amber-400" : "bg-stone-700 text-white"
+                  }`}>
+                    {userExchanges.length}
+                  </span>
+                )}
+              </button>
+
+              {/* BUYER REQUESTS */}
+              <button
+                type="button"
+                id="sell-tab-btn-buyer-requests"
+                onClick={() => setViewMode("requests")}
+                className={`p-2.5 sm:p-3 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-between gap-1.5 transition-all duration-200 cursor-pointer rounded-xl border active:scale-[0.99] ${
+                  viewMode === "requests"
+                    ? "bg-[#FAF8F5] text-stone-950 border-white font-extrabold shadow-sm"
+                    : "bg-stone-850/80 hover:bg-stone-800 text-stone-200 border-stone-750/70 hover:border-stone-650 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <PhoneCall className={`w-3.5 h-3.5 shrink-0 ${viewMode === "requests" ? "text-stone-900" : "text-amber-400"}`} />
+                  <span className="truncate text-[11px]">Leads</span>
+                </div>
+                {(ownerTDs.length + ownerCBs.length) > 0 && (
+                  <span className={`px-2 py-0.5 text-[9px] font-mono font-black rounded-full shrink-0 shadow-xs ${
+                    totalPendingReqsCount > 0
+                      ? "bg-red-600 text-white animate-pulse"
+                      : viewMode === "requests"
+                      ? "bg-stone-950 text-amber-400"
+                      : "bg-amber-500 text-stone-950"
+                  }`}>
+                    {totalPendingReqsCount > 0 ? `${totalPendingReqsCount} NEW` : ownerTDs.length + ownerCBs.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 1. LIST MOTORSPORT & PERFORMANCE PART (DEDICATED DIV) */}
       {(viewMode === "list_part" || (viewMode as string) === "parts") && (
         <div id="sell-view-list-part" className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+          <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/90 pb-5">
               <div>
-                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-600/30 mb-2">
                   <Wrench className="w-3.5 h-3.5 text-amber-700" />
                   <span>Motorsport Tuning &amp; Hardware Listing Desk</span>
                 </div>
@@ -3266,7 +3385,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <button
                 type="button"
                 onClick={() => setViewMode("part_desk")}
-                className="px-4 py-2.5 bg-stone-900 hover:bg-stone-850 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-stone-950 shadow-sm cursor-pointer shrink-0 transition"
+                className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer shrink-0 transition-all active:scale-[0.98]"
               >
                 <Layers className="w-4 h-4 text-amber-400" />
                 <span>Go to Part Catalog →</span>
@@ -3289,10 +3408,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       {/* LIST VEHICLE FOR EXCHANGE (P2P SWAP WIZARD) */}
       {viewMode === "list_exchange" && (
         <div id="sell-view-list-exchange" className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+          <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/90 pb-5">
               <div>
-                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-stone-900 bg-stone-200 px-2.5 py-1 border border-stone-400 mb-2">
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-stone-900 bg-stone-200/70 px-3 py-1 rounded-full border border-stone-300 mb-2">
                   <Repeat className="w-3.5 h-3.5 text-stone-900" />
                   <span>Peer-to-Peer Vehicle Swap &amp; Trade-In Desk</span>
                 </div>
@@ -3310,7 +3429,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={() => setViewMode("exchange_desk")}
-                  className="px-4 py-2.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-stone-950 shadow-sm cursor-pointer shrink-0 transition"
+                  className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer shrink-0 transition-all active:scale-[0.98]"
                 >
                   <Repeat className="w-4 h-4 text-stone-300" />
                   <span>Exchange Desk ({userExchanges.length}) →</span>
@@ -3340,10 +3459,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       {/* EXCHANGE DESK (MY EXCHANGE LISTINGS & TRADE MANAGEMENT) */}
       {viewMode === "exchange_desk" && (
         <div id="sell-view-exchange-desk" className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+          <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/90 pb-5">
               <div>
-                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-stone-900 bg-stone-200 px-2.5 py-1 border border-stone-400 mb-2">
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-stone-900 bg-stone-200/70 px-3 py-1 rounded-full border border-stone-300 mb-2">
                   <Repeat className="w-3.5 h-3.5 text-stone-900" />
                   <span>Peer-to-Peer Exchange Management</span>
                 </div>
@@ -3355,14 +3474,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => {
                     setExchangeInitialVehicle(null);
                     setViewMode("list_exchange");
                   }}
-                  className="px-4 py-2.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-stone-950 shadow-sm cursor-pointer shrink-0 transition"
+                  className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer shrink-0 transition-all active:scale-[0.98]"
                 >
                   <Plus className="w-4 h-4 text-amber-400" />
                   <span>+ List Another for Exchange</span>
@@ -3370,7 +3489,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={() => setActiveTab("exchange")}
-                  className="px-4 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 border border-stone-400 cursor-pointer shrink-0 transition"
+                  className="px-4 py-2.5 bg-stone-200/80 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 rounded-xl border border-stone-300 cursor-pointer shrink-0 transition-all active:scale-[0.98]"
                 >
                   <ArrowLeftRight className="w-4 h-4 text-stone-700" />
                   <span>Open Full Match Floor →</span>
@@ -3380,7 +3499,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-center justify-between">
+              <div className="p-4 bg-[#F4F1EA] border border-stone-300/80 rounded-xl shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
                     My Active Swaps
@@ -3389,12 +3508,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     {userExchanges.filter(e => e.status === "active").length}
                   </span>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-stone-900 text-amber-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-stone-900 text-amber-400 flex items-center justify-center shadow-xs">
                   <Repeat className="w-4 h-4" />
                 </div>
               </div>
 
-              <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-center justify-between">
+              <div className="p-4 bg-[#F4F1EA] border border-stone-300/80 rounded-xl shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
                     Total Exchange Posts
@@ -3403,12 +3522,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     {userExchanges.length}
                   </span>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-stone-200 text-stone-800 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-stone-200 text-stone-800 flex items-center justify-center shadow-xs">
                   <Tag className="w-4 h-4" />
                 </div>
               </div>
 
-              <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-center justify-between">
+              <div className="p-4 bg-[#F4F1EA] border border-stone-300/80 rounded-xl shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
                     Market Match Guarantee
@@ -3427,14 +3546,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             {/* List of User Exchanges */}
             <div className="pt-4 space-y-4">
               {isLoadingUserExchanges ? (
-                <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
+                <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300/80 rounded-2xl space-y-3 shadow-xs">
                   <RefreshCw className="w-8 h-8 text-stone-600 animate-spin mx-auto" />
                   <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
                     Loading your exchange listings...
                   </p>
                 </div>
               ) : userExchanges.length === 0 ? (
-                <div className="p-12 text-center bg-[#FAF8F5] border-2 border-stone-300 space-y-4">
+                <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300/80 rounded-2xl space-y-4 shadow-sm">
                   <div className="w-14 h-14 bg-stone-200 rounded-full flex items-center justify-center text-stone-600 mx-auto">
                     <Repeat className="w-7 h-7 text-stone-700" />
                   </div>
@@ -3453,7 +3572,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         setExchangeInitialVehicle(null);
                         setViewMode("list_exchange");
                       }}
-                      className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-stone-950 transition active:scale-95"
+                      className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                     >
                       <Plus className="w-4 h-4 text-amber-400" />
                       <span>List Car for Exchange</span>
@@ -3462,7 +3581,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <button
                         type="button"
                         onClick={() => setViewMode("my_catalog")}
-                        className="px-5 py-3 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer border border-stone-400 transition"
+                        className="px-5 py-3 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 cursor-pointer border border-stone-300 rounded-xl shadow-xs transition-all active:scale-[0.98]"
                       >
                         <Tag className="w-4 h-4 text-stone-700" />
                         <span>Select From My Vehicles ({userListings.length})</span>
@@ -3480,7 +3599,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     return (
                       <div
                         key={ex.id}
-                        className="bg-[#FAF8F5] border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] flex flex-col justify-between overflow-hidden"
+                        className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl shadow-lg shadow-stone-900/5 hover:shadow-xl hover:border-amber-500/40 transition-all flex flex-col justify-between overflow-hidden"
                       >
                         <div>
                           {/* Image & Header */}
@@ -3493,7 +3612,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-stone-950/30" />
 
                             <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
-                              <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs ${
+                              <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest rounded-full border border-stone-950 shadow-xs ${
                                 status === "active" ? "bg-emerald-500 text-stone-950" :
                                 status === "matched" ? "bg-amber-500 text-stone-950" :
                                 status === "completed" ? "bg-stone-800 text-stone-200" :
@@ -3501,7 +3620,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               }`}>
                                 {status.toUpperCase()}
                               </span>
-                              <span className="px-2 py-1 bg-stone-950/80 text-white text-[9px] font-mono font-bold uppercase tracking-wider border border-white/20 backdrop-blur-xs flex items-center gap-1">
+                              <span className="px-2.5 py-1 bg-stone-950/80 text-white text-[9px] font-mono font-bold uppercase tracking-wider border border-white/20 rounded-full backdrop-blur-xs flex items-center gap-1">
                                 <Repeat className="w-3 h-3 text-amber-400" /> P2P SWAP
                               </span>
                             </div>
@@ -3524,8 +3643,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           {/* Swap Details */}
                           <div className="p-5 space-y-4">
                             {/* Desired Trade Box */}
-                            <div className="p-3.5 bg-[#F4F1EA] border border-stone-300 space-y-2">
-                              <div className="flex items-center justify-between text-[10px] font-mono uppercase font-bold text-stone-600 border-b border-stone-300 pb-1">
+                            <div className="p-4 bg-[#F4F1EA] border border-stone-300/80 rounded-xl space-y-2 shadow-xs">
+                              <div className="flex items-center justify-between text-[10px] font-mono uppercase font-bold text-stone-600 border-b border-stone-300 pb-1.5">
                                 <span className="flex items-center gap-1 text-stone-900">
                                   <ArrowLeftRight className="w-3.5 h-3.5 text-stone-700" /> Desired Target Vehicle:
                                 </span>
@@ -3538,12 +3657,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                               <div className="flex flex-wrap gap-2 text-[10.5px] font-mono text-stone-700 font-bold">
                                 {ex.desiredFuelType && ex.desiredFuelType !== "Any" && (
-                                  <span className="px-2 py-0.5 bg-stone-200 border border-stone-300">
+                                  <span className="px-2.5 py-0.5 bg-stone-200/90 border border-stone-300 rounded-md">
                                     Fuel: {ex.desiredFuelType}
                                   </span>
                                 )}
                                 {ex.desiredTransmission && ex.desiredTransmission !== "Any" && (
-                                  <span className="px-2 py-0.5 bg-stone-200 border border-stone-300">
+                                  <span className="px-2.5 py-0.5 bg-stone-200/90 border border-stone-300 rounded-md">
                                     Gearbox: {ex.desiredTransmission}
                                   </span>
                                 )}
@@ -3551,7 +3670,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
 
                             {/* Cash Delta Terms */}
-                            <div className="p-3 bg-stone-900 text-white font-mono text-xs space-y-1">
+                            <div className="p-3.5 bg-stone-900 text-white font-mono text-xs space-y-1 rounded-xl shadow-xs">
                               <div className="text-[10px] uppercase tracking-widest text-stone-400 font-bold">
                                 Cash Delta Terms:
                               </div>
@@ -3579,13 +3698,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             <span className="text-[10px] font-mono font-bold uppercase text-stone-500">
                               Swap Status:
                             </span>
-                            <div className="flex gap-1">
+                            <div className="flex gap-1.5">
                               {(["active", "matched", "completed"] as const).map((st) => (
                                 <button
                                   key={st}
                                   type="button"
                                   onClick={() => handleQuickExchangeStatusChange(ex.id, st)}
-                                  className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
+                                  className={`px-2.5 py-1 text-[9.5px] font-mono font-bold uppercase tracking-wider rounded-lg border cursor-pointer transition ${
                                     status === st
                                       ? "bg-stone-900 text-white border-stone-950 font-extrabold"
                                       : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
@@ -3597,11 +3716,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 gap-2.5">
                             <button
                               type="button"
                               onClick={() => setActiveTab("exchange")}
-                              className="py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 border border-amber-600 cursor-pointer shadow-xs transition"
+                              className="py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 rounded-xl border border-amber-600/40 cursor-pointer shadow-xs hover:shadow-md transition-all active:scale-[0.98]"
                             >
                               <Search className="w-3.5 h-3.5 text-stone-950" />
                               <span>Find Matches</span>
@@ -3610,7 +3729,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             <button
                               type="button"
                               onClick={() => handleDeleteExchange(ex.id)}
-                              className="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                              className="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 rounded-xl font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-red-600" />
                               <span>Close Listing</span>
@@ -3631,10 +3750,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       {viewMode === "my_catalog" && (
         <div id="sell-view-vehicle-catalog" className="space-y-6 animate-in fade-in duration-200">
           {/* Header Banner */}
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+          <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/90 pb-5">
               <div>
-                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-600/30 mb-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
                   <span>Seller Control Center</span>
                 </div>
@@ -3649,7 +3768,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <button
                 type="button"
                 onClick={() => setViewMode("wizard")}
-                className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer shrink-0 transition-transform active:scale-95"
+                className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer shrink-0 transition-all active:scale-[0.98]"
               >
                 <Plus className="w-4 h-4 text-amber-400" />
                 <span>List New Vehicle</span>
@@ -3658,8 +3777,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
             {/* Unauthenticated State Warning */}
             {(!currentUser || currentUser.isAnonymous) ? (
-              <div className="p-8 bg-[#F4F1EA] border-2 border-stone-400 text-center space-y-4 my-4">
-                <div className="w-14 h-14 bg-amber-500/15 border-2 border-amber-600/40 rounded-full flex items-center justify-center text-amber-700 mx-auto">
+              <div className="p-8 bg-[#F4F1EA] border border-stone-300/80 rounded-2xl text-center space-y-4 my-4 shadow-sm">
+                <div className="w-14 h-14 bg-amber-500/15 border border-amber-600/40 rounded-full flex items-center justify-center text-amber-700 mx-auto">
                   <Lock className="w-7 h-7" />
                 </div>
                 <div className="space-y-1">
@@ -3673,7 +3792,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={onSignInClick}
-                  className="px-6 py-3.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase tracking-widest inline-flex items-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition"
+                  className="px-6 py-3.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider inline-flex items-center gap-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all active:scale-[0.98]"
                 >
                   <LogIn className="w-4 h-4 text-amber-400" />
                   <span>Log In / Sign Up Now</span>
@@ -3682,34 +3801,34 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             ) : (
               <>
                 {/* Stats Metric Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 pt-2">
-                  <div className="p-3 bg-[#F4F1EA] border border-stone-300">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2">
+                  <div className="p-4 bg-[#F4F1EA] border border-stone-300/80 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-500 block">Total Inventory</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-stone-900">{userListings.length} Vehicles</span>
                   </div>
 
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-600/30">
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-600/30 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-800 block">Active Listings</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-emerald-900">
                       {userListings.filter(l => l.status === "active" || !l.status).length}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-amber-500/10 border border-amber-600/30">
+                  <div className="p-4 bg-amber-500/10 border border-amber-600/30 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-800 block">Pending / On Hold</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-amber-950">
                       {userListings.filter(l => l.status === "pending").length}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-red-500/10 border border-red-600/30">
+                  <div className="p-4 bg-red-500/10 border border-red-600/30 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-red-800 block">Hidden by Admin</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-red-950">
                       {userListings.filter(l => l.status === "hidden").length}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-stone-200/80 border border-stone-300">
+                  <div className="p-4 bg-stone-200/80 border border-stone-300/80 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-600 block">Sold Vehicles</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-stone-800">
                       {userListings.filter(l => l.status === "sold").length}
@@ -3719,13 +3838,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                 {/* Search & Filter Toolbar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                  <div className="flex items-center gap-1 bg-[#F4F1EA] p-1 border border-stone-300 overflow-x-auto">
+                  <div className="flex items-center gap-1 bg-[#F4F1EA] p-1.5 border border-stone-300/80 rounded-xl overflow-x-auto shadow-xs">
                     {(["all", "active", "pending", "hidden", "sold"] as const).map((st) => (
                       <button
                         key={st}
                         type="button"
                         onClick={() => setCatalogFilterStatus(st)}
-                        className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider transition cursor-pointer whitespace-nowrap ${
+                        className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider rounded-lg transition cursor-pointer whitespace-nowrap ${
                           catalogFilterStatus === st
                             ? "bg-stone-900 text-white shadow-xs"
                             : "text-stone-600 hover:text-stone-900 hover:bg-stone-200/60"
@@ -3743,13 +3862,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       placeholder="Filter my catalog..."
                       value={catalogSearch}
                       onChange={(e) => setCatalogSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900 placeholder:text-stone-400"
+                      className="w-full pl-9 pr-8 py-2 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-900 placeholder:text-stone-400 transition-all"
                     />
                     {catalogSearch && (
                       <button
                         type="button"
                         onClick={() => setCatalogSearch("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 text-xs"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 text-xs cursor-pointer"
                       >
                         ✕
                       </button>
@@ -3783,9 +3902,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 if (nearExpiryCount === 0 && hiddenCount === 0) return null;
 
                 return (
-                  <div className="space-y-3 mb-2">
+                  <div className="space-y-3 mb-4">
                     {nearExpiryCount > 0 && (
-                      <div className="bg-amber-50 border-2 border-amber-500 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                      <div className="bg-amber-50/90 border border-amber-400 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
                         <div className="flex items-start gap-3">
                           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
                           <div>
@@ -3800,7 +3919,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         <button
                           type="button"
                           onClick={() => setActiveTab("premium")}
-                          className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-[10px] font-mono font-extrabold uppercase tracking-widest border border-amber-600 shrink-0 cursor-pointer transition"
+                          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-mono font-extrabold uppercase tracking-wider rounded-xl shrink-0 cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                         >
                           Upgrade To Premium
                         </button>
@@ -3808,7 +3927,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     )}
 
                     {hiddenCount > 0 && (
-                      <div className="bg-red-50 border-2 border-red-600 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                      <div className="bg-red-50/90 border border-red-400 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
                         <div className="flex items-start gap-3">
                           <Lock className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                           <div>
@@ -3823,7 +3942,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         <button
                           type="button"
                           onClick={() => setActiveTab("premium")}
-                          className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-[10px] font-mono font-extrabold uppercase tracking-widest border border-red-700 shrink-0 cursor-pointer transition"
+                          className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-extrabold uppercase tracking-wider rounded-xl shrink-0 cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                         >
                           Restore Visibility
                         </button>
@@ -3904,8 +4023,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           initial={{ opacity: 0, y: 15 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
-                          className={`bg-[#FAF8F5] border-2 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] flex flex-col justify-between overflow-hidden relative group ${
-                            is30DaysExpired ? "border-red-600 bg-red-50/20" : "border-stone-900"
+                          className={`bg-[#FAF8F5] border rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden relative group ${
+                            is30DaysExpired ? "border-red-400 bg-red-50/20" : "border-stone-200/90"
                           }`}
                         >
                           {/* Image Thumbnail */}
@@ -3920,15 +4039,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             {/* Status Tag */}
                             <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
                               {is30DaysExpired ? (
-                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white">
+                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-wider rounded-full shadow-xs bg-red-600 text-white">
                                   EXPIRED (30 DAYS HIDDEN)
                                 </span>
                               ) : status === "hidden" ? (
-                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white animate-pulse">
+                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-wider rounded-full shadow-xs bg-red-600 text-white animate-pulse">
                                   HIDDEN BY ADMIN
                                 </span>
                               ) : (
-                                <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs ${
+                                <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-wider rounded-full shadow-xs ${
                                   status === "active" ? "bg-emerald-500 text-stone-950" :
                                   status === "sold" ? "bg-stone-800 text-stone-200" :
                                   "bg-amber-500 text-stone-950"
@@ -3938,13 +4057,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               )}
 
                               {listing.featured && (
-                                <span className="px-2 py-0.5 bg-amber-400 text-stone-950 text-[9px] font-mono font-extrabold uppercase tracking-wider flex items-center gap-1 border border-stone-950">
+                                <span className="px-2.5 py-1 bg-amber-400 text-stone-950 text-[9px] font-mono font-extrabold uppercase tracking-wider flex items-center gap-1 rounded-full shadow-xs">
                                   <Star className="w-3 h-3 fill-stone-950" /> Featured
                                 </span>
                               )}
 
                               {!isPremiumOrFeatured && !is30DaysExpired && daysRemaining !== null && (
-                                <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border border-stone-950 ${
+                                <span className={`px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider rounded-full shadow-xs ${
                                   exp.isNearExpiry ? "bg-amber-500 text-stone-950 animate-pulse font-black" : "bg-stone-900 text-amber-400"
                                 }`}>
                                   {daysRemaining}d Left (Free Tier)
@@ -3953,20 +4072,20 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
 
                             {/* Photos Counter */}
-                            <div className="absolute bottom-3 right-3 bg-stone-950/85 text-white text-[10px] font-mono px-2 py-1 flex items-center gap-1.5 backdrop-blur-xs border border-white/20">
+                            <div className="absolute bottom-3 right-3 bg-stone-950/85 text-white text-[10px] font-mono px-2.5 py-1 flex items-center gap-1.5 backdrop-blur-xs rounded-full border border-white/20 shadow-xs">
                               <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
                               <span>{listing.photos?.length || 0} Photos</span>
                             </div>
                           </div>
 
                           {/* Vehicle Specifications */}
-                          <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                          <div className="p-5 space-y-3.5 flex-1 flex flex-col justify-between">
                             <div className="space-y-1.5">
                               <div className="flex justify-between items-start gap-2">
                                 <h3 className="font-serif font-black text-lg text-stone-950 uppercase leading-snug">
                                   {listing.title}
                                 </h3>
-                                <span className="font-serif font-black text-base text-amber-900 whitespace-nowrap bg-amber-500/15 px-2 py-0.5 border border-amber-600/30">
+                                <span className="font-serif font-black text-base text-amber-900 whitespace-nowrap bg-amber-500/15 px-2.5 py-0.5 rounded-lg border border-amber-600/30">
                                   ₹{listing.price?.toLocaleString("en-IN")}
                                 </span>
                               </div>
@@ -3989,7 +4108,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                               {/* Admin Hidden Warning Banner */}
                               {status === "hidden" && (
-                                <div className="p-3 bg-red-100/90 border-2 border-red-600 text-red-950 font-mono text-xs font-bold rounded-xs flex items-start gap-2.5 mt-2 shadow-xs">
+                                <div className="p-3 bg-red-100/90 border border-red-500 text-red-950 font-mono text-xs font-bold rounded-xl flex items-start gap-2.5 mt-2 shadow-xs">
                                   <ShieldAlert className="w-4.5 h-4.5 text-red-600 shrink-0 mt-0.5 animate-pulse" />
                                   <div>
                                     <span className="uppercase font-black text-red-700 block text-[11px] tracking-wider">⚠️ LISTING HIDDEN BY ADMIN</span>
@@ -4024,27 +4143,27 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
 
                             {/* Status Quick Switch Selector */}
-                            <div className="pt-3 border-t border-stone-200 flex items-center justify-between text-xs">
+                            <div className="pt-3 border-t border-stone-200/80 flex items-center justify-between text-xs">
                               <span className="text-[10px] font-mono font-bold uppercase text-stone-500">
                                 Listing Status:
                               </span>
                               {status === "hidden" && !isAdmin ? (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 border border-red-400 text-red-950 rounded-xs">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 border border-red-400 text-red-950 rounded-lg">
                                   <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
                                   <span className="text-[9.5px] font-mono font-black uppercase tracking-wider">
                                     LOCKED BY ADMIN (CANNOT UNHIDE)
                                   </span>
                                 </div>
                               ) : (
-                                <div className="flex gap-1">
+                                <div className="flex gap-1.5">
                                   {(["active", "pending", "sold"] as const).map((st) => (
                                     <button
                                       key={st}
                                       type="button"
                                       onClick={() => handleQuickStatusChange(listing.id, st)}
-                                      className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
+                                      className={`px-2.5 py-1 text-[9.5px] font-mono font-bold uppercase tracking-wider rounded-lg border cursor-pointer transition-all active:scale-95 ${
                                         status === st
-                                          ? "bg-stone-900 text-white border-stone-950 font-extrabold"
+                                          ? "bg-stone-900 text-white border-stone-900 font-extrabold shadow-xs"
                                           : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
                                       }`}
                                     >
@@ -4063,13 +4182,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                   setSelectedVehicleIdFilter(String(listing.id));
                                   setViewMode("requests");
                                 }}
-                                className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-amber-600 cursor-pointer shadow-xs transition"
+                                className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between rounded-xl border border-amber-600 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
                               >
                                 <span className="flex items-center gap-1.5 truncate">
                                   <PhoneCall className="w-3.5 h-3.5 text-stone-900 shrink-0" />
                                   <span className="truncate">Enquiries</span>
                                 </span>
-                                <span className="px-1.5 py-0.5 bg-stone-950 text-amber-400 text-[9.5px] rounded-full font-black shrink-0">
+                                <span className="px-2 py-0.5 bg-stone-950 text-amber-400 text-[9.5px] rounded-full font-black shrink-0">
                                   {testDriveRequests.filter(t => String(t.listingId) === String(listing.id) || String(t.vehicleId) === String(listing.id)).length +
                                    callbackRequests.filter(c => String(c.listingId) === String(listing.id) || String(c.vehicleId) === String(listing.id)).length}
                                 </span>
@@ -4082,7 +4201,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                   setViewMode("list_exchange");
                                   showToast(`Loaded ${listing.title} into Car Exchange Desk!`, "info");
                                 }}
-                                className="w-full py-2 px-3 bg-stone-900 hover:bg-stone-850 text-stone-100 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-stone-950 cursor-pointer shadow-xs transition"
+                                className="w-full py-2.5 px-3 bg-stone-900 hover:bg-stone-800 text-stone-100 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between rounded-xl border border-stone-900 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
                               >
                                 <span className="flex items-center gap-1.5 truncate">
                                   <Repeat className="w-3.5 h-3.5 text-stone-300 shrink-0" />
@@ -4095,11 +4214,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
 
                             {/* Action Control Buttons */}
-                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200">
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200/80">
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditModal(listing)}
-                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 rounded-xl text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                               >
                                 <Edit className="w-3.5 h-3.5 text-stone-700" />
                                 <span>Edit</span>
@@ -4108,7 +4227,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               <button
                                 type="button"
                                 onClick={() => handleOpenPhotoManager(listing)}
-                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 rounded-xl text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                               >
                                 <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
                                 <span>Photos</span>
@@ -4117,7 +4236,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               <button
                                 type="button"
                                 onClick={() => setDeletingListing(listing)}
-                                className="py-2 px-2 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                className="py-2 px-2 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 rounded-xl text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-red-600" />
                                 <span>Remove</span>
@@ -4139,10 +4258,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       {viewMode === "part_desk" && (
         <div id="sell-view-part-desk" className="space-y-6 animate-in fade-in duration-200">
           {/* Header Banner */}
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+          <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/90 pb-5">
               <div>
-                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-600/30 mb-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
                   <span>Seller Control Center</span>
                 </div>
@@ -4157,7 +4276,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <button
                 type="button"
                 onClick={() => setViewMode("list_part")}
-                className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer shrink-0 transition-transform active:scale-95"
+                className="px-5 py-3 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer shrink-0 transition-all active:scale-[0.98]"
               >
                 <Plus className="w-4 h-4 text-amber-400" />
                 <span>List New Part</span>
@@ -4190,34 +4309,34 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             ) : (
               <>
                 {/* Stats Metric Cards (5 Columns matching Image 1) */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 pt-2">
-                  <div className="p-3 bg-[#F4F1EA] border border-stone-300">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2">
+                  <div className="p-4 bg-[#F4F1EA] border border-stone-300/80 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-500 block">Total Inventory</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-stone-900">{userPartListings.length} Parts</span>
                   </div>
 
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-600/30">
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-600/30 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-800 block">Active Listings</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-emerald-900">
                       {userPartListings.filter(l => l.status === "active" || !l.status).length}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-amber-500/10 border border-amber-600/30">
+                  <div className="p-4 bg-amber-500/10 border border-amber-600/30 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-800 block">Pending / On Hold</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-amber-950">
                       {userPartListings.filter(l => l.status === "pending").length}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-red-500/10 border border-red-600/30">
+                  <div className="p-4 bg-red-500/10 border border-red-600/30 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-red-800 block">Hidden by Admin</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-red-950">
                       {userPartListings.filter(l => l.status === "hidden").length}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-stone-200/80 border border-stone-300">
+                  <div className="p-4 bg-stone-200/80 border border-stone-300/80 rounded-xl shadow-xs">
                     <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-stone-600 block">Sold / Out of Stock</span>
                     <span className="text-lg sm:text-xl font-serif font-black text-stone-800">
                       {userPartListings.filter(l => l.status === "sold").length}
@@ -4227,13 +4346,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                 {/* Search & Filter Toolbar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                  <div className="flex items-center gap-1 bg-[#F4F1EA] p-1 border border-stone-300 overflow-x-auto">
+                  <div className="flex items-center gap-1 bg-[#F4F1EA] p-1.5 border border-stone-300/80 rounded-xl overflow-x-auto shadow-xs">
                     {(["all", "active", "pending", "hidden", "sold"] as const).map((st) => (
                       <button
                         key={st}
                         type="button"
                         onClick={() => setPartCatalogFilterStatus(st)}
-                        className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider transition cursor-pointer whitespace-nowrap ${
+                        className={`px-3 py-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider rounded-lg transition cursor-pointer whitespace-nowrap ${
                           partCatalogFilterStatus === st
                             ? "bg-stone-900 text-white shadow-xs"
                             : "text-stone-600 hover:text-stone-900 hover:bg-stone-200/60"
@@ -4251,13 +4370,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       placeholder="Filter my catalog..."
                       value={partCatalogSearch}
                       onChange={(e) => setPartCatalogSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900 placeholder:text-stone-400"
+                      className="w-full pl-9 pr-8 py-2 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-900 placeholder:text-stone-400 transition-all"
                     />
                     {partCatalogSearch && (
                       <button
                         type="button"
                         onClick={() => setPartCatalogSearch("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 text-xs"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 text-xs cursor-pointer"
                       >
                         ✕
                       </button>
@@ -4399,7 +4518,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     {filteredParts.map((part) => {
                       const mainPhoto = part.photos && part.photos.length > 0
                         ? part.photos[0].src
-                        : part.image || "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800";
+                        : part.image || "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800";
                       const status = part.status || "active";
 
                       const isPremiumOrFeatured = Boolean(part.featured || part.urgent || part.verified || subscriptionActive || isAdmin);
@@ -4420,8 +4539,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           initial={{ opacity: 0, y: 15 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
-                          className={`bg-[#FAF8F5] border-2 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)] flex flex-col justify-between overflow-hidden relative group ${
-                            is30DaysExpired ? "border-red-600 bg-red-50/20" : "border-stone-900"
+                          className={`bg-[#FAF8F5] border rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden relative group ${
+                            is30DaysExpired ? "border-red-400 bg-red-50/20" : "border-stone-200/90"
                           }`}
                         >
                           {/* Image Thumbnail (Matching Image 2) */}
@@ -4436,15 +4555,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             {/* Status & Expiry Badges */}
                             <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
                               {is30DaysExpired ? (
-                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white">
+                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-wider rounded-full shadow-xs bg-red-600 text-white">
                                   EXPIRED (30 DAYS HIDDEN)
                                 </span>
                               ) : status === "hidden" ? (
-                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-widest border border-stone-950 shadow-xs bg-red-600 text-white animate-pulse">
+                                <span className="px-2.5 py-1 text-[9.5px] font-mono font-black uppercase tracking-wider rounded-full shadow-xs bg-red-600 text-white animate-pulse">
                                   HIDDEN BY ADMIN
                                 </span>
                               ) : (
-                                <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-widest border border-stone-950 shadow-xs ${
+                                <span className={`px-2.5 py-1 text-[9.5px] font-mono font-extrabold uppercase tracking-wider rounded-full shadow-xs ${
                                   status === "active" ? "bg-emerald-500 text-stone-950 font-black" :
                                   status === "sold" ? "bg-stone-800 text-stone-200" :
                                   "bg-amber-500 text-stone-950 font-black"
@@ -4454,13 +4573,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               )}
 
                               {part.featured && (
-                                <span className="px-2 py-0.5 bg-amber-400 text-stone-950 text-[9px] font-mono font-extrabold uppercase tracking-wider flex items-center gap-1 border border-stone-950">
+                                <span className="px-2.5 py-1 bg-amber-400 text-stone-950 text-[9px] font-mono font-extrabold uppercase tracking-wider flex items-center gap-1 rounded-full shadow-xs">
                                   <Star className="w-3 h-3 fill-stone-950" /> Featured
                                 </span>
                               )}
 
                               {!isPremiumOrFeatured && !is30DaysExpired && daysRemaining !== null && (
-                                <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border border-stone-950 ${
+                                <span className={`px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider rounded-full shadow-xs ${
                                   exp.isNearExpiry ? "bg-amber-500 text-stone-950 animate-pulse font-black" : "bg-stone-900 text-amber-400"
                                 }`}>
                                   {daysRemaining}d Left (Free Tier)
@@ -4469,20 +4588,20 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
 
                             {/* Photos Counter */}
-                            <div className="absolute bottom-3 right-3 bg-stone-950/85 text-white text-[10px] font-mono px-2 py-1 flex items-center gap-1.5 backdrop-blur-xs border border-white/20">
+                            <div className="absolute bottom-3 right-3 bg-stone-950/85 text-white text-[10px] font-mono px-2.5 py-1 flex items-center gap-1.5 backdrop-blur-xs rounded-full border border-white/20 shadow-xs">
                               <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
                               <span>{part.photos?.length || (part.image ? 1 : 0)} Photos</span>
                             </div>
                           </div>
 
                           {/* Part Specifications & Body (Matching Image 2) */}
-                          <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                          <div className="p-5 space-y-3.5 flex-1 flex flex-col justify-between">
                             <div className="space-y-1.5">
                               <div className="flex justify-between items-start gap-2">
                                 <h3 className="font-serif font-black text-lg text-stone-950 uppercase leading-snug">
                                   {part.title}
                                 </h3>
-                                <span className="font-serif font-black text-base text-amber-900 whitespace-nowrap bg-amber-500/15 px-2 py-0.5 border border-amber-600/30">
+                                <span className="font-serif font-black text-base text-amber-900 whitespace-nowrap bg-amber-500/15 px-2.5 py-0.5 rounded-lg border border-amber-600/30">
                                   ₹{part.price?.toLocaleString("en-IN")}
                                 </span>
                               </div>
@@ -4510,7 +4629,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                               {/* Admin Hidden Warning Banner */}
                               {status === "hidden" && (
-                                <div className="p-3 bg-red-100/90 border-2 border-red-600 text-red-950 font-mono text-xs font-bold rounded-xs flex items-start gap-2.5 mt-2 shadow-xs">
+                                <div className="p-3 bg-red-100/90 border border-red-500 text-red-950 font-mono text-xs font-bold rounded-xl flex items-start gap-2.5 mt-2 shadow-xs">
                                   <ShieldAlert className="w-4.5 h-4.5 text-red-600 shrink-0 mt-0.5 animate-pulse" />
                                   <div>
                                     <span className="uppercase font-black text-red-700 block text-[11px] tracking-wider">⚠️ LISTING HIDDEN BY ADMIN</span>
@@ -4545,27 +4664,27 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </div>
 
                             {/* Status Quick Switch Selector (Matching Image 2) */}
-                            <div className="pt-3 border-t border-stone-200 flex items-center justify-between text-xs">
+                            <div className="pt-3 border-t border-stone-200/80 flex items-center justify-between text-xs">
                               <span className="text-[10px] font-mono font-bold uppercase text-stone-500">
                                 Listing Status:
                               </span>
                               {status === "hidden" && !isAdmin ? (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 border border-red-400 text-red-950 rounded-xs">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 border border-red-400 text-red-950 rounded-lg">
                                   <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
                                   <span className="text-[9.5px] font-mono font-black uppercase tracking-wider">
                                     LOCKED BY ADMIN
                                   </span>
                                 </div>
                               ) : (
-                                <div className="flex gap-1">
+                                <div className="flex gap-1.5">
                                   {(["active", "pending", "sold"] as const).map((st) => (
                                     <button
                                       key={st}
                                       type="button"
                                       onClick={() => handleQuickPartStatusChange(part.id, st)}
-                                      className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider border cursor-pointer transition ${
+                                      className={`px-2.5 py-1 text-[9.5px] font-mono font-bold uppercase tracking-wider rounded-lg border cursor-pointer transition-all active:scale-95 ${
                                         status === st
-                                          ? "bg-stone-900 text-white border-stone-950 font-extrabold"
+                                          ? "bg-stone-900 text-white border-stone-900 font-extrabold shadow-xs"
                                           : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
                                       }`}
                                     >
@@ -4584,7 +4703,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                 setRequestSearchQuery(part.title);
                                 setViewMode("requests");
                               }}
-                              className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-amber-600 cursor-pointer shadow-xs transition"
+                              className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between rounded-xl border border-amber-600 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
                             >
                               <span className="flex items-center gap-1.5">
                                 <PhoneCall className="w-4 h-4 text-stone-900" />
@@ -4596,11 +4715,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             </button>
 
                             {/* Action Buttons Grid: Edit, Photos, Remove (Matching Image 2) */}
-                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200">
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200/80">
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditPartModal(part)}
-                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 rounded-xl text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                               >
                                 <Edit className="w-3.5 h-3.5 text-stone-700" />
                                 <span>Edit</span>
@@ -4609,7 +4728,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               <button
                                 type="button"
                                 onClick={() => handleOpenPartPhotoManager(part)}
-                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-400 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                className="py-2 px-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 rounded-xl text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                               >
                                 <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
                                 <span>Photos</span>
@@ -4618,7 +4737,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               <button
                                 type="button"
                                 onClick={() => setDeletingPartListing(part)}
-                                className="py-2 px-2 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                className="py-2 px-2 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 rounded-xl text-[10.5px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-red-600" />
                                 <span>Remove</span>
@@ -4714,10 +4833,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             return (
               <>
                 {/* Header Banner */}
-                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-6 sm:p-8 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.85)]">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-300 pb-4">
+                <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200/90 pb-5">
                     <div>
-                      <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-2.5 py-1 border border-amber-600/30 mb-2">
+                      <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono font-bold text-amber-800 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-600/30 mb-2">
                         <PhoneCall className="w-3.5 h-3.5 text-amber-700" />
                         <span>Buyer Leads &amp; Enquiries Manager</span>
                       </div>
@@ -4729,11 +4848,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <button
                         type="button"
                         onClick={() => setShowOnlyMyVehiclesRequests(!showOnlyMyVehiclesRequests)}
-                        className={`px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider border cursor-pointer flex items-center gap-2 transition ${
+                        className={`px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider rounded-xl border cursor-pointer flex items-center gap-2 transition-all active:scale-[0.98] ${
                           showOnlyMyVehiclesRequests
                             ? "bg-amber-500 text-stone-950 border-amber-600 shadow-xs"
                             : "bg-stone-800 text-stone-200 border-stone-700 hover:bg-stone-700"
@@ -4747,7 +4866,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <button
                         type="button"
                         onClick={() => window.dispatchEvent(new CustomEvent("autoworld_requests_updated"))}
-                        className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider border border-stone-950 flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                        className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded-xl border border-stone-800 flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
                       >
                         <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
                         <span>Sync</span>
@@ -4757,16 +4876,16 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                   {/* Metrics Dashboard Overview */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                    <div className="bg-[#F4F1EA] p-4 border border-stone-300/80 rounded-xl shadow-xs">
                       <div className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Total Received</div>
                       <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
                         {combinedList.length} <span className="text-xs font-sans text-stone-600 font-normal">Leads</span>
                       </div>
                     </div>
 
-                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                    <div className="bg-[#F4F1EA] p-4 border border-stone-300/80 rounded-xl shadow-xs">
                       <div className="text-[10px] font-mono font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
-                        <Car className="w-3 h-3 text-amber-600" /> Vehicle Enquiries
+                        <Car className="w-3.5 h-3.5 text-amber-600" /> Vehicle Enquiries
                       </div>
                       <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
                         {vehicleReqs.length}{" "}
@@ -4776,9 +4895,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       </div>
                     </div>
 
-                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                    <div className="bg-[#F4F1EA] p-4 border border-stone-300/80 rounded-xl shadow-xs">
                       <div className="text-[10px] font-mono font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
-                        <Wrench className="w-3 h-3 text-blue-600" /> Part Enquiries
+                        <Wrench className="w-3.5 h-3.5 text-blue-600" /> Part Enquiries
                       </div>
                       <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
                         {partReqs.length}{" "}
@@ -4788,9 +4907,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       </div>
                     </div>
 
-                    <div className="bg-[#F4F1EA] p-3.5 border border-stone-300">
+                    <div className="bg-[#F4F1EA] p-4 border border-stone-300/80 rounded-xl shadow-xs">
                       <div className="text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Actioned Leads
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Actioned Leads
                       </div>
                       <div className="text-xl font-serif font-black text-stone-950 mt-0.5">
                         {actionedCount}
@@ -4800,7 +4919,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 </div>
 
                 {/* Search & Filter Controls */}
-                <div className="bg-[#FAF8F5] border-2 border-stone-900 p-4 space-y-3">
+                <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-5 space-y-3.5 shadow-md">
                   <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
                     {/* Search Bar */}
                     <div className="relative flex-1">
@@ -4810,13 +4929,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         value={requestSearchQuery}
                         onChange={(e) => setRequestSearchQuery(e.target.value)}
                         placeholder="Search buyer name, phone, vehicle, part title, or ref code (#TD... / #CB...)"
-                        className="w-full pl-9 pr-8 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 placeholder:text-stone-500 focus:outline-none focus:border-stone-950"
+                        className="w-full pl-9 pr-8 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-mono text-stone-900 placeholder:text-stone-500 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                       />
                       {requestSearchQuery && (
                         <button
                           type="button"
                           onClick={() => setRequestSearchQuery("")}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-bold"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-bold cursor-pointer"
                         >
                           ×
                         </button>
@@ -4832,7 +4951,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         <select
                           value={selectedVehicleIdFilter}
                           onChange={(e) => setSelectedVehicleIdFilter(e.target.value)}
-                          className="px-3 py-2 bg-[#F4F1EA] border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
+                          className="px-3 py-2 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950 shadow-xs"
                         >
                           <option value="all">All My Listed Vehicles ({userListings.length})</option>
                           {userListings.map((l) => (
@@ -4846,9 +4965,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </div>
 
                   {/* Filter Tabs Row */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-300">
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-stone-300/80">
                     {/* Item Category (Vehicle vs Part) Selector */}
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Target:</span>
                       {[
                         { id: "all", label: "All Items", count: combinedList.length },
@@ -4859,10 +4978,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           key={tab.id}
                           type="button"
                           onClick={() => setRequestItemTargetFilter(tab.id as any)}
-                          className={`px-3 py-1 text-[11px] font-mono font-bold uppercase border cursor-pointer transition ${
+                          className={`px-3 py-1.5 text-[11px] font-mono font-bold uppercase border rounded-xl cursor-pointer transition-all ${
                             requestItemTargetFilter === tab.id
-                              ? "bg-stone-900 text-amber-400 border-stone-950 font-extrabold"
-                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300"
+                              ? "bg-stone-900 text-amber-400 border-stone-950 font-extrabold shadow-xs"
+                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300/80"
                           }`}
                         >
                           {tab.label} ({tab.count})
@@ -4871,7 +4990,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     </div>
 
                     {/* Request Type Selector */}
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Type:</span>
                       {[
                         { id: "all", label: "All Enquiries", count: combinedList.length },
@@ -4882,10 +5001,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           key={tab.id}
                           type="button"
                           onClick={() => setRequestTypeFilter(tab.id as any)}
-                          className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
+                          className={`px-3 py-1.5 text-[10px] font-mono font-bold uppercase border rounded-xl cursor-pointer transition-all ${
                             requestTypeFilter === tab.id
-                              ? "bg-amber-500 text-stone-950 border-amber-600 font-extrabold"
-                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300"
+                              ? "bg-amber-500 text-stone-950 border-amber-600/40 font-extrabold shadow-xs"
+                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-700 border-stone-300/80"
                           }`}
                         >
                           {tab.label} ({tab.count})
@@ -4894,7 +5013,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     </div>
 
                     {/* Request Status Selector */}
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] font-mono font-bold uppercase text-stone-500 mr-1">Status:</span>
                       {[
                         { id: "all", label: "All Statuses" },
@@ -4907,10 +5026,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           key={st.id}
                           type="button"
                           onClick={() => setRequestStatusFilter(st.id as any)}
-                          className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border cursor-pointer transition ${
+                          className={`px-3 py-1.5 text-[10px] font-mono font-bold uppercase border rounded-xl cursor-pointer transition-all ${
                             requestStatusFilter === st.id
-                              ? "bg-stone-900 text-white border-stone-950 font-extrabold"
-                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300"
+                              ? "bg-stone-900 text-white border-stone-950 font-extrabold shadow-xs"
+                              : "bg-[#F4F1EA] hover:bg-stone-200 text-stone-600 border-stone-300/80"
                           }`}
                         >
                           {st.label}
@@ -4922,7 +5041,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                 {/* Requests Content Feed */}
                 {isLoadingRequests ? (
-                  <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300 space-y-3">
+                  <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300/80 rounded-2xl space-y-3 shadow-xs">
                     <RefreshCw className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
                     <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider">
                       Syncing direct buyer enquiries and test drive schedules...
@@ -4973,7 +5092,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                   if (filteredRequests.length === 0) {
                     return (
-                      <div className="p-12 text-center bg-[#FAF8F5] border-2 border-stone-900 space-y-4">
+                      <div className="p-12 text-center bg-[#FAF8F5] border border-stone-300/80 rounded-2xl space-y-4 shadow-sm">
                         <div className="w-14 h-14 bg-amber-500/15 border border-amber-600/30 rounded-full flex items-center justify-center text-amber-700 mx-auto">
                           <PhoneCall className="w-7 h-7" />
                         </div>
@@ -4997,7 +5116,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               setRequestStatusFilter("all");
                               setSelectedVehicleIdFilter("all");
                             }}
-                            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                            className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1.5 rounded-xl cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                           >
                             <span>Reset Filters</span>
                           </button>
@@ -5043,27 +5162,27 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className={`bg-[#FAF8F5] border-2 border-stone-900 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.85)] overflow-hidden relative ${
+                            className={`bg-[#FAF8F5] border border-stone-200/90 rounded-2xl shadow-lg shadow-stone-900/5 hover:shadow-xl transition-all overflow-hidden relative ${
                               isPart
-                                ? "border-l-8 border-l-blue-600"
+                                ? "border-l-6 border-l-blue-600"
                                 : isTestDrive
-                                ? "border-l-8 border-l-amber-500"
-                                : "border-l-8 border-l-emerald-600"
+                                ? "border-l-6 border-l-amber-500"
+                                : "border-l-6 border-l-emerald-600"
                             }`}
                           >
                             {/* Top Header Strip */}
                             <div className="bg-stone-900 text-stone-100 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
                               <div className="flex items-center gap-2">
                                 {isPart ? (
-                                  <span className="px-2.5 py-0.5 bg-blue-600 text-white font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                  <span className="px-2.5 py-0.5 bg-blue-600 text-white font-black text-[10px] uppercase tracking-wider rounded-full flex items-center gap-1 shadow-xs">
                                     <Wrench className="w-3 h-3 text-amber-300" /> PART ENQUIRY
                                   </span>
                                 ) : isTestDrive ? (
-                                  <span className="px-2.5 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                  <span className="px-2.5 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] uppercase tracking-wider rounded-full flex items-center gap-1 shadow-xs">
                                     <Calendar className="w-3 h-3" /> VEHICLE TEST DRIVE
                                   </span>
                                 ) : (
-                                  <span className="px-2.5 py-0.5 bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                  <span className="px-2.5 py-0.5 bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider rounded-full flex items-center gap-1 shadow-xs">
                                     <Car className="w-3 h-3" /> VEHICLE CALLBACK
                                   </span>
                                 )}
@@ -5076,7 +5195,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               {/* Status Tag */}
                               <div className="flex items-center gap-2">
                                 <span
-                                  className={`px-2.5 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider border ${
+                                  className={`px-3 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider rounded-full border ${
                                     isPending
                                       ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
                                       : isConfirmed
@@ -5094,15 +5213,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             <div className="p-5 space-y-4">
                               {/* Target Item (Vehicle vs Part) Info Card Row */}
                               {isPart ? (
-                                <div className="flex items-center gap-3 p-3 bg-blue-50/70 border-2 border-blue-200">
+                                <div className="flex items-center gap-3 p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl shadow-xs">
                                   {req.partImage ? (
                                     <img
                                       src={req.partImage}
                                       alt={req.partTitle || "Motorsport Part"}
-                                      className="w-16 h-12 object-cover border border-blue-300 shrink-0 bg-stone-900"
+                                      className="w-16 h-12 object-cover border border-blue-300 rounded-lg shrink-0 bg-stone-900"
                                     />
                                   ) : (
-                                    <div className="w-16 h-12 bg-stone-900 border border-blue-400 flex items-center justify-center text-amber-400 shrink-0">
+                                    <div className="w-16 h-12 bg-stone-900 border border-blue-400 rounded-lg flex items-center justify-center text-amber-400 shrink-0">
                                       <Wrench className="w-6 h-6 text-amber-400" />
                                     </div>
                                   )}
@@ -5110,7 +5229,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
                                       <div className="flex items-center gap-2 min-w-0">
-                                        <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
+                                        <span className="px-2 py-0.5 bg-blue-600 text-white text-[9px] font-mono font-black uppercase tracking-wider rounded-full shrink-0">
                                           PART
                                         </span>
                                         <h4 className="font-serif font-black text-stone-950 text-sm uppercase truncate">
@@ -5118,7 +5237,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                         </h4>
                                       </div>
                                       {req.partPrice ? (
-                                        <span className="font-serif font-bold text-xs text-blue-950 whitespace-nowrap bg-blue-200/80 px-2 py-0.5 border border-blue-300">
+                                        <span className="font-serif font-bold text-xs text-blue-950 whitespace-nowrap bg-blue-200/80 px-2.5 py-0.5 border border-blue-300/60 rounded-full">
                                           ₹{req.partPrice.toLocaleString("en-IN")}
                                         </span>
                                       ) : null}
@@ -5135,15 +5254,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-3 p-3 bg-[#F4F1EA] border border-stone-300">
+                                <div className="flex items-center gap-3 p-3 bg-[#F4F1EA] border border-stone-300/80 rounded-xl shadow-xs">
                                   {req.vehicleImage ? (
                                     <img
                                       src={req.vehicleImage}
                                       alt={req.vehicleTitle}
-                                      className="w-16 h-12 object-cover border border-stone-400 shrink-0 bg-stone-900"
+                                      className="w-16 h-12 object-cover border border-stone-300 rounded-lg shrink-0 bg-stone-900"
                                     />
                                   ) : (
-                                    <div className="w-16 h-12 bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-400 shrink-0">
+                                    <div className="w-16 h-12 bg-stone-800 border border-stone-700 rounded-lg flex items-center justify-center text-amber-400 shrink-0">
                                       <Car className="w-6 h-6" />
                                     </div>
                                   )}
@@ -5151,7 +5270,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
                                       <div className="flex items-center gap-2 min-w-0">
-                                        <span className="px-1.5 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
+                                        <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-black uppercase tracking-wider rounded-full shrink-0">
                                           VEHICLE
                                         </span>
                                         <h4 className="font-serif font-black text-stone-950 text-sm uppercase truncate">
@@ -5159,7 +5278,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                         </h4>
                                       </div>
                                       {req.vehiclePrice ? (
-                                        <span className="font-serif font-bold text-xs text-amber-900 whitespace-nowrap bg-amber-500/20 px-2 py-0.5 border border-amber-600/30">
+                                        <span className="font-serif font-bold text-xs text-amber-900 whitespace-nowrap bg-amber-500/20 px-2.5 py-0.5 border border-amber-600/30 rounded-full">
                                           ₹{req.vehiclePrice.toLocaleString("en-IN")}
                                         </span>
                                       ) : null}
@@ -5174,7 +5293,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               {/* Buyer Details Grid */}
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-sans">
                                 {/* Buyer Name & Phone */}
-                                <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                                <div className="p-3 bg-stone-100/80 border border-stone-300/80 rounded-xl space-y-1">
                                   <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
                                     <UserIcon className="w-3.5 h-3.5 text-stone-700" /> Buyer Name
                                   </div>
@@ -5190,7 +5309,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                 </div>
 
                                 {/* Date & Time Slot */}
-                                <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                                <div className="p-3 bg-stone-100/80 border border-stone-300/80 rounded-xl space-y-1">
                                   <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
                                     <Clock className="w-3.5 h-3.5 text-amber-700" /> Appointment / Preferred Time
                                   </div>
@@ -5211,7 +5330,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                 </div>
 
                                 {/* Drive Type / Topic */}
-                                <div className="p-3 bg-stone-100/80 border border-stone-300 space-y-1">
+                                <div className="p-3 bg-stone-100/80 border border-stone-300/80 rounded-xl space-y-1">
                                   <div className="text-[10px] font-mono font-bold uppercase text-stone-500 flex items-center gap-1">
                                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" /> Enquiry Scope
                                   </div>
@@ -5233,17 +5352,17 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                               {/* Doorstep Address or Notes */}
                               {isTestDrive && req.address && (
-                                <div className="p-2.5 bg-amber-500/10 border border-amber-600/30 text-xs font-mono text-stone-800 flex items-start gap-2">
+                                <div className="p-3 bg-amber-500/10 border border-amber-600/30 rounded-xl text-xs font-mono text-stone-800 flex items-start gap-2 shadow-xs">
                                   <MapPin className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                                   <div>
-                                    <strong className="uppercase text-[10px] text-amber-900 block">Doorstep Delivery Address:</strong>
+                                    <strong className="uppercase text-[10px] text-amber-900 block font-bold">Doorstep Delivery Address:</strong>
                                     <span>{req.address}</span>
                                   </div>
                                 </div>
                               )}
 
                               {req.notes && (
-                                <div className="p-2.5 bg-[#F4F1EA] border border-stone-300 text-xs text-stone-800 font-medium space-y-0.5">
+                                <div className="p-3 bg-[#F4F1EA] border border-stone-300/80 rounded-xl text-xs text-stone-800 font-medium space-y-0.5 shadow-xs">
                                   <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">
                                     Buyer Note / Request Detail:
                                   </span>
@@ -5253,7 +5372,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                               {/* Seller Internal Note Display */}
                               {req.sellerNote && editingNoteForReq !== req.refCode && (
-                                <div className="p-3 bg-stone-900 text-amber-300 border border-stone-950 font-mono text-xs space-y-1 rounded-xs">
+                                <div className="p-3.5 bg-stone-900 text-amber-300 border border-stone-950 rounded-xl font-mono text-xs space-y-1 shadow-xs">
                                   <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-400">
                                     <span>📝 Seller Internal Note:</span>
                                     <button
@@ -5273,7 +5392,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                               {/* Edit Seller Note Input Box */}
                               {editingNoteForReq === req.refCode && (
-                                <div className="p-3 bg-amber-50 border-2 border-amber-500 space-y-2">
+                                <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-2 shadow-xs">
                                   <label className="text-[10.5px] font-mono font-bold uppercase text-stone-900 block">
                                     Add Internal Seller Note / Remarks:
                                   </label>
@@ -5282,7 +5401,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                     value={sellerNoteInput}
                                     onChange={(e) => setSellerNoteInput(e.target.value)}
                                     placeholder="e.g. Spoke with buyer on phone, confirmed dispatch or meeting time."
-                                    className="w-full p-2 bg-white border border-stone-400 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
+                                    className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-950"
                                   />
                                   <div className="flex justify-end gap-2">
                                     <button
@@ -5291,14 +5410,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                         setEditingNoteForReq(null);
                                         setSellerNoteInput("");
                                       }}
-                                      className="px-3 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
+                                      className="px-3.5 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-mono font-bold uppercase rounded-lg cursor-pointer transition"
                                     >
                                       Cancel
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => handleSaveSellerNote(req.kind, req.refCode, sellerNoteInput, req.id)}
-                                      className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-amber-400 text-xs font-mono font-bold uppercase cursor-pointer"
+                                      className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-amber-400 text-xs font-mono font-bold uppercase rounded-lg cursor-pointer transition shadow-xs"
                                     >
                                       Save Note
                                     </button>
@@ -5307,14 +5426,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                               )}
 
                               {/* Seller Action Controls Bar */}
-                              <div className="pt-3 border-t border-stone-300 flex flex-wrap items-center justify-between gap-3">
+                              <div className="pt-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3">
                                 {/* Left: Contact Direct Actions */}
                                 <div className="flex flex-wrap items-center gap-2">
                                   <a
                                     href={waUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 rounded-xl cursor-pointer shadow-xs hover:shadow-md transition-all active:scale-[0.98]"
                                   >
                                     <MessageSquare className="w-3.5 h-3.5" />
                                     <span>WhatsApp Buyer</span>
@@ -5322,7 +5441,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
                                   <a
                                     href={`tel:${req.phone}`}
-                                    className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                                    className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 rounded-xl cursor-pointer shadow-xs hover:shadow-md transition-all active:scale-[0.98]"
                                   >
                                     <Phone className="w-3.5 h-3.5 text-amber-400" />
                                     <span>Call Direct</span>
@@ -5335,7 +5454,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                         setEditingNoteForReq(req.refCode);
                                         setSellerNoteInput("");
                                       }}
-                                      className="px-2.5 py-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-800 border border-stone-400 text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+                                      className="px-3 py-2 bg-[#F4F1EA] hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition-all active:scale-[0.98]"
                                     >
                                       <Edit className="w-3.5 h-3.5 text-stone-600" />
                                       <span>Add Note</span>
@@ -5352,7 +5471,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                   <select
                                     value={req.status}
                                     onChange={(e) => handleUpdateRequestStatus(req.kind, req.refCode, e.target.value, req.id)}
-                                    className="px-2.5 py-1.5 bg-[#F4F1EA] border border-stone-400 text-xs font-mono font-bold uppercase text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer"
+                                    className="px-3 py-1.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-mono font-bold uppercase text-stone-900 focus:outline-none focus:border-stone-950 cursor-pointer shadow-xs"
                                   >
                                     <option value={isTestDrive ? "scheduled" : "pending"}>
                                       {isTestDrive ? "SCHEDULED (PENDING)" : "PENDING"}
@@ -5369,7 +5488,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteRequest(req.kind, req.refCode, req.id)}
-                                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 cursor-pointer transition"
+                                    className="p-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl cursor-pointer transition-all active:scale-[0.95]"
                                     title="Delete request"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -5394,18 +5513,18 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
         <div id="sell-view-list-vehicle" className="space-y-6 animate-in fade-in duration-200">
           {/* Admin Authority Banner */}
           {isAdmin && (
-            <div className="mb-6 bg-stone-900 border-2 border-amber-500 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[4px_4px_0px_0px_rgba(245,158,11,0.3)]">
-              <div className="flex items-start sm:items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+            <div className="mb-6 bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950/40 border border-amber-500/50 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-amber-950/15">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/25 to-amber-600/10 border border-amber-500/40 flex items-center justify-center shrink-0 shadow-sm">
                   <Crown className="w-5 h-5 text-amber-400 fill-amber-400" />
                 </div>
                 <div>
                   <h4 className="text-xs font-mono font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
                     <span>Administrator Command Authority</span>
-                    <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-extrabold rounded-xs">UNLIMITED</span>
+                    <span className="px-2.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[9px] font-extrabold rounded-full">UNLIMITED</span>
                   </h4>
-                  <p className="text-[11px] text-stone-300 font-semibold mt-0.5 leading-relaxed">
-                    All vehicle listing limits bypassed. As an administrator ({currentUser?.email}), you hold full listing privileges, bulk CRM synchronization, priority catalog placement, and complete platform access.
+                  <p className="text-[11.5px] text-stone-300 font-medium mt-1 leading-relaxed">
+                    All vehicle listing limits bypassed. As an administrator (<span className="text-amber-200/90 font-mono font-semibold">{currentUser?.email}</span>), you hold full listing privileges, bulk CRM synchronization, priority catalog placement, and complete platform access.
                   </p>
                 </div>
               </div>
@@ -5413,74 +5532,84 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           )}
 
           {!isAdmin && existingListingsCount >= 2 && !subscriptionActive && (
-        <div className="mb-6 bg-amber-50 border border-amber-300 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-[#9A3412]">Free Tier Limit Reached ({existingListingsCount}/2 Listings)</h4>
-              <p className="text-[11px] text-stone-605 mt-1 leading-relaxed font-semibold">
-                You have reached your free account limit of 2 listings. To publish additional vehicles, please upgrade to a Premium setup or delete previous listings.
-              </p>
+            <div className="mb-6 bg-gradient-to-br from-amber-50 to-orange-50/50 border border-amber-300/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                  <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#9A3412] flex items-center gap-2">
+                    <span>Free Tier Limit Reached</span>
+                    <span className="px-2 py-0.5 bg-amber-600 text-white text-[9px] font-mono font-bold rounded-full">{existingListingsCount}/2 Listings</span>
+                  </h4>
+                  <p className="text-[11.5px] text-stone-700 mt-1 leading-relaxed font-medium">
+                    You have reached your free account limit of 2 listings. To publish additional vehicles, please upgrade to a Premium setup or delete previous listings.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("premium")}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer"
+              >
+                Go Premium
+              </button>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab("premium")}
-            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-sans font-bold uppercase tracking-widest transition whitespace-nowrap"
-          >
-            Go Premium
-          </button>
-        </div>
-      )}
+          )}
 
-      {/* Business Dealer Sync Banner */}
-      <div className="mb-8 p-5 bg-[#E8E3D7] border-2 border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-5 font-sans">
-        <div className="flex items-start gap-3">
-          <Crown className="w-6 h-6 text-amber-600 shrink-0 mt-0.5 fill-amber-200" />
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-stone-900">⚡ Dealer Bulk Inventory Sync</h4>
-            <p className="text-[11px] text-stone-705 mt-1 leading-relaxed font-semibold">
-              {(subscriptionActive || isAdmin)
-                ? "Active Dealership / Admin Authority! Import unlimited vehicles instantly using bulk CSV or XML dealership feed files." 
-                : "Import up to 100+ vehicles instantly! Synchronize your dealership's CRM catalog with one-click bulk upload."
-              }
-            </p>
+          {/* Business Dealer Sync Banner */}
+          <div className="mb-8 p-5 sm:p-6 bg-gradient-to-br from-white via-[#FAF8F5] to-[#F4F1EA] border border-stone-300/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 font-sans shadow-md shadow-stone-900/5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <Crown className="w-5 h-5 text-amber-600 fill-amber-300" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                  <span>Dealer Bulk Inventory Sync</span>
+                  <span className="px-2 py-0.5 bg-stone-900 text-amber-400 text-[9px] font-mono font-bold rounded-full">CRM FEED</span>
+                </h4>
+                <p className="text-[11.5px] text-stone-600 mt-1 leading-relaxed font-medium">
+                  {(subscriptionActive || isAdmin)
+                    ? "Active Dealership & Admin Authority! Import unlimited vehicles instantly using structured CSV or XML dealership feed files." 
+                    : "Import up to 100+ vehicles instantly! Synchronize your dealership's CRM catalog with one-click bulk upload."
+                  }
+                </p>
+              </div>
+            </div>
+            
+            {(subscriptionActive || isAdmin) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDealerUpload(!showDealerUpload);
+                  if (!showDealerUpload) {
+                    setParsedDealerVehicles([]);
+                  }
+                }}
+                className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-[#FAF8F5] text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md active:scale-[0.98] whitespace-nowrap shrink-0"
+              >
+                {showDealerUpload ? "Standard Listing Wizard" : "Launch Bulk Importer"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveTab("premium")}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md active:scale-[0.98] whitespace-nowrap shrink-0"
+              >
+                Unlock Dealer API
+              </button>
+            )}
           </div>
-        </div>
-        
-        {(subscriptionActive || isAdmin) ? (
-          <button
-            type="button"
-            onClick={() => {
-              setShowDealerUpload(!showDealerUpload);
-              if (!showDealerUpload) {
-                setParsedDealerVehicles([]);
-              }
-            }}
-            className="px-5 py-2.5 bg-stone-900 hover:bg-stone-850 text-[#F4F1EA] text-[10px] font-bold uppercase tracking-widest transition cursor-pointer"
-          >
-            {showDealerUpload ? "Standard Listing Wizard" : "Launch Bulk Importer"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setActiveTab("premium")}
-            className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold uppercase tracking-widest transition cursor-pointer"
-          >
-            Unlock Dealer API
-          </button>
-        )}
-      </div>
 
       {/* Bulk Importer Container */}
       {showDealerUpload && (subscriptionActive || isAdmin) && (
-        <div className="bg-white border-2 border-stone-900 p-6 space-y-6 mb-10 animate-in fade-in duration-200">
+        <div className="bg-white border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 mb-10 shadow-xl shadow-stone-900/5 animate-in fade-in duration-200">
           <div className="border-b border-stone-200 pb-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-stone-900">Dealership CSV / XML Synchronization Hub</h3>
-            <p className="text-[11px] text-stone-500 mt-1 font-semibold">Paste feed data directly or drag CRM stock file to load vehicles.</p>
+            <p className="text-[11.5px] text-stone-500 mt-1 font-medium">Paste feed data directly or drag CRM stock file to load vehicles.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Left side: Upload and Paste */}
             <div className="space-y-4">
               <label className="block text-[10px] font-mono uppercase tracking-wider text-stone-500 font-bold">Paste CRM Export Text (CSV/XML)</label>
@@ -5491,15 +5620,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   `Paste CSV format (Header-aligned):\nmake,model,title,year,price,mileage,fuel,transmission,description,image\n\nOR Paste XML format:\n<inventory>\n  <vehicle>\n    <make>Honda</make>\n    ...\n  </vehicle>\n</inventory>`
                 }
                 rows={12}
-                className="w-full p-3 bg-stone-50 border-2 border-stone-300 focus:border-stone-900 text-[11px] font-mono text-stone-800 focus:outline-none"
+                className="w-full p-3.5 bg-stone-50 border border-stone-300 rounded-xl focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-[11px] font-mono text-stone-800 focus:outline-none transition-all"
               />
 
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <button
                   type="button"
                   disabled={isParsingFeed || !rawUploadText.trim()}
                   onClick={() => handleParseDealerFeed()}
-                  className="flex-1 py-3 bg-stone-900 hover:bg-stone-850 text-white text-[10px] uppercase tracking-widest font-bold disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-3 bg-stone-900 hover:bg-stone-800 text-white text-[11px] uppercase tracking-wider font-bold rounded-xl disabled:opacity-50 cursor-pointer shadow-sm transition-all active:scale-[0.98]"
                 >
                   {isParsingFeed ? "Analyzing Data Structures..." : "Parse Inventory Feed"}
                 </button>
@@ -5511,37 +5640,37 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       setRawUploadText(demoCSV);
                       showToast("Loaded sample dealership CSV data. Click 'Parse Inventory Feed'!", "info");
                     }}
-                    className="px-3 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-700 text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+                    className="px-3.5 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-100 text-stone-700 text-[10.5px] uppercase font-bold tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98]"
                   >
-                    Load Sample CSV (Admin)
+                    Load Sample CSV
                   </button>
                 )}
               </div>
             </div>
 
             {/* Right side: Instructions and Template downloads */}
-            <div className="bg-[#FAF8F5] p-5 border border-stone-200 space-y-4 text-xs leading-relaxed">
-              <h4 className="font-bold text-stone-800 uppercase tracking-widest text-[10px]">Import Guidelines & Schemas</h4>
+            <div className="bg-[#FAF8F5] p-5 sm:p-6 border border-stone-200/90 rounded-xl space-y-4 text-xs leading-relaxed">
+              <h4 className="font-bold text-stone-800 uppercase tracking-wider text-[10.5px]">Import Guidelines & Schemas</h4>
               
-              <div className="space-y-3 font-semibold text-stone-600 text-[11px]">
-                <p>1. <strong className="text-stone-900 font-bold">Required CSV Columns:</strong> <code className="bg-stone-200 px-1 font-mono text-[9.5px]">make,model,title,year,price,mileage,fuel,transmission,description,image</code></p>
-                <p>2. <strong className="text-stone-900 font-bold">Required XML tags:</strong> Wrap each vehicle in <code className="bg-stone-200 px-1 font-mono text-[9.5px]">&lt;vehicle&gt;</code> tags containing make, model, title, year, price, mileage, fuel, transmission, description, image.</p>
+              <div className="space-y-3 font-medium text-stone-600 text-[11.5px]">
+                <p>1. <strong className="text-stone-900 font-bold">Required CSV Columns:</strong> <code className="bg-stone-200 px-1.5 py-0.5 rounded font-mono text-[10px]">make,model,title,year,price,mileage,fuel,transmission,description,image</code></p>
+                <p>2. <strong className="text-stone-900 font-bold">Required XML tags:</strong> Wrap each vehicle in <code className="bg-stone-200 px-1.5 py-0.5 rounded font-mono text-[10px]">&lt;vehicle&gt;</code> tags containing make, model, title, year, price, mileage, fuel, transmission, description, image.</p>
                 <p>3. <strong className="text-stone-900 font-bold">Image Fallbacks:</strong> If the image URL is blank or fails, Auto World automatically assigns a vetted premium asset placeholder.</p>
                 <p>4. <strong className="text-stone-900 font-bold">Featured Booster:</strong> Every dealer synchronized vehicle is marked as premium featured and pinned to top feeds automatically!</p>
               </div>
 
-              <div className="pt-3 border-t border-stone-200 space-y-2">
-                <label className="block text-[10px] font-bold text-stone-700 uppercase tracking-wider">Simulate Drag & Drop stock file</label>
-                <div className="border-2 border-dashed border-stone-300 hover:border-stone-900 p-6 text-center cursor-pointer bg-white transition-all group"
+              <div className="pt-3.5 border-t border-stone-200 space-y-2">
+                <label className="block text-[10.5px] font-bold text-stone-700 uppercase tracking-wider">Simulate Drag & Drop stock file</label>
+                <div className="border-2 border-dashed border-stone-300 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer bg-white transition-all group"
                   onClick={() => {
                     const demoCSV = `make,model,title,year,price,mileage,fuel,transmission,description,image\nHyundai,Creta,Creta SX Executive,2022,1380000,18000,Diesel,Automatic,Creta executive SUV from first-owner dealer stock.,https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800\nTata,Nexon,Nexon EV Max,2023,1650000,8500,Electric,Automatic,Premium dealership EV stock with charger included.,https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800`;
                     setRawUploadText(demoCSV);
                     handleParseDealerFeed(demoCSV);
                   }}
                 >
-                  <Upload className="w-8 h-8 mx-auto text-stone-400 group-hover:text-stone-850 mb-2 animate-bounce" />
-                  <span className="text-[10px] uppercase font-bold text-stone-700 tracking-wider">Drag & Drop CRM stock export (CSV/XML)</span>
-                  <p className="text-[9px] text-stone-400 mt-1">or Click to auto-fill sample feed data</p>
+                  <Upload className="w-8 h-8 mx-auto text-stone-400 group-hover:text-amber-500 mb-2 transition-colors" />
+                  <span className="text-[10.5px] uppercase font-bold text-stone-700 tracking-wider">Drag & Drop CRM stock export (CSV/XML)</span>
+                  <p className="text-[9.5px] text-stone-400 mt-1">or Click to auto-fill sample feed data</p>
                 </div>
               </div>
             </div>
@@ -5558,7 +5687,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               </div>
 
               {/* Table list */}
-              <div className="overflow-x-auto border border-stone-200">
+              <div className="overflow-x-auto border border-stone-200 rounded-xl">
                 <table className="w-full text-left border-collapse text-[11px]">
                   <thead>
                     <tr className="bg-stone-100 border-b border-stone-200 uppercase tracking-widest text-[9px] font-mono text-stone-500">
@@ -5570,25 +5699,25 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <th className="p-3">Fuel / Gearbox</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-100 font-sans font-semibold text-stone-700">
+                  <tbody className="divide-y divide-stone-100 font-sans font-medium text-stone-700">
                     {parsedDealerVehicles.map((v, idx) => (
                       <tr key={idx} className="hover:bg-stone-50/50">
                         <td className="p-3 font-mono text-stone-400 text-[10px]">T-{idx+1}</td>
                         <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <img src={v.image} className="w-6 h-6 object-cover border border-stone-200" alt="" />
+                          <div className="flex items-center gap-2.5">
+                            <img src={v.image} className="w-8 h-8 rounded-lg object-cover border border-stone-200" alt={v.title || "Vehicle preview"} />
                             <div>
                               <p className="text-stone-900 font-bold text-[11.5px]">{v.title}</p>
-                              <p className="text-[10px] text-stone-405 lowercase truncate max-w-xs">{v.description}</p>
+                              <p className="text-[10px] text-stone-500 lowercase truncate max-w-xs">{v.description}</p>
                             </div>
                           </div>
                         </td>
                         <td className="p-3 text-stone-900">{v.year}</td>
-                        <td className="p-3 text-stone-900 font-mono">₹{v.price.toLocaleString("en-IN")}</td>
+                        <td className="p-3 text-stone-900 font-mono font-semibold">₹{v.price.toLocaleString("en-IN")}</td>
                         <td className="p-3 text-stone-500 font-mono">{v.mileage.toLocaleString("en-IN")} km</td>
                         <td className="p-3 text-stone-800 uppercase text-[10px]">
-                          <span className="bg-stone-200/60 px-1 py-0.5 font-bold mr-1">{v.fuel}</span>
-                          <span className="bg-stone-200/60 px-1 py-0.5 font-bold">{v.transmission}</span>
+                          <span className="bg-stone-200/70 px-1.5 py-0.5 rounded font-bold mr-1">{v.fuel}</span>
+                          <span className="bg-stone-200/70 px-1.5 py-0.5 rounded font-bold">{v.transmission}</span>
                         </td>
                       </tr>
                     ))}
@@ -5598,13 +5727,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
               {/* Import Progress Bar */}
               {isImporting && (
-                <div className="space-y-1 bg-stone-50 p-4 border border-stone-200">
+                <div className="space-y-1.5 bg-stone-50 p-4 border border-stone-200 rounded-xl">
                   <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-stone-600">
                     <span>Batch syncing listings to Firestore...</span>
                     <span>{importProgress}%</span>
                   </div>
-                  <div className="w-full bg-stone-200 h-2">
-                    <div className="bg-stone-900 h-2 transition-all duration-150" style={{ width: `${importProgress}%` }}></div>
+                  <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
+                    <div className="bg-stone-900 h-2 transition-all duration-150 rounded-full" style={{ width: `${importProgress}%` }}></div>
                   </div>
                 </div>
               )}
@@ -5614,7 +5743,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={() => setParsedDealerVehicles([])}
-                  className="px-4 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-700 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
+                  className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-100 text-stone-700 text-[10.5px] font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98]"
                 >
                   Clear Results
                 </button>
@@ -5622,7 +5751,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   type="button"
                   disabled={isImporting}
                   onClick={handleExecuteBulkImport}
-                  className="px-6 py-3 bg-stone-900 hover:bg-stone-850 text-[#F4F1EA] text-[10px] font-bold uppercase tracking-widest cursor-pointer flex items-center gap-1.5"
+                  className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-[11px] font-bold uppercase tracking-wider rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]"
                 >
                   <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
                   {isImporting ? "Syncing CRM Stock..." : "Synchronize All Listings (One-Click)"}
@@ -5635,16 +5764,16 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* Auto-Save Draft Status Bar */}
       {!showDealerUpload && currentStep <= 5 && (
-        <div className="mb-6 py-2.5 px-4 bg-[#E8E3D7] border border-stone-300 flex flex-col sm:flex-row items-center justify-between text-[11px] font-sans gap-2 rounded-none">
-          <div className="flex items-center gap-2 text-stone-800 font-semibold">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+        <div className="mb-6 py-3 px-4 bg-white/80 backdrop-blur-sm border border-stone-300/80 rounded-xl flex flex-col sm:flex-row items-center justify-between text-[11.5px] font-sans gap-2 shadow-xs">
+          <div className="flex items-center gap-2.5 text-stone-800 font-semibold">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0 ring-4 ring-emerald-500/20" />
             <span className="uppercase text-[10px] tracking-wider font-bold">Auto-Save Enabled</span>
             {lastSavedTime ? (
-              <span className="text-stone-500 font-mono text-[10px] lowercase">
+              <span className="text-stone-500 font-mono text-[10.5px] lowercase">
                 • last draft saved at {lastSavedTime}
               </span>
             ) : (
-              <span className="text-stone-500 text-[10px]">
+              <span className="text-stone-500 text-[10.5px]">
                 • changes auto-save automatically
               </span>
             )}
@@ -5653,9 +5782,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <button
               type="button"
               onClick={handleClearDraft}
-              className="text-[10px] text-stone-700 hover:text-red-700 uppercase font-bold tracking-widest underline cursor-pointer transition"
+              className="text-[10.5px] text-stone-600 hover:text-red-700 uppercase font-bold tracking-wider cursor-pointer transition"
             >
-              Discard Draft & Start Fresh
+              Discard Draft &amp; Start Fresh
             </button>
           )}
         </div>
@@ -5663,7 +5792,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* Top wizard stepper */}
       {!showDealerUpload && currentStep <= 5 && (
-        <div className="mb-10 border-b border-stone-300 pb-8">
+        <div className="mb-10 border-b border-stone-300/80 pb-8">
           <div className="flex justify-between items-center relative py-2 mb-2">
             <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[1px] bg-stone-300 z-10" />
             
@@ -5673,16 +5802,16 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               const isCurrent = currentStep === stepNum;
               return (
                 <div key={stepNum} className="flex flex-col items-center relative z-20">
-                  <div className={`w-10 h-10 flex items-center justify-center font-bold text-xs transition border ${
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-200 border shadow-xs ${
                     isCurrent
-                      ? "bg-stone-900 text-[#F4F1EA] border-stone-950"
+                      ? "bg-stone-900 text-[#F4F1EA] border-stone-950 ring-4 ring-stone-900/15 scale-105"
                       : isActive
-                      ? "bg-[#FAF8F5] text-stone-900 border-stone-400"
-                      : "bg-stone-200 border-stone-300 text-stone-400"
+                      ? "bg-white text-stone-900 border-stone-400 font-extrabold"
+                      : "bg-stone-200/80 border-stone-300 text-stone-400"
                   }`}>
                     {stepNum}
                   </div>
-                  <span className={`text-[9px] uppercase tracking-wider font-bold mt-2 font-sans ${
+                  <span className={`text-[9.5px] uppercase tracking-wider font-bold mt-2 font-sans transition-colors ${
                     isCurrent ? "text-stone-900" : "text-stone-400"
                   }`}>{titles[stepNum - 1]}</span>
                 </div>
@@ -5694,7 +5823,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* STEP 1: Basic Specifications */}
       {!showDealerUpload && currentStep === 1 && (
-        <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
+        <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step One / Wizard</span>
             <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Basic Vehicle Category info</h2>
@@ -5710,7 +5839,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <select
                 value={vehicleType}
                 onChange={(e) => setVehicleType(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
               >
                 <option value="">Select Category</option>
                 <option value="car">Car / Sedan</option>
@@ -5735,7 +5864,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   setYear(e.target.value);
                   // Selecting new year automatically clears model and triggers model fetch via useEffect
                 }}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
               >
                 <option value="">Select Year (1990 - 2026)</option>
                 {NHTSA_YEARS.map((yr) => (
@@ -5815,7 +5944,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           <div className="flex justify-end pt-5 border-t border-stone-200">
             <button
               onClick={handleNextStep}
-              className="px-6 py-3.5 bg-stone-900 hover:bg-stone-850 text-[#F4F1EA] text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
+              className="px-6 py-3.5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-bold uppercase tracking-wider rounded-xl flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
             >
               Continue to Specifications
               <ArrowRight className="w-4 h-4" />
@@ -5826,7 +5955,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* STEP 2: Specs and Checklist Details */}
       {!showDealerUpload && currentStep === 2 && (
-        <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
+        <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Two / Specifications</span>
             <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Mechanical Parameters</h2>
@@ -5834,7 +5963,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           </div>
 
           {/* CONDITION & CATEGORY SPECIFIC INPUTS */}
-          <div className="p-6 bg-[#F4F1EA] border border-stone-300 text-center space-y-2">
+          <div className="p-6 bg-[#F4F1EA] border border-stone-300/80 rounded-xl text-center space-y-2">
             <h3 className="text-xs uppercase tracking-wider font-bold text-stone-900">Declare Current Overall Condition Rating</h3>
             <div className="flex justify-center gap-2 py-1">
               {[1, 2, 3, 4, 5].map((val) => {
@@ -5861,7 +5990,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           {/* 1. BICYCLE SPECIFIC FIELDS */}
           {vehicleType === "bicycle" && (
             <div className="space-y-4 pt-2">
-              <div className="bg-amber-50/60 p-3 border border-amber-200 text-amber-900 text-[11px] font-medium flex items-center gap-2">
+              <div className="bg-amber-50/60 p-3.5 border border-amber-200/80 rounded-xl text-amber-900 text-[11px] font-medium flex items-center gap-2 shadow-xs">
                 <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>Bicycle Mode Activated: Engine & Fuel fields omitted for human-powered / electric pedal assist bicycles.</span>
               </div>
@@ -5873,7 +6002,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={bicycleType}
                     onChange={(e) => setBicycleType(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Style</option>
                     <option value="Road Bike">Road Bike</option>
@@ -5893,7 +6022,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={frameSize}
                     onChange={(e) => setFrameSize(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Frame Size</option>
                     <option value="Extra Small (XS / 14&quot;)">Extra Small (XS / 14")</option>
@@ -5910,7 +6039,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={gears}
                     onChange={(e) => setGears(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Drivetrain</option>
                     <option value="Single Speed">Single Speed (No Gears)</option>
@@ -5928,7 +6057,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={brakeType}
                     onChange={(e) => setBrakeType(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Brakes</option>
                     <option value="Hydraulic Disc Brakes">Hydraulic Disc Brakes</option>
@@ -5943,7 +6072,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={frameMaterial}
                     onChange={(e) => setFrameMaterial(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Frame Material</option>
                     <option value="Aluminum Alloy 6061">Aluminum Alloy 6061 (Lightweight)</option>
@@ -5965,7 +6094,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={bikeType}
                     onChange={(e) => setBikeType(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Motorcycle Type</option>
                     <option value="Sports Bike">Sports Bike</option>
@@ -5988,7 +6117,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     placeholder="e.g. 12000"
                     value={mileage}
                     onChange={(e) => setMileage(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   />
                 </div>
 
@@ -5999,7 +6128,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={fuelType}
                     onChange={(e) => setFuelType(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Power Source</option>
                     <option value="petrol">Petrol / Gasoline</option>
@@ -6016,7 +6145,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         placeholder="e.g. 3.7 kWh"
                         value={batteryCapacity}
                         onChange={(e) => setBatteryCapacity(e.target.value)}
-                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -6026,7 +6155,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         placeholder="e.g. 120 km"
                         value={electricRange}
                         onChange={(e) => setElectricRange(e.target.value)}
-                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                       />
                     </div>
                   </>
@@ -6038,7 +6167,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       placeholder="e.g. 150cc, 350cc"
                       value={engineSize}
                       onChange={(e) => setEngineSize(e.target.value)}
-                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                     />
                   </div>
                 )}
@@ -6050,7 +6179,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={transmission}
                     onChange={(e) => setTransmission(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Transmission</option>
                     <option value="Manual (5-Speed)">Manual (5-Speed)</option>
@@ -6075,7 +6204,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     placeholder="e.g. 25000"
                     value={mileage}
                     onChange={(e) => setMileage(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   />
                 </div>
 
@@ -6086,7 +6215,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={fuelType}
                     onChange={(e) => setFuelType(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Fuel</option>
                     <option value="petrol">Petrol / Gasoline</option>
@@ -6104,7 +6233,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={transmission}
                     onChange={(e) => setTransmission(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Transmission</option>
                     <option value="automatic">Automatic</option>
@@ -6124,7 +6253,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         placeholder="e.g. 75 kWh"
                         value={batteryCapacity}
                         onChange={(e) => setBatteryCapacity(e.target.value)}
-                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -6134,7 +6263,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         placeholder="e.g. 450 km per charge"
                         value={electricRange}
                         onChange={(e) => setElectricRange(e.target.value)}
-                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                        className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                       />
                     </div>
                   </>
@@ -6146,7 +6275,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       placeholder="e.g. 1.5L i-VTEC or 2.0L Turbo"
                       value={engineSize}
                       onChange={(e) => setEngineSize(e.target.value)}
-                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                      className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                     />
                   </div>
                 )}
@@ -6156,7 +6285,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <select
                     value={driveType}
                     onChange={(e) => setDriveType(e.target.value)}
-                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                   >
                     <option value="">Select Drivetrain</option>
                     <option value="FWD">FWD (Front-Wheel Drive)</option>
@@ -6172,7 +6301,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     <select
                       value={doors}
                       onChange={(e) => setDoors(e.target.value)}
-                      className="w-1/2 px-2 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold"
+                      className="w-1/2 px-3 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                     >
                       <option value="">Doors</option>
                       <option value="2">2 Doors</option>
@@ -6183,7 +6312,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     <select
                       value={seats}
                       onChange={(e) => setSeats(e.target.value)}
-                      className="w-1/2 px-2 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold"
+                      className="w-1/2 px-3 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                     >
                       <option value="">Seats</option>
                       <option value="2">2 Seats</option>
@@ -6199,13 +6328,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
           )}
 
           {/* INDIAN AUTOMOTIVE & RTO REGISTRATION SPECIFICATIONS */}
-          <div className="bg-[#F4F1EA] border border-stone-300 p-4 sm:p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-300 pb-2">
+          <div className="bg-[#F4F1EA] border border-stone-300/80 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-stone-300/80 pb-3">
               <div>
                 <span className="text-[9px] font-mono uppercase tracking-widest text-amber-700 font-bold block">Compliance & Documentation</span>
                 <h3 className="text-xs sm:text-sm font-serif font-black uppercase text-stone-950">Indian RTO & Vehicle Verification Data</h3>
               </div>
-              <span className="px-2 py-0.5 bg-stone-900 text-amber-300 text-[9px] font-mono font-bold uppercase tracking-wider rounded-xs">
+              <span className="px-2.5 py-1 bg-stone-900 text-amber-300 text-[9px] font-mono font-bold uppercase tracking-wider rounded-full shadow-xs">
                 RTO Parivahan
               </span>
             </div>
@@ -6221,7 +6350,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   placeholder="e.g. MH-02-EQ-8842"
                   value={regNumber}
                   onChange={(e) => setRegNumber(e.target.value.toUpperCase())}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-mono font-bold tracking-wider text-stone-900 uppercase focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-mono font-bold tracking-wider text-stone-900 uppercase focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 />
               </div>
 
@@ -6240,7 +6369,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       setRtoCode(stateObj.rtos[0]);
                     }
                   }}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 >
                   {INDIAN_RTO_STATES.map((st) => (
                     <option key={st.state} value={st.state}>{st.state}</option>
@@ -6256,7 +6385,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <select
                   value={rtoCode}
                   onChange={(e) => setRtoCode(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all font-mono"
                 >
                   {INDIAN_RTO_STATES.find(s => s.state === rtoState)?.rtos.map((code) => (
                     <option key={code} value={code}>{code}</option>
@@ -6274,7 +6403,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <select
                   value={insuranceStatus}
                   onChange={(e) => setInsuranceStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 >
                   {INSURANCE_STATUS_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -6292,7 +6421,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   placeholder="e.g. Dec 2026 or 11/2026"
                   value={insuranceValidity}
                   onChange={(e) => setInsuranceValidity(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 />
               </div>
 
@@ -6304,7 +6433,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <select
                   value={puccStatus}
                   onChange={(e) => setPuccStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 >
                   {PUCC_STATUS_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -6320,7 +6449,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <select
                   value={hypothecationStatus}
                   onChange={(e) => setHypothecationStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 >
                   {HYPOTHECATION_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -6336,7 +6465,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <select
                   value={fastagStatus}
                   onChange={(e) => setFastagStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 >
                   <option value="Active & Linked">Active & Linked</option>
                   <option value="Not Attached">Not Attached</option>
@@ -6351,7 +6480,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <select
                   value={stateNocAvailable}
                   onChange={(e) => setStateNocAvailable(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 >
                   {STATE_NOC_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -6367,7 +6496,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <select
                   value={roadTaxStatus}
                   onChange={(e) => setRoadTaxStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 >
                   {ROAD_TAX_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -6395,9 +6524,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     key={fName}
                     type="button"
                     onClick={() => handleFeatureToggle(fName)}
-                    className={`px-3 py-2.5 text-[10px] font-bold uppercase transition border text-left flex items-center justify-between cursor-pointer ${
+                    className={`px-3.5 py-2.5 text-[10px] font-bold uppercase transition rounded-xl border text-left flex items-center justify-between cursor-pointer ${
                       isChecked
-                        ? "bg-stone-900 border-stone-900 text-white"
+                        ? "bg-stone-900 border-stone-900 text-white shadow-xs"
                         : "bg-[#F4F1EA] border-stone-300 text-stone-700 hover:bg-stone-200"
                     }`}
                   >
@@ -6416,23 +6545,23 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               placeholder="State modifications lists, history files, or dynamic components parameters honestly..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none focus:border-stone-900 font-medium"
+              className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 font-medium transition-all"
             />
-            <span className="text-[9px] text-[#777777] block uppercase tracking-wider">Provide at least 15 characters of descriptive print words.</span>
+            <span className="text-[9.5px] text-[#777777] block uppercase tracking-wider">Provide at least 15 characters of descriptive print words.</span>
           </div>
 
           <div className="flex justify-between pt-5 border-t border-stone-200">
             <button
               type="button"
               onClick={() => setCurrentStep(1)}
-              className="px-4 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-xs font-bold uppercase tracking-widest cursor-pointer"
+              className="px-5 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98]"
             >
               Back
             </button>
             <button
               type="button"
               onClick={handleNextStep}
-              className="px-6 py-3.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center cursor-pointer animate-pulse"
+              className="px-6 py-3.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center justify-center cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
             >
               Continue to Media upload
             </button>
@@ -6442,7 +6571,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* STEP 3: Photos Drag and Drop */}
       {!showDealerUpload && currentStep === 3 && (
-        <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
+        <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Three / Media Frame</span>
             <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Snapshot Documentation</h2>
@@ -6453,14 +6582,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <div
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-stone-300 bg-[#F4F1EA] px-6 py-8 flex flex-col items-center justify-center cursor-pointer"
+              className="border-2 border-dashed border-stone-300 hover:border-amber-500/80 rounded-2xl bg-[#F4F1EA] px-6 py-8 flex flex-col items-center justify-center cursor-pointer transition-all group"
             >
-              <Upload className="w-8 h-8 text-stone-900 mb-2" />
+              <Upload className="w-8 h-8 text-stone-900 group-hover:text-amber-600 transition-colors mb-2" />
               <h3 className="text-xs uppercase tracking-wider font-bold text-stone-800">Drag snapshots directly here</h3>
               <p className="text-[10px] uppercase text-stone-500 tracking-wider mt-1 text-center font-bold">Compatible with JPEG & PNG formats (Auto-compressed to web size)</p>
               
-              <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                <label className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] uppercase tracking-widest font-bold shadow-sm cursor-pointer select-none flex items-center gap-1.5">
+              <div className="mt-4 flex flex-wrap gap-2.5 justify-center">
+                <label className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[10.5px] uppercase tracking-wider font-bold shadow-sm rounded-xl cursor-pointer select-none flex items-center gap-2 transition-all active:scale-[0.98]">
                   <Upload className="w-3.5 h-3.5" />
                   <span>{isUploadingMedia ? "Uploading Media..." : "Browse Local Files"}</span>
                   <input
@@ -6476,9 +6605,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <button
                     type="button"
                     onClick={handleAddSamplePhoto}
-                    className="px-3 py-2.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-900 text-[10px] uppercase tracking-widest font-bold cursor-pointer"
+                    className="px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-900 text-[10.5px] uppercase tracking-wider font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98]"
                   >
-                    + Add Sample Image (Admin Only)
+                    + Add Sample Image
                   </button>
                 )}
               </div>
@@ -6486,10 +6615,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
             {/* LIVE FIREBASE STORAGE UPLOAD PROGRESS BAR CONTAINER */}
             {Object.keys(uploadProgressMap).length > 0 && (
-              <div className="bg-[#F4F1EA] border border-stone-300 p-4 space-y-3">
+              <div className="bg-[#F4F1EA] border border-stone-300/80 rounded-2xl p-5 space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-900">
                       Firebase Cloud Storage Pipe
                     </span>
@@ -6503,14 +6632,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     return (
                       <div key={key} className="space-y-1">
                         <div className="flex justify-between text-[10px] font-mono">
-                          <span className="text-stone-700 truncate max-w-[200px]">{shortName}</span>
+                          <span className="text-stone-700 truncate max-w-[200px] font-semibold">{shortName}</span>
                           <span className={item.status === "error" ? "text-red-600 font-bold" : "text-emerald-700 font-bold"}>
                             {item.status === "error" ? "Failed" : item.progress === 100 ? "Ready" : `${item.progress}%`}
                           </span>
                         </div>
-                        <div className="w-full h-1.5 bg-stone-300 overflow-hidden">
+                        <div className="w-full h-2 bg-stone-300 rounded-full overflow-hidden">
                           <div
-                            className={`h-full transition-all duration-300 ${
+                            className={`h-full rounded-full transition-all duration-300 ${
                               item.status === "error"
                                 ? "bg-red-500"
                                 : item.progress === 100
@@ -6528,20 +6657,20 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             )}
 
             {/* Direct Image URL input option */}
-            <div className="bg-[#F4F1EA] p-4 border border-stone-300 space-y-2">
+            <div className="bg-[#F4F1EA] p-4 border border-stone-300/80 rounded-xl space-y-2">
               <label className="text-[10px] font-bold text-stone-700 uppercase tracking-widest block">Or Add Image by Web URL</label>
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <input
                   type="url"
                   placeholder="https://example.com/vehicle-photo.jpg"
                   value={step3UrlInput}
                   onChange={(e) => setStep3UrlInput(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="flex-1 px-3.5 py-2.5 bg-[#FAF8F5] border border-stone-300 rounded-xl text-xs text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 />
                 <button
                   type="button"
                   onClick={handleAddPhotoByUrl}
-                  className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold uppercase tracking-widest cursor-pointer"
+                  className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-[10.5px] font-bold uppercase tracking-wider rounded-xl cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                 >
                   Add Link
                 </button>
@@ -6553,12 +6682,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <span className="text-[10px] text-[#555555] block uppercase tracking-widest font-bold">Files Ready for upload ({photos.length})</span>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {photos.map((item, idx) => (
-                    <div key={idx} className="relative aspect-video border border-stone-300 overflow-hidden group">
+                    <div key={idx} className="relative aspect-video border border-stone-300 rounded-xl overflow-hidden group shadow-xs">
                       <img src={item.src} alt={item.alt} className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => handleRemovePhoto(idx)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-stone-950 text-white text-xs flex items-center justify-center hover:bg-stone-800"
+                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-stone-950/90 text-white text-xs flex items-center justify-center hover:bg-red-700 rounded-full transition-colors cursor-pointer shadow-xs"
                       >
                         ✕
                       </button>
@@ -6572,14 +6701,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className="px-4 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-905 text-xs font-bold uppercase tracking-widest cursor-pointer"
+                className="px-5 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-905 text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98]"
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="px-6 py-3.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center cursor-pointer"
+                className="px-6 py-3.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center justify-center cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
               >
                 Proceed to Pricing Details
               </button>
@@ -6590,7 +6719,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* STEP 4: Price & Valuation */}
       {!showDealerUpload && currentStep === 4 && (
-        <div className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
+        <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Four / Price & Terms</span>
             <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Valuation Specifications</h2>
@@ -6599,7 +6728,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
           {/* Pricing Suggestion Card */}
           {suggestedMax > 0 && (
-            <div className="p-5 bg-[#F4F1EA] border border-stone-305">
+            <div className="p-5 bg-[#F4F1EA] border border-stone-300/80 rounded-xl">
               <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Dynamic Appraisal</span>
               <h3 className="text-sm font-serif font-bold italic text-stone-950 mt-1">Market Valuation Index</h3>
               <div className="text-lg font-serif font-bold text-stone-900 mt-0.5">
@@ -6619,7 +6748,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   placeholder="e.g. 1250000"
                   value={askingPrice}
                   onChange={(e) => setAskingPrice(e.target.value)}
-                  className="w-full pl-7 pr-3 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                  className="w-full pl-7 pr-3 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
                 />
               </div>
             </div>
@@ -6629,7 +6758,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               <select
                 value={negotiable}
                 onChange={(e) => setNegotiable(e.target.value)}
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 transition-all"
               >
                 <option value="yes">Asking price is negotiable</option>
                 <option value="no">Asking price is absolutely firm</option>
@@ -6651,10 +6780,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               {/* Option 1: Featured Listing */}
               <div 
                 onClick={() => setFeaturedListing(!featuredListing)}
-                className={`p-4 border-2 transition-all cursor-pointer select-none flex flex-col justify-between ${
+                className={`p-5 rounded-2xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
                   featuredListing 
-                    ? "bg-amber-50/60 border-amber-500 shadow-md ring-1 ring-amber-400/40" 
-                    : "bg-white border-stone-200 hover:border-stone-400"
+                    ? "bg-amber-50/70 border-amber-500 shadow-lg shadow-amber-500/10 ring-2 ring-amber-400/30" 
+                    : "bg-[#F4F1EA]/50 border-stone-300 hover:border-stone-400 hover:bg-[#F4F1EA]"
                 }`}
               >
                 <div>
@@ -6685,8 +6814,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <span className="text-xs font-black text-stone-900 uppercase tracking-wider">Featured Booster</span>
                     </div>
 
-                    <span className={`px-2 py-0.5 text-[8.5px] font-mono font-black uppercase tracking-wider rounded-sm ${
-                      featuredListing ? "bg-amber-500 text-stone-950" : "bg-amber-100 text-amber-800"
+                    <span className={`px-2.5 py-1 text-[8.5px] font-mono font-black uppercase tracking-wider rounded-full ${
+                      featuredListing ? "bg-amber-500 text-stone-950 shadow-xs" : "bg-amber-100 text-amber-800"
                     }`}>
                       {featuredListing ? "ON" : "PREMIUM SPOT"}
                     </span>
@@ -6697,7 +6826,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-stone-100 mt-3 flex justify-between items-center text-xs font-mono font-bold">
+                <div className="pt-3 border-t border-stone-200/70 mt-3 flex justify-between items-center text-xs font-mono font-bold">
                   <span className="text-stone-400">Add-on Pricing</span>
                   <span className="text-stone-900">
                     {subscriptionActive || currentUser?.email === "afrojalamansari461@gmail.com" ? (
@@ -6712,10 +6841,10 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               {/* Option 2: Urgent Listing */}
               <div 
                 onClick={() => setUrgentListing(!urgentListing)}
-                className={`p-4 border-2 transition-all cursor-pointer select-none flex flex-col justify-between ${
+                className={`p-5 rounded-2xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
                   urgentListing 
-                    ? "bg-red-50/60 border-red-500 shadow-md ring-1 ring-red-400/40" 
-                    : "bg-white border-stone-200 hover:border-stone-400"
+                    ? "bg-red-50/70 border-red-500 shadow-lg shadow-red-500/10 ring-2 ring-red-400/30" 
+                    : "bg-[#F4F1EA]/50 border-stone-300 hover:border-stone-400 hover:bg-[#F4F1EA]"
                 }`}
               >
                 <div>
@@ -6746,8 +6875,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <span className="text-xs font-black text-stone-900 uppercase tracking-wider">Urgent Hot Stamp</span>
                     </div>
 
-                    <span className={`px-2 py-0.5 text-[8.5px] font-mono font-black uppercase tracking-wider rounded-sm ${
-                      urgentListing ? "bg-red-600 text-white" : "bg-red-100 text-red-800"
+                    <span className={`px-2.5 py-1 text-[8.5px] font-mono font-black uppercase tracking-wider rounded-full ${
+                      urgentListing ? "bg-red-600 text-white shadow-xs" : "bg-red-100 text-red-800"
                     }`}>
                       {urgentListing ? "ON" : "IMMEDIATE SALE"}
                     </span>
@@ -6758,7 +6887,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-stone-100 mt-3 flex justify-between items-center text-xs font-mono font-bold">
+                <div className="pt-3 border-t border-stone-200/70 mt-3 flex justify-between items-center text-xs font-mono font-bold">
                   <span className="text-stone-400">Add-on Pricing</span>
                   <span className="text-stone-900">
                     {subscriptionActive || currentUser?.email === "afrojalamansari461@gmail.com" ? (
@@ -6773,8 +6902,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
             {/* Total price calculation helper */}
             {(featuredListing || urgentListing) && !subscriptionActive && currentUser?.email !== "afrojalamansari461@gmail.com" && (
-              <div className="p-3.5 bg-amber-50 border border-amber-200 flex justify-between items-center text-xs font-bold uppercase tracking-wider font-mono">
-                <span className="text-stone-705">Total promotion additions:</span>
+              <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl flex justify-between items-center text-xs font-bold uppercase tracking-wider font-mono shadow-xs">
+                <span className="text-stone-700">Total promotion additions:</span>
                 <span className="text-stone-950 font-serif font-black text-sm">
                   ₹{(featuredListing ? 499 : 0) + (urgentListing ? 299 : 0)} INR
                 </span>
@@ -6786,14 +6915,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <button
               type="button"
               onClick={() => setCurrentStep(3)}
-              className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-905 text-xs font-bold uppercase tracking-widest cursor-pointer"
+              className="flex-1 py-3.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98]"
             >
               Back
             </button>
             <button
               type="button"
               onClick={handleNextStep}
-              className="flex-2 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center cursor-pointer animate-pulse"
+              className="flex-2 py-3.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center justify-center cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
             >
               Continue to Contacts
             </button>
@@ -6803,7 +6932,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
 
       {/* STEP 5: Contact Details Form */}
       {!showDealerUpload && currentStep === 5 && (
-        <form onSubmit={handlePublishListing} className="bg-[#FAF8F5] border border-stone-300 p-8 space-y-6">
+        <form onSubmit={handlePublishListing} className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl shadow-stone-900/5">
           <div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400 block mb-1">Step Five / Broker Contact registry</span>
             <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-900 uppercase">Contact Information</h2>
@@ -6819,7 +6948,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 value={sellerName}
                 onChange={(e) => setSellerName(e.target.value)}
                 required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-900 font-semibold transition-all"
               />
             </div>
 
@@ -6831,7 +6960,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 value={sellerEmail}
                 onChange={(e) => setSellerEmail(e.target.value)}
                 required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-900 font-semibold transition-all"
               />
             </div>
 
@@ -6843,7 +6972,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 value={sellerPhone}
                 onChange={(e) => setSellerPhone(e.target.value)}
                 required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-900 font-semibold transition-all"
               />
             </div>
 
@@ -6855,7 +6984,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 value={locationStr}
                 onChange={(e) => setLocationStr(e.target.value)}
                 required
-                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 text-xs focus:outline-none text-stone-900 font-semibold"
+                className="w-full px-3.5 py-3 bg-[#F4F1EA] border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-900 font-semibold transition-all"
               />
             </div>
           </div>
@@ -6864,14 +6993,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             <button
               type="button"
               onClick={() => setCurrentStep(4)}
-              className="flex-1 py-3 bg-[#FAF8F5] border border-[#CCCCCC] hover:bg-stone-200 text-stone-905 text-xs font-bold uppercase tracking-widest cursor-pointer"
+              className="flex-1 py-3.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98]"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isPublishing}
-              className="flex-2 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center cursor-pointer"
+              className="flex-2 py-3.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center justify-center cursor-pointer shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
             >
               {isPublishing ? "Publishing Listing dossier..." : "Publish & Register Listing"}
             </button>
@@ -6888,7 +7017,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
             initial={{ opacity: 0, scale: 0.85, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 280, damping: 22 }}
-            className="bg-[#FAF8F5] border-2 border-stone-900 p-8 sm:p-12 text-center space-y-6 shadow-2xl relative overflow-hidden z-10"
+            className="bg-[#FAF8F5] border border-stone-200/90 rounded-3xl p-8 sm:p-12 text-center space-y-6 shadow-2xl shadow-stone-900/10 relative overflow-hidden z-10"
           >
             {/* Celebration Icon Badge */}
             <div className="relative inline-block">
@@ -6896,7 +7025,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 initial={{ scale: 0, rotate: -45 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 350, damping: 18, delay: 0.15 }}
-                className="w-20 h-20 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto border-2 border-amber-500 shadow-xl relative z-10"
+                className="w-20 h-20 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto rounded-2xl border border-amber-500/60 shadow-xl relative z-10"
               >
                 <CheckCircle2 className="w-10 h-10 text-amber-400" />
               </motion.div>
@@ -6928,11 +7057,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35 }}
-              className="bg-[#F4F1EA] border border-stone-300 p-5 text-left max-w-sm mx-auto text-xs space-y-1.5 text-stone-800 font-mono shadow-inner"
+              className="bg-[#F4F1EA] border border-stone-300/80 rounded-2xl p-5 text-left max-w-sm mx-auto text-xs space-y-1.5 text-stone-800 font-mono shadow-xs"
             >
               <div className="flex justify-between items-center"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px]">Receipt Blueprint ID</span> <span className="font-bold text-stone-900">{publishedListingId}</span></div>
               <div className="pt-1.5 border-t border-stone-200/80 flex justify-between items-center"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px]">Time Catalogued</span> <span className="text-stone-800 text-[11px]">{publishedTimeStr}</span></div>
-              <div className="pt-1.5 border-t border-stone-200/80 flex justify-between items-center"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px]">Status Inflow</span> <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] uppercase tracking-wider">Active &amp; Visible</span></div>
+              <div className="pt-1.5 border-t border-stone-200/80 flex justify-between items-center"><span className="text-stone-400 font-bold uppercase tracking-wider text-[9px]">Status Inflow</span> <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] uppercase tracking-wider rounded-full">Active &amp; Visible</span></div>
             </motion.div>
 
             <motion.div 
@@ -6947,19 +7076,19 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     setViewMode("my_catalog");
                     setCurrentStep(1);
                   }}
-                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest border border-amber-600 transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                  className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-mono text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer shadow-sm hover:shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98]"
                 >
                   Manage My Listings
                 </button>
                 <button
                   onClick={() => setActiveTab("buy")}
-                  className="flex-1 py-3 bg-stone-900 hover:bg-stone-850 text-white font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 py-3.5 bg-stone-900 hover:bg-stone-800 text-white font-mono text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md active:scale-[0.98]"
                 >
                   Look Up Catalog
                 </button>
                 <button
                   onClick={handleResetWizardForm}
-                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 font-mono text-xs font-bold uppercase tracking-widest transition cursor-pointer"
+                  className="flex-1 py-3.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 font-mono text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer active:scale-[0.98]"
                 >
                   List Another
                 </button>
@@ -7000,7 +7129,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               transition={{ type: "spring", stiffness: 380, damping: 28 }}
-              className="relative w-full max-w-md bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 overflow-hidden z-10 font-sans"
+              className="relative w-full max-w-md bg-[#FAF8F5] border border-stone-200/90 rounded-3xl shadow-2xl shadow-stone-900/20 p-6 sm:p-8 overflow-hidden z-10 font-sans"
             >
               {/* Premium Top Gradient Bar */}
               <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-amber-600 to-stone-900" />
@@ -7021,7 +7150,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   initial={{ scale: 0, rotate: -90 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 320, damping: 20, delay: 0.08 }}
-                  className="w-16 h-16 rounded-full bg-amber-500/15 border-2 border-amber-600/40 flex items-center justify-center text-amber-700 shadow-inner"
+                  className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-600/30 flex items-center justify-center text-amber-700 shadow-inner"
                 >
                   <Lock className="w-8 h-8" />
                 </motion.div>
@@ -7045,7 +7174,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15, duration: 0.25 }}
-                className="my-5 p-4 bg-[#F4F1EA] border border-stone-300 space-y-2 rounded-sm"
+                className="my-5 p-4.5 bg-[#F4F1EA] border border-stone-300/80 space-y-2 rounded-2xl shadow-xs"
               >
                 <span className="text-[9px] font-mono font-extrabold uppercase tracking-widest text-stone-500 block">
                   Included with your free account:
@@ -7078,7 +7207,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       onSignInClick();
                     }
                   }}
-                  className="w-full py-3.5 px-5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition-all"
+                  className="w-full py-3.5 px-5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl border border-stone-950 shadow-md hover:shadow-lg cursor-pointer transition-all active:scale-[0.98]"
                 >
                   <LogIn className="w-4 h-4 text-amber-400" />
                   <span>Log In / Sign Up Now</span>
@@ -7094,7 +7223,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       window.scrollTo({ top: 100, behavior: "smooth" });
                       showToast("Continuing in Guest Mode. Please sign in before final publication.", "info");
                     }}
-                    className="flex-1 py-2.5 px-3 bg-[#FAF8F5] hover:bg-stone-200/80 border border-stone-400 text-stone-800 text-[10.5px] font-mono font-bold uppercase tracking-wider text-center cursor-pointer transition-colors"
+                    className="flex-1 py-2.5 px-3 bg-[#FAF8F5] hover:bg-stone-200/80 border border-stone-300 rounded-xl text-stone-800 text-[10.5px] font-mono font-bold uppercase tracking-wider text-center cursor-pointer transition-colors"
                   >
                     Continue as Guest
                   </button>
@@ -7102,7 +7231,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <button
                     type="button"
                     onClick={() => setShowLoginRequiredModal(false)}
-                    className="py-2.5 px-4 bg-transparent hover:bg-stone-200/50 text-stone-500 hover:text-stone-900 text-[10.5px] font-mono font-bold uppercase tracking-wider cursor-pointer transition-colors"
+                    className="py-2.5 px-4 bg-transparent hover:bg-stone-200/50 text-stone-500 hover:text-stone-900 text-[10.5px] font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
@@ -7129,9 +7258,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border border-stone-200/90 rounded-3xl shadow-2xl shadow-stone-900/20 p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center border-b border-stone-300 pb-4 mb-6">
+              <div className="flex justify-between items-center border-b border-stone-200/90 pb-4 mb-6">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase text-amber-700 tracking-wider block">
                     Seller Control Panel
@@ -7158,7 +7287,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       value={editForm.title || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
                       required
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     />
                   </div>
 
@@ -7169,7 +7298,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       value={editForm.price || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
                       required
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     />
                   </div>
 
@@ -7180,7 +7309,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       value={editForm.make || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, make: e.target.value }))}
                       required
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     />
                   </div>
 
@@ -7191,7 +7320,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       value={editForm.model || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, model: e.target.value }))}
                       required
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     />
                   </div>
 
@@ -7202,7 +7331,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       value={editForm.year || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, year: e.target.value }))}
                       required
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     />
                   </div>
 
@@ -7212,7 +7341,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       type="text"
                       value={editForm.mileage || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, mileage: e.target.value }))}
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     />
                   </div>
 
@@ -7221,7 +7350,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     <select
                       value={editForm.fuelType || "Petrol"}
                       onChange={(e) => setEditForm(prev => ({ ...prev, fuelType: e.target.value }))}
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     >
                       <option value="Petrol">Petrol</option>
                       <option value="Diesel">Diesel</option>
@@ -7236,7 +7365,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     <select
                       value={editForm.transmission || "Manual"}
                       onChange={(e) => setEditForm(prev => ({ ...prev, transmission: e.target.value }))}
-                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                     >
                       <option value="Manual">Manual</option>
                       <option value="Automatic">Automatic</option>
@@ -7250,7 +7379,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     rows={3}
                     value={editForm.description || ""}
                     onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 font-medium focus:outline-none focus:border-stone-900 text-stone-900"
+                    className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-medium focus:outline-none focus:border-stone-900 text-stone-900"
                   />
                 </div>
 
@@ -7261,7 +7390,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       type="text"
                       value={editForm.sellerName || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, sellerName: e.target.value }))}
-                      className="w-full p-2 bg-[#F4F1EA] border border-stone-300 font-semibold text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold text-stone-900"
                     />
                   </div>
 
@@ -7271,7 +7400,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       type="text"
                       value={editForm.sellerPhone || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, sellerPhone: e.target.value }))}
-                      className="w-full p-2 bg-[#F4F1EA] border border-stone-300 font-semibold text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold text-stone-900"
                     />
                   </div>
 
@@ -7281,23 +7410,23 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       type="text"
                       value={editForm.location || ""}
                       onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
-                      className="w-full p-2 bg-[#F4F1EA] border border-stone-300 font-semibold text-stone-900"
+                      className="w-full p-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl font-semibold text-stone-900"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-stone-300">
+                <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200/90">
                   <button
                     type="button"
                     onClick={() => setEditingListing(null)}
-                    className="px-4 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingEdit}
-                    className="px-6 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest rounded-xl cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                   >
                     {isSavingEdit ? "Saving Listing..." : "Save Vehicle Changes"}
                   </button>
@@ -7324,9 +7453,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border border-stone-200/90 rounded-3xl shadow-2xl shadow-stone-900/20 p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center border-b border-stone-300 pb-4 mb-4">
+              <div className="flex justify-between items-center border-b border-stone-200/90 pb-4 mb-4">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase text-amber-700 tracking-wider block">
                     Photo Manager
@@ -7349,13 +7478,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   <span className="text-[10px] font-mono font-bold uppercase text-stone-600 block">
                     Current Listing Photos (First image is Cover Photo)
                   </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-2 bg-[#F4F1EA] border border-stone-300">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-3 bg-[#F4F1EA] border border-stone-300/80 rounded-2xl">
                     {managePhotosList.map((photo, idx) => (
-                      <div key={idx} className="relative group aspect-video bg-stone-900 border border-stone-300 overflow-hidden">
+                      <div key={idx} className="relative group aspect-video bg-stone-900 border border-stone-300/80 rounded-xl overflow-hidden shadow-xs">
                         <img src={photo.src} alt={photo.alt || "Vehicle"} className="w-full h-full object-cover" />
                         
                         {idx === 0 && (
-                          <span className="absolute top-1 left-1 bg-amber-500 text-stone-950 text-[8.5px] font-mono font-black uppercase px-1.5 py-0.5 border border-stone-950">
+                          <span className="absolute top-1.5 left-1.5 bg-amber-500 text-stone-950 text-[8.5px] font-mono font-black uppercase px-2 py-0.5 rounded-md shadow-xs">
                             Cover
                           </span>
                         )}
@@ -7363,7 +7492,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         <button
                           type="button"
                           onClick={() => setManagePhotosList(prev => prev.filter((_, i) => i !== idx))}
-                          className="absolute top-1 right-1 bg-stone-950/90 text-white hover:bg-red-600 w-6 h-6 flex items-center justify-center rounded-xs transition cursor-pointer text-xs"
+                          className="absolute top-1.5 right-1.5 bg-stone-950/90 text-white hover:bg-red-600 w-6 h-6 flex items-center justify-center rounded-lg transition cursor-pointer text-xs shadow-xs"
                           title="Remove Photo"
                         >
                           ✕
@@ -7373,7 +7502,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </div>
                 </div>
 
-                <div className="space-y-3 p-4 bg-[#F4F1EA] border border-stone-300">
+                <div className="space-y-3 p-5 bg-[#F4F1EA] border border-stone-300/80 rounded-2xl shadow-xs">
                   <span className="text-[10.5px] font-mono font-bold uppercase text-stone-800 block">
                     Add New Photos to Vehicle
                   </span>
@@ -7385,11 +7514,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       accept="image/*"
                       multiple
                       onChange={handleAddPhotoFiles}
-                      className="w-full text-xs text-stone-700 file:mr-3 file:py-2 file:px-3 file:border-0 file:text-xs file:font-mono file:font-bold file:bg-stone-900 file:text-white hover:file:bg-stone-800 cursor-pointer"
+                      className="w-full text-xs text-stone-700 file:mr-3 file:py-2 file:px-3.5 file:border-0 file:text-xs file:font-mono file:font-bold file:bg-stone-900 file:text-white hover:file:bg-stone-800 file:rounded-xl cursor-pointer"
                     />
                   </div>
 
-                  <div className="space-y-1 pt-2 border-t border-stone-300">
+                  <div className="space-y-1 pt-2.5 border-t border-stone-300/80">
                     <label className="text-[10px] font-bold text-stone-600 uppercase block">Option B: Add Image URL</label>
                     <div className="flex gap-2">
                       <input
@@ -7397,12 +7526,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         placeholder="https://images.unsplash.com/..."
                         value={newPhotoUrlInput}
                         onChange={(e) => setNewPhotoUrlInput(e.target.value)}
-                        className="flex-1 p-2 bg-white border border-stone-300 text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
+                        className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-stone-900 text-stone-900"
                       />
                       <button
                         type="button"
                         onClick={handleAddPhotoUrl}
-                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                        className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition shadow-xs"
                       >
                         Add URL
                       </button>
@@ -7410,18 +7539,18 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-stone-300">
+                <div className="flex justify-end gap-2.5 pt-2 border-t border-stone-200/90">
                   <button
                     type="button"
                     onClick={() => setPhotoManagingListing(null)}
-                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingPhotos}
-                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest rounded-xl cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                   >
                     {isSavingPhotos ? "Saving Photos..." : "Save Photo Gallery"}
                   </button>
@@ -7448,9 +7577,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans text-center space-y-4"
+              className="relative w-full max-w-md bg-[#FAF8F5] border border-stone-200/90 rounded-3xl shadow-2xl shadow-stone-900/20 p-6 sm:p-8 z-10 font-sans text-center space-y-4"
             >
-              <div className="w-14 h-14 bg-red-100 border-2 border-red-300 rounded-full flex items-center justify-center text-red-600 mx-auto">
+              <div className="w-14 h-14 bg-red-100 border border-red-200 rounded-2xl flex items-center justify-center text-red-600 mx-auto shadow-xs">
                 <Trash2 className="w-7 h-7" />
               </div>
 
@@ -7467,7 +7596,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={() => setDeletingListing(null)}
-                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition"
                 >
                   Cancel
                 </button>
@@ -7475,7 +7604,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   type="button"
                   disabled={isDeleting}
                   onClick={handleConfirmDeleteListing}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-mono font-bold uppercase tracking-widest border border-red-800 cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-mono font-bold uppercase tracking-widest rounded-xl cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                 >
                   {isDeleting ? "Deleting..." : "Confirm Delete"}
                 </button>
@@ -7501,11 +7630,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border border-stone-200/90 rounded-3xl shadow-2xl shadow-stone-900/20 p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between border-b border-stone-300 pb-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <Wrench className="w-5 h-5 text-amber-700" />
+              <div className="flex items-center justify-between border-b border-stone-200/90 pb-4 mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-amber-500/15 border border-amber-600/30 rounded-xl flex items-center justify-center text-amber-700">
+                    <Wrench className="w-5 h-5 text-amber-700" />
+                  </div>
                   <h3 className="text-xl font-serif font-black text-stone-900 uppercase">
                     Edit Performance Part Specs
                   </h3>
@@ -7513,14 +7644,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={() => setEditingPartListing(null)}
-                  className="p-1 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                  className="p-2 hover:bg-stone-200 text-stone-400 hover:text-stone-900 rounded-full transition cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleSaveEditPartListing} className="space-y-4">
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   <div>
                     <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
                       Part Title / Name *
@@ -7530,7 +7661,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       required
                       value={editPartForm.title || ""}
                       onChange={(e) => setEditPartForm(prev => ({ ...prev, title: e.target.value }))}
-                      className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                     />
                   </div>
 
@@ -7545,7 +7676,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         min="0"
                         value={editPartForm.price || ""}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-bold focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-bold focus:border-stone-900 focus:outline-none"
                       />
                     </div>
 
@@ -7558,7 +7689,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         required
                         value={editPartForm.brand || ""}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, brand: e.target.value }))}
-                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -7571,7 +7702,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <select
                         value={editPartForm.category || "Engine & Performance"}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, category: e.target.value as PartCategory }))}
-                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                       >
                         {PART_CATEGORIES.map(c => (
                           <option key={c} value={c}>{c}</option>
@@ -7586,7 +7717,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <select
                         value={editPartForm.rarity || "standard"}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, rarity: e.target.value as PartRarity }))}
-                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                       >
                         <option value="standard">Standard OEM / Street</option>
                         <option value="enthusiast">Enthusiast Spec</option>
@@ -7602,7 +7733,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       <select
                         value={editPartForm.condition ?? 5}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, condition: Number(e.target.value) as 1 | 2 | 3 | 4 | 5 }))}
-                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                       >
                         <option value={5}>5 - Brand New / Sealed</option>
                         <option value={4}>4 - Like New / Mint</option>
@@ -7623,7 +7754,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         value={editPartForm.partNumber || ""}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, partNumber: e.target.value }))}
                         placeholder="e.g. HKS-70020-AT022"
-                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-mono focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-mono focus:border-stone-900 focus:outline-none"
                       />
                     </div>
 
@@ -7636,7 +7767,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         value={editPartForm.compatibleVehicles || ""}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, compatibleVehicles: e.target.value }))}
                         placeholder="e.g. Universal / Supra MK4 / Golf GTI"
-                        className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -7649,7 +7780,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       rows={3}
                       value={editPartForm.description || ""}
                       onChange={(e) => setEditPartForm(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full p-2.5 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                     />
                   </div>
 
@@ -7662,7 +7793,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         type="text"
                         value={editPartForm.sellerName || ""}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, sellerName: e.target.value }))}
-                        className="w-full p-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                       />
                     </div>
 
@@ -7674,7 +7805,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         type="text"
                         value={editPartForm.sellerPhone || ""}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, sellerPhone: e.target.value }))}
-                        className="w-full p-2 bg-white border border-stone-300 text-xs font-mono focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-mono focus:border-stone-900 focus:outline-none"
                       />
                     </div>
 
@@ -7686,14 +7817,14 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         type="text"
                         value={editPartForm.location || ""}
                         onChange={(e) => setEditPartForm(prev => ({ ...prev, location: e.target.value }))}
-                        className="w-full p-2 bg-white border border-stone-300 text-xs font-medium focus:border-stone-900 focus:outline-none"
+                        className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:border-stone-900 focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Status Toggle in Modal */}
                   <div className="pt-2">
-                    <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                    <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1.5">
                       Part Status
                     </label>
                     <div className="flex gap-2">
@@ -7702,9 +7833,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           key={st}
                           type="button"
                           onClick={() => setEditPartForm(prev => ({ ...prev, status: st }))}
-                          className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider border cursor-pointer ${
+                          className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-xl border cursor-pointer transition ${
                             (editPartForm.status || editingPartListing.status) === st
-                              ? "bg-stone-900 text-white border-stone-950"
+                              ? "bg-stone-900 text-white border-stone-950 font-extrabold shadow-xs"
                               : "bg-white text-stone-700 border-stone-300 hover:bg-stone-100"
                           }`}
                         >
@@ -7715,18 +7846,18 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-3 border-t border-stone-300">
+                <div className="flex justify-end gap-2.5 pt-3.5 border-t border-stone-200/90">
                   <button
                     type="button"
                     onClick={() => setEditingPartListing(null)}
-                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingPartEdit}
-                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest rounded-xl cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                   >
                     {isSavingPartEdit ? "Saving..." : "Save Part Listing"}
                   </button>
@@ -7753,11 +7884,13 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
+              className="relative w-full max-w-2xl bg-[#FAF8F5] border border-stone-200/90 rounded-3xl shadow-2xl shadow-stone-900/20 p-6 sm:p-8 z-10 font-sans max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between border-b border-stone-300 pb-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-amber-700" />
+              <div className="flex items-center justify-between border-b border-stone-200/90 pb-4 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-amber-500/15 border border-amber-600/30 rounded-xl flex items-center justify-center text-amber-700">
+                    <ImageIcon className="w-5 h-5 text-amber-700" />
+                  </div>
                   <h3 className="text-xl font-serif font-black text-stone-900 uppercase">
                     Manage Part Photo Gallery
                   </h3>
@@ -7765,7 +7898,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={() => setPhotoManagingPartListing(null)}
-                  className="p-1 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                  className="p-2 hover:bg-stone-200 text-stone-400 hover:text-stone-900 rounded-full transition cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -7778,12 +7911,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </p>
 
                   {/* Current Photos Grid */}
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 p-3 bg-[#F4F1EA] border border-stone-300/80 rounded-2xl">
                     {managePartPhotosList.map((photo, idx) => (
-                      <div key={idx} className="relative aspect-square bg-stone-900 border border-stone-300 overflow-hidden group">
+                      <div key={idx} className="relative aspect-square bg-stone-900 border border-stone-300/80 rounded-xl overflow-hidden group shadow-xs">
                         <img src={photo.src} alt={photo.alt} className="w-full h-full object-cover" />
                         {idx === 0 && (
-                          <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-extrabold uppercase">
+                          <span className="absolute top-1.5 left-1.5 px-2 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-extrabold uppercase rounded-md shadow-xs">
                             Cover
                           </span>
                         )}
@@ -7797,7 +7930,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                                 updated.unshift(removed);
                                 setManagePartPhotosList(updated);
                               }}
-                              className="p-1 bg-stone-800 text-amber-400 hover:bg-stone-700 text-[10px] font-mono uppercase"
+                              className="px-2 py-1 bg-stone-800 text-amber-400 hover:bg-stone-700 text-[10px] font-mono uppercase rounded-md"
                               title="Make Cover"
                             >
                               Cover
@@ -7808,7 +7941,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                             onClick={() => {
                               setManagePartPhotosList(prev => prev.filter((_, i) => i !== idx));
                             }}
-                            className="p-1 bg-red-600 text-white hover:bg-red-700"
+                            className="p-1.5 bg-red-600 text-white hover:bg-red-700 rounded-md"
                             title="Remove Photo"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -7823,8 +7956,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
                       Upload from Device
                     </label>
-                    <label className="border-2 border-dashed border-stone-400 p-4 flex flex-col items-center justify-center gap-1 hover:border-stone-900 cursor-pointer bg-white transition-colors">
-                      <Upload className="w-5 h-5 text-stone-500" />
+                    <label className="border-2 border-dashed border-stone-300 rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 hover:border-stone-900 cursor-pointer bg-white transition-colors">
+                      <Upload className="w-6 h-6 text-stone-500" />
                       <span className="text-xs font-mono font-bold text-stone-700">Choose images to upload</span>
                       <span className="text-[10px] text-stone-500">PNG, JPG, WEBP up to 5MB</span>
                       <input
@@ -7848,12 +7981,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                         placeholder="https://..."
                         value={newPartPhotoUrlInput}
                         onChange={(e) => setNewPartPhotoUrlInput(e.target.value)}
-                        className="flex-1 p-2 bg-white border border-stone-300 text-xs font-mono focus:border-stone-900 focus:outline-none"
+                        className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-mono focus:border-stone-900 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={handleAddPartPhotoUrl}
-                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                        className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition shadow-xs"
                       >
                         Add URL
                       </button>
@@ -7861,18 +7994,18 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-stone-300">
+                <div className="flex justify-end gap-2.5 pt-2 border-t border-stone-200/90">
                   <button
                     type="button"
                     onClick={() => setPhotoManagingPartListing(null)}
-                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                    className="px-4 py-2.5 bg-[#FAF8F5] border border-stone-300 text-stone-700 text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingPartPhotos}
-                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-widest rounded-xl cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                   >
                     {isSavingPartPhotos ? "Saving Photos..." : "Save Photo Gallery"}
                   </button>
@@ -7899,9 +8032,9 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-[#FAF8F5] border-2 border-stone-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.95)] p-6 sm:p-8 z-10 font-sans text-center space-y-4"
+              className="relative w-full max-w-md bg-[#FAF8F5] border border-stone-200/90 rounded-3xl shadow-2xl shadow-stone-900/20 p-6 sm:p-8 z-10 font-sans text-center space-y-4"
             >
-              <div className="w-14 h-14 bg-red-100 border-2 border-red-300 rounded-full flex items-center justify-center text-red-600 mx-auto">
+              <div className="w-14 h-14 bg-red-100 border border-red-200 rounded-2xl flex items-center justify-center text-red-600 mx-auto shadow-xs">
                 <Trash2 className="w-7 h-7" />
               </div>
 
@@ -7918,7 +8051,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 <button
                   type="button"
                   onClick={() => setDeletingPartListing(null)}
-                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+                  className="flex-1 py-3 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase tracking-wider rounded-xl cursor-pointer transition"
                 >
                   Cancel
                 </button>
@@ -7926,7 +8059,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                   type="button"
                   disabled={isDeletingPart}
                   onClick={handleConfirmDeletePart}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-mono font-bold uppercase tracking-widest border border-red-800 cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-mono font-bold uppercase tracking-widest rounded-xl cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                 >
                   {isDeletingPart ? "Deleting..." : "Confirm Delete"}
                 </button>

@@ -37,10 +37,10 @@ export const MOTORSPORT_IMAGE_PRESETS = [
   { label: "Titanium Valved Exhaust", category: "exhaust", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80" },
   { label: "Carbon Swan-Neck GT Wing", category: "spoiler", url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80" },
   { label: "BBS Forged Centerlock Wheels", category: "wheels", url: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80" },
-  { label: "Cosworth Billet Race Engine", category: "engine", url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80" },
+  { label: "Cosworth Billet Race Engine", category: "engine", url: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80" },
   { label: "NOS Nitrous Oxide Bottle", category: "nitro", url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=80" },
   { label: "Laser Diode Matrix Headlight", category: "headlight", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80" },
-  { label: "Öhlins TTX Track Coilovers", category: "suspension", url: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80" },
+  { label: "Öhlins TTX Track Coilovers", category: "suspension", url: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=800&auto=format&fit=crop&q=80" },
   { label: "Carbon Ceramic BBK Brakes", category: "brakes", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80" }
 ];
 
@@ -741,46 +741,69 @@ export default function PartDossierModal({
                   
                   {/* Media Showcase on Left */}
                   <div className="lg:col-span-6 space-y-3">
-                    <div className="relative h-72 sm:h-80 w-full rounded-lg overflow-hidden bg-stone-900 border-2 border-stone-900 shadow-md group">
-                      <img
-                        src={photosList[activePhotoIndex]}
-                        alt={part.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800";
-                        }}
-                      />
+                    <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-stone-950 border border-stone-300/80 shadow-md group">
+                      <AnimatePresence initial={false}>
+                        <motion.img
+                          key={activePhotoIndex}
+                          src={photosList[activePhotoIndex]}
+                          alt={part.title}
+                          decoding="async"
+                          initial={{ opacity: 0, scale: 1.015 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.99 }}
+                          transition={{
+                            opacity: { duration: 0.35, ease: "easeInOut" },
+                            scale: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }
+                          }}
+                          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800";
+                          }}
+                        />
+                      </AnimatePresence>
                       
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                        <span className={`px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider rounded border ${rarityInfo.badgeClass}`}>
+                      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+                        <span className={`px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider rounded-lg border ${rarityInfo.badgeClass} shadow-xs`}>
                           {part.rarity}
                         </span>
                         {part.badge === "verified" && (
-                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded flex items-center gap-1">
+                          <span className="px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 rounded-lg flex items-center gap-1 shadow-xs backdrop-blur-xs">
                             <ShieldCheck className="w-3 h-3 text-emerald-400" />
                             Accredited
                           </span>
                         )}
                       </div>
 
-                      <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-stone-950/80 text-stone-200 text-[9px] font-mono uppercase tracking-widest rounded border border-stone-700">
+                      <div className="absolute bottom-3 right-3 z-10 px-2.5 py-1 bg-stone-950/85 backdrop-blur-md text-stone-200 text-[9px] font-mono uppercase tracking-widest rounded-lg border border-stone-700/80 shadow-xs">
                         {part.category.replace("_", " ")}
                       </div>
 
                       {photosList.length > 1 && (
+                        <span className="absolute bottom-3 left-3 z-10 px-2.5 py-1 bg-stone-950/85 backdrop-blur-md text-stone-200 text-[9px] font-mono font-bold rounded-lg border border-stone-700/80 shadow-xs">
+                          {activePhotoIndex + 1} / {photosList.length}
+                        </span>
+                      )}
+
+                      {photosList.length > 1 && (
                         <>
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.08 }}
+                            whileTap={{ scale: 0.92 }}
                             onClick={() => setActivePhotoIndex(prev => prev === 0 ? photosList.length - 1 : prev - 1)}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-stone-950/80 hover:bg-stone-900 text-white rounded-full transition cursor-pointer"
+                            aria-label="Previous photo"
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white rounded-xl backdrop-blur-xs border border-stone-700/80 transition cursor-pointer shadow-lg"
                           >
                             <ChevronLeft className="w-4 h-4" />
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.08 }}
+                            whileTap={{ scale: 0.92 }}
                             onClick={() => setActivePhotoIndex(prev => prev === photosList.length - 1 ? 0 : prev + 1)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-stone-950/80 hover:bg-stone-900 text-white rounded-full transition cursor-pointer"
+                            aria-label="Next photo"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 flex items-center justify-center bg-stone-950/80 hover:bg-stone-900 text-white rounded-xl backdrop-blur-xs border border-stone-700/80 transition cursor-pointer shadow-lg"
                           >
                             <ChevronRight className="w-4 h-4" />
-                          </button>
+                          </motion.button>
                         </>
                       )}
                     </div>
@@ -792,11 +815,12 @@ export default function PartDossierModal({
                           <button
                             key={idx}
                             onClick={() => setActivePhotoIndex(idx)}
+                            aria-label={`View ${part.title} photo angle ${idx + 1}`}
                             className={`w-16 h-16 rounded border-2 overflow-hidden shrink-0 transition ${
                               activePhotoIndex === idx ? "border-amber-500 ring-2 ring-amber-400/40 scale-105" : "border-stone-300 opacity-60 hover:opacity-100"
                             }`}
                           >
-                            <img src={src} alt="thumbnail" className="w-full h-full object-cover" />
+                            <img src={src} alt={`${part.title} photo thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
                           </button>
                         ))}
                       </div>

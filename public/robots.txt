@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://autoworld.ai.studio/sitemap.xml
+Sitemap: https://ais-pre-em4tc7ldyreu3sh42p4rfs-762284671851.asia-southeast1.run.app/sitemap.xml

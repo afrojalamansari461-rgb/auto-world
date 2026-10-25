@@ -583,7 +583,7 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
               {/* Photo Preview & Options */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                 <div className="relative aspect-video bg-stone-900 border border-stone-800 overflow-hidden group">
-                  <img src={image} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={image} alt={(make || model) ? `${make} ${model} photo preview` : "Vehicle trade photo preview"} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-stone-950/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                     <span className="text-white text-[10px] font-mono font-bold uppercase bg-stone-950/80 px-2 py-1">
                       Active Image

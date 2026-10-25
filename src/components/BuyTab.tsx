@@ -7,7 +7,7 @@ import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
 import { db, auth, googleProvider, signInWithPopup, handleFirestoreError, OperationType } from "../firebase";
-import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
+import { subscribeToRealtimeCatalog, getSiteFamPayConfig } from "../lib/catalogSync";
 import { User as FirebaseUser } from "firebase/auth";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
@@ -953,13 +953,16 @@ export default function BuyTab({
     try {
       const { doc, setDoc } = await import("firebase/firestore");
       try {
+        const famPayInfo = getSiteFamPayConfig();
         await setDoc(doc(db, "buyer_passes", currentUser.uid), {
           userId: currentUser.uid,
           paid: true,
           date: new Date().toISOString(),
           transactionId: receipt.transactionId,
           method: receipt.method,
-          utr: receipt.utr || "INSTANT_VERIFIED"
+          utr: receipt.utr || "INSTANT_VERIFIED",
+          settlementRecipient: (receipt as any).settlementRecipient || famPayInfo.upiId,
+          fampayAccountName: famPayInfo.payeeName
         });
       } catch (dbErr: any) {
         handleFirestoreError(dbErr, OperationType.WRITE, `buyer_passes/${currentUser.uid}`);
@@ -1248,9 +1251,9 @@ export default function BuyTab({
     >
       
       {/* 3-TAB NAVBAR FOR BUY SECTION: BUY VEHICLE | CAR EXCHANGE | AUCTION */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 mb-6 sm:mb-8">
-        <div className="bg-stone-950/95 border border-stone-800 p-1.5 sm:p-2 rounded-2xl shadow-xl backdrop-blur-md">
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 w-full" role="tablist" aria-label="Buy Section Navigation">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-6 sm:mb-8">
+        <div className="bg-stone-950/90 border border-stone-800/90 p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full" role="tablist" aria-label="Buy Section Navigation">
             {/* Tab 1: Buy Vehicle */}
             <button
               id="buy-subtab-vehicle"
@@ -1258,13 +1261,13 @@ export default function BuyTab({
               role="tab"
               aria-selected={currentSubTab === "buy_vehicle"}
               onClick={() => handleSubTabChange("buy_vehicle")}
-              className={`relative py-2.5 sm:py-3 px-2 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none text-center min-w-0 rounded-xl ${
+              className={`relative py-3 sm:py-3.5 px-3 sm:px-5 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 sm:gap-2.5 select-none text-center min-w-0 rounded-xl sm:rounded-2xl group ${
                 currentSubTab === "buy_vehicle"
-                  ? "bg-white text-stone-950 font-black shadow-md border border-white"
-                  : "text-stone-400 hover:text-white hover:bg-white/10 hover:backdrop-blur-xs font-bold border border-transparent"
+                  ? "bg-white text-stone-950 font-black shadow-lg shadow-black/20 border border-white scale-[1.02]"
+                  : "text-stone-300 hover:text-white bg-white/5 hover:bg-white/15 hover:border-white/25 hover:backdrop-blur-md font-bold border border-white/5 hover:shadow-md"
               }`}
             >
-              <Car className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${currentSubTab === "buy_vehicle" ? "text-stone-950" : "text-stone-400"}`} />
+              <Car className={`w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover:scale-110 ${currentSubTab === "buy_vehicle" ? "text-stone-950" : "text-stone-400 group-hover:text-white"}`} />
               <span className="truncate">Buy Vehicle</span>
             </button>
 
@@ -1275,13 +1278,13 @@ export default function BuyTab({
               role="tab"
               aria-selected={currentSubTab === "peer_to_peer"}
               onClick={() => handleSubTabChange("peer_to_peer")}
-              className={`relative py-2.5 sm:py-3 px-2 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none text-center min-w-0 rounded-xl ${
+              className={`relative py-3 sm:py-3.5 px-3 sm:px-5 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 sm:gap-2.5 select-none text-center min-w-0 rounded-xl sm:rounded-2xl group ${
                 currentSubTab === "peer_to_peer"
-                  ? "bg-white text-stone-950 font-black shadow-md border border-white"
-                  : "text-stone-400 hover:text-white hover:bg-white/10 hover:backdrop-blur-xs font-bold border border-transparent"
+                  ? "bg-white text-stone-950 font-black shadow-lg shadow-black/20 border border-white scale-[1.02]"
+                  : "text-stone-300 hover:text-white bg-white/5 hover:bg-white/15 hover:border-white/25 hover:backdrop-blur-md font-bold border border-white/5 hover:shadow-md"
               }`}
             >
-              <Repeat className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${currentSubTab === "peer_to_peer" ? "text-stone-950" : "text-stone-400"}`} />
+              <Repeat className={`w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover:scale-110 ${currentSubTab === "peer_to_peer" ? "text-stone-950" : "text-stone-400 group-hover:text-white"}`} />
               <span className="truncate">Car Exchange</span>
             </button>
 
@@ -1292,14 +1295,14 @@ export default function BuyTab({
               role="tab"
               aria-selected={currentSubTab === "auction"}
               onClick={() => handleSubTabChange("auction")}
-              className={`relative py-2.5 sm:py-3 px-2 sm:px-4 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-widest transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none text-center min-w-0 rounded-xl ${
+              className={`relative py-3 sm:py-3.5 px-3 sm:px-5 font-sans text-[11px] sm:text-xs md:text-sm uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 sm:gap-2.5 select-none text-center min-w-0 rounded-xl sm:rounded-2xl group ${
                 currentSubTab === "auction"
-                  ? "bg-white text-stone-950 font-black shadow-md border border-white"
-                  : "text-stone-400 hover:text-white hover:bg-white/10 hover:backdrop-blur-xs font-bold border border-transparent"
+                  ? "bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/20 border border-amber-300 scale-[1.02]"
+                  : "text-stone-300 hover:text-white bg-white/5 hover:bg-white/15 hover:border-white/25 hover:backdrop-blur-md font-bold border border-white/5 hover:shadow-md"
               }`}
             >
-              <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${currentSubTab === "auction" ? "text-stone-950" : "text-stone-400"}`} />
-              <span className="truncate">Auction</span>
+              <Zap className={`w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover:scale-110 ${currentSubTab === "auction" ? "text-stone-950 fill-stone-950" : "text-amber-400 fill-amber-400"}`} />
+              <span className="truncate">Live Auction</span>
             </button>
           </div>
         </div>
@@ -1336,7 +1339,7 @@ export default function BuyTab({
                     <Sparkles className="w-5 h-5 text-amber-400" />
                   </div>
                   <div className="text-center sm:text-left">
-                    <h4 className="text-sm font-serif font-black uppercase tracking-wider text-stone-900 font-sans">1st 3 Listings Free to View</h4>
+                    <p className="text-sm font-serif font-black uppercase tracking-wider text-stone-900 font-sans">1st 3 Listings Free to View</p>
                     <p className="text-sm md:text-xs text-stone-705 leading-snug">The first 3 cars on our registry are completely free to inspect. To unlock more cars in the catalog, activate your ₹1 premium account pass.</p>
                   </div>
                 </div>
@@ -2716,9 +2719,9 @@ export default function BuyTab({
               <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-amber-600 font-bold block mb-1">
                 Motorsport Tuning & Hardware Index
               </span>
-              <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">
+              <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">
                 Performance Parts & Aftermarket Registry
-              </h1>
+              </h2>
               <p className="text-xs sm:text-sm text-stone-600 mt-1 max-w-2xl">
                 Curated collection of authentic racing turbochargers, lightweight pre-preg carbon aero, titanium exhaust systems, forged wheels, coilovers, and precision ECU tunes with verified fitment.
               </p>
@@ -3182,7 +3185,8 @@ export default function BuyTab({
         amount={1}
         itemTitle="Auto World 24-Hour Premium Buyer Pass"
         itemDescription="Direct access to verified seller phone contacts, full mechanical checklists & complete RTO dossiers."
-        defaultUpiId="autoworld.pay@icici"
+        defaultUpiId={getSiteFamPayConfig().upiId}
+        payeeName={getSiteFamPayConfig().payeeName}
       />
 
       {/* EMI Loan Calculator Popup Modal */}

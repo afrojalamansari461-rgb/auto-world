@@ -6,7 +6,7 @@ import {
   Car, User, Phone, Mail, MapPin, Fuel, Gauge, DollarSign, 
   ThumbsUp, X, Send, Award, Info, RefreshCw, Search,
   TrendingUp, Check, Clock, Eye, Layers, Lock, LogIn, 
-  Share2, MessageCircle, FileText, CheckCircle
+  Share2, MessageCircle, FileText, CheckCircle, Scale, Printer
 } from "lucide-react";
 import { ExchangeRequest, TradeOffer, DEFAULT_EXCHANGES, OfferedTradeVehicle, UserListing } from "../types";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -14,6 +14,8 @@ import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDocs, delete
 import { User as FirebaseUser } from "firebase/auth";
 import { UserRole } from "../lib/userRoles";
 import { ExchangeListingWizard } from "./ExchangeListingWizard";
+import { ExchangeEqualizerModal } from "./ExchangeEqualizerModal";
+import { TradeAgreementModal } from "./TradeAgreementModal";
 
 interface ExchangeTabProps {
   currentUser: FirebaseUser | null;
@@ -48,6 +50,11 @@ export default function ExchangeTab({
   const [selectedExchangeForDossier, setSelectedExchangeForDossier] = useState<ExchangeRequest | null>(null);
   const [selectedExchangeForOffer, setSelectedExchangeForOffer] = useState<ExchangeRequest | null>(null);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [selectedExchangeForEqualizer, setSelectedExchangeForEqualizer] = useState<ExchangeRequest | null>(null);
+  const [isEqualizerModalOpen, setIsEqualizerModalOpen] = useState(false);
+  const [selectedExchangeForAgreement, setSelectedExchangeForAgreement] = useState<ExchangeRequest | null>(null);
+  const [selectedOfferForAgreement, setSelectedOfferForAgreement] = useState<TradeOffer | null>(null);
+  const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
 
   // Search and Filtering
   const [searchQuery, setSearchQuery] = useState("");
@@ -760,24 +767,39 @@ export default function ExchangeTab({
                       </div>
 
                       {/* Card Action Buttons */}
-                      <div className="p-4 pt-0 grid grid-cols-2 gap-2">
+                      <div className="p-4 pt-0 space-y-2">
                         <button
                           type="button"
-                          onClick={() => setSelectedExchangeForDossier(exc)}
-                          className="py-2 px-2 bg-stone-100 hover:bg-stone-200 text-stone-900 text-xs font-mono font-bold uppercase border border-stone-300 transition cursor-pointer flex items-center justify-center gap-1"
+                          onClick={() => {
+                            setSelectedExchangeForEqualizer(exc);
+                            setIsEqualizerModalOpen(true);
+                          }}
+                          className="w-full py-2 px-3 bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-500/40 text-xs font-mono font-bold uppercase transition cursor-pointer flex items-center justify-center gap-1.5 rounded"
+                          title="Open AI Trade Valuation Equalizer, Match Score & EMI Simulator"
                         >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Dossier</span>
+                          <Scale className="w-3.5 h-3.5 text-amber-700" />
+                          <span>AI Equalizer &amp; Match Matrix</span>
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleOpenOfferModal(exc)}
-                          className="py-2 px-2 bg-stone-950 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase border border-stone-950 transition cursor-pointer flex items-center justify-center gap-1 shadow-sm"
-                        >
-                          <Repeat className="w-3.5 h-3.5 text-white" />
-                          <span>Propose Swap</span>
-                        </button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedExchangeForDossier(exc)}
+                            className="py-2 px-2 bg-stone-100 hover:bg-stone-200 text-stone-900 text-xs font-mono font-bold uppercase border border-stone-300 transition cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Dossier</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenOfferModal(exc)}
+                            className="py-2 px-2 bg-stone-950 hover:bg-stone-850 text-white text-xs font-mono font-bold uppercase border border-stone-950 transition cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                          >
+                            <Repeat className="w-3.5 h-3.5 text-white" />
+                            <span>Propose Swap</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1096,22 +1118,40 @@ export default function ExchangeTab({
                             }`}>
                               Status: {offer.status}
                             </span>
-                            {offer.status === "pending" && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handleUpdateOfferStatus(offer.id, "accepted")}
-                                  className="px-3 py-1.5 bg-stone-950 text-white text-xs font-mono font-bold uppercase cursor-pointer"
-                                >
-                                  Accept &amp; Schedule Inspection
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateOfferStatus(offer.id, "rejected")}
-                                  className="px-3 py-1.5 bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
-                                >
-                                  Decline
-                                </button>
-                              </div>
-                            )}
+                            
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const parentExchange = exchanges.find(e => e.id === offer.exchangeId) || null;
+                                  setSelectedExchangeForAgreement(parentExchange);
+                                  setSelectedOfferForAgreement(offer);
+                                  setIsAgreementModalOpen(true);
+                                }}
+                                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-900 text-xs font-mono font-bold uppercase border border-stone-300 flex items-center gap-1 cursor-pointer"
+                                title="Generate Certified Barter Legal Contract (Dual Form 29/30 SOP)"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-stone-700" />
+                                <span>Agreement</span>
+                              </button>
+
+                              {offer.status === "pending" && (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateOfferStatus(offer.id, "accepted")}
+                                    className="px-3 py-1.5 bg-stone-950 text-white text-xs font-mono font-bold uppercase cursor-pointer"
+                                  >
+                                    Accept &amp; Schedule Inspection
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateOfferStatus(offer.id, "rejected")}
+                                    className="px-3 py-1.5 bg-stone-200 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
+                                  >
+                                    Decline
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1410,6 +1450,33 @@ export default function ExchangeTab({
           </div>
         )}
       </AnimatePresence>
+
+      {/* AI Trade Valuation Equalizer & Match Matrix Modal */}
+      <ExchangeEqualizerModal
+        isOpen={isEqualizerModalOpen}
+        onClose={() => {
+          setIsEqualizerModalOpen(false);
+          setSelectedExchangeForEqualizer(null);
+        }}
+        targetExchange={selectedExchangeForEqualizer}
+        userCar={null}
+        onProposeOffer={(targetExc) => {
+          setIsEqualizerModalOpen(false);
+          handleOpenOfferModal(targetExc);
+        }}
+      />
+
+      {/* Certified P2P Barter Agreement & Dual Form 29/30 SOP Modal */}
+      <TradeAgreementModal
+        isOpen={isAgreementModalOpen}
+        onClose={() => {
+          setIsAgreementModalOpen(false);
+          setSelectedExchangeForAgreement(null);
+          setSelectedOfferForAgreement(null);
+        }}
+        exchange={selectedExchangeForAgreement}
+        offer={selectedOfferForAgreement}
+      />
     </div>
   );
 }

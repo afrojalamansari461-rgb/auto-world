@@ -1,16 +1,18 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, updateProfile } from "firebase/auth";
-import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
+import { initializeFirestore, getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, uploadBytes, getDownloadURL } from "firebase/storage";
+import firebaseAppletConfig from "../firebase-applet-config.json";
 
-// Web app's Firebase configuration strictly using environment variables
+// Web app's Firebase configuration merging applet config and environment variables
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDDXQDJ3RGDPWkBbS90oXwrN5sC3ZenGpg",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "auto-worldd.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "auto-worldd",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "auto-worldd.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "534691190568",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:534691190568:web:4c75cf6993d00c5b3ce21d",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey || "AIzaSyDDXQDJ3RGDPWkBbS90oXwrN5sC3ZenGpg",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain || "auto-worldd.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId || "auto-worldd",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig.storageBucket || "auto-worldd.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId || "534691190568",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId || "1:534691190568:web:4c75cf6993d00c5b3ce21d",
+  firestoreDatabaseId: firebaseAppletConfig.firestoreDatabaseId || "(default)",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -20,27 +22,71 @@ export const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.warn("[Firebase Auth Persistence Error]:", err);
 });
-export const db = getFirestore(app);
+
+// Initialize Firestore with specific databaseId and long-polling resilience for container/iframe environments
+export const db = initializeFirestore(
+  app,
+  {
+    experimentalAutoDetectLongPolling: true,
+  },
+  firebaseConfig.firestoreDatabaseId
+);
+
 export const storage = getStorage(app);
 export { ref, uploadBytesResumable, uploadBytes, getDownloadURL };
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: "select_account",
+});
+
+// Helper to determine if an auth error is a benign user cancellation or popup dismissal
+export const isAuthPopupCancellation = (error: any): boolean => {
+  if (!error) return false;
+  const code = error.code || "";
+  const msg = typeof error === "string" ? error : (error.message || String(error));
+  return (
+    code === "auth/popup-closed-by-user" ||
+    code === "auth/cancelled-popup-request" ||
+    code === "auth/user-cancelled" ||
+    code === "auth/popup-blocked" ||
+    msg.includes("popup-closed-by-user") ||
+    msg.includes("cancelled-popup-request") ||
+    msg.includes("user-cancelled") ||
+    msg.includes("popup-blocked")
+  );
+};
 
 export default app;
 
 // Standard login / logout functions
 export { signInWithPopup, signOut, signInAnonymously, updateProfile };
 
-// Connectivity check constraint
+// Connectivity check constraint per Firebase Integration Skill
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, "test", "connection"));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.warn("[Firebase Check] Local Firestore client is currently working offline. Please check your Firestore Console setup if this is unexpected.");
+  } catch (error: any) {
+    const msg = error instanceof Error ? error.message : String(error);
+    const code = error?.code || "";
+    if (
+      code === "unavailable" ||
+      msg.includes("the client is offline") ||
+      msg.includes("unavailable") ||
+      msg.includes("Could not reach Cloud Firestore")
+    ) {
+      console.warn("[Firebase Check] Local Firestore client is operating in offline mode or awaiting network reconnect.");
+    } else {
+      console.warn("[Firebase Check] Connection test notice:", msg);
     }
   }
 }
-testConnection();
+
+// Safely schedule connectivity test without blocking runtime bootstrapping
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    testConnection().catch(() => {});
+  }, 1000);
+}
 
 export enum OperationType {
   CREATE = "create",

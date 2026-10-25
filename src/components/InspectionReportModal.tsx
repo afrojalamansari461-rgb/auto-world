@@ -107,6 +107,7 @@ export const InspectionReportModal: React.FC<InspectionReportModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close inspection report"
             className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
