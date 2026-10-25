@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   Repeat, Car, ArrowLeftRight, CheckCircle2, 
   MapPin, ShieldCheck, Sparkles, Upload, 
@@ -10,6 +10,7 @@ import { ExchangeRequest, UserListing, DEFAULT_EXCHANGES } from "../types";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { User as FirebaseUser } from "firebase/auth";
+import { SWISS_SPRING } from "./AnimationWrapper";
 
 interface ExchangeListingWizardProps {
   currentUser: FirebaseUser | null;
@@ -57,7 +58,13 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
 }) => {
   // Step indicator: 1 = Offered Vehicle, 2 = Target & Delta, 3 = Verification & Contact
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [stepDirection, setStepDirection] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const goToStep = (nextStep: 1 | 2 | 3) => {
+    setStepDirection(nextStep > currentStep ? 1 : -1);
+    setCurrentStep(nextStep);
+  };
 
   // Step 1: Offered Vehicle State
   const [make, setMake] = useState(initialVehicle?.make || "");
@@ -255,57 +262,80 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
         )}
       </div>
 
-      {/* 3-Step Wizard Navigation */}
-      <div className="bg-stone-100 border-b border-stone-300 px-4 sm:px-6 py-3">
+      {/* Concierge Onboarding Progress Bar & 3-Step Rail */}
+      <div className="bg-[#F6F5F2] border-b border-[#0F0F10]/20 px-4 sm:px-6 pt-4 pb-3 space-y-3">
+        <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500">
+          <span>CONCIERGE ONBOARDING MANDATE</span>
+          <span className="text-[#0F0F10] font-bold tabular-nums">STEP 0{currentStep} / 03</span>
+        </div>
+
+        {/* Sleek Animated Progress Bar */}
+        <div className="w-full h-1 bg-[#0F0F10]/10 overflow-hidden">
+          <motion.div
+            initial={false}
+            animate={{ width: `${(currentStep / 3) * 100}%` }}
+            transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-[#D5001C]"
+          />
+        </div>
+
         <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono font-bold uppercase">
           <button
             type="button"
-            onClick={() => setCurrentStep(1)}
-            className={`py-2 px-1 sm:px-3 border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            onClick={() => goToStep(1)}
+            className={`py-2.5 px-1 sm:px-3 border transition-all cursor-pointer flex items-center justify-center gap-2 ${
               currentStep === 1
-                ? "bg-stone-950 text-amber-400 border-stone-950 shadow-sm"
-                : "bg-white text-stone-600 border-stone-300 hover:bg-stone-50"
+                ? "bg-[#0F0F10] text-white border-[#0F0F10]"
+                : "bg-white text-stone-600 border-[#0F0F10]/20 hover:border-[#0F0F10]"
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-stone-950 text-[10px] flex items-center justify-center font-black">1</span>
-            <span className="truncate">Your Vehicle</span>
+            <span className="w-5 h-5 bg-[#D5001C] text-white text-[10px] flex items-center justify-center font-black">01</span>
+            <span className="truncate">Offered Asset</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setCurrentStep(2)}
-            className={`py-2 px-1 sm:px-3 border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            onClick={() => goToStep(2)}
+            className={`py-2.5 px-1 sm:px-3 border transition-all cursor-pointer flex items-center justify-center gap-2 ${
               currentStep === 2
-                ? "bg-stone-950 text-amber-400 border-stone-950 shadow-sm"
-                : "bg-white text-stone-600 border-stone-300 hover:bg-stone-50"
+                ? "bg-[#0F0F10] text-white border-[#0F0F10]"
+                : "bg-white text-stone-600 border-[#0F0F10]/20 hover:border-[#0F0F10]"
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-stone-950 text-[10px] flex items-center justify-center font-black">2</span>
+            <span className="w-5 h-5 bg-[#D5001C] text-white text-[10px] flex items-center justify-center font-black">02</span>
             <span className="truncate">Target &amp; Delta</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setCurrentStep(3)}
-            className={`py-2 px-1 sm:px-3 border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            onClick={() => goToStep(3)}
+            className={`py-2.5 px-1 sm:px-3 border transition-all cursor-pointer flex items-center justify-center gap-2 ${
               currentStep === 3
-                ? "bg-stone-950 text-amber-400 border-stone-950 shadow-sm"
-                : "bg-white text-stone-600 border-stone-300 hover:bg-stone-50"
+                ? "bg-[#0F0F10] text-white border-[#0F0F10]"
+                : "bg-white text-stone-600 border-[#0F0F10]/20 hover:border-[#0F0F10]"
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-stone-950 text-[10px] flex items-center justify-center font-black">3</span>
-            <span className="truncate">Contact &amp; Publish</span>
+            <span className="w-5 h-5 bg-[#D5001C] text-white text-[10px] flex items-center justify-center font-black">03</span>
+            <span className="truncate">Verify &amp; Publish</span>
           </button>
         </div>
       </div>
 
-      {/* Main Form Content */}
-      <form onSubmit={handleFinalSubmit} className="p-4 sm:p-6 md:p-8 space-y-6">
+      {/* Main Form Content with Horizontal Sliding Step Transitions */}
+      <form onSubmit={handleFinalSubmit} className="p-4 sm:p-6 md:p-8 space-y-6 overflow-hidden">
+        <AnimatePresence mode="wait" custom={stepDirection}>
         {/* =============================================================== */}
         {/* STEP 1: YOUR VEHICLE (OFFERED)                                */}
         {/* =============================================================== */}
         {currentStep === 1 && (
-          <div className="space-y-6 animate-in fade-in duration-200">
+          <motion.div
+            key="exchange-step-1"
+            initial={{ opacity: 0, x: stepDirection * 48 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: stepDirection * -48 }}
+            transition={SWISS_SPRING}
+            className="space-y-6"
+          >
             <div className="border-b border-stone-300 pb-3">
               <h3 className="text-base font-serif font-black uppercase text-stone-950 flex items-center gap-2">
                 <Car className="w-4 h-4 text-amber-600" /> Step 1: Tell Us About The Car You Are Offering
@@ -641,22 +671,29 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
                     if (showToast) showToast("Please enter Make and Model before continuing.", "error");
                     return;
                   }
-                  setCurrentStep(2);
+                  goToStep(2);
                 }}
-                className="px-6 py-3 bg-stone-950 hover:bg-stone-850 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md"
+                className="px-6 py-3.5 bg-[#D5001C] hover:bg-[#b80018] text-white text-xs font-sans font-extrabold uppercase tracking-[0.16em] flex items-center gap-2 cursor-pointer transition-colors"
               >
                 <span>Continue to Target Swap Criteria</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* =============================================================== */}
         {/* STEP 2: TARGET VEHICLE & CASH DELTA                           */}
         {/* =============================================================== */}
         {currentStep === 2 && (
-          <div className="space-y-6 animate-in fade-in duration-200">
+          <motion.div
+            key="exchange-step-2"
+            initial={{ opacity: 0, x: stepDirection * 48 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: stepDirection * -48 }}
+            transition={SWISS_SPRING}
+            className="space-y-6"
+          >
             <div className="border-b border-stone-300 pb-3">
               <h3 className="text-base font-serif font-black uppercase text-stone-950 flex items-center gap-2">
                 <ArrowLeftRight className="w-4 h-4 text-cyan-600" /> Step 2: What Vehicle Are You Looking To Trade For?
@@ -898,7 +935,7 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
             <div className="flex items-center justify-between pt-4 border-t border-stone-300">
               <button
                 type="button"
-                onClick={() => setCurrentStep(1)}
+                onClick={() => goToStep(1)}
                 className="px-4 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
               >
                 ← Back to Vehicle
@@ -906,21 +943,28 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
 
               <button
                 type="button"
-                onClick={() => setCurrentStep(3)}
-                className="px-6 py-3 bg-stone-950 hover:bg-stone-850 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md"
+                onClick={() => goToStep(3)}
+                className="px-6 py-3.5 bg-[#D5001C] hover:bg-[#b80018] text-white text-xs font-sans font-extrabold uppercase tracking-[0.16em] flex items-center gap-2 cursor-pointer transition-colors"
               >
                 <span>Continue to Verification</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* =============================================================== */}
         {/* STEP 3: CONTACT & PREVIEW PUBLISH                              */}
         {/* =============================================================== */}
         {currentStep === 3 && (
-          <div className="space-y-6 animate-in fade-in duration-200">
+          <motion.div
+            key="exchange-step-3"
+            initial={{ opacity: 0, x: stepDirection * 48 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: stepDirection * -48 }}
+            transition={SWISS_SPRING}
+            className="space-y-6"
+          >
             <div className="border-b border-stone-300 pb-3">
               <h3 className="text-base font-serif font-black uppercase text-stone-950 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" /> Step 3: Owner Verification &amp; Match Floor Preview
@@ -1048,7 +1092,7 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
             <div className="flex items-center justify-between pt-4 border-t border-stone-300">
               <button
                 type="button"
-                onClick={() => setCurrentStep(2)}
+                onClick={() => goToStep(2)}
                 className="px-4 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-mono font-bold uppercase cursor-pointer"
               >
                 ← Back to Target Criteria
@@ -1057,14 +1101,15 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-8 py-3.5 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-stone-950 font-mono font-black text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
+                className="px-8 py-4 bg-[#D5001C] hover:bg-[#b80018] text-white font-sans font-extrabold text-xs uppercase tracking-[0.18em] flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
               >
                 <Repeat className={`w-4 h-4 ${isSubmitting ? "animate-spin" : ""}`} />
-                <span>{isSubmitting ? "Publishing to Match Floor..." : "Publish P2P Swap Listing"}</span>
+                <span>{isSubmitting ? "Publishing Mandate..." : "Publish Direct Swap Mandate"}</span>
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </form>
     </div>
   );

@@ -280,11 +280,11 @@ export default function FavoritesTab({
         </div>
         
         {/* Dual Category Segmented Switcher */}
-        <div className="flex items-center gap-2 bg-[#EFECE6] p-1.5 border border-stone-300 self-start md:self-auto">
+        <div className="flex items-center gap-2 bg-[#EFECE6] p-1.5 border border-stone-300/80 rounded-2xl self-start md:self-auto shadow-2xs">
           <button
             type="button"
             onClick={() => setActiveCategory("vehicles")}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer ${
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl transition cursor-pointer ${
               activeCategory === "vehicles"
                 ? "bg-stone-950 text-white shadow-sm font-mono"
                 : "bg-transparent text-stone-700 hover:text-stone-950"
@@ -297,7 +297,7 @@ export default function FavoritesTab({
           <button
             type="button"
             onClick={() => setActiveCategory("parts")}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer ${
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl transition cursor-pointer ${
               activeCategory === "parts"
                 ? "bg-stone-950 text-white shadow-sm font-mono"
                 : "bg-transparent text-stone-700 hover:text-stone-950"
@@ -320,9 +320,9 @@ export default function FavoritesTab({
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="border border-stone-300 bg-[#FAF8F5] p-12 md:p-16 text-center max-w-2xl mx-auto my-12"
+            className="border border-stone-200/90 rounded-3xl bg-[#FAF8F5] p-12 md:p-16 text-center max-w-2xl mx-auto my-12 shadow-sm"
           >
-            <div className="w-16 h-16 bg-stone-100 border border-stone-250 flex items-center justify-center mx-auto mb-6">
+            <div className="w-16 h-16 bg-stone-100 border border-stone-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <Car className="w-8 h-8 text-stone-400 stroke-[1.5]" />
             </div>
             <h2 className="text-xl font-serif font-black text-stone-900 mb-3 uppercase tracking-tight">Your Saved Fleet Is Empty</h2>
@@ -331,7 +331,7 @@ export default function FavoritesTab({
             </p>
             <button
               onClick={() => setActiveTab("buy")}
-              className="px-6 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-sans font-bold uppercase tracking-widest transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
+              className="px-6 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-sans font-bold uppercase tracking-widest rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
             >
               Explore Showroom Inventory
               <ArrowRight className="w-4 h-4 text-amber-400" />
@@ -348,7 +348,7 @@ export default function FavoritesTab({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-[#FAF8F5] border border-stone-300 overflow-hidden flex flex-col group relative shadow-sm hover:shadow-lg hover:border-stone-400 transition-all duration-300"
+                  className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl overflow-hidden flex flex-col group relative shadow-sm hover:shadow-xl hover:border-stone-400 transition-all duration-300"
                 >
                   <div className="relative h-56 overflow-hidden bg-stone-200">
                     <img
@@ -361,7 +361,7 @@ export default function FavoritesTab({
                     />
                     
                     {car.badge && (
-                      <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-950 text-white text-[9px] font-bold uppercase tracking-widest border border-white/10 shadow-sm font-mono">
+                      <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-950/90 text-white text-[9px] font-bold uppercase tracking-widest border border-white/10 rounded-lg shadow-sm font-mono backdrop-blur-xs">
                         {car.badge}
                       </span>
                     )}
@@ -374,7 +374,7 @@ export default function FavoritesTab({
                           REF #AW0{car.id}
                         </span>
                         {car.badge === "verified" && (
-                          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 uppercase tracking-wider border border-emerald-200">
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-wider border border-emerald-200">
                             Verified
                           </span>
                         )}
@@ -414,14 +414,14 @@ export default function FavoritesTab({
                         <button
                           type="button"
                           onClick={() => toggleFavorite(car.id)}
-                          className="w-10 h-10 border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-all cursor-pointer"
+                          className="w-10 h-10 border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl flex items-center justify-center transition-all cursor-pointer"
                           title="Remove from Saved"
                         >
                           <AnimatedFavoriteHeart isFav={true} className="w-4.5 h-4.5" />
                         </button>
                         <button
                           onClick={() => onQuickView(car)}
-                          className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-850 text-white text-xs font-sans uppercase font-bold tracking-widest transition-all cursor-pointer font-mono"
+                          className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-sans uppercase font-bold tracking-widest rounded-xl transition-all cursor-pointer font-mono"
                         >
                           Dossier
                         </button>
@@ -439,9 +439,9 @@ export default function FavoritesTab({
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="border border-stone-300 bg-[#FAF8F5] p-12 md:p-16 text-center max-w-2xl mx-auto my-12"
+            className="border border-stone-200/90 rounded-3xl bg-[#FAF8F5] p-12 md:p-16 text-center max-w-2xl mx-auto my-12 shadow-sm"
           >
-            <div className="w-16 h-16 bg-stone-100 border border-stone-250 flex items-center justify-center mx-auto mb-6">
+            <div className="w-16 h-16 bg-stone-100 border border-stone-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <Wrench className="w-8 h-8 text-amber-600 stroke-[1.5]" />
             </div>
             <h2 className="text-xl font-serif font-black text-stone-900 mb-3 uppercase tracking-tight">No Saved Motorsport Parts</h2>
@@ -450,7 +450,7 @@ export default function FavoritesTab({
             </p>
             <button
               onClick={() => setActiveTab("buy")}
-              className="px-6 py-3 bg-stone-900 hover:bg-stone-850 text-white text-xs font-sans font-bold uppercase tracking-widest transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
+              className="px-6 py-3 bg-stone-900 hover:bg-stone-800 text-white text-xs font-sans font-bold uppercase tracking-widest rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
             >
               Browse Motorsport Parts
               <ArrowRight className="w-4 h-4 text-amber-400" />
@@ -471,7 +471,7 @@ export default function FavoritesTab({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.3 }}
-                    className="bg-[#FAF8F5] border border-stone-300 overflow-hidden flex flex-col group relative shadow-sm hover:shadow-lg hover:border-stone-400 transition-all duration-300"
+                    className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl overflow-hidden flex flex-col group relative shadow-sm hover:shadow-xl hover:border-stone-400 transition-all duration-300"
                   >
                     <div className="relative h-56 overflow-hidden bg-stone-900">
                       <img
@@ -484,12 +484,12 @@ export default function FavoritesTab({
                       />
                       
                       {/* Rarity badge */}
-                      <span className={`absolute top-4 left-4 z-10 px-3 py-1 text-[9px] font-black uppercase tracking-widest border font-mono ${rarityMeta.badgeColor}`}>
+                      <span className={`absolute top-4 left-4 z-10 px-3 py-1 text-[9px] font-black uppercase tracking-widest border rounded-lg font-mono ${rarityMeta.badgeColor}`}>
                         ★ {part.rarity}
                       </span>
 
                       {/* Brand Pill */}
-                      <span className="absolute top-4 right-4 z-10 px-2.5 py-0.5 bg-stone-950/80 text-white text-[9px] font-mono uppercase tracking-widest border border-stone-700">
+                      <span className="absolute top-4 right-4 z-10 px-2.5 py-0.5 bg-stone-950/85 text-white text-[9px] font-mono uppercase tracking-widest border border-stone-700 rounded-lg backdrop-blur-xs">
                         {part.brand}
                       </span>
                     </div>
@@ -515,7 +515,7 @@ export default function FavoritesTab({
                         </h3>
 
                         {/* Power gain or fitment snippet */}
-                        <div className="bg-[#EFECE6] p-2.5 border border-stone-300 text-[10px] font-mono text-stone-700 mb-4 space-y-1">
+                        <div className="bg-[#EFECE6] p-2.5 border border-stone-200/90 rounded-xl text-[10px] font-mono text-stone-700 mb-4 space-y-1">
                           <div className="flex justify-between">
                             <span className="text-stone-500 uppercase">Fitment:</span>
                             <span className="font-bold text-stone-900 truncate max-w-[180px]">{part.compatibleVehicles || part.suitableVehicles || "Universal Fitment"}</span>
@@ -542,7 +542,7 @@ export default function FavoritesTab({
                             <button
                               type="button"
                               onClick={() => toggleFavoritePart(part.id)}
-                              className="w-10 h-10 border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-all cursor-pointer"
+                              className="w-10 h-10 border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl flex items-center justify-center transition-all cursor-pointer"
                               title="Remove from Saved Parts"
                             >
                               <AnimatedFavoriteHeart isFav={true} className="w-4.5 h-4.5" />
@@ -553,7 +553,7 @@ export default function FavoritesTab({
                               const rect = (e.target as HTMLElement).getBoundingClientRect();
                               if (onQuickViewPart) onQuickViewPart(part, { x: rect.left + rect.width / 2, y: rect.top });
                             }}
-                            className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-850 text-white text-xs uppercase font-bold tracking-widest transition-all cursor-pointer font-mono"
+                            className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs uppercase font-bold tracking-widest rounded-xl transition-all cursor-pointer font-mono"
                           >
                             Part Dossier
                           </button>

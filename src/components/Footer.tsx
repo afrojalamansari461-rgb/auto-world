@@ -74,7 +74,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
   return (
     <footer id="app-footer" className="bg-stone-950 text-stone-400 pt-20 pb-10 border-t border-stone-900 font-sans relative overflow-hidden">
       {/* Subtle glowing mesh background accent */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-500/5 blur-[120px] rounded-full pointer-events-none select-none" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/5 blur-[120px] rounded-full pointer-events-none select-none" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none select-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -83,11 +83,11 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 pb-16 border-b border-stone-900 items-start">
           <div className="lg:col-span-5 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-stone-900 border border-stone-800 flex items-center justify-center text-[#F4F1EA] shadow-inner">
-                <Car className="w-5 h-5 text-[#F4F1EA]" />
+              <div className="w-10 h-10 bg-stone-900 border border-stone-800 rounded-xl flex items-center justify-center text-[#F4F1EA] shadow-inner">
+                <Car className="w-5 h-5 text-amber-400" />
               </div>
               <span className="text-2xl font-black font-serif tracking-tight text-white uppercase">
-                Auto<span className="font-light italic text-stone-500">World</span>
+                Auto<span className="font-light italic text-amber-400/90">World</span>
               </span>
             </div>
             <p className="text-sm leading-relaxed text-stone-400 max-w-md font-serif italic">
@@ -95,7 +95,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
             </p>
             
             {/* Trust Badging */}
-            <div className="inline-flex items-center gap-3 px-3.5 py-2 bg-stone-900/60 border border-stone-800/80 rounded-sm">
+            <div className="inline-flex items-center gap-3 px-3.5 py-2 bg-stone-900/60 border border-stone-800/80 rounded-xl">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <div className="text-left">
                 <p className="text-[10px] font-mono tracking-widest text-white uppercase font-bold">Vetted Trust Index</p>
@@ -105,12 +105,12 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
           </div>
 
           {/* Premium Functional Newsletter Component */}
-          <div className="lg:col-span-7 bg-stone-900/40 border border-stone-900 p-6 md:p-8 rounded-none relative">
-            <div className="absolute top-3 right-3 text-stone-800 pointer-events-none">
+          <div className="lg:col-span-7 bg-stone-900/40 border border-stone-800/90 p-6 md:p-8 rounded-2xl relative">
+            <div className="absolute top-4 right-4 text-amber-500/40 pointer-events-none">
               <Sparkles className="w-5 h-5" />
             </div>
             
-            <h3 className="text-xs font-bold tracking-[0.25em] text-stone-200 uppercase mb-2">
+            <h3 className="text-xs font-bold tracking-[0.25em] text-amber-400 uppercase mb-2">
               The Auto World dispatch
             </h3>
             <p className="text-xs text-stone-400 mb-6 leading-relaxed max-w-xl">
@@ -118,7 +118,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
             </p>
 
             {isSubscribed ? (
-              <div className="bg-stone-950/80 border border-emerald-500/30 p-4 flex items-center gap-3.5 animate-fadeIn">
+              <div className="bg-stone-950/80 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-3.5 animate-fadeIn">
                 <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
                   <Check className="w-4.5 h-4.5 text-emerald-400" />
                 </div>
@@ -136,12 +136,12 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                   placeholder="Enter your executive email address..."
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 bg-stone-950 border border-stone-800 px-4 py-3 text-xs text-white placeholder-stone-600 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400 transition-all font-mono"
+                  className="flex-1 bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-xs text-white placeholder-stone-600 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-mono"
                 />
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-3 bg-white text-stone-950 hover:bg-[#F4F1EA] text-xs font-bold uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2 border border-white"
+                  className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 border border-amber-400 shadow-sm"
                 >
                   {isSubmitting ? (
                     <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent animate-spin rounded-full" />
@@ -190,9 +190,9 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 </button>
               </li>
               <li>
-                <button onClick={() => handleLinkClick("favorites")} className="group flex items-center justify-between text-stone-400 hover:text-white transition w-full text-left cursor-pointer hover:underline text-purple-400/90 font-bold">
-                  <span className="flex items-center gap-1.5 text-purple-300">
-                    <Heart className="w-3.5 h-3.5 text-purple-400 fill-purple-400/30" />
+                <button onClick={() => handleLinkClick("favorites")} className="group flex items-center justify-between text-stone-400 hover:text-white transition w-full text-left cursor-pointer hover:underline text-amber-400/90 font-bold">
+                  <span className="flex items-center gap-1.5 text-amber-400">
+                    <Heart className="w-3.5 h-3.5 text-amber-400 fill-amber-400/30" />
                     Saved Garage
                   </span>
                   <span className="text-stone-700 group-hover:text-stone-500 font-mono text-[9px] transition-colors">05</span>
@@ -275,7 +275,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 href="https://facebook.com" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-[#1877F2] hover:text-white hover:border-[#1877F2] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(24,119,242,0.3)] cursor-pointer" 
+                className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-800 transition-all duration-300 hover:bg-[#1877F2] hover:text-white hover:border-[#1877F2] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(24,119,242,0.3)] cursor-pointer" 
                 title="Facebook Connect"
                 aria-label="Connect with Auto World on Facebook"
               >
@@ -285,7 +285,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 href="https://x.com" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-white hover:text-black hover:border-white hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(255,255,255,0.15)] cursor-pointer" 
+                className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-800 transition-all duration-300 hover:bg-white hover:text-black hover:border-white hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(255,255,255,0.15)] cursor-pointer" 
                 title="X Channel"
                 aria-label="Follow Auto World on X"
               >
@@ -297,7 +297,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 rel="noopener noreferrer"
                 title="Follow Afroj on Instagram"
                 aria-label="Follow Auto World and Afroj on Instagram"
-                className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-gradient-to-tr hover:from-[#405DE6] hover:via-[#E1306C] hover:to-[#F77737] hover:text-white hover:border-transparent hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(225,48,108,0.3)] cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-800 transition-all duration-300 hover:bg-gradient-to-tr hover:from-[#405DE6] hover:via-[#E1306C] hover:to-[#F77737] hover:text-white hover:border-transparent hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(225,48,108,0.3)] cursor-pointer"
               >
                 <Instagram className="w-4 h-4 transition-transform duration-300" />
               </a>
@@ -305,7 +305,7 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
                 href="https://linkedin.com" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-8 h-8 bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-850 transition-all duration-300 hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,119,181,0.3)] cursor-pointer" 
+                className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center text-stone-400 border border-stone-800 transition-all duration-300 hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,119,181,0.3)] cursor-pointer" 
                 title="Linkedin Registry"
                 aria-label="View Auto World on LinkedIn"
               >
@@ -319,13 +319,13 @@ export default function Footer({ setActiveTab, onOpenLegal }: FooterProps) {
         <div className="pt-10 border-t border-stone-900 text-[10px] text-stone-600 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans uppercase tracking-widest">
           <p className="text-center sm:text-left">
             © {new Date().getFullYear()} Auto World Inc. All rights reserved. Vetted craftsmanship by{" "}
-            <span className="text-stone-350 font-bold hover:text-white transition-colors">Afroj</span>.
+            <span className="text-amber-400/90 font-bold hover:text-amber-300 transition-colors">Afroj</span>.
           </p>
           <div className="flex items-center gap-1.5 italic text-[10px] text-stone-500 font-serif normal-case tracking-normal">
             <span>Precision engineering</span>
-            <span className="w-1 h-1 bg-purple-500 rounded-full" />
+            <span className="w-1 h-1 bg-amber-500 rounded-full" />
             <span>Uncompromising quality</span>
-            <span className="w-1 h-1 bg-purple-500 rounded-full" />
+            <span className="w-1 h-1 bg-amber-500 rounded-full" />
             <span>Absolute verity</span>
           </div>
         </div>

@@ -143,10 +143,10 @@ function PremiumPlanCard({
 
   return (
     <motion.div
-      className={`bg-[#FAF8F5] p-6.5 border-2 flex flex-col justify-between relative shadow-sm transition-all duration-300 ease-out ${
+      className={`bg-[#FAF8F5] p-6.5 border rounded-2xl flex flex-col justify-between relative transition-all duration-300 ease-out ${
         isMostPopular 
-          ? "border-purple-600 shadow-[6px_6px_0px_0px_rgba(168,85,247,0.3)] hover:shadow-[10px_10px_0px_0px_rgba(168,85,247,0.4)]" 
-          : "border-stone-950 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.15)]"
+          ? "border-amber-500 ring-2 ring-amber-500/20 shadow-lg hover:shadow-xl" 
+          : "border-stone-200/90 shadow-sm hover:shadow-xl hover:border-stone-400"
       }`}
       style={{
         transformStyle: "preserve-3d",
@@ -159,7 +159,7 @@ function PremiumPlanCard({
       {/* Dynamic Sheen light reflection */}
       {isHovered && (
         <div 
-          className="absolute inset-0 pointer-events-none z-30 mix-blend-overlay opacity-50"
+          className="absolute inset-0 pointer-events-none z-30 mix-blend-overlay opacity-50 rounded-2xl"
           style={{
             background: `radial-gradient(circle at ${sheenX}% ${sheenY}%, rgba(255,255,255,0.55) 0%, transparent 60%)`
           }}
@@ -167,8 +167,8 @@ function PremiumPlanCard({
       )}
 
       {badgeText && (
-        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-[9px] font-bold uppercase tracking-widest font-mono z-10 ${
-          isMostPopular ? "bg-purple-600 text-white" : "bg-stone-950 text-[#F4F1EA]"
+        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-[9px] font-bold uppercase tracking-widest font-mono rounded-full shadow-xs z-10 ${
+          isMostPopular ? "bg-amber-500 text-stone-950 border border-amber-400" : "bg-stone-950 text-[#F4F1EA]"
         }`}>
           {badgeText}
         </div>
@@ -178,7 +178,7 @@ function PremiumPlanCard({
         <span className="text-[10px] font-bold font-mono tracking-widest text-stone-500 block uppercase">{priceLabel}</span>
         <h3 className="text-xl font-serif font-black text-stone-950 leading-none flex items-center gap-2">
           {title}
-          {isMostPopular && <Sparkles className="w-4 h-4 text-purple-600 fill-purple-100" />}
+          {isMostPopular && <Sparkles className="w-4 h-4 text-amber-500 fill-amber-100" />}
         </h3>
         <div className="pt-2">
           <span className="text-3xl font-serif font-black text-stone-950">{priceVal}</span>
@@ -206,12 +206,12 @@ function PremiumPlanCard({
         type="button"
         onClick={onBtnClick}
         disabled={btnDisabled}
-        className={`w-full mt-6 py-3.5 text-xs font-extrabold uppercase tracking-widest transition duration-200 block text-center ${
+        className={`w-full mt-6 py-3.5 text-xs font-extrabold uppercase tracking-widest rounded-xl transition duration-200 block text-center ${
           btnDisabled
-            ? "border-2 border-stone-200 text-[#1A1A1A]/30 bg-stone-100 cursor-not-allowed"
+            ? "border border-stone-200 text-[#1A1A1A]/30 bg-stone-100 cursor-not-allowed"
             : isMostPopular
-              ? "bg-purple-600 hover:bg-purple-700 text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer"
-              : "bg-stone-950 hover:bg-stone-850 text-white shadow-[3px_3px_0px_0px_rgba(168,85,247,0.3)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer"
+              ? "bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-sm hover:shadow-md cursor-pointer"
+              : "bg-stone-950 hover:bg-stone-800 text-white shadow-sm hover:shadow-md cursor-pointer"
         }`}
       >
         {btnLabel}
@@ -544,15 +544,15 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                 }
               }}
               className={`relative pb-3 flex items-center gap-1.5 px-3.5 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors duration-200 select-none cursor-pointer leading-none shrink-0 ${
-                isActive ? "text-stone-950 font-black" : "text-stone-550 hover:text-stone-850"
+                isActive ? "text-stone-950 font-black" : "text-stone-500 hover:text-stone-850"
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 shrink-0 transition-colors ${isActive ? "text-purple-600" : "text-stone-500"}`} />
+              <Icon className={`w-3.5 h-3.5 shrink-0 transition-colors ${isActive ? "text-amber-600" : "text-stone-500"}`} />
               <span>{tab.label}</span>
               {isActive && (
                 <motion.span
                   layoutId="activeSubTabUnderline"
-                  className="absolute bottom-0 left-0 right-0 h-[3px] bg-purple-600"
+                  className="absolute bottom-0 left-0 right-0 h-[3px] bg-amber-500 rounded-full"
                   transition={{ type: "spring", stiffness: 350, damping: 28 }}
                 />
               )}
@@ -571,7 +571,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
         >
           <div className="border-b border-stone-300 pb-4 mb-6">
             <h2 className="text-xl font-serif font-black uppercase text-stone-900 tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600" />
+              <Sparkles className="w-5 h-5 text-amber-500" />
               Plans & Packages
             </h2>
             <p className="text-stone-500 text-xs uppercase tracking-wider font-semibold font-mono">
@@ -581,8 +581,8 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
 
           {isOwner ? (
             <div className="max-w-4xl mx-auto px-4">
-              <div className="bg-[#FAF8F2] border-4 border-stone-950 p-8 sm:p-12 shadow-2xl relative overflow-hidden text-center">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-stone-900/10 rounded-full translate-x-12 -translate-y-12 border border-stone-300" />
+              <div className="bg-[#FAF8F5] border border-stone-300/90 rounded-3xl p-8 sm:p-12 shadow-xl relative overflow-hidden text-center">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-stone-900/5 rounded-full translate-x-12 -translate-y-12 border border-stone-300/60" />
                 <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-stone-900/5 rounded-full border border-stone-300/50" />
                 
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-900 text-[#F4F1EA] mb-6 rounded-full border border-amber-400 shadow-lg relative">
@@ -592,7 +592,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                 <h3 className="text-3xl font-serif font-black uppercase text-stone-950 tracking-tight mb-2">
                   Owner Active Pass
                 </h3>
-                <span className="inline-block text-[10px] font-mono tracking-widest uppercase bg-stone-900 text-amber-400 px-3.5 py-1 font-bold mb-6">
+                <span className="inline-block text-[10px] font-mono tracking-widest uppercase bg-stone-900 text-amber-400 px-3.5 py-1 rounded-full font-bold mb-6">
                   Certified Administrator: afrojalamansari461@gmail.com
                 </span>
                 
@@ -629,7 +629,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                 <button
                   type="button"
                   onClick={() => setPeriod("monthly")}
-                  className={`px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
+                  className={`px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest rounded-xl transition cursor-pointer select-none leading-none ${
                     period === "monthly" 
                       ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" 
                       : "bg-[#FAF8F5] text-stone-600 hover:bg-stone-200 border border-stone-300"
@@ -640,14 +640,14 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                 <button
                   type="button"
                   onClick={() => setPeriod("yearly")}
-                  className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest transition cursor-pointer select-none leading-none ${
+                  className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold font-mono uppercase tracking-widest rounded-xl transition cursor-pointer select-none leading-none ${
                     period === "yearly" 
                       ? "bg-stone-900 text-[#F4F1EA] shadow-md border border-stone-900" 
                       : "bg-[#FAF8F5] text-stone-600 hover:bg-stone-200 border border-stone-300"
                   }`}
                 >
                   Yearly Billings
-                  <span className="px-2 py-0.5 bg-emerald-200 text-emerald-950 font-black uppercase tracking-wider text-[9px]">Save 20%</span>
+                  <span className="px-2 py-0.5 bg-emerald-200 text-emerald-950 font-black uppercase tracking-wider text-[9px] rounded-md">Save 20%</span>
                 </button>
               </div>
 
@@ -734,7 +734,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
         >
           <div className="border-b border-stone-300 pb-4 mb-6">
             <h2 className="text-xl font-serif font-black uppercase text-stone-900 tracking-tight flex items-center gap-2">
-              <Award className="w-5 h-5 text-purple-600" />
+              <Award className="w-5 h-5 text-amber-600" />
               Listing Features & Comparison
             </h2>
             <p className="text-stone-500 text-xs uppercase tracking-wider font-semibold font-mono">
@@ -742,13 +742,13 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
             </p>
           </div>
 
-          <div className="bg-[#FAF8F5] border-2 border-stone-950 shadow-sm overflow-x-auto scrollbar-thin">
+          <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl shadow-sm overflow-x-auto scrollbar-thin">
             <table className="w-full min-w-[650px] sm:min-w-full border-collapse text-left">
               <thead>
-                <tr className="bg-stone-100 border-b border-stone-350">
+                <tr className="bg-stone-100 border-b border-stone-200/90">
                   <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Core Benefits</th>
                   <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Basic</th>
-                  <th className="p-4 sm:p-5 text-[10px] font-black text-purple-700 uppercase font-mono tracking-widest font-extrabold">Pro Professional</th>
+                  <th className="p-4 sm:p-5 text-[10px] font-black text-amber-700 uppercase font-mono tracking-widest font-extrabold">Pro Professional</th>
                   <th className="p-4 sm:p-5 text-[10px] font-bold text-stone-500 uppercase font-mono tracking-widest">Business Dealership</th>
                 </tr>
               </thead>
@@ -757,7 +757,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                   <tr key={idx} className="hover:bg-stone-50 transition">
                     <td className="p-4 sm:p-5 font-bold text-stone-950 leading-relaxed">{row.name}</td>
                     <td className="p-4 sm:p-5 text-stone-500">{row.basic}</td>
-                    <td className="p-4 sm:p-5 text-purple-800 font-black">{row.pro}</td>
+                    <td className="p-4 sm:p-5 text-amber-800 font-black">{row.pro}</td>
                     <td className="p-4 sm:p-5 text-stone-700">{row.business}</td>
                   </tr>
                 ))}
@@ -773,7 +773,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
         >
           <div className="border-b border-stone-300 pb-4 mb-6">
             <h2 className="text-xl font-serif font-black uppercase text-stone-900 tracking-tight flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-purple-600" />
+              <ShieldCheck className="w-5 h-5 text-amber-600" />
               Billing & FAQ
             </h2>
             <p className="text-stone-500 text-xs uppercase tracking-wider font-semibold font-mono">
@@ -785,7 +785,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
             {activeFaqs.map((faq, idx) => {
               const isOpen = openFAQIndex === idx;
               return (
-                <div key={idx} className="bg-[#FAF8F5] border-2 border-stone-950 overflow-hidden shadow-sm">
+                <div key={idx} className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl overflow-hidden shadow-sm">
                   <button
                     type="button"
                     onClick={() => setOpenFAQIndex(isOpen ? null : idx)}
@@ -801,7 +801,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden border-t border-stone-300"
+                        className="overflow-hidden border-t border-stone-200/90"
                       >
                         <div className="p-5 bg-stone-100 text-xs text-stone-600 leading-relaxed font-semibold">
                           {faq.a}
@@ -825,23 +825,23 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#F4F1EA] border-2 border-stone-950 w-full max-w-lg shadow-[8px_8px_0px_0px_rgba(168,85,247,0.3)] relative max-h-[92vh] overflow-y-auto"
+              className="bg-[#F4F1EA] border border-stone-300/80 rounded-3xl w-full max-w-lg shadow-2xl relative max-h-[92vh] overflow-y-auto overflow-hidden"
             >
               {isProcessing ? (
                 /* Dynamic Premium Multi-stage Live Cryptographic Transaction Progress Stepper */
                 <div className="p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[400px] space-y-6">
                   <div className="relative w-20 h-20">
                     <motion.div 
-                      className="absolute inset-0 bg-purple-200 rounded-none border border-purple-500"
+                      className="absolute inset-0 bg-amber-200 rounded-2xl border border-amber-500"
                       animate={{ rotate: 360, scale: [1, 1.1, 1] }}
                       transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
                     />
                     <motion.div 
-                      className="absolute inset-3 bg-stone-950 text-white flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(168,85,247,1)]"
+                      className="absolute inset-3 bg-stone-950 text-white rounded-xl flex items-center justify-center shadow-md"
                       animate={{ rotate: -360 }}
                       transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
                     >
-                      <Lock className="w-5 h-5 text-purple-400" />
+                      <Lock className="w-5 h-5 text-amber-400" />
                     </motion.div>
                   </div>
 
@@ -859,16 +859,16 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                         <div 
                           key={idx} 
                           className={`flex items-center gap-2.5 text-[10px] font-bold uppercase transition-opacity duration-300 ${
-                            isActive ? "text-purple-600 opacity-100" : isCompleted ? "text-stone-500 opacity-60" : "text-stone-300 opacity-40"
+                            isActive ? "text-amber-600 opacity-100" : isCompleted ? "text-stone-500 opacity-60" : "text-stone-300 opacity-40"
                           }`}
                         >
                           <div className="shrink-0">
                             {isCompleted ? (
                               <ShieldCheck className="w-4 h-4 text-emerald-600" />
                             ) : isActive ? (
-                              <Radio className="w-4 h-4 text-purple-600 animate-pulse" />
+                              <Radio className="w-4 h-4 text-amber-600 animate-pulse" />
                             ) : (
-                              <div className="w-4 h-4 border border-stone-300 rounded-none bg-stone-100" />
+                              <div className="w-4 h-4 border border-stone-300 rounded bg-stone-100" />
                             )}
                           </div>
                           <span className="truncate">{stage}</span>
@@ -887,11 +887,11 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                 /* Checkout details form layout */
                 <>
                   {/* Header */}
-                  <div className="bg-stone-950 text-[#F4F1EA] p-6 text-center relative border-b border-stone-850">
+                  <div className="bg-stone-950 text-[#F4F1EA] p-6 text-center relative border-b border-stone-800">
                     <button
                       type="button"
                       onClick={() => setShowCheckout(false)}
-                      className="absolute top-4 right-4 text-white hover:text-purple-400 p-1 font-mono cursor-pointer transition-colors"
+                      className="absolute top-4 right-4 text-white hover:text-amber-400 p-1 font-mono cursor-pointer transition-colors"
                     >
                       ✕
                     </button>
@@ -904,7 +904,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
 
                   {/* Form body */}
                   <form onSubmit={handleConfirmPay} className="p-6 sm:p-8 space-y-6">
-                    <div className="bg-[#FAF8F5] border-2 border-stone-950 p-4.5 space-y-2">
+                    <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-4.5 space-y-2 shadow-sm">
                       <div className="flex justify-between items-center text-xs font-bold text-stone-500 uppercase tracking-widest font-mono">
                         <span>Upgrade term bill:</span>
                         <span>₹{selectedPrice.toLocaleString("en-IN")}</span>
@@ -916,12 +916,12 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                       <hr className="border-stone-200" />
                       <div className="flex justify-between items-center text-sm font-black text-stone-950 pb-1 uppercase tracking-widest leading-none font-mono">
                         <span>Total Due Today:</span>
-                        <span className="text-purple-700 font-serif font-black text-lg">₹{selectedPrice.toLocaleString("en-IN")}</span>
+                        <span className="text-amber-700 font-serif font-black text-lg">₹{selectedPrice.toLocaleString("en-IN")}</span>
                       </div>
                     </div>
 
                     {/* Input credentials */}
-                    <div className="p-4.5 bg-[#FAF8F5] border-2 border-stone-950 space-y-3.5">
+                    <div className="p-4.5 bg-[#FAF8F5] border border-stone-200/90 rounded-2xl space-y-3.5 shadow-sm">
                       <div className="flex items-center justify-between border-b border-stone-200 pb-2">
                         <h4 className="text-xs font-black text-[#1A1A1A] uppercase tracking-widest block font-sans">Debit / Credit credentials</h4>
                         <span className="text-[9px] text-stone-500 tracking-wider uppercase italic font-bold block flex items-center gap-1">
@@ -940,7 +940,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                               onChange={(e) => setCardNumber(e.target.value)}
                               onDoubleClick={handleDoubleCheat}
                               required
-                              className="w-full pl-10 pr-3.5 py-2.5 bg-[#F4F1EA] border-2 border-stone-300 text-sm font-mono tracking-widest focus:outline-none focus:border-stone-950 focus:bg-white transition-colors"
+                              className="w-full pl-10 pr-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-sm font-mono tracking-widest focus:outline-none focus:border-stone-950 focus:bg-white transition-colors"
                             />
                             <CreditCard className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
                           </div>
@@ -956,7 +956,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                               onChange={(e) => setExpiry(e.target.value)}
                               maxLength={5}
                               required
-                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border-2 border-stone-300 text-sm focus:outline-none focus:border-stone-950 text-center font-mono focus:bg-white transition-colors"
+                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-sm focus:outline-none focus:border-stone-950 text-center font-mono focus:bg-white transition-colors"
                             />
                           </div>
                           <div className="space-y-1">
@@ -968,7 +968,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                               onChange={(e) => setCvv(e.target.value)}
                               maxLength={3}
                               required
-                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border-2 border-stone-300 text-sm focus:outline-none focus:border-stone-950 text-center font-mono focus:bg-white transition-colors"
+                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-sm focus:outline-none focus:border-stone-950 text-center font-mono focus:bg-white transition-colors"
                             />
                           </div>
                         </div>
@@ -982,7 +982,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                               value={billingName}
                               onChange={(e) => setBillingName(e.target.value)}
                               required
-                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border-2 border-stone-300 text-sm focus:outline-none focus:border-stone-950 focus:bg-white transition-colors"
+                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-sm focus:outline-none focus:border-stone-950 focus:bg-white transition-colors"
                             />
                           </div>
                           <div className="space-y-1">
@@ -993,7 +993,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                               value={billingEmail}
                               onChange={(e) => setBillingEmail(e.target.value)}
                               required
-                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border-2 border-stone-300 text-sm focus:outline-none focus:border-stone-950 font-mono focus:bg-white transition-colors"
+                              className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-sm focus:outline-none focus:border-stone-950 font-mono focus:bg-white transition-colors"
                             />
                           </div>
                         </div>
@@ -1009,15 +1009,15 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                           checked={agreeTerms}
                           onChange={(e) => setAgreeTerms(e.target.checked)}
                           required
-                          className="mt-1 w-4.5 h-4.5 text-stone-950 accent-stone-950 border-2 border-stone-400 rounded-none focus:ring-0 cursor-pointer"
+                          className="mt-1 w-4.5 h-4.5 text-stone-950 accent-stone-950 border border-stone-400 rounded focus:ring-0 cursor-pointer"
                         />
                         <label htmlFor="chk-terms" className="text-[10px] text-stone-700 uppercase tracking-widest cursor-pointer select-none font-bold leading-relaxed">
                           I authorize immediate billing cycle deployment of ₹{selectedPrice.toLocaleString("en-IN")} matching period selection terms.
                         </label>
                       </div>
 
-                      <div className="bg-purple-50 border-2 border-dashed border-purple-350 text-purple-950 text-[10px] uppercase font-bold tracking-wider leading-relaxed p-3.5 flex items-start gap-1.5">
-                        <Sparkles className="w-4 h-4 shrink-0 text-purple-600 mt-0.5" />
+                      <div className="bg-amber-50 border border-dashed border-amber-400 rounded-xl text-amber-950 text-[10px] uppercase font-bold tracking-wider leading-relaxed p-3.5 flex items-start gap-1.5">
+                        <Sparkles className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                         <span>
                           <strong>Developer Quick-Fill:</strong> Double-click card number input to instantly auto-fill valid credit card mock parameters!
                         </span>
@@ -1027,13 +1027,13 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                         <button
                           type="button"
                           onClick={() => setShowCheckout(false)}
-                          className="flex-1 py-3.5 bg-[#FAF8F5] border-2 border-stone-950 hover:bg-stone-205 text-stone-950 text-xs font-bold uppercase tracking-widest cursor-pointer transition-colors"
+                          className="flex-1 py-3.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 rounded-xl text-stone-950 text-xs font-bold uppercase tracking-widest cursor-pointer transition-colors"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="flex-2 py-3.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                          className="flex-2 py-3.5 bg-stone-950 hover:bg-stone-800 text-amber-400 rounded-xl text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
                         >
                           Confirm Upgrade Payment
                         </button>
@@ -1058,9 +1058,9 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-stone-950/80 backdrop-blur-md overflow-y-auto"
           >
-            <div className="bg-[#FAF8F5] border-4 border-stone-900 shadow-[12px_12px_0px_0px_rgba(245,158,11,1)] max-w-2xl w-full p-6 sm:p-8 relative overflow-hidden my-auto">
+            <div className="bg-[#FAF8F5] border border-stone-300/80 rounded-3xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 relative overflow-hidden my-auto">
               {/* Retro Film Ribbon Top Bar */}
-              <div className="absolute top-0 left-0 right-0 h-3.5 bg-amber-400 flex items-center justify-between px-2 overflow-hidden border-b-2 border-stone-900">
+              <div className="absolute top-0 left-0 right-0 h-3.5 bg-amber-400 flex items-center justify-between px-2 overflow-hidden border-b border-stone-900">
                 <div className="flex gap-1.5 w-full">
                   {[...Array(24)].map((_, i) => (
                     <div key={i} className="w-2.5 h-2 bg-stone-900 rounded-xs shrink-0" />
@@ -1069,13 +1069,13 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
               </div>
 
               {/* Header Badge */}
-              <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-2 border-stone-900 pb-4">
+              <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-stone-200/90 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-amber-400 border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="p-3 bg-amber-400 border border-stone-900 rounded-xl shadow-sm">
                     <Sparkles className="w-6 h-6 text-stone-950 animate-spin" />
                   </div>
                   <div>
-                    <span className="px-2.5 py-0.5 bg-stone-900 text-amber-400 text-[9px] font-mono font-bold uppercase tracking-widest border border-stone-800 inline-block mb-1">
+                    <span className="px-2.5 py-0.5 bg-stone-900 text-amber-400 text-[9px] font-mono font-bold uppercase tracking-widest rounded-md border border-stone-800 inline-block mb-1">
                       🎬 WEBSITE IS 100% FREE FOR EVERYONE
                     </span>
                     <h2 className="text-xl sm:text-2xl font-serif font-black uppercase text-stone-900 tracking-tight leading-none">
@@ -1083,14 +1083,14 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                     </h2>
                   </div>
                 </div>
-                <span className="px-3 py-1 bg-emerald-500 text-stone-950 text-xs font-mono font-black uppercase tracking-widest border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] animate-bounce shrink-0">
+                <span className="px-3 py-1 bg-emerald-500 text-stone-950 text-xs font-mono font-black uppercase tracking-widest rounded-lg border border-stone-900 shadow-sm animate-bounce shrink-0">
                   NO PAYMENTS NEEDED!
                 </span>
               </div>
 
               {/* Central Dialogue Card */}
               {activeDialogues.length > 0 && (
-                <div className="my-6 p-5 sm:p-6 bg-stone-900 text-stone-100 border-2 border-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative space-y-4">
+                <div className="my-6 p-5 sm:p-6 bg-stone-900 text-stone-100 border border-stone-800 rounded-2xl shadow-lg relative space-y-4">
                   <div className="flex items-center justify-between text-xs font-mono font-bold text-amber-400 uppercase tracking-widest pb-2.5 border-b border-stone-800">
                     <span className="flex items-center gap-1.5">
                       <Film className="w-4 h-4 text-amber-400" />
@@ -1109,7 +1109,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                       <span className="text-xs font-mono text-stone-300 font-bold">
                         — {activeDialogues[dialogueIdx % activeDialogues.length].character}
                       </span>
-                      <span className="text-[10px] px-2.5 py-0.5 bg-stone-800 text-amber-400 font-mono font-bold border border-stone-700">
+                      <span className="text-[10px] px-2.5 py-0.5 bg-stone-800 text-amber-400 rounded-md font-mono font-bold border border-stone-700">
                         {activeDialogues[dialogueIdx % activeDialogues.length].movie}
                       </span>
                     </div>
@@ -1136,7 +1136,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                         osc.stop(ctx.currentTime + 0.14);
                       } catch (e) {}
                     }}
-                  className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer border-2 border-stone-950 shadow-[3px_3px_0px_0px_rgba(255,255,255,0.9)] hover:translate-x-[1px] hover:translate-y-[1px]"
+                  className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-xl text-xs font-mono font-black uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
                 >
                   <Shuffle className="w-4 h-4 text-stone-950" />
                   <span>🎲 NEXT FUNNY DIALOGUE!</span>
@@ -1145,7 +1145,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
               )}
 
               {/* Explanatory text */}
-              <div className="bg-amber-50/80 border-2 border-dashed border-amber-500/60 p-4 font-sans space-y-2">
+              <div className="bg-amber-50/80 border border-dashed border-amber-500/60 rounded-2xl p-4 font-sans space-y-2">
                 <h4 className="text-xs font-black uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
                   <Award className="w-4 h-4 text-amber-600" />
                   Official Admin Announcement
@@ -1163,7 +1163,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                     if (setActiveTab) setActiveTab("home");
                     showToast("Enjoy Auto World! Everything is 100% free!", "success");
                   }}
-                  className="flex-1 py-3.5 bg-stone-950 hover:bg-stone-850 text-amber-400 text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer border-2 border-stone-950 shadow-[4px_4px_0px_0px_rgba(245,158,11,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                  className="flex-1 py-3.5 bg-stone-950 hover:bg-stone-800 text-amber-400 rounded-xl text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400" />
                   <span>🚀 EXPLORE FREE VEHICLES NOW</span>
@@ -1190,7 +1190,7 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                       showToast("🎉 Victory tune played! Enjoy free access!", "info");
                     } catch (e) {}
                   }}
-                  className="py-3.5 px-5 bg-[#FAF8F5] hover:bg-stone-200 text-stone-950 text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  className="py-3.5 px-5 bg-[#FAF8F5] hover:bg-stone-200 text-stone-950 rounded-xl text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-300 shadow-sm"
                 >
                   <Volume2 className="w-4 h-4 text-stone-800" />
                   <span>PLAY TUNE</span>

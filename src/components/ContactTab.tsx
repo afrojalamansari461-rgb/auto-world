@@ -208,8 +208,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Box: Visit Address */}
-              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+              <div className="bg-[#FAF8F5] p-5 border border-stone-200/90 rounded-2xl flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center shrink-0">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -221,8 +221,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
               </div>
 
               {/* Box: Phone numbers */}
-              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+              <div className="bg-[#FAF8F5] p-5 border border-stone-200/90 rounded-2xl flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center shrink-0">
                   <Phone className="w-5 h-5" />
                 </div>
                 <div className="space-y-1 w-full">
@@ -235,7 +235,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                       href={`https://wa.me/${contactPhone.replace(/[^0-9]/g, "")}?text=Hi%20AutoWorld%20Support,%20I%20have%20an%20inquiry%20regarding%20vehicle%20trading.`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-[#FAF8F5] text-[10px] font-sans font-bold uppercase tracking-wider transition-all shadow-sm rounded-none border border-emerald-600 hover:border-emerald-700"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-[#FAF8F5] text-[10px] font-sans font-bold uppercase tracking-wider transition-all shadow-sm rounded-xl border border-emerald-600 hover:border-emerald-700"
                     >
                       <MessageCircle className="w-3.5 h-3.5 shrink-0 text-white" />
                       Chat on WhatsApp
@@ -245,8 +245,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
               </div>
 
               {/* Box: Emails */}
-              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+              <div className="bg-[#FAF8F5] p-5 border border-stone-200/90 rounded-2xl flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center shrink-0">
                   <Mail className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -258,8 +258,8 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
               </div>
 
               {/* Box: Hour rates */}
-              <div className="bg-[#FAF8F5] p-5 border border-stone-300 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 bg-stone-900 text-[#F4F1EA] flex items-center justify-center shrink-0">
+              <div className="bg-[#FAF8F5] p-5 border border-stone-200/90 rounded-2xl flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -273,14 +273,14 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
             </div>
 
             {/* Social media card */}
-            <div className="p-5.5 bg-stone-900 text-[#F4F1EA] rounded-none space-y-3.5">
-              <h4 className="text-xs font-bold uppercase text-stone-300 tracking-widest font-mono">Social Community Networks</h4>
+            <div className="p-6 bg-stone-900 text-[#F4F1EA] rounded-2xl border border-stone-800 space-y-3.5 shadow-md">
+              <h4 className="text-xs font-bold uppercase text-amber-400 tracking-widest font-mono">Social Community Networks</h4>
               <p className="text-xs text-stone-400 leading-relaxed max-w-sm">Join our newsletter campaigns and follow official profiles to unlock seasonal rewards.</p>
               <div className="flex gap-3">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white" title="Facebook">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-xl bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white" title="Facebook">
                   <Facebook className="w-4.5 h-4.5" />
                 </a>
-                <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white" title="X (Twitter)">
+                <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-xl bg-stone-800 hover:bg-stone-700 transition flex items-center justify-center text-white" title="X (Twitter)">
                   <Twitter className="w-4.5 h-4.5" />
                 </a>
                 <a 
@@ -288,11 +288,11 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                   target="_blank" 
                   rel="noopener noreferrer"
                   title="Follow Afroj on Instagram"
-                  className="w-9 h-9 bg-stone-800 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] transition flex items-center justify-center"
+                  className="w-9 h-9 rounded-xl bg-stone-800 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] transition flex items-center justify-center"
                 >
                   <Instagram className="w-4.5 h-4.5" />
                 </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-stone-800 hover:bg-amber-500 transition flex items-center justify-center text-white" title="LinkedIn">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-xl bg-stone-800 hover:bg-amber-500 hover:text-stone-950 transition flex items-center justify-center text-white" title="LinkedIn">
                   <Linkedin className="w-4.5 h-4.5" />
                 </a>
               </div>
@@ -300,10 +300,10 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
           </div>
 
           {/* Right Panel: Interactive Send us a message form */}
-          <div className="bg-[#FAF8F5] p-6.5 md:p-8 border border-stone-300">
+          <div className="bg-[#FAF8F5] p-6.5 md:p-8 border border-stone-200/90 rounded-2xl shadow-sm">
             {isDone ? (
               <div className="text-center py-12 space-y-6">
-                <div className="w-16 h-16 rounded-full bg-stone-900 text-[#F4F1EA] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-16 h-16 rounded-full bg-stone-900 text-amber-400 flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-9 h-9" />
                 </div>
                 <h3 className="text-xl font-serif font-black text-stone-900 uppercase tracking-tight">Message Sent</h3>
@@ -313,7 +313,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <button
                   type="button"
                   onClick={() => setIsDone(false)}
-                  className="px-6 py-2.5 bg-stone-950 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest cursor-pointer"
+                  className="px-6 py-2.5 bg-stone-950 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-widest rounded-xl cursor-pointer transition"
                 >
                   Send another message
                 </button>
@@ -334,7 +334,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                       placeholder="John Doe"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-medium"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-medium"
                     />
                   </div>
                   <div className="space-y-1">
@@ -345,7 +345,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                       placeholder="john@example.com"
                       value={emailAddress}
                       onChange={(e) => setBillingEmail(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-medium"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-medium"
                     />
                   </div>
                 </div>
@@ -358,7 +358,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                       placeholder="+91 98765 43210"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-semibold"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-semibold"
                     />
                   </div>
                   <div className="space-y-1">
@@ -367,7 +367,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                       required
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-bold"
+                      className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-bold"
                     >
                       <option value="">Select Topic</option>
                       <option value="General Inquiry">General Inquiry</option>
@@ -387,7 +387,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                     placeholder="Describe your inquiry details..."
                     value={msgBody}
                     onChange={(e) => setMsgBody(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-stone-955 font-mono font-medium"
+                    className="w-full px-3.5 py-2.5 bg-[#F4F1EA] border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-none focus:border-stone-950 font-mono font-medium"
                   />
                   {/* Inline spellcheck alerts */}
                   {isSpellchecking && (
@@ -396,7 +396,7 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                     </div>
                   )}
                   {corrections.length > 0 && (
-                    <div className="mt-2 space-y-1.5 p-3 bg-stone-50 border border-stone-300">
+                    <div className="mt-2 space-y-1.5 p-3 bg-stone-50 border border-stone-300 rounded-xl">
                       <div className="text-[9px] text-amber-700 font-bold uppercase tracking-widest">Writing suggestions:</div>
                       <div className="space-y-1 max-h-36 overflow-y-auto">
                         {corrections.map((corr, i) => (
@@ -404,13 +404,13 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                             <div>
                               <span className="line-through text-red-650 font-semibold">{corr.original}</span>
                               <ArrowRight className="w-3.5 h-3.5 inline-block mx-1 text-stone-400 align-middle" />
-                              <span className="text-emerald-750 font-bold bg-emerald-50 px-1">{corr.suggestion}</span>
+                              <span className="text-emerald-750 font-bold bg-emerald-50 px-1 rounded">{corr.suggestion}</span>
                               <p className="text-[10px] text-stone-500 pt-0.5">{corr.reason}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleApplyCorrection(corr.original, corr.suggestion)}
-                              className="px-2 py-1 bg-stone-900 text-[#F4F1EA] hover:bg-stone-850 text-[9px] font-bold uppercase tracking-widest cursor-pointer"
+                              className="px-2.5 py-1 bg-stone-900 text-[#F4F1EA] hover:bg-stone-800 rounded-lg text-[9px] font-bold uppercase tracking-widest cursor-pointer"
                             >
                               Apply
                             </button>
@@ -446,13 +446,13 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
                 <button
                   type="submit"
                   disabled={isSending}
-                  className="w-full py-3.5 bg-stone-950 hover:bg-stone-850 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  className="w-full py-3.5 bg-stone-950 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-widest rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
                 >
                   {isSending ? (
                     <>Posting message...</>
                   ) : (
                     <>
-                      <Send className="w-4 h-4" />
+                      <Send className="w-4 h-4 text-amber-400" />
                       Send secure message
                     </>
                   )}
@@ -463,9 +463,9 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
         </div>
 
         {/* MAP EM-BED EMBED WIDGET SECTION */}
-        <section className="bg-[#FAF8F5] border border-stone-300 shadow-sm mb-16 overflow-hidden">
-          <div className="p-4 bg-stone-100 border-b border-stone-300 flex items-center gap-2">
-            <Building className="w-5 h-5 text-stone-900" />
+        <section className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl shadow-sm mb-16 overflow-hidden">
+          <div className="p-4 bg-stone-100 border-b border-stone-200/90 flex items-center gap-2">
+            <Building className="w-5 h-5 text-amber-600" />
             <span className="text-xs font-bold text-stone-700 uppercase tracking-widest font-mono">Corporate square headquarters Map</span>
           </div>
           <div className="h-96 relative">
@@ -485,19 +485,19 @@ export default function ContactTab({ showToast, currentUser }: ContactTabProps) 
             {contactFAQS.map((faq, idx) => {
               const isOpen = openFAQIndex === idx;
               return (
-                <div key={idx} className="bg-[#FAF8F5] border border-stone-300 overflow-hidden shadow-sm">
+                <div key={idx} className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl overflow-hidden shadow-sm">
                   <button
                     onClick={() => setOpenFAQIndex(isOpen ? null : idx)}
-                    className="w-full p-5 text-left font-bold text-stone-850 flex items-center justify-between transition hover:bg-stone-100 cursor-pointer"
+                    className="w-full p-5 text-left font-bold text-stone-850 flex items-center justify-between transition hover:bg-stone-100/80 cursor-pointer"
                   >
                     <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-stone-750 flex items-center gap-2 font-mono">
-                      <HelpCircle className="w-5 h-5 text-stone-900 shrink-0" />
+                      <HelpCircle className="w-5 h-5 text-amber-600 shrink-0" />
                       {faq.q}
                     </span>
                     <ChevronDown className={`w-4.5 h-4.5 text-stone-500 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                   </button>
                   {isOpen && (
-                    <div className="p-5 border-t border-stone-300 bg-stone-100 text-xs sm:text-sm text-stone-600 leading-relaxed font-semibold">
+                    <div className="p-5 border-t border-stone-200 bg-stone-100/60 text-xs sm:text-sm text-stone-600 leading-relaxed font-semibold">
                       {faq.a}
                     </div>
                   )}

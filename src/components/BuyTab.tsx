@@ -1384,20 +1384,20 @@ export default function BuyTab({
 
       <motion.div variants={itemVariants} className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
         {/* DUAL CATALOG MODE SWITCHER: VEHICLES VS. VEHICLE PARTS */}
-        <div className="mb-8 bg-stone-900 p-2 sm:p-3 border-2 border-stone-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
+        <div className="mb-8 bg-stone-900 p-2 sm:p-3 border border-stone-800 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans shadow-lg">
           <div className="flex flex-wrap items-center gap-2">
             {/* 1ST BUTTON: VEHICLES */}
             <button
               type="button"
               id="buy-tab-btn-vehicles"
               onClick={() => setActiveCatalogMode("vehicles")}
-              className={`group relative px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer border ${
+              className={`group relative px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer border rounded-xl ${
                 activeCatalogMode === "vehicles"
-                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-sm ring-1 ring-amber-300"
                   : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
               }`}
             >
-              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
                 activeCatalogMode === "vehicles" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
               }`}>
                 <Car className="w-3.5 h-3.5" />
@@ -1424,13 +1424,13 @@ export default function BuyTab({
               type="button"
               id="buy-tab-btn-parts"
               onClick={() => setActiveCatalogMode("parts")}
-              className={`group relative px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer border ${
+              className={`group relative px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer border rounded-xl ${
                 activeCatalogMode === "parts"
-                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] ring-1 ring-amber-300"
+                  ? "bg-amber-500 text-stone-950 border-amber-400 font-black shadow-sm ring-1 ring-amber-300"
                   : "bg-stone-800 hover:bg-stone-750 text-stone-200 border-stone-700 hover:border-amber-500/50 hover:text-white"
               }`}
             >
-              <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
                 activeCatalogMode === "parts" ? "bg-stone-950 text-amber-400" : "bg-stone-900 text-amber-400 group-hover:bg-stone-950"
               }`}>
                 <Wrench className="w-3.5 h-3.5" />
@@ -1469,10 +1469,10 @@ export default function BuyTab({
 
         {/* SMART BUDGET MATCHER ENGINE OR FREE LIFESTYLE MATCHED ARCHETYPE */}
         {!hasPaidPass ? (
-          <div className="mb-12 bg-[#FAF8F5] border border-stone-300 shadow-sm overflow-hidden">
-            <div className="bg-stone-900 text-[#FAF8F5] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-850">
+          <div className="mb-12 bg-[#FAF8F5] border border-stone-200/90 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-stone-900 text-[#FAF8F5] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+                <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center justify-center text-amber-500 shrink-0">
                   <Compass className="w-5 h-5 animate-pulse text-amber-400" />
                 </div>
                 <div>
@@ -1480,7 +1480,7 @@ export default function BuyTab({
                   <p className="text-[9px] text-stone-400 font-mono tracking-widest uppercase">Formulate your ideal vehicle blueprint completely free</p>
                 </div>
               </div>
-              <span className="text-[9px] font-mono px-2.5 py-1 bg-stone-800 text-stone-350 uppercase font-black border border-stone-700">
+              <span className="text-[9px] font-mono px-2.5 py-1 bg-stone-800 text-stone-300 rounded-lg uppercase font-black border border-stone-700">
                 Free Vetting Mode
               </span>
             </div>
@@ -1727,10 +1727,10 @@ export default function BuyTab({
             </p>
           </div>
         ) : (
-          <div className="mb-12 bg-[#FAF8F5] border border-stone-300 shadow-sm overflow-hidden">
-            <div className="bg-stone-900 text-[#FAF8F5] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-850">
+          <div className="mb-12 bg-[#FAF8F5] border border-stone-200/90 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-stone-900 text-[#FAF8F5] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+                <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center justify-center text-amber-500 shrink-0">
                   <Zap className="w-5 h-5 animate-pulse text-amber-400" />
                 </div>
                 <div>
@@ -1740,7 +1740,7 @@ export default function BuyTab({
               </div>
               <button
                 onClick={() => setIsVizHubExpanded(!isVizHubExpanded)}
-                className="text-xs font-mono py-1.5 px-3 bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-300 font-bold uppercase transition select-none cursor-pointer"
+                className="text-xs font-mono py-1.5 px-3 bg-stone-800 hover:bg-stone-750 border border-stone-700 rounded-xl text-stone-300 font-bold uppercase transition select-none cursor-pointer"
               >
                 {isVizHubExpanded ? "[−] Hide Tool" : "[+] Show Tool"}
               </button>
@@ -2174,7 +2174,7 @@ export default function BuyTab({
         )}
 
         {/* FILTERS TOOLBAR PANEL */}
-        <div id="inventory-catalog-start" className="bg-[#FAF8F5] border border-stone-300 p-4 sm:p-6 lg:p-8 mb-10 rounded-xl shadow-sm">
+        <div id="inventory-catalog-start" className="bg-[#FAF8F5] border border-stone-200/90 p-4 sm:p-6 lg:p-8 mb-10 rounded-2xl shadow-sm">
           <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             
             {/* Search Input */}
@@ -2462,8 +2462,8 @@ export default function BuyTab({
                         }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => onQuickView(car)}
-                        className={`bg-[#FAF8F5] border overflow-hidden flex flex-col group transition-all duration-300 cursor-pointer shadow-sm hover:border-stone-400 min-w-0 w-full max-w-full ${
-                          car.badge === "premium" ? "border-amber-500/60 ring-1 ring-amber-500/20" : "border-stone-900/15"
+                        className={`bg-[#FAF8F5] border rounded-2xl overflow-hidden flex flex-col group transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl hover:border-stone-400 min-w-0 w-full max-w-full ${
+                          car.badge === "premium" ? "border-amber-500/60 ring-1 ring-amber-500/20" : "border-stone-200/90"
                         }`}
                       >
                       <div className="relative h-48 sm:h-56 md:h-60 w-full overflow-hidden bg-stone-150 grayscale-20 group-hover:grayscale-0 transition-all duration-300 shrink-0">
@@ -2479,28 +2479,28 @@ export default function BuyTab({
                         />
                         
                         {car.badge === "premium" && (
-                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-stone-900 text-[#FAF8F5] text-[8.5px] sm:text-[9px] font-sans font-black uppercase tracking-widest border border-amber-400 flex items-center gap-1.5 shadow-sm max-w-[calc(100%-1.5rem)] truncate">
+                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-stone-900 text-[#FAF8F5] rounded-lg text-[8.5px] sm:text-[9px] font-sans font-black uppercase tracking-widest border border-amber-400 flex items-center gap-1.5 shadow-sm max-w-[calc(100%-1.5rem)] truncate">
                             <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
                             <span className="truncate">Premium Featured</span>
                           </span>
                         )}
 
                         {car.badge === "hot" && (
-                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-stone-900 text-[#FAF8F5] text-[8.5px] sm:text-[9px] font-sans font-black uppercase tracking-widest border border-red-500 flex items-center gap-1.5 shadow-sm max-w-[calc(100%-1.5rem)] truncate">
+                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-stone-900 text-[#FAF8F5] rounded-lg text-[8.5px] sm:text-[9px] font-sans font-black uppercase tracking-widest border border-red-500 flex items-center gap-1.5 shadow-sm max-w-[calc(100%-1.5rem)] truncate">
                             <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
                             <span className="truncate">Hot Urgent</span>
                           </span>
                         )}
 
                         {car.badge === "verified" && (
-                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-stone-950 text-white text-[8.5px] sm:text-[9px] font-sans font-black uppercase tracking-widest border border-purple-400/85 flex items-center gap-1.5 shadow-[0_0_12px_rgba(192,132,252,0.65)] max-w-[calc(100%-1.5rem)] truncate">
-                            <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-400 animate-pulse shrink-0" />
+                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-stone-950 text-white rounded-lg text-[8.5px] sm:text-[9px] font-sans font-black uppercase tracking-widest border border-emerald-400/85 flex items-center gap-1.5 shadow-sm max-w-[calc(100%-1.5rem)] truncate">
+                            <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 animate-pulse shrink-0" />
                             <span className="truncate">Verified Specimen</span>
                           </span>
                         )}
 
                         {car.badge && car.badge !== "premium" && car.badge !== "hot" && car.badge !== "verified" && (
-                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1 bg-stone-900 text-[#F4F1EA] text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-wider border border-[#F4F1EA]/20 max-w-[calc(100%-1.5rem)] truncate">
+                          <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-1 sm:px-3 sm:py-1 bg-stone-900 text-[#F4F1EA] rounded-lg text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-wider border border-[#F4F1EA]/20 max-w-[calc(100%-1.5rem)] truncate">
                             {car.badge}
                           </span>
                         )}
@@ -2531,7 +2531,7 @@ export default function BuyTab({
                           </div>
 
                           {/* Inspection Badge & Quick Test Drive Bar */}
-                          <div className="flex items-center justify-between gap-1 mb-3 bg-stone-100/90 p-1.5 rounded-md border border-stone-250">
+                          <div className="flex items-center justify-between gap-1 mb-3 bg-stone-100/90 p-1.5 rounded-xl border border-stone-200/90">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -2552,7 +2552,7 @@ export default function BuyTab({
                                   e.stopPropagation();
                                   setTestDriveVehicle(car);
                                 }}
-                                className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-amber-300 text-[9px] font-extrabold uppercase rounded transition cursor-pointer flex items-center gap-1"
+                                className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-amber-300 text-[9px] font-extrabold uppercase rounded-lg transition cursor-pointer flex items-center gap-1"
                                 title="Schedule Doorstep or Showroom Test Drive"
                               >
                                 <Car className="w-3 h-3" />
@@ -2565,7 +2565,7 @@ export default function BuyTab({
                                   e.stopPropagation();
                                   setCallbackVehicle(car);
                                 }}
-                                className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-900 text-[9px] font-bold uppercase rounded transition cursor-pointer flex items-center gap-1"
+                                className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-900 text-[9px] font-bold uppercase rounded-lg transition cursor-pointer flex items-center gap-1"
                                 title="Request Instant Callback"
                               >
                                 <PhoneCall className="w-3 h-3 text-emerald-700" />
@@ -2587,10 +2587,10 @@ export default function BuyTab({
                               </span>
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">
-                              <span className="text-[8.5px] sm:text-[10px] font-mono text-stone-600 bg-stone-200/70 px-2 py-0.5 border border-stone-300 uppercase font-bold rounded-xs shrink-0 truncate max-w-[120px] sm:max-w-none">
+                              <span className="text-[8.5px] sm:text-[10px] font-mono text-stone-600 bg-stone-200/70 px-2 py-0.5 border border-stone-300 uppercase font-bold rounded-md shrink-0 truncate max-w-[120px] sm:max-w-none">
                                 {car.location || "India"}
                               </span>
-                              <span className={`text-[8px] sm:text-[9px] font-mono px-1.5 py-0.5 border uppercase font-bold rounded-xs flex items-center gap-1 ${proximityInfo.badgeColor}`}>
+                              <span className={`text-[8px] sm:text-[9px] font-mono px-1.5 py-0.5 border uppercase font-bold rounded-md flex items-center gap-1 ${proximityInfo.badgeColor}`}>
                                 <MapPin className="w-2.5 h-2.5 shrink-0" />
                                 <span>{proximityInfo.isSameCity ? "Same City" : `${proximityInfo.distanceKm} km`}</span>
                               </span>
@@ -2606,9 +2606,9 @@ export default function BuyTab({
                                 e.stopPropagation();
                                 toggleFavorite(car.id);
                               }}
-                              className={`px-2.5 sm:px-3 py-2 border flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0 ${
+                              className={`px-2.5 sm:px-3 py-2 border rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0 ${
                                 isFav
-                                  ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-850"
+                                  ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-800"
                                   : "bg-[#FAF8F5] border-stone-300 text-stone-700 hover:text-stone-950 hover:border-stone-400"
                               }`}
                               title={isFav ? "Remove from Favorites" : "Add to Favorites"}
@@ -2623,10 +2623,10 @@ export default function BuyTab({
                                 e.stopPropagation();
                                 onQuickView(car);
                               }}
-                              className="flex-1 py-2 px-1.5 sm:px-3 bg-stone-950 hover:bg-stone-850 text-[#F4F1EA] text-[9px] sm:text-[10px] font-sans uppercase font-bold tracking-wider sm:tracking-widest border border-stone-950 transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs min-w-0"
+                              className="flex-1 py-2 px-1.5 sm:px-3 bg-stone-950 hover:bg-stone-800 text-[#F4F1EA] rounded-xl text-[9px] sm:text-[10px] font-sans uppercase font-bold tracking-wider sm:tracking-widest border border-stone-950 transition-all cursor-pointer flex items-center justify-center gap-1 shadow-xs min-w-0"
                               title="View dossier & specifications"
                             >
-                              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-400 shrink-0" />
+                              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
                               <span className="truncate">Dossier</span>
                             </button>
 
@@ -2637,7 +2637,7 @@ export default function BuyTab({
                                 e.stopPropagation();
                                 setEmiVehicle(car);
                               }}
-                              className="flex-1 py-2 px-1.5 sm:px-3 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 text-[9px] sm:text-[10px] font-sans uppercase font-bold tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs min-w-0"
+                              className="flex-1 py-2 px-1.5 sm:px-3 bg-[#F4F1EA] hover:bg-stone-200 text-stone-900 border border-stone-300 rounded-xl text-[9px] sm:text-[10px] font-sans uppercase font-bold tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs min-w-0"
                               title="Calculate EMI & apply for bank loan"
                             >
                               <Calculator className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600 shrink-0" />
@@ -2649,7 +2649,7 @@ export default function BuyTab({
                           <button
                             type="button"
                             onClick={(e) => handleWhatsAppClick(e, car)}
-                            className={`w-full py-2.5 px-2.5 sm:px-4 text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 min-w-0 ${
+                            className={`w-full py-2.5 px-2.5 sm:px-4 rounded-xl text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 min-w-0 ${
                               hasPaidPass
                                 ? "bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white border-emerald-600 hover:border-emerald-500 shadow-xs"
                                 : "bg-stone-900 hover:bg-stone-800 text-white border-stone-900"
@@ -2672,13 +2672,13 @@ export default function BuyTab({
 
               {/* Padlock status module if has not paid pass and database contains hidden elements */}
               {sortedVehicles.length > 3 && !hasPaidPass && (
-                <div className="mt-12 bg-[#FAF8F5] border border-stone-400 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-4">
-                  <div className="w-12 h-12 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto">
+                <div className="mt-12 bg-[#FAF8F5] border border-stone-200/90 rounded-3xl p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-4 shadow-md">
+                  <div className="w-12 h-12 bg-stone-950 text-[#F4F1EA] rounded-2xl flex items-center justify-center mx-auto">
                     <Lock className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
                     <h3 className="text-lg font-serif font-black uppercase text-stone-950 tracking-tight">Plus {sortedVehicles.length - 3} More Specimens Catalogued</h3>
-                    <p className="text-sm md:text-xs text-stone-605 max-w-md mx-auto pt-1 leading-relaxed">
+                    <p className="text-sm md:text-xs text-stone-600 max-w-md mx-auto pt-1 leading-relaxed">
                       You are viewing the first 3 car listings completely free. Activate our secure ₹1 buyer pass to reveal all remaining catalog entries and direct broker contact registries inside your account.
                     </p>
                   </div>
@@ -2686,7 +2686,7 @@ export default function BuyTab({
                   {currentUser && !currentUser.isAnonymous ? (
                     <button
                       onClick={() => setShowPaymentModal(true)}
-                      className="px-6 py-3.5 bg-stone-900 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-stone-850 cursor-pointer"
+                      className="px-6 py-3.5 bg-stone-900 text-amber-400 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-stone-800 cursor-pointer shadow-sm"
                     >
                       Activate ₹1 Account Pass
                     </button>
@@ -2694,7 +2694,7 @@ export default function BuyTab({
                     <div className="space-y-3">
                       <button
                         onClick={onSignInClick}
-                        className="px-6 py-3.5 bg-stone-900 text-white font-bold uppercase text-[11px] tracking-widest hover:bg-stone-850 cursor-pointer flex items-center gap-2 mx-auto transition"
+                        className="px-6 py-3.5 bg-stone-900 text-amber-400 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-stone-800 cursor-pointer flex items-center gap-2 mx-auto transition shadow-sm"
                       >
                         <User className="w-4 h-4 shrink-0 text-[#F4F1EA]" />
                         Sign In to Unlock All Specs
@@ -2727,7 +2727,7 @@ export default function BuyTab({
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="px-3 py-1.5 bg-stone-900 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider border border-amber-500/30 shadow-sm flex items-center gap-2">
+              <span className="px-3 py-1.5 bg-stone-900 text-amber-400 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border border-amber-500/30 shadow-sm flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5" />
                 {filteredParts.length} Verified Components
               </span>
@@ -2735,8 +2735,8 @@ export default function BuyTab({
           </div>
 
           {/* CATEGORY SELECTOR TABS & WISHLIST FILTER */}
-          <div className="bg-[#FAF8F5] border-2 border-stone-900 p-4 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)] space-y-3 font-sans">
-            <div className="flex items-center justify-between gap-2 pb-2 border-b border-stone-300 flex-wrap">
+          <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 font-sans">
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-stone-200/90 flex-wrap">
               <span className="text-[10px] font-mono font-black uppercase tracking-widest text-stone-700 flex items-center gap-2">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
                 Hardware Categories & Filters
@@ -2746,7 +2746,7 @@ export default function BuyTab({
                   Showing {displayedParts.length} of {filteredParts.length} items
                 </span>
                 {!hasPaidPass && sortedParts.length > 3 && (
-                  <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-black uppercase tracking-wider rounded-xs flex items-center gap-1 shadow-xs">
+                  <span className="px-2.5 py-0.5 bg-amber-500 text-stone-950 text-[9px] font-mono font-black uppercase tracking-wider rounded-md flex items-center gap-1 shadow-xs">
                     <Lock className="w-3 h-3" />
                     Preview (Top 3)
                   </span>
@@ -2773,15 +2773,15 @@ export default function BuyTab({
                       setSelectedPartCategory(cat.id);
                       setIsPartWishlistOnly(false);
                     }}
-                    className={`px-4 py-2.5 text-xs font-mono uppercase font-black tracking-wider whitespace-nowrap transition-all duration-200 flex items-center gap-2 border-2 cursor-pointer shadow-xs ${
+                    className={`px-4 py-2.5 rounded-xl text-xs font-mono uppercase font-black tracking-wider whitespace-nowrap transition-all duration-200 flex items-center gap-2 border cursor-pointer shadow-xs ${
                       isSelected
-                        ? "bg-stone-950 text-amber-400 border-stone-950 ring-2 ring-amber-400/60 shadow-[2px_2px_0px_0px_rgba(217,119,6,0.9)] scale-[1.02]"
-                        : "bg-white hover:bg-stone-100 text-stone-800 border-stone-300 hover:border-stone-500"
+                        ? "bg-stone-950 text-amber-400 border-stone-950 ring-2 ring-amber-400/50 shadow-sm scale-[1.02]"
+                        : "bg-white hover:bg-stone-100 text-stone-800 border-stone-300 hover:border-stone-400"
                     }`}
                   >
                     <IconComp className={`w-4 h-4 shrink-0 ${isSelected ? "text-amber-400" : "text-amber-600"}`} />
                     <span>{cat.label}</span>
-                    <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-xs ${
+                    <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-md ${
                       isSelected ? "bg-amber-400 text-stone-950 font-black" : "bg-stone-200 text-stone-700"
                     }`}>
                       {matchCount}
@@ -2797,16 +2797,16 @@ export default function BuyTab({
                   <button
                     type="button"
                     onClick={() => setIsPartWishlistOnly(prev => !prev)}
-                    className={`ml-auto px-4 py-2.5 text-xs font-mono uppercase font-black tracking-wider whitespace-nowrap transition-all duration-200 flex items-center gap-2 border-2 cursor-pointer shadow-xs ${
+                    className={`ml-auto px-4 py-2.5 rounded-xl text-xs font-mono uppercase font-black tracking-wider whitespace-nowrap transition-all duration-200 flex items-center gap-2 border cursor-pointer shadow-xs ${
                       isPartWishlistOnly
-                        ? "bg-red-600 text-white border-red-700 ring-2 ring-red-400/70 shadow-[2px_2px_0px_0px_rgba(220,38,38,0.9)] scale-[1.02]"
+                        ? "bg-red-600 text-white border-red-700 ring-2 ring-red-400/60 shadow-sm scale-[1.02]"
                         : "bg-white hover:bg-red-50 text-stone-800 border-stone-300 hover:border-red-300"
                     }`}
                     title="Filter by saved Wishlist parts"
                   >
                     <Heart className={`w-4 h-4 shrink-0 ${isPartWishlistOnly ? "fill-white text-white" : "text-red-500 fill-red-500/20"}`} />
                     <span>Wishlist</span>
-                    <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-xs ${
+                    <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-md ${
                       isPartWishlistOnly ? "bg-white text-red-600 font-black" : "bg-red-100 text-red-700"
                     }`}>
                       {wishlistCount}
@@ -2818,7 +2818,7 @@ export default function BuyTab({
           </div>
 
           {/* SEARCH & SECONDARY FILTERS BAR */}
-          <div className="bg-stone-900 border-2 border-stone-950 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)] space-y-4">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-md space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
               {/* Search Bar */}
               <div className="lg:col-span-4 relative">
@@ -2832,7 +2832,7 @@ export default function BuyTab({
                     value={partSearchQuery}
                     onChange={(e) => setPartSearchQuery(e.target.value)}
                     placeholder="Search titanium, Garrett, BMW M3, 500HP..."
-                    className="w-full pl-9 pr-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 placeholder-stone-500 text-xs font-mono focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    className="w-full pl-9 pr-3 py-2 bg-stone-800 border border-stone-700 rounded-xl text-stone-100 placeholder-stone-500 text-xs font-mono focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
                   {partSearchQuery && (
                     <button
@@ -2853,7 +2853,7 @@ export default function BuyTab({
                 <select
                   value={selectedPartRarity}
                   onChange={(e) => setSelectedPartRarity(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
+                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-xl text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
                 >
                   <option value="all">All Tiers</option>
                   <option value="Legendary">Legendary (★ 5-Star)</option>
@@ -2872,7 +2872,7 @@ export default function BuyTab({
                 <select
                   value={selectedPartBrand}
                   onChange={(e) => setSelectedPartBrand(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
+                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-xl text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
                 >
                   <option value="all">All Brands</option>
                   {Array.from(new Set(partsList.map((p) => p.brand).filter(Boolean))).sort().map((brand) => (
@@ -2891,7 +2891,7 @@ export default function BuyTab({
                 <select
                   value={partSortBy}
                   onChange={(e) => setPartSortBy(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
+                  className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-xl text-stone-100 text-xs font-mono focus:border-amber-400 focus:outline-none cursor-pointer"
                 >
                   <option value="featured">Featured / Verified</option>
                   <option value="price_asc">Price: Low to High</option>
@@ -2905,7 +2905,7 @@ export default function BuyTab({
                 <button
                   onClick={handleResetPartFilters}
                   title="Reset all filters"
-                  className="w-full py-2 px-2 bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-300 hover:text-white text-xs font-mono uppercase font-bold flex items-center justify-center gap-1 cursor-pointer transition"
+                  className="w-full py-2 px-2 bg-stone-800 hover:bg-stone-700 border border-stone-700 rounded-xl text-stone-300 hover:text-white text-xs font-mono uppercase font-bold flex items-center justify-center gap-1 cursor-pointer transition"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline lg:hidden xl:inline">Reset</span>
@@ -2916,8 +2916,8 @@ export default function BuyTab({
 
           {/* PARTS INVENTORY GRID */}
           {displayedParts.length === 0 ? (
-            <div className="bg-[#FAF8F5] border-2 border-stone-900 p-12 text-center space-y-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.9)]">
-              <div className="w-14 h-14 bg-stone-900 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/30">
+            <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-3xl p-12 text-center space-y-4 shadow-md">
+              <div className="w-14 h-14 bg-stone-900 text-amber-400 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/30">
                 {isPartWishlistOnly ? <Heart className="w-7 h-7 text-red-500 fill-red-500" /> : <Wrench className="w-7 h-7" />}
               </div>
               <h3 className="text-lg font-serif font-black text-stone-900 uppercase tracking-tight">
@@ -2930,7 +2930,7 @@ export default function BuyTab({
               </p>
               <button
                 onClick={handleResetPartFilters}
-                className="px-5 py-2.5 bg-stone-900 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider hover:bg-stone-850 cursor-pointer shadow-sm"
+                className="px-5 py-2.5 bg-stone-900 text-amber-400 rounded-xl text-xs font-mono font-bold uppercase tracking-wider hover:bg-stone-800 cursor-pointer shadow-sm"
               >
                 {isPartWishlistOnly ? "View All Parts" : "Reset Parts Filters"}
               </button>
@@ -2949,10 +2949,10 @@ export default function BuyTab({
                       key={part.id}
                       id={`part-card-${part.id}`}
                       onClick={(e) => onQuickViewPart?.(part, { x: e.clientX, y: e.clientY })}
-                      className="group bg-[#FAF8F5] border-2 border-stone-900 hover:border-amber-500 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-[3px_3px_0px_0px_rgba(0,0,0,0.9)] hover:shadow-[5px_5px_0px_0px_rgba(217,119,6,0.8)] cursor-pointer relative"
+                      className="group bg-[#FAF8F5] border border-stone-200/90 hover:border-amber-500/70 rounded-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-xl cursor-pointer relative"
                     >
                       {/* Top Image Section */}
-                      <div className="relative aspect-[16/10] bg-stone-950 overflow-hidden border-b-2 border-stone-900">
+                      <div className="relative aspect-[16/10] bg-stone-950 overflow-hidden border-b border-stone-200/80">
                         <img
                           src={part.image}
                           alt={part.title}
@@ -2964,11 +2964,11 @@ export default function BuyTab({
                         {/* Rarity Badge / Ribbon */}
                         <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
                           <span
-                            className={`px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-wider shadow-md border ${
+                            className={`px-2.5 py-1 rounded-lg text-[9px] font-mono font-black uppercase tracking-wider shadow-md border ${
                               isLegendary
                                 ? "bg-amber-500 text-stone-950 border-amber-300 shadow-amber-500/30"
                                 : isEpic
-                                ? "bg-purple-600 text-white border-purple-400 shadow-purple-600/30"
+                                ? "bg-amber-700 text-white border-amber-400 shadow-amber-700/30"
                                 : isRare
                                 ? "bg-sky-600 text-white border-sky-400 shadow-sky-600/30"
                                 : "bg-stone-800 text-stone-200 border-stone-600"
@@ -2978,13 +2978,13 @@ export default function BuyTab({
                           </span>
 
                           {part.badge === "verified" && (
-                            <span className="px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-400">
+                            <span className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-400">
                               <ShieldCheck className="w-3 h-3" />
                               Verified OEM
                             </span>
                           )}
                           {part.badge === "premium" && (
-                            <span className="px-2 py-0.5 bg-amber-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-amber-400">
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-600 text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 border border-amber-400">
                               <Sparkles className="w-3 h-3" />
                               Motorsport Pro
                             </span>
@@ -3009,7 +3009,7 @@ export default function BuyTab({
                               showToast(`Saved "${part.title}" to Wishlist!`, "success");
                             }
                           }}
-                          className={`absolute top-3 right-3 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md active:scale-90 z-10 ${
+                          className={`absolute top-3 right-3 w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md active:scale-90 z-10 ${
                             isFavorite
                               ? "bg-red-600 border-red-400 text-white shadow-red-600/40 scale-105"
                               : "bg-stone-900/85 hover:bg-stone-900 text-stone-300 hover:text-white border-stone-700 hover:scale-105"
@@ -3026,11 +3026,11 @@ export default function BuyTab({
 
                         {/* Brand & Part Number Bottom Overlay */}
                         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-mono">
-                          <span className="px-2 py-0.5 bg-stone-900/90 border border-stone-700 font-bold uppercase tracking-wider text-amber-300">
+                          <span className="px-2 py-0.5 rounded-md bg-stone-900/90 border border-stone-700 font-bold uppercase tracking-wider text-amber-300">
                             {part.brand || "Aftermarket"}
                           </span>
                           {part.partNumber && (
-                            <span className="px-2 py-0.5 bg-black/75 border border-stone-800 text-stone-300">
+                            <span className="px-2 py-0.5 rounded-md bg-black/75 border border-stone-800 text-stone-300">
                               PN: {part.partNumber}
                             </span>
                           )}
@@ -3052,7 +3052,7 @@ export default function BuyTab({
 
                           {/* Fitment Tag */}
                           {Boolean(part.compatibleVehicles) && (
-                            <div className="mb-3 p-2 bg-stone-100 border border-stone-200 text-[10px] font-mono text-stone-700 flex items-center gap-1.5">
+                            <div className="mb-3 p-2 rounded-xl bg-stone-100 border border-stone-200/90 text-[10px] font-mono text-stone-700 flex items-center gap-1.5">
                               <Car className="w-3.5 h-3.5 text-stone-500 shrink-0" />
                               <span className="truncate font-semibold">
                                 Fitment: {typeof part.compatibleVehicles === "string" ? part.compatibleVehicles : Array.isArray(part.compatibleVehicles) ? (part.compatibleVehicles as string[]).join(", ") : "Universal"}
@@ -3066,7 +3066,7 @@ export default function BuyTab({
                               {Object.entries(part.specifications).slice(0, 3).map(([key, val]) => (
                                 <span
                                   key={key}
-                                  className="px-2 py-0.5 bg-white border border-stone-300 text-[9px] font-mono text-stone-800 font-bold"
+                                  className="px-2 py-0.5 rounded-md bg-white border border-stone-200/90 text-[9px] font-mono text-stone-800 font-bold"
                                 >
                                   <strong className="text-stone-500 font-normal">{key}: </strong>
                                   {String(val)}
@@ -3088,7 +3088,7 @@ export default function BuyTab({
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-mono font-bold uppercase tracking-wider">
+                              <span className="px-2 py-0.5 rounded-md bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-mono font-bold uppercase tracking-wider">
                                 {part.negotiable ? "Negotiable" : "Fixed Price"}
                               </span>
                               <span className="text-[9px] font-mono text-stone-500 block mt-0.5">
@@ -3105,7 +3105,7 @@ export default function BuyTab({
                                 e.stopPropagation();
                                 onQuickViewPart?.(part, { x: e.clientX, y: e.clientY });
                               }}
-                              className="py-2.5 px-3 bg-stone-900 hover:bg-stone-800 text-amber-400 text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950 shadow-xs"
+                              className="py-2.5 px-3 bg-stone-900 hover:bg-stone-800 text-amber-400 rounded-xl text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950 shadow-xs"
                             >
                               <Eye className="w-3.5 h-3.5" />
                               Dossier
@@ -3114,9 +3114,9 @@ export default function BuyTab({
                             <button
                               type="button"
                               onClick={(e) => handlePartWhatsAppClick(e, part)}
-                              className={`py-2.5 px-3 text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border shadow-xs ${
+                              className={`py-2.5 px-3 rounded-xl text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border shadow-xs ${
                                 hasPaidPass
-                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-800"
+                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
                                   : "bg-stone-900 hover:bg-stone-800 text-amber-400 border-stone-950"
                               }`}
                               title={hasPaidPass ? "Connect directly on WhatsApp with seller" : "Unlock seller coordinates & WhatsApp"}
@@ -3135,8 +3135,8 @@ export default function BuyTab({
 
               {/* Locked Parts Module when user has not activated Buyer Pass and there are more than 3 parts */}
               {sortedParts.length > 3 && !hasPaidPass && (
-                <div className="mt-12 bg-[#FAF8F5] border-2 border-stone-900 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-4 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
-                  <div className="w-12 h-12 bg-stone-950 text-[#F4F1EA] flex items-center justify-center mx-auto border border-amber-500/40">
+                <div className="mt-12 bg-[#FAF8F5] border border-stone-200/90 rounded-3xl p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-4 shadow-md">
+                  <div className="w-12 h-12 bg-stone-950 text-[#F4F1EA] rounded-2xl flex items-center justify-center mx-auto border border-amber-500/40">
                     <Lock className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
@@ -3151,7 +3151,7 @@ export default function BuyTab({
                   {currentUser && !currentUser.isAnonymous ? (
                     <button
                       onClick={() => setShowPaymentModal(true)}
-                      className="px-6 py-3.5 bg-stone-900 text-amber-400 font-bold uppercase text-[11px] font-mono tracking-widest hover:bg-stone-850 cursor-pointer border border-amber-500/40 shadow-sm"
+                      className="px-6 py-3.5 bg-stone-900 text-amber-400 rounded-xl font-bold uppercase text-[11px] font-mono tracking-widest hover:bg-stone-800 cursor-pointer border border-amber-500/40 shadow-sm"
                     >
                       Activate ₹1 Account Pass
                     </button>
@@ -3159,7 +3159,7 @@ export default function BuyTab({
                     <div className="space-y-3">
                       <button
                         onClick={onSignInClick}
-                        className="px-6 py-3.5 bg-stone-900 text-amber-400 font-bold uppercase text-[11px] font-mono tracking-widest hover:bg-stone-850 cursor-pointer flex items-center gap-2 mx-auto transition border border-amber-500/40"
+                        className="px-6 py-3.5 bg-stone-900 text-amber-400 rounded-xl font-bold uppercase text-[11px] font-mono tracking-widest hover:bg-stone-800 cursor-pointer flex items-center gap-2 mx-auto transition border border-amber-500/40 shadow-sm"
                       >
                         <User className="w-4 h-4 shrink-0 text-[#F4F1EA]" />
                         Sign In to Unlock All Parts

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Heart, Check } from "lucide-react";
+import { Heart } from "lucide-react";
 
 interface AnimatedFavoriteHeartProps {
   isFav: boolean;
@@ -8,7 +8,7 @@ interface AnimatedFavoriteHeartProps {
   isMono?: boolean;
 }
 
-interface ConfettiParticle {
+interface BurstParticle {
   id: number;
   x: number;
   y: number;
@@ -17,64 +17,44 @@ interface ConfettiParticle {
   delay: number;
 }
 
-export function AnimatedFavoriteHeart({ isFav, className = "w-4.5 h-4.5", isMono = true }: AnimatedFavoriteHeartProps) {
-  const [particles, setParticles] = useState<ConfettiParticle[]>([]);
-  const [showCheck, setShowCheck] = useState(false);
+export function AnimatedFavoriteHeart({
+  isFav,
+  className = "w-4.5 h-4.5",
+  isMono = false,
+}: AnimatedFavoriteHeartProps) {
+  const [particles, setParticles] = useState<BurstParticle[]>([]);
+  const [pulseRing, setPulseRing] = useState(false);
   const prevIsFav = useRef(isFav);
 
   useEffect(() => {
-    // Only trigger animation when transitioning from false to true (successfully favorited)
     if (isFav && !prevIsFav.current) {
-      // Trigger checkmark animation
-      setShowCheck(true);
-      const checkTimeout = setTimeout(() => setShowCheck(false), 1500);
+      setPulseRing(true);
+      const ringTimeout = setTimeout(() => setPulseRing(false), 650);
 
-      // Trigger confetti burst
       const colors = isMono
-        ? [
-            "#000000", // Pure black
-            "#1C1917", // Stone-900
-            "#444444", // Medium dark gray
-            "#78716C", // Stone-500
-            "#292524", // Stone-800
-            "#0C0A09", // Stone-950
-            "#57534E", // Stone-600
-            "#A8A29E", // Stone-400
-          ]
-        : [
-            "#FBBF24", // Gold
-            "#34D399", // Emerald
-            "#F87171", // Red
-            "#A78BFA", // Purple
-            "#60A5FA", // Blue
-            "#F59E0B", // Amber
-            "#F472B6", // Pink
-            "#2DD4BF", // Teal
-          ];
+        ? ["#0F0F10", "#D5001C", "#3F3F46", "#D5001C", "#18181B", "#71717A"]
+        : ["#D5001C", "#FF2A44", "#0F0F10", "#990014", "#D5001C", "#52525B"];
 
-      const newParticles: ConfettiParticle[] = Array.from({ length: 12 }).map((_, i) => {
-        const angle = (i * 360) / 12 + (Math.random() * 15 - 7.5); // Spread evenly + subtle variance
+      const newParticles: BurstParticle[] = Array.from({ length: 10 }).map((_, i) => {
+        const angle = (i * 360) / 10 + (Math.random() * 12 - 6);
         const radians = (angle * Math.PI) / 180;
-        const velocity = 25 + Math.random() * 25; // Random distance multiplier
+        const distance = 18 + Math.random() * 14;
         return {
           id: Date.now() + i,
-          x: Math.cos(radians) * velocity,
-          y: Math.sin(radians) * velocity,
+          x: Math.cos(radians) * distance,
+          y: Math.sin(radians) * distance,
           color: colors[i % colors.length],
-          size: 4 + Math.random() * 5, // Size between 4px and 9px
-          delay: Math.random() * 0.1,
+          size: 3 + Math.random() * 3.5,
+          delay: i * 0.012,
         };
       });
 
       setParticles(newParticles);
+      const particlesTimeout = setTimeout(() => setParticles([]), 750);
 
-      // Clean up particles
-      const particlesTimeout = setTimeout(() => {
-        setParticles([]);
-      }, 1200);
-
+      prevIsFav.current = isFav;
       return () => {
-        clearTimeout(checkTimeout);
+        clearTimeout(ringTimeout);
         clearTimeout(particlesTimeout);
       };
     }
@@ -83,57 +63,72 @@ export function AnimatedFavoriteHeart({ isFav, className = "w-4.5 h-4.5", isMono
   }, [isFav, isMono]);
 
   return (
-    <div className="relative inline-flex items-center justify-center overflow-visible">
-      {/* Heart Icon Container with scale pop */}
+    <div className="relative inline-flex items-center justify-center overflow-visible select-none">
+      {/* Expanding Precision Shockwave Ring */}
+      <AnimatePresence>
+        {pulseRing && (
+          <motion.span
+            initial={{ scale: 0.4, opacity: 0.9 }}
+            animate={{ scale: 2.35, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 220,
+              damping: 22,
+            }}
+            className="absolute inset-0 rounded-full border-2 border-[#D5001C] pointer-events-none z-10"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Complex Spring Heart Pop + Color Fill Transition */}
       <motion.div
-        animate={isFav ? { scale: [1, 1.35, 0.95, 1.05, 1] } : { scale: 1 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
-        className="relative"
+        initial={false}
+        animate={
+          isFav
+            ? {
+                scale: [1, 0.72, 1.38, 0.92, 1.06, 1],
+                rotate: [0, -10, 8, -3, 0],
+              }
+            : {
+                scale: 1,
+                rotate: 0,
+              }
+        }
+        transition={{
+          type: "spring",
+          stiffness: 420,
+          damping: 14,
+          mass: 0.7,
+        }}
+        className="relative z-20 flex items-center justify-center"
       >
         <Heart
           className={`${className} transition-colors duration-300 ${
             isFav
-              ? isMono
-                ? "fill-current text-current"
-                : "fill-red-500 text-red-500"
-              : "text-current"
+              ? "fill-[#D5001C] text-[#D5001C]"
+              : "fill-transparent text-current"
           }`}
         />
       </motion.div>
 
-      {/* Floating Check-mark feedback */}
-      <AnimatePresence>
-        {showCheck && (
-          <motion.div
-            initial={{ opacity: 0, y: 0, scale: 0.5 }}
-            animate={{ opacity: [0, 1, 1, 0], y: -22, scale: [0.5, 1.2, 1, 0.8] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.1, ease: "easeOut" }}
-            className={`absolute z-30 flex items-center justify-center rounded-full p-0.5 shadow-sm ${
-              isMono ? "bg-black text-white border border-stone-800" : "bg-emerald-500 text-white"
-            }`}
-          >
-            <Check className="w-2.5 h-2.5 stroke-[3]" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Confetti Particles */}
+      {/* Spring Micro-Particles */}
       <AnimatePresence>
         {particles.map((p) => (
-          <motion.div
+          <motion.span
             key={p.id}
             initial={{ opacity: 1, x: 0, y: 0, scale: 0 }}
             animate={{
               opacity: [1, 1, 0],
               x: p.x,
-              y: p.y - 10, // Drift slightly up due to air resistance
-              scale: [0, 1.2, 0.5],
-              rotate: [0, 180 + Math.random() * 180],
+              y: p.y,
+              scale: [0, 1.25, 0.3],
             }}
+            exit={{ opacity: 0 }}
             transition={{
-              duration: 0.8 + Math.random() * 0.3,
-              ease: "easeOut",
+              type: "spring",
+              stiffness: 180,
+              damping: 16,
               delay: p.delay,
             }}
             style={{
@@ -141,8 +136,7 @@ export function AnimatedFavoriteHeart({ isFav, className = "w-4.5 h-4.5", isMono
               width: p.size,
               height: p.size,
               backgroundColor: p.color,
-              borderRadius: Math.random() > 0.5 ? "50%" : "2px", // Mix of circles and squares
-              zIndex: 20,
+              zIndex: 15,
               pointerEvents: "none",
             }}
           />

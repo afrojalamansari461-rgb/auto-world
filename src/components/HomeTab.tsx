@@ -786,7 +786,7 @@ export default function HomeTab({
                 onMouseEnter={() => setHoveredCardId(car.id)}
                 onMouseLeave={() => setHoveredCardId(null)}
                 whileHover={{ scale: 1.025, y: -6, transition: { type: "spring", stiffness: 300, damping: 20 } }}
-                className="bg-[#FAF8F5] border border-stone-900/15 rounded-xl overflow-hidden flex flex-col group transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl hover:border-stone-400 relative animate-in fade-in zoom-in-95"
+                className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl overflow-hidden flex flex-col group transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl hover:border-stone-400 relative animate-in fade-in zoom-in-95"
               >
                 {/* Media frame */}
                 <div className="relative h-56 overflow-hidden bg-stone-200 grayscale-20 hover:grayscale-0 transition-all duration-500">
@@ -802,12 +802,10 @@ export default function HomeTab({
                   />
                   
                   {car.badge && (
-                    <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-950 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-[0.15em] border border-[#F4F1EA]/20 shadow-md">
+                    <span className="absolute top-4 left-4 z-10 px-3 py-1 bg-stone-950/90 text-[#F4F1EA] text-[9px] font-bold uppercase tracking-[0.15em] border border-[#F4F1EA]/20 rounded-lg shadow-md backdrop-blur-xs">
                       {car.badge}
                     </span>
                   )}
-
-
 
                   {/* Dynamic Laser Scanning Line */}
                   {isHovered && (
@@ -815,7 +813,7 @@ export default function HomeTab({
                       initial={{ top: "0%" }}
                       animate={{ top: "100%" }}
                       transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-                      className="absolute left-0 right-0 h-0.5 bg-[#A855F7] shadow-[0_0_12px_#A855F7] z-20 pointer-events-none"
+                      className="absolute left-0 right-0 h-0.5 bg-amber-400 shadow-[0_0_12px_#F59E0B] z-20 pointer-events-none"
                     />
                   )}
 
@@ -828,8 +826,8 @@ export default function HomeTab({
                   >
                     <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-stone-800 pb-2">
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-[#A855F7] font-bold flex items-center gap-1.5 animate-pulse">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#A855F7] inline-block"></span>
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold flex items-center gap-1.5 animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>
                           Chassis Scan Active
                         </span>
                         <span className="text-[9px] uppercase text-stone-400 font-mono">Telemetry Logs</span>
@@ -839,14 +837,14 @@ export default function HomeTab({
                         <div>
                           <div className="flex justify-between text-[9px] font-mono mb-1">
                             <span className="text-stone-400">ENGINE DIAGNOSTICS</span>
-                            <span className="text-[#A855F7] font-bold">{car.id % 2 === 0 ? "98%" : "96%"}</span>
+                            <span className="text-amber-400 font-bold">{car.id % 2 === 0 ? "98%" : "96%"}</span>
                           </div>
                           <div className="h-1 bg-stone-800 rounded-full overflow-hidden">
                             <motion.div 
                               initial={{ width: "0%" }}
                               animate={isHovered ? { width: car.id % 2 === 0 ? "98%" : "96%" } : { width: "0%" }}
                               transition={{ duration: 0.6, ease: "easeOut" }}
-                              className="h-full bg-[#A855F7]" 
+                              className="h-full bg-amber-400" 
                             />
                           </div>
                         </div>
@@ -854,14 +852,14 @@ export default function HomeTab({
                         <div>
                           <div className="flex justify-between text-[9px] font-mono mb-1">
                             <span className="text-stone-400">BODYWORK INTEGRITY</span>
-                            <span className="text-[#A855F7] font-bold">{car.id % 3 === 0 ? "95%" : "97%"}</span>
+                            <span className="text-amber-400 font-bold">{car.id % 3 === 0 ? "95%" : "97%"}</span>
                           </div>
                           <div className="h-1 bg-stone-800 rounded-full overflow-hidden">
                             <motion.div 
                               initial={{ width: "0%" }}
                               animate={isHovered ? { width: car.id % 3 === 0 ? "95%" : "97%" } : { width: "0%" }}
                               transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-                              className="h-full bg-[#A855F7]" 
+                              className="h-full bg-amber-400" 
                             />
                           </div>
                         </div>
@@ -869,14 +867,14 @@ export default function HomeTab({
                         <div>
                           <div className="flex justify-between text-[9px] font-mono mb-1">
                             <span className="text-stone-400">DRIVETRAIN STATUS</span>
-                            <span className="text-[#A855F7] font-bold">EXCELLENT</span>
+                            <span className="text-amber-400 font-bold">EXCELLENT</span>
                           </div>
                           <div className="h-1 bg-stone-800 rounded-full overflow-hidden">
                             <motion.div 
                               initial={{ width: "0%" }}
                               animate={isHovered ? { width: "94%" } : { width: "0%" }}
                               transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-                              className="h-full bg-[#A855F7]" 
+                              className="h-full bg-amber-400" 
                             />
                           </div>
                         </div>
@@ -884,7 +882,7 @@ export default function HomeTab({
                     </div>
 
                     <div className="text-[9px] font-mono text-stone-400 uppercase leading-relaxed text-center flex items-center justify-center gap-1.5 border-t border-stone-800/80 pt-2.5">
-                      <Eye className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                      <Eye className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       View service ledger logs
                     </div>
                   </motion.div>
@@ -896,7 +894,7 @@ export default function HomeTab({
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[9px] font-mono tracking-widest text-stone-400 block uppercase">REF #AW0{car.id}</span>
                       {car.badge === "verified" && (
-                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 uppercase tracking-wider border border-emerald-200">Verified</span>
+                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-wider border border-emerald-200">Verified</span>
                       )}
                     </div>
                     <h3 className="text-xl font-serif font-black text-stone-950 mb-3 group-hover:underline cursor-pointer" onClick={() => onQuickView(car)}>
@@ -931,9 +929,9 @@ export default function HomeTab({
                           e.stopPropagation();
                           toggleFavorite(car.id);
                         }}
-                        className={`w-10 h-10 border flex items-center justify-center transition-all duration-300 cursor-pointer ${
+                        className={`w-10 h-10 border rounded-xl flex items-center justify-center transition-all duration-300 cursor-pointer ${
                           isFav
-                            ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-850"
+                            ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-800"
                             : "bg-[#FAF8F5] border-stone-300 text-stone-600 hover:text-stone-950 hover:border-stone-400"
                         }`}
                         title={isFav ? "Remove from Favorites" : "Add to Favorites"}
@@ -942,7 +940,7 @@ export default function HomeTab({
                       </button>
                       <button
                         onClick={() => onQuickView(car)}
-                        className="px-4 py-2.5 bg-stone-950 hover:bg-[#F4F1EA] hover:text-stone-950 text-[#F4F1EA] text-xs font-sans uppercase font-bold tracking-widest border border-stone-950 transition-all duration-300"
+                        className="px-4 py-2.5 bg-stone-950 hover:bg-stone-800 text-[#F4F1EA] text-xs font-sans uppercase font-bold tracking-widest border border-stone-950 rounded-xl transition-all duration-300 cursor-pointer shadow-xs"
                       >
                         View Dossier
                       </button>
@@ -1018,10 +1016,10 @@ export default function HomeTab({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4 }}
-                  className="bg-[#FAF8F5] border border-stone-300 rounded-xl flex flex-col justify-between group overflow-hidden transition-all duration-300 hover:border-amber-700 hover:shadow-xl relative"
+                  className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl flex flex-col justify-between group overflow-hidden transition-all duration-300 hover:border-amber-600/70 shadow-sm hover:shadow-xl relative"
                 >
                   {/* Top Image Showcase with Zoom on Hover */}
-                  <div className="relative h-60 w-full overflow-hidden bg-stone-900 border-b border-stone-250">
+                  <div className="relative h-60 w-full overflow-hidden bg-stone-900 border-b border-stone-200/90">
                     <img
                       src={displayImage}
                       alt={part.title}
@@ -1038,11 +1036,11 @@ export default function HomeTab({
 
                     {/* Rarity & Verified Badges */}
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-                      <span className={`px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${badgeStyle}`}>
+                      <span className={`px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-lg border ${badgeStyle}`}>
                         {part.rarity}
                       </span>
                       {part.badge === "verified" && (
-                        <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded flex items-center gap-1 shadow-sm">
+                        <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded-lg flex items-center gap-1 shadow-sm">
                           <ShieldCheck className="w-3 h-3 text-emerald-400" />
                           Accredited
                         </span>
@@ -1050,7 +1048,7 @@ export default function HomeTab({
                     </div>
 
                     {/* Category Stamp */}
-                    <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-stone-950/80 text-stone-200 text-[9px] font-mono uppercase tracking-widest rounded border border-stone-700">
+                    <div className="absolute bottom-3 right-3 px-2.5 py-0.5 bg-stone-950/85 text-stone-200 text-[9px] font-mono uppercase tracking-widest rounded-lg border border-stone-700/80 backdrop-blur-xs">
                       {part.category.replace("_", " ")}
                     </div>
 
@@ -1108,7 +1106,7 @@ export default function HomeTab({
                       </h3>
 
                       {/* Compatible Fitment */}
-                      <div className="mt-3 p-2.5 bg-[#F4F1EA] border border-stone-250 rounded text-[11px] font-sans flex items-start gap-2">
+                      <div className="mt-3 p-2.5 bg-[#F4F1EA] border border-stone-200/90 rounded-xl text-[11px] font-sans flex items-start gap-2">
                         <Wrench className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
                         <div className="text-stone-700 line-clamp-1">
                           <span className="font-bold text-stone-900">Fitment: </span>
@@ -1127,7 +1125,7 @@ export default function HomeTab({
                           </span>
                         </div>
                         {part.negotiable === "yes" && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 bg-stone-200 text-stone-700 rounded">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 bg-stone-200 text-stone-700 rounded-lg">
                             Negotiable
                           </span>
                         )}
@@ -1140,7 +1138,7 @@ export default function HomeTab({
                               onQuickViewPart(part, { x: e.clientX, y: e.clientY });
                             }
                           }}
-                          className="w-full py-2.5 bg-stone-950 hover:bg-stone-800 text-white text-[11px] font-sans uppercase font-bold tracking-wider rounded border border-stone-950 transition-all duration-300 cursor-pointer text-center"
+                          className="w-full py-2.5 bg-stone-950 hover:bg-stone-800 text-white text-[11px] font-sans uppercase font-bold tracking-wider rounded-xl border border-stone-950 transition-all duration-300 cursor-pointer text-center"
                         >
                           Examine Part Dossier
                         </button>
@@ -1148,7 +1146,7 @@ export default function HomeTab({
                           href={waUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-sans uppercase font-bold tracking-wider rounded transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs text-center"
+                          className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-sans uppercase font-bold tracking-wider rounded-xl transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs text-center"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
                           <span>WhatsApp Seller</span>

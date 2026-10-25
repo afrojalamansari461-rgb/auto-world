@@ -1,27 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 :root {
-  --font-serif: "Fraunces", "Bodoni Moda", "Playfair Display", Georgia, serif;
-  --font-sans: "Plus Jakarta Sans", "Inter", sans-serif;
+  /* Swiss Editorial Typography System:
+     Geometric Sans-Serif for Headings (--font-serif mapped to Outfit for architectural consistency)
+     Readable Sans-Serif for Body (--font-sans)
+     Precision Tabular Monospace for Telemetry & Bids (--font-mono) */
+  --font-serif: "Outfit", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --font-display-italic: "Instrument Serif", "Fraunces", "Playfair Display", Georgia, serif;
+  --font-display-italic: "Instrument Serif", Georgia, serif;
 
-  --paper: #F4F1EA;
-  --ink: #1A1A1A;
-  --cream: #FAF8F5;
-  --charcoal: #2D2D2D;
-  --editorial-border: rgba(26, 26, 26, 0.15);
-  --shadow-color: rgba(26, 26, 26, 0.05);
+  /* High-Contrast Monochrome Base + Single Stark Racing Red Accent (#D5001C) */
+  --paper: #F6F5F2;
+  --ink: #0F0F10;
+  --cream: #FFFFFF;
+  --charcoal: #27272A;
+  --metallic: #71717A;
+  --accent-red: #D5001C;
+  --editorial-border: rgba(15, 15, 16, 0.14);
+  --shadow-color: rgba(15, 15, 16, 0.04);
 }
 
 /* High contrast dark theme values when dark class is active */
 .dark, :root.dark, html.dark {
-  --paper: #0C0C0B;
-  --cream: #141413;
-  --ink: #FAF9F6;
-  --charcoal: #D8D5CC;
-  --editorial-border: rgba(244, 241, 234, 0.22);
+  --paper: #0F0F10;
+  --cream: #161618;
+  --ink: #F6F5F2;
+  --charcoal: #D4D4D8;
+  --metallic: #A1A1AA;
+  --accent-red: #D5001C;
+  --editorial-border: rgba(246, 245, 242, 0.16);
   --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
@@ -29,7 +38,7 @@
   --font-serif: var(--font-serif);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  
+
   --color-paper: var(--paper);
   --color-ink: var(--ink);
   --color-cream: var(--cream);
@@ -40,7 +49,20 @@ body {
   background-color: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Enforce geometric precision on headings */
+h1, h2, h3, h4, .editorial-title {
+  font-family: var(--font-serif);
+  letter-spacing: -0.03em;
+}
+
+/* Enforce tabular numerals on financial & telemetry readouts */
+.tabular-nums, .font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Selector overrides for any hardcoded backgrounds and texts when dark mode is enabled */
@@ -50,13 +72,17 @@ body {
 }
 
 .dark [class*="bg-[#F4F1EA]"],
+.dark [class*="bg-[#F6F5F2]"],
 .dark .bg-\[\#F4F1EA\],
+.dark .bg-\[\#F6F5F2\],
 .dark .bg-stone-100 {
   background-color: var(--paper) !important;
 }
 
 .dark [class*="bg-[#FAF8F5]"],
+.dark [class*="bg-[#FAF9F6]"],
 .dark .bg-\[\#FAF8F5\],
+.dark .bg-\[\#FAF9F6\],
 .dark .bg-white,
 .dark .bg-stone-50,
 .dark .bg-slate-50 {
@@ -64,7 +90,9 @@ body {
 }
 
 .dark [class*="text-[#1A1A1A]"],
-.dark .text-\[\#1A1A1A\] {
+.dark [class*="text-[#0F0F10]"],
+.dark .text-\[\#1A1A1A\],
+.dark .text-\[\#0F0F10\] {
   color: var(--ink) !important;
 }
 
@@ -145,16 +173,12 @@ body {
   opacity: 0.65;
 }
 
-.dark .shadow-sm {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4) !important;
-}
-
 /* Print editorial styling hooks */
 .editorial-title {
   font-family: var(--font-serif);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1;
+  letter-spacing: -0.035em;
+  line-height: 0.96;
 }
 
 .editorial-serif {
@@ -163,6 +187,7 @@ body {
 
 .editorial-mono {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .editorial-border {
@@ -170,27 +195,5 @@ body {
 }
 
 .editorial-shadow {
-  box-shadow: 0 4px 20px -2px var(--shadow-color);
+  box-shadow: 0 2px 12px -2px var(--shadow-color);
 }
-
-@keyframes scan {
-  0% { top: 0%; }
-  50% { top: 100%; }
-  100% { top: 0%; }
-}
-.animate-scan {
-  animation: scan 5s ease-in-out infinite;
-}
-
-@keyframes glitch {
-  0% { transform: translate(0) }
-  20% { transform: translate(-2px, 2px) }
-  40% { transform: translate(-2px, -2px) }
-  60% { transform: translate(2px, 2px) }
-  80% { transform: translate(2px, -2px) }
-  100% { transform: translate(0) }
-}
-.animate-glitch {
-  animation: glitch 1s steps(2) infinite;
-}
-

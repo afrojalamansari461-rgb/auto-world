@@ -1,12 +1,25 @@
 import React, { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
-  Trophy, Award, Crown, Zap, TrendingUp, ShieldCheck,
-  User, CheckCircle2, ArrowUpRight, Clock, ChevronRight,
-  Flame, Sparkles, AlertCircle, Lock, ArrowUp
+  Trophy,
+  Crown,
+  Zap,
+  ShieldCheck,
+  User,
+  CheckCircle2,
+  Clock,
+  Flame,
+  Lock,
+  ArrowUp,
 } from "lucide-react";
 import { User as FirebaseUser } from "firebase/auth";
-import { Auction, AuctionBid } from "../types";
+import { Auction } from "../types";
+import {
+  AnimatedPriceFlash,
+  MagneticButton,
+  staggerContainerVariants,
+  staggerItemVariants,
+} from "./AnimationWrapper";
 
 interface AuctionLeaderboardProps {
   auction: Auction;
@@ -43,20 +56,25 @@ export const AuctionLeaderboard: React.FC<AuctionLeaderboardProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<"unique" | "all">("unique");
 
-  const minNextBid = (auction.currentBid || auction.startingBid || 0) + (auction.minIncrement || 50000);
+  const minNextBid =
+    (auction.currentBid || auction.startingBid || 0) +
+    (auction.minIncrement || 50000);
 
-  // 1. Compute Unique Ranked Collectors (by their best/highest bid)
+  // 1. Compute Unique Ranked Collectors
   const uniqueRankedCollectors: RankedCollector[] = useMemo(() => {
     if (!auction.bids || auction.bids.length === 0) return [];
 
-    const bidderMap = new Map<string, {
-      bidderUid: string;
-      bidderName: string;
-      bidderPhoto?: string;
-      highestBid: number;
-      latestTimestamp: string;
-      totalBidsCount: number;
-    }>();
+    const bidderMap = new Map<
+      string,
+      {
+        bidderUid: string;
+        bidderName: string;
+        bidderPhoto?: string;
+        highestBid: number;
+        latestTimestamp: string;
+        totalBidsCount: number;
+      }
+    >();
 
     auction.bids.forEach((bid) => {
       const key = bid.bidderUid || bid.bidderName;
@@ -79,16 +97,21 @@ export const AuctionLeaderboard: React.FC<AuctionLeaderboardProps> = ({
       }
     });
 
-    const sorted = Array.from(bidderMap.values()).sort((a, b) => b.highestBid - a.highestBid);
+    const sorted = Array.from(bidderMap.values()).sort(
+      (a, b) => b.highestBid - a.highestBid
+    );
     const leaderBid = sorted[0]?.highestBid || auction.currentBid;
 
     return sorted.map((collector, index) => {
       const isCurrentUser = Boolean(
-        currentUser && (
-          collector.bidderUid === currentUser.uid ||
-          (currentUser.email && collector.bidderName.toLowerCase() === currentUser.email.split("@")[0].toLowerCase()) ||
-          (currentUser.displayName && collector.bidderName.toLowerCase() === currentUser.displayName.toLowerCase())
-        )
+        currentUser &&
+          (collector.bidderUid === currentUser.uid ||
+            (currentUser.email &&
+              collector.bidderName.toLowerCase() ===
+                currentUser.email.split("@")[0].toLowerCase()) ||
+            (currentUser.displayName &&
+              collector.bidderName.toLowerCase() ===
+                currentUser.displayName.toLowerCase()))
       );
 
       return {
@@ -108,11 +131,14 @@ export const AuctionLeaderboard: React.FC<AuctionLeaderboardProps> = ({
       .sort((a, b) => b.amount - a.amount)
       .map((bid, index) => {
         const isCurrentUser = Boolean(
-          currentUser && (
-            bid.bidderUid === currentUser.uid ||
-            (currentUser.email && bid.bidderName.toLowerCase() === currentUser.email.split("@")[0].toLowerCase()) ||
-            (currentUser.displayName && bid.bidderName.toLowerCase() === currentUser.displayName.toLowerCase())
-          )
+          currentUser &&
+            (bid.bidderUid === currentUser.uid ||
+              (currentUser.email &&
+                bid.bidderName.toLowerCase() ===
+                  currentUser.email.split("@")[0].toLowerCase()) ||
+              (currentUser.displayName &&
+                bid.bidderName.toLowerCase() ===
+                  currentUser.displayName.toLowerCase()))
         );
         return {
           rank: index + 1,
@@ -135,9 +161,10 @@ export const AuctionLeaderboard: React.FC<AuctionLeaderboardProps> = ({
   const leaderCollector = uniqueRankedCollectors[0] || null;
   const runnerUpCollector = uniqueRankedCollectors[1] || null;
 
-  // Amount needed for the user to take 1st place
   const neededToTakeLead = useMemo(() => {
-    const leaderAmount = leaderCollector ? leaderCollector.highestBid : auction.currentBid;
+    const leaderAmount = leaderCollector
+      ? leaderCollector.highestBid
+      : auction.currentBid;
     return leaderAmount + (auction.minIncrement || 50000);
   }, [leaderCollector, auction.currentBid, auction.minIncrement]);
 
@@ -152,393 +179,423 @@ export const AuctionLeaderboard: React.FC<AuctionLeaderboardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-md overflow-hidden font-sans">
-      {/* 1. Header with Live Pulse */}
-      <div className="bg-stone-950 text-white p-4 sm:p-5 border-b border-stone-800">
+    <div className="bg-white border-2 border-[#0F0F10] overflow-hidden font-sans">
+      {/* 1. Financial Trading Desk Header */}
+      <div className="bg-[#0F0F10] text-white p-4 sm:p-5 border-b border-stone-800">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 rounded-xl font-black shadow-sm">
-              <Trophy className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-[#D5001C] text-white flex items-center justify-center font-bold">
+              <Trophy className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 font-mono">
-                  Live Floor Leaderboard
+                <span className="w-2 h-2 bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 font-mono">
+                  REAL-TIME ORDER BOOK
                 </span>
               </div>
-              <h3 className="font-serif font-black text-lg sm:text-xl text-white">
-                Collector Standings
+              <h3 className="font-serif font-extrabold text-base sm:text-lg uppercase tracking-tight text-white">
+                Institutional Floor Standings
               </h3>
             </div>
           </div>
 
           {/* View Toggle */}
-          <div className="flex bg-stone-900 p-0.5 rounded-lg border border-stone-800 text-[11px] font-mono">
+          <div className="flex bg-stone-900 border border-stone-800 text-[10px] font-mono uppercase tracking-wider">
             <button
               type="button"
               onClick={() => setViewMode("unique")}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+              className={`px-3 py-1.5 transition cursor-pointer tabular-nums ${
                 viewMode === "unique"
-                  ? "bg-amber-500 text-stone-950 font-bold shadow-xs"
+                  ? "bg-white text-[#0F0F10] font-bold"
                   : "text-stone-400 hover:text-white"
               }`}
             >
-              Unique ({uniqueRankedCollectors.length})
+              Principals ({uniqueRankedCollectors.length})
             </button>
             <button
               type="button"
               onClick={() => setViewMode("all")}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+              className={`px-3 py-1.5 transition cursor-pointer tabular-nums ${
                 viewMode === "all"
-                  ? "bg-amber-500 text-stone-950 font-bold shadow-xs"
+                  ? "bg-white text-[#0F0F10] font-bold"
                   : "text-stone-400 hover:text-white"
               }`}
             >
-              All Bids ({auction.bids?.length || 0})
+              Tape ({auction.bids?.length || 0})
             </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Spotlight: Current Highest Bid Banner */}
-      <div className="p-4 sm:p-5 bg-gradient-to-br from-stone-900 via-stone-950 to-stone-900 text-white border-b border-stone-800">
+      {/* 2. Live Ticker Spotlight: Current Highest Bid */}
+      <div className="p-4 sm:p-5 bg-[#161618] text-white border-b border-stone-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-[11px] font-mono uppercase tracking-widest text-stone-400 block">
-              Current Highest Bid (1st Place)
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-400 block">
+              CURRENT CLEARING BID (1ST POSITION)
             </span>
-            <div className="text-3xl sm:text-4xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-100 to-amber-400 mt-0.5">
-              ₹{auction.currentBid.toLocaleString("en-IN")}
+            <div className="text-3xl sm:text-4xl font-extrabold font-mono text-white mt-1 tabular-nums">
+              <AnimatedPriceFlash value={auction.currentBid} />
             </div>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs text-stone-300">
+            <div className="flex items-center gap-2 mt-2 flex-wrap text-xs text-stone-300 font-mono tabular-nums">
               {leaderCollector ? (
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                  Held by: <strong className="text-amber-300">{leaderCollector.bidderName}</strong>
+                <span className="flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5 text-[#D5001C] shrink-0" />
+                  HOLDER:{" "}
+                  <strong className="text-white uppercase">
+                    {leaderCollector.bidderName}
+                  </strong>
                   {leaderCollector.isCurrentUser && (
-                    <span className="px-1.5 py-0.2 bg-emerald-500 text-stone-950 font-black text-[10px] rounded uppercase">
+                    <span className="px-1.5 py-0.5 bg-emerald-500 text-[#0F0F10] font-black text-[9px] uppercase">
                       YOU
                     </span>
                   )}
                 </span>
               ) : (
-                <span className="text-stone-400">Opening floor price</span>
+                <span className="text-stone-400">OPENING FLOOR PRICE</span>
               )}
               <span className="text-stone-600">•</span>
-              <span className="text-stone-400 font-mono">{auction.bidCount || 0} Total Bids</span>
+              <span className="text-stone-400">
+                {auction.bidCount || 0} EXECUTIONS
+              </span>
             </div>
           </div>
 
           {/* Reserve Clearance Indicator */}
           <div className="sm:text-right shrink-0">
             {auction.isReserveMet ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-bold">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Reserve Met
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950 border border-emerald-500/50 text-emerald-400 text-[10px] font-mono font-bold uppercase tracking-widest">
+                <CheckCircle2 className="w-3.5 h-3.5" /> RESERVE MET
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs font-bold">
-                <Lock className="w-3.5 h-3.5" /> Reserve: ₹{((auction.reservePrice || 0) / 100000).toFixed(1)}L
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 border border-stone-700 text-stone-300 text-[10px] font-mono font-bold uppercase tracking-widest tabular-nums">
+                <Lock className="w-3.5 h-3.5 text-[#D5001C]" /> RESERVE: ₹
+                {((auction.reservePrice || 0) / 100000).toFixed(1)}L
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* 3. DYNAMIC USER POSITION CARD (The Core User Relative Rank Experience) */}
-      <div className="p-4 sm:p-5 border-b border-stone-200">
+      {/* 3. DYNAMIC USER POSITION CARD */}
+      <div className="p-4 sm:p-5 border-b border-[#0F0F10]/15 bg-[#F6F5F2]">
         {!currentUser ? (
-          <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 bg-white border border-[#0F0F10]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center text-stone-600 font-bold shrink-0">
-                <User className="w-5 h-5" />
+              <div className="w-10 h-10 bg-[#0F0F10] flex items-center justify-center text-white font-bold shrink-0">
+                <User className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-stone-900">Track Your Real-Time Rank</p>
+                <p className="text-xs font-extrabold uppercase tracking-wider text-[#0F0F10]">
+                  Authenticate for Real-Time Position Tracking
+                </p>
                 <p className="text-[11px] text-stone-500 font-sans">
-                  Sign in to view your live position, leaderboard rank, and compete for this lot.
+                  Sign in to view your live order-book standing and execute floor bids.
                 </p>
               </div>
             </div>
             {onSignInClick && (
-              <button
+              <MagneticButton
                 type="button"
                 onClick={onSignInClick}
-                className="py-2 px-4 bg-stone-900 hover:bg-stone-800 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shrink-0 cursor-pointer"
+                className="py-2.5 px-4 bg-[#D5001C] hover:bg-[#b80018] text-white font-sans font-extrabold text-[11px] uppercase tracking-[0.16em] transition shrink-0 cursor-pointer"
               >
-                Sign In to Bid
-              </button>
+                Authenticate
+              </MagneticButton>
             )}
           </div>
         ) : userRankEntry ? (
-          /* User is active on the leaderboard */
           <motion.div
             initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className={`p-4 rounded-xl border-2 transition-all ${
+            className={`p-4 border-2 transition-all ${
               isUserLeading
-                ? "bg-gradient-to-br from-amber-50 via-amber-100/50 to-emerald-50 border-amber-500 shadow-sm"
-                : userRank === 2
-                ? "bg-gradient-to-br from-stone-50 to-amber-50/50 border-amber-400 shadow-xs"
-                : userRank === 3
-                ? "bg-gradient-to-br from-stone-50 to-orange-50/40 border-amber-600/60 shadow-xs"
-                : "bg-stone-50 border-stone-300"
+                ? "bg-white border-emerald-600"
+                : "bg-white border-[#0F0F10]"
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start sm:items-center gap-3.5">
-                {/* Visual Rank Badge */}
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center font-black font-mono text-base shrink-0 shadow-sm ${
+                  className={`w-12 h-12 flex items-center justify-center font-extrabold font-mono text-sm shrink-0 tabular-nums ${
                     isUserLeading
-                      ? "bg-amber-500 text-stone-950 border-2 border-amber-300 ring-2 ring-amber-400/40"
-                      : userRank === 2
-                      ? "bg-stone-300 text-stone-900 border-2 border-stone-200"
-                      : userRank === 3
-                      ? "bg-amber-700 text-white border-2 border-amber-600"
-                      : "bg-stone-900 text-amber-400"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-[#0F0F10] text-white"
                   }`}
                 >
-                  {isUserLeading ? "1st" : getOrdinalSuffix(userRank || 0)}
+                  {isUserLeading ? "1ST" : getOrdinalSuffix(userRank || 0).toUpperCase()}
                 </div>
 
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-black uppercase tracking-wider text-stone-900 font-mono">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#0F0F10] font-mono">
                       {isUserLeading
-                        ? "👑 You are in 1st Place (Leader!)"
-                        : `You are ${getOrdinalSuffix(userRank || 0)} on the Floor`}
+                        ? "POSITION: 1ST PLACE (FLOOR LEADER)"
+                        : `POSITION: ${getOrdinalSuffix(userRank || 0).toUpperCase()} ON THE FLOOR`}
                     </span>
-                    <span className="px-2 py-0.5 bg-stone-900 text-amber-300 text-[10px] font-bold rounded-full font-mono">
-                      {uniqueRankedCollectors.length} Active Bidders
+                    <span className="px-2 py-0.5 bg-[#0F0F10] text-white text-[9px] font-mono font-bold uppercase tabular-nums">
+                      {uniqueRankedCollectors.length} ACTIVE PRINCIPALS
                     </span>
                   </div>
 
-                  <p className="text-xs text-stone-600 mt-1">
+                  <p className="text-xs text-stone-600 mt-1 tabular-nums">
                     {isUserLeading ? (
                       runnerUpCollector ? (
                         <span>
-                          Holding top bid at <strong className="text-stone-900 font-mono">₹{userHighestBid?.toLocaleString("en-IN")}</strong>. You lead 2nd place by{" "}
-                          <strong className="text-emerald-700 font-mono">+₹{(userHighestBid! - runnerUpCollector.highestBid).toLocaleString("en-IN")}</strong>.
+                          Holding top bid at{" "}
+                          <strong className="text-[#0F0F10] font-mono">
+                            ₹{userHighestBid?.toLocaleString("en-IN")}
+                          </strong>
+                          . Spread over 2nd:{" "}
+                          <strong className="text-emerald-700 font-mono">
+                            +₹
+                            {(
+                              userHighestBid! - runnerUpCollector.highestBid
+                            ).toLocaleString("en-IN")}
+                          </strong>
+                          .
                         </span>
                       ) : (
                         <span>
-                          Holding top bid at <strong className="text-stone-900 font-mono">₹{userHighestBid?.toLocaleString("en-IN")}</strong>. You are currently positioned to win!
+                          Holding top bid at{" "}
+                          <strong className="text-[#0F0F10] font-mono">
+                            ₹{userHighestBid?.toLocaleString("en-IN")}
+                          </strong>
+                          .
                         </span>
                       )
                     ) : (
                       <span>
-                        Your top bid is <strong className="text-stone-900 font-mono">₹{userHighestBid?.toLocaleString("en-IN")}</strong>. You are{" "}
-                        <strong className="text-red-700 font-mono">-₹{(userRankEntry.deltaFromLeader).toLocaleString("en-IN")}</strong> behind 1st place.
+                        Your bid:{" "}
+                        <strong className="text-[#0F0F10] font-mono">
+                          ₹{userHighestBid?.toLocaleString("en-IN")}
+                        </strong>
+                        . Spread to 1st:{" "}
+                        <strong className="text-[#D5001C] font-mono">
+                          -₹{userRankEntry.deltaFromLeader.toLocaleString("en-IN")}
+                        </strong>
+                        .
                       </span>
                     )}
                   </p>
                 </div>
               </div>
 
-              {/* Quick Action for Outbidding if not 1st */}
               {!isUserLeading && onPlaceBid && (
-                <button
+                <MagneticButton
                   type="button"
-                  disabled={isSubmittingBid || auction.status !== "live" || auction.isPaused}
+                  disabled={
+                    isSubmittingBid || auction.status !== "live" || auction.isPaused
+                  }
                   onClick={handleQuickOutbid}
-                  className="py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-40"
+                  className="py-3 px-4 bg-[#D5001C] hover:bg-[#b80018] text-white font-sans font-extrabold text-[11px] uppercase tracking-[0.14em] transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-40 tabular-nums"
                 >
-                  <ArrowUp className="w-4 h-4" />
-                  Take 1st Place (₹{neededToTakeLead.toLocaleString("en-IN")})
-                </button>
+                  <ArrowUp className="w-3.5 h-3.5" />
+                  Place Bid (₹{neededToTakeLead.toLocaleString("en-IN")})
+                </MagneticButton>
               )}
             </div>
           </motion.div>
         ) : (
-          /* User has NOT bid yet */
-          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 bg-white border border-[#0F0F10]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-500 text-stone-950 font-black flex items-center justify-center text-sm shrink-0 shadow-xs">
-                <Flame className="w-5 h-5" />
+              <div className="w-10 h-10 bg-[#0F0F10] text-white font-bold flex items-center justify-center text-sm shrink-0">
+                <Flame className="w-4 h-4 text-[#D5001C]" />
               </div>
               <div>
-                <p className="text-xs font-bold text-stone-900">You haven't placed a bid on this lot yet</p>
-                <p className="text-[11px] text-stone-600 font-sans">
-                  Enter the live floor with a bid of at least <strong className="font-mono text-stone-900">₹{minNextBid.toLocaleString("en-IN")}</strong> to claim a spot on the leaderboard.
+                <p className="text-xs font-extrabold uppercase tracking-wider text-[#0F0F10]">
+                  No Active Position Recorded
+                </p>
+                <p className="text-[11px] text-stone-600 font-sans tabular-nums">
+                  Enter the trading book with a minimum bid of{" "}
+                  <strong className="font-mono text-[#0F0F10]">
+                    ₹{minNextBid.toLocaleString("en-IN")}
+                  </strong>
+                  .
                 </p>
               </div>
             </div>
 
             {onPlaceBid && (
-              <button
+              <MagneticButton
                 type="button"
-                disabled={isSubmittingBid || auction.status !== "live" || auction.isPaused}
+                disabled={
+                  isSubmittingBid || auction.status !== "live" || auction.isPaused
+                }
                 onClick={() => onPlaceBid(minNextBid)}
-                className="py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-40"
+                className="py-3 px-4 bg-[#D5001C] hover:bg-[#b80018] text-white font-sans font-extrabold text-[11px] uppercase tracking-[0.14em] transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-40 tabular-nums"
               >
-                <Zap className="w-4 h-4" />
-                Place Opening Bid (₹{minNextBid.toLocaleString("en-IN")})
-              </button>
+                <Zap className="w-3.5 h-3.5" />
+                Place Bid (₹{minNextBid.toLocaleString("en-IN")})
+              </MagneticButton>
             )}
           </div>
         )}
       </div>
 
-      {/* 4. Ranked Collector Stream Table / Podium */}
+      {/* 4. Staggered Order Book Stream (stiffness: 100, damping: 15) */}
       <div className="p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-3 text-xs font-bold text-stone-500 uppercase tracking-wider">
-          <span>Rank & Collector</span>
-          <span>Highest Bid / Distance</span>
+        <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#0F0F10]/15 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-[0.18em]">
+          <span>POS / PRINCIPAL</span>
+          <span>AMOUNT (INR) / SPREAD</span>
         </div>
 
         {viewMode === "unique" ? (
-          /* Unique Collectors Leaderboard View */
           uniqueRankedCollectors.length > 0 ? (
-            <div className="space-y-2.5">
+            <motion.div
+              variants={staggerContainerVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-2"
+            >
               {uniqueRankedCollectors.map((collector) => (
-                <div
+                <motion.div
                   key={collector.bidderUid || collector.bidderName}
-                  className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all ${
+                  variants={staggerItemVariants}
+                  className={`p-3.5 border flex items-center justify-between gap-3 transition-colors ${
                     collector.isCurrentUser
-                      ? "bg-amber-50/90 border-amber-400 ring-2 ring-amber-400/40 shadow-sm"
+                      ? "bg-[#F6F5F2] border-[#0F0F10] border-2"
                       : collector.rank === 1
-                      ? "bg-stone-50 border-amber-300"
-                      : "bg-white border-stone-200 hover:bg-stone-50"
+                      ? "bg-[#F6F5F2]/60 border-[#0F0F10]/30"
+                      : "bg-white border-[#0F0F10]/15 hover:border-[#0F0F10]/40"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    {/* Rank Badge */}
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs font-mono shrink-0 ${
+                      className={`w-8 h-8 flex items-center justify-center font-extrabold text-xs font-mono shrink-0 tabular-nums ${
                         collector.rank === 1
-                          ? "bg-amber-500 text-stone-950 shadow-xs"
-                          : collector.rank === 2
-                          ? "bg-stone-300 text-stone-800"
-                          : collector.rank === 3
-                          ? "bg-amber-700 text-white"
-                          : "bg-stone-100 text-stone-600 border border-stone-200"
+                          ? "bg-[#0F0F10] text-white"
+                          : "bg-[#F6F5F2] text-[#0F0F10] border border-[#0F0F10]/20"
                       }`}
                     >
-                      {collector.rank === 1 ? <Crown className="w-4 h-4" /> : collector.rank}
+                      {collector.rank === 1 ? "01" : `0${collector.rank}`.slice(-2)}
                     </div>
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-bold text-stone-900 truncate">
+                        <span className="text-xs sm:text-sm font-bold text-[#0F0F10] truncate">
                           {collector.bidderName}
                         </span>
 
                         {collector.isCurrentUser && (
-                          <span className="px-1.5 py-0.2 bg-emerald-600 text-white font-black text-[9px] rounded uppercase tracking-wider">
+                          <span className="px-1.5 py-0.5 bg-emerald-600 text-white font-mono font-bold text-[9px] uppercase tracking-wider">
                             YOU
                           </span>
                         )}
 
                         {collector.rank === 1 && (
-                          <span className="px-1.5 py-0.2 bg-amber-500 text-stone-950 font-black text-[9px] rounded uppercase tracking-wider">
-                            LEADER
+                          <span className="px-1.5 py-0.5 bg-[#D5001C] text-white font-mono font-bold text-[9px] uppercase tracking-wider">
+                            HIGH BID
                           </span>
                         )}
 
                         {collector.totalBidsCount > 1 && (
-                          <span className="text-[10px] text-stone-400 font-mono">
-                            ({collector.totalBidsCount} bids)
+                          <span className="text-[10px] text-stone-400 font-mono tabular-nums">
+                            [{collector.totalBidsCount}x]
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-stone-400 font-mono flex items-center gap-1 mt-0.5">
-                        <Clock className="w-3 h-3" /> {collector.latestTimestamp || "Floor Time"}
+                      <p className="text-[10px] text-stone-400 font-mono flex items-center gap-1 mt-0.5 tabular-nums">
+                        <Clock className="w-3 h-3" />{" "}
+                        {collector.latestTimestamp || "LIVE"}
                       </p>
                     </div>
                   </div>
 
-                  {/* Financial Amount & Delta */}
-                  <div className="text-right shrink-0 font-mono">
-                    <span className="text-sm sm:text-base font-black text-stone-950 block">
-                      ₹{collector.highestBid.toLocaleString("en-IN")}
+                  {/* Tabular Financial Amount & Spread */}
+                  <div className="text-right shrink-0 font-mono tabular-nums">
+                    <span className="text-sm sm:text-base font-extrabold text-[#0F0F10] block">
+                      <AnimatedPriceFlash value={collector.highestBid} />
                     </span>
-                    {collector.rank > 1 && (
-                      <span className="text-[10px] text-red-600 font-medium block">
+                    {collector.rank > 1 ? (
+                      <span className="text-[10px] text-[#D5001C] font-bold block">
                         -₹{collector.deltaFromLeader.toLocaleString("en-IN")}
                       </span>
-                    )}
-                    {collector.rank === 1 && (
-                      <span className="text-[10px] text-emerald-600 font-bold block">
-                        Top Bid
+                    ) : (
+                      <span className="text-[10px] text-emerald-600 font-bold uppercase block">
+                        CLEARING LEAD
                       </span>
                     )}
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : (
-            <div className="text-center py-10 text-stone-400 text-xs font-mono">
-              No bids recorded yet. Be the first to place a bid!
+            <div className="text-center py-10 text-stone-400 text-xs font-mono uppercase tracking-widest">
+              NO EXECUTIONS RECORDED ON ORDER BOOK.
             </div>
           )
-        ) : (
-          /* All Bid Events Feed View */
-          allBidsSorted.length > 0 ? (
-            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-              {allBidsSorted.map(({ rank, bid, isCurrentUser, deltaFromLeader }) => (
-                <div
-                  key={bid.id}
-                  className={`p-3 rounded-lg border flex items-center justify-between gap-3 text-xs ${
-                    isCurrentUser
-                      ? "bg-amber-50 border-amber-300"
-                      : rank === 1
-                      ? "bg-stone-50 border-stone-300 font-bold"
-                      : "bg-white border-stone-200 text-stone-600"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 font-mono font-bold text-[10px] flex items-center justify-center shrink-0">
-                      #{rank}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-stone-900 truncate">{bid.bidderName}</span>
-                        {isCurrentUser && (
-                          <span className="px-1 py-0.2 bg-emerald-600 text-white text-[8px] font-bold rounded uppercase">
-                            YOU
-                          </span>
-                        )}
-                        {rank === 1 && (
-                          <span className="px-1 py-0.2 bg-amber-500 text-stone-950 text-[8px] font-bold rounded uppercase">
-                            High
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-stone-400">{bid.timestamp}</span>
+        ) : allBidsSorted.length > 0 ? (
+          <motion.div
+            variants={staggerContainerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-1.5 max-h-96 overflow-y-auto pr-1"
+          >
+            {allBidsSorted.map(({ rank, bid, isCurrentUser, deltaFromLeader }) => (
+              <motion.div
+                key={bid.id}
+                variants={staggerItemVariants}
+                className={`p-3 border flex items-center justify-between gap-3 text-xs tabular-nums ${
+                  isCurrentUser
+                    ? "bg-[#F6F5F2] border-[#0F0F10]"
+                    : "bg-white border-[#0F0F10]/15 text-stone-600"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-6 h-6 bg-[#0F0F10] text-white font-mono font-bold text-[10px] flex items-center justify-center shrink-0">
+                    #{rank}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-[#0F0F10] truncate">
+                        {bid.bidderName}
+                      </span>
+                      {isCurrentUser && (
+                        <span className="px-1 py-0.5 bg-emerald-600 text-white text-[8px] font-mono font-bold uppercase">
+                          YOU
+                        </span>
+                      )}
+                      {rank === 1 && (
+                        <span className="px-1 py-0.5 bg-[#D5001C] text-white text-[8px] font-mono font-bold uppercase">
+                          HIGH
+                        </span>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="text-right shrink-0 font-mono">
-                    <span className="font-bold text-stone-900 block">
-                      ₹{bid.amount.toLocaleString("en-IN")}
+                    <span className="text-[10px] font-mono text-stone-400">
+                      {bid.timestamp}
                     </span>
-                    {rank > 1 && (
-                      <span className="text-[9px] text-stone-400 block">
-                        -₹{deltaFromLeader.toLocaleString("en-IN")}
-                      </span>
-                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 text-stone-400 text-xs font-mono">
-              No bids recorded yet.
-            </div>
-          )
+
+                <div className="text-right shrink-0 font-mono tabular-nums">
+                  <span className="font-extrabold text-[#0F0F10] block">
+                    ₹{bid.amount.toLocaleString("en-IN")}
+                  </span>
+                  {rank > 1 && (
+                    <span className="text-[9px] text-[#D5001C] block">
+                      -₹{deltaFromLeader.toLocaleString("en-IN")}
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <div className="text-center py-10 text-stone-400 text-xs font-mono uppercase tracking-widest">
+            NO EXECUTIONS RECORDED.
+          </div>
         )}
       </div>
 
       {/* 5. Escrow and Real-time Sync Assurance */}
-      <div className="p-3 bg-stone-50 border-t border-stone-200 text-stone-500 text-[11px] flex items-center justify-between gap-2">
+      <div className="p-3 bg-[#F6F5F2] border-t border-[#0F0F10]/15 text-stone-600 text-[10px] font-mono uppercase tracking-wider flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>AutoWorld Sovereign Real-Time Floor Sync</span>
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <span>SOVEREIGN ORDER BOOK SYNC</span>
         </div>
-        <span className="text-stone-400 font-mono text-[10px]">
-          Live updates via Firestore
-        </span>
+        <span className="text-stone-400">REAL-TIME TELEMETRY</span>
       </div>
     </div>
   );

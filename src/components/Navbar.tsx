@@ -278,7 +278,7 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
       </nav>
 
       {/* Mobile Sticky Bottom Navigation Bar (Phone size < md / 768px) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[100] w-full bg-white/95 backdrop-blur-md border-t border-stone-200/90 shadow-xl h-16 px-1 sm:px-3 pb-safe">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[100] w-full bg-[#FAF8F5]/95 backdrop-blur-md border-t border-stone-200/90 shadow-xl h-16 px-1 sm:px-3 pb-safe">
         <div className="flex justify-between items-center w-full max-w-md sm:max-w-lg mx-auto h-full overflow-x-auto no-scrollbar">
           {mobileNavItems.map((item) => {
             const Icon = item.icon;
@@ -289,11 +289,11 @@ export default function Navbar({ activeTab, setActiveTab, subscriptionActive, cu
                 onClick={() => handleTabClick(item.id)}
                 className={`relative flex flex-col items-center justify-center h-full flex-1 min-w-[52px] py-1 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer border-t-2 select-none ${
                   isActive
-                    ? "border-black text-black font-black bg-stone-100/70"
-                    : "border-transparent text-stone-400 hover:text-stone-700 font-bold"
+                    ? "border-amber-500 text-stone-950 font-black bg-stone-200/50"
+                    : "border-transparent text-stone-500 hover:text-stone-800 font-bold"
                 }`}
               >
-                <Icon className={`w-4 h-4 sm:w-5 sm:h-5 mb-0.5 transition-colors ${isActive ? "text-black" : "text-stone-400"}`} />
+                <Icon className={`w-4 h-4 sm:w-5 sm:h-5 mb-0.5 transition-colors ${isActive ? "text-amber-600" : "text-stone-400"}`} />
                 <span className="truncate max-w-[56px]">{item.label}</span>
               </button>
             );

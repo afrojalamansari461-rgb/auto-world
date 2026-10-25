@@ -607,19 +607,19 @@ export default function PartDossierModal({
             exit={{ opacity: 0, scale: 0.96, y: 14 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-5xl bg-[#FAF8F5] text-[#1A1A1A] rounded-xl shadow-2xl border-2 border-stone-950 overflow-hidden my-auto max-h-[92vh] flex flex-col font-sans pointer-events-auto z-10"
+            className="relative w-full max-w-5xl bg-[#FAF8F5] text-[#1A1A1A] rounded-3xl shadow-2xl border border-stone-300/80 overflow-hidden my-auto max-h-[92vh] flex flex-col font-sans pointer-events-auto z-10"
           >
             {/* Top Dossier Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b-2 border-stone-950 bg-[#F4F1EA] gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-stone-200/90 bg-[#F4F1EA] gap-3 shrink-0">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-700 font-extrabold">
                 MOTORSPORT HARDWARE DOSSIER • REF #PART-AW0{part.id}
               </span>
-              <span className={`px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider rounded border ${rarityInfo.badgeClass}`}>
+              <span className={`px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider rounded-lg border ${rarityInfo.badgeClass}`}>
                 {part.rarity} TIER
               </span>
               {part.badge && (
-                <span className="px-2 py-0.5 text-[9px] font-mono font-extrabold uppercase tracking-wider bg-amber-400 text-stone-950 border border-amber-600 rounded">
+                <span className="px-2 py-0.5 text-[9px] font-mono font-extrabold uppercase tracking-wider bg-amber-400 text-stone-950 border border-amber-600 rounded-lg">
                   [ {part.badge.toUpperCase()} ]
                 </span>
               )}
@@ -629,10 +629,10 @@ export default function PartDossierModal({
               {onToggleFavorite && (
                 <button
                   onClick={onToggleFavorite}
-                  className={`p-1.5 rounded border transition cursor-pointer flex items-center gap-1 text-xs font-mono font-bold ${
+                  className={`p-1.5 px-2.5 rounded-xl border transition cursor-pointer flex items-center gap-1 text-xs font-mono font-bold ${
                     isFavorited
                       ? "bg-red-600 border-red-500 text-white shadow-sm"
-                      : "bg-white hover:bg-stone-200 border-stone-400 text-stone-700 hover:text-red-500"
+                      : "bg-white hover:bg-stone-200 border-stone-300 text-stone-700 hover:text-red-500"
                   }`}
                   title={isFavorited ? "Saved to Favorites" : "Add to Favorites"}
                 >
@@ -641,13 +641,13 @@ export default function PartDossierModal({
                 </button>
               )}
               {adminStatusMessage && (
-                <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-1 rounded border border-emerald-300 animate-pulse">
+                <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-xl border border-emerald-300 animate-pulse">
                   {adminStatusMessage}
                 </span>
               )}
               <button
                 onClick={onClose}
-                className="p-1.5 rounded bg-white hover:bg-stone-200 border border-stone-400 text-stone-700 hover:text-stone-950 transition cursor-pointer"
+                className="p-1.5 rounded-xl bg-white hover:bg-stone-200 border border-stone-300 text-stone-700 hover:text-stone-950 transition cursor-pointer"
                 title="Close Dossier"
               >
                 <X className="w-4 h-4" />
@@ -660,7 +660,7 @@ export default function PartDossierModal({
             <div className="flex items-center gap-1.5 overflow-x-auto py-1">
               <button
                 onClick={() => setActiveTab("overview")}
-                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === "overview"
                     ? "bg-amber-400 text-stone-950 shadow-sm"
                     : "text-stone-300 hover:text-white hover:bg-stone-800"
@@ -672,7 +672,7 @@ export default function PartDossierModal({
 
               <button
                 onClick={() => setActiveTab("gallery")}
-                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === "gallery"
                     ? "bg-amber-400 text-stone-950 shadow-sm"
                     : "text-stone-300 hover:text-white hover:bg-stone-800"
@@ -684,7 +684,7 @@ export default function PartDossierModal({
 
               <button
                 onClick={() => setActiveTab("specs")}
-                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === "specs"
                     ? "bg-amber-400 text-stone-950 shadow-sm"
                     : "text-stone-300 hover:text-white hover:bg-stone-800"
@@ -696,7 +696,7 @@ export default function PartDossierModal({
 
               <button
                 onClick={() => setActiveTab("contact")}
-                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === "contact"
                     ? "bg-amber-400 text-stone-950 shadow-sm"
                     : "text-stone-300 hover:text-white hover:bg-stone-800"
@@ -710,7 +710,7 @@ export default function PartDossierModal({
               {isAuthorizedAdmin && (
                 <button
                   onClick={() => setActiveTab("control")}
-                  className={`px-3.5 py-1.5 text-xs font-mono font-extrabold uppercase tracking-wider rounded-sm transition cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3.5 py-1.5 text-xs font-mono font-extrabold uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
                     activeTab === "control"
                       ? "bg-amber-400 text-stone-950 ring-2 ring-amber-300"
                       : "text-amber-400 hover:text-white hover:bg-stone-800 border border-amber-500/40"
@@ -718,7 +718,7 @@ export default function PartDossierModal({
                 >
                   <Wrench className="w-3.5 h-3.5 text-amber-500" />
                   <span>Control Tab</span>
-                  <span className="px-1 py-0.5 bg-amber-500/20 text-[9px] text-amber-300 rounded border border-amber-500/30">
+                  <span className="px-1 py-0.5 bg-amber-500/20 text-[9px] text-amber-300 rounded-md border border-amber-500/30">
                     Admin
                   </span>
                 </button>
@@ -2017,7 +2017,7 @@ export default function PartDossierModal({
                     <button
                       onClick={handleSaveSpecForm}
                       disabled={isSavingSpec}
-                      className="px-6 py-2.5 bg-stone-950 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      className="px-6 py-2.5 bg-stone-950 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
                     >
                       <Save className="w-3.5 h-3.5 text-amber-400" />
                       <span>{isSavingSpec ? "Saving Changes..." : "Commit All Changes to Database"}</span>
@@ -2030,13 +2030,13 @@ export default function PartDossierModal({
           </div>
 
           {/* Footer Bar */}
-          <div className="px-6 py-3.5 bg-[#F4F1EA] border-t-2 border-stone-950 flex items-center justify-between text-xs text-stone-600 shrink-0">
+          <div className="px-6 py-3.5 bg-[#F4F1EA] border-t border-stone-200/90 flex items-center justify-between text-xs text-stone-600 shrink-0">
             <span className="font-mono text-[10px] text-stone-500">
               Auto World Verified Motorsports Marketplace Archive
             </span>
             <button
               onClick={onClose}
-              className="px-4 py-1.5 bg-stone-950 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded transition cursor-pointer"
+              className="px-4 py-1.5 bg-stone-950 hover:bg-stone-800 text-white text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition cursor-pointer"
             >
               Close Dossier
             </button>
@@ -2048,8 +2048,8 @@ export default function PartDossierModal({
       {/* High-Res Dyno Sheet Fullscreen Inspection Modal */}
       {showDynoModal && part.dynoSheetUrl && (
         <div className="fixed inset-0 z-[100000] bg-stone-950/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-stone-900 border-2 border-stone-700 rounded-lg max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-3.5 bg-stone-950 border-b border-stone-800 flex items-center justify-between">
+          <div className="bg-stone-900 border border-stone-700/80 rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-stone-950 border-b border-stone-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-400" />
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-stone-100">
@@ -2058,7 +2058,7 @@ export default function PartDossierModal({
               </div>
               <button
                 onClick={() => setShowDynoModal(false)}
-                className="p-1 text-stone-400 hover:text-white rounded cursor-pointer"
+                className="p-1.5 text-stone-400 hover:text-white rounded-xl cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2067,14 +2067,14 @@ export default function PartDossierModal({
               <img
                 src={part.dynoSheetUrl}
                 alt="High Res Dyno Sheet"
-                className="max-w-full max-h-[70vh] object-contain rounded"
+                className="max-w-full max-h-[70vh] object-contain rounded-xl"
               />
             </div>
-            <div className="p-3 bg-stone-950 border-t border-stone-800 flex items-center justify-between text-xs font-mono text-stone-400">
+            <div className="p-4 bg-stone-950 border-t border-stone-800 flex items-center justify-between text-xs font-mono text-stone-400">
               <span>{part.performanceGain || "Peak Horsepower & Torque Telemetry Verified"}</span>
               <button
                 onClick={() => setShowDynoModal(false)}
-                className="px-3 py-1 bg-stone-800 hover:bg-stone-700 text-white rounded cursor-pointer"
+                className="px-4 py-1.5 bg-stone-800 hover:bg-stone-700 text-white rounded-xl cursor-pointer"
               >
                 Close Inspection
               </button>

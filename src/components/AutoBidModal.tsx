@@ -1,7 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Bot, ShieldCheck, Zap, ArrowRight, CheckCircle2, AlertCircle, TrendingUp, Info } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { X, Bot, AlertCircle, Info } from "lucide-react";
 import { Auction } from "../types";
+import {
+  modalBackdropVariants,
+  modalPanelVariants,
+  MagneticButton,
+} from "./AnimationWrapper";
 
 interface AutoBidModalProps {
   isOpen: boolean;
@@ -18,22 +24,36 @@ export const AutoBidModal: React.FC<AutoBidModalProps> = ({
   auction,
   currentAutoBidAmount,
   onSaveAutoBid,
-  minAllowed
+  minAllowed,
 }) => {
   const [targetMaxBid, setTargetMaxBid] = useState<number>(
-    currentAutoBidAmount || Math.ceil((auction.currentBid + (auction.minIncrement || 50000) * 3) / 10000) * 10000
+    currentAutoBidAmount ||
+      Math.ceil((auction.currentBid + (auction.minIncrement || 50000) * 3) / 10000) *
+        10000
   );
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const minIncrement = auction.minIncrement || 50000;
-  const estimatedIncrements = Math.max(1, Math.floor((targetMaxBid - auction.currentBid) / minIncrement));
+  const estimatedIncrements = Math.max(
+    1,
+    Math.floor((targetMaxBid - auction.currentBid) / minIncrement)
+  );
 
   const handleApply = (e: React.FormEvent) => {
     e.preventDefault();
     if (targetMaxBid < minAllowed) {
-      setError(`Max Auto-Bid ceiling must be at least ₹${minAllowed.toLocaleString("en-IN")}`);
+      setError(
+        `Max Auto-Bid ceiling must be at least ₹${minAllowed.toLocaleString("en-IN")}`
+      );
       return;
     }
     setError(null);
@@ -47,146 +67,185 @@ export const AutoBidModal: React.FC<AutoBidModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[130] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#FAF8F5] border border-stone-300 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="p-4 sm:p-5 bg-stone-950 text-white flex items-center justify-between border-b border-amber-500/30">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold">
-              <Bot className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-serif font-bold text-white">
-                  Proxy Auto-Bid Bot
-                </h3>
-                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-md text-[10px] font-extrabold uppercase tracking-wider">
-                  AI FLOOR DEFENSE
-                </span>
-              </div>
-              <p className="text-xs text-stone-400">
-                {auction.title}
-              </p>
-            </div>
-          </div>
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-3 sm:p-4">
+          {/* Smooth 0px -> 4px Backdrop Blur */}
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             onClick={onClose}
-            aria-label="Close auto-bid modal"
-            className="p-1.5 text-stone-400 hover:text-white rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
+            className="fixed inset-0 bg-[#0F0F10]/85"
+          />
+
+          <motion.div
+            variants={modalPanelVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-10 bg-[#F6F5F2] border-2 border-[#0F0F10] w-full max-w-lg overflow-hidden flex flex-col"
           >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <form onSubmit={handleApply} className="p-5 sm:p-6 space-y-5 text-stone-800">
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs sm:text-sm text-amber-900 flex gap-3">
-            <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">How Proxy Auto-Bidding Works:</p>
-              <p className="text-amber-800/90 mt-1">
-                Enter the maximum amount you are willing to pay. The system will automatically place the minimum increment bids (+₹{minIncrement.toLocaleString("en-IN")}) on your behalf to keep you in first place, only up to your ceiling.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 p-3 bg-stone-100 rounded-xl border border-stone-200 text-xs">
-            <div>
-              <span className="text-stone-500">Current High Bid</span>
-              <p className="font-bold text-stone-900 font-mono text-sm sm:text-base">
-                ₹{auction.currentBid.toLocaleString("en-IN")}
-              </p>
-            </div>
-            <div>
-              <span className="text-stone-500">Minimum Allowed Ceiling</span>
-              <p className="font-bold text-emerald-700 font-mono text-sm sm:text-base">
-                ₹{minAllowed.toLocaleString("en-IN")}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-2">
-              Your Maximum Proxy Bid Ceiling (₹)
-            </label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold">₹</span>
-              <input
-                type="number"
-                min={minAllowed}
-                step={minIncrement}
-                value={targetMaxBid}
-                onChange={(e) => setTargetMaxBid(Number(e.target.value))}
-                className="w-full pl-8 pr-4 py-3 bg-white border-2 border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 rounded-xl font-mono text-lg font-bold text-stone-900 outline-none transition-all"
-                placeholder={String(minAllowed)}
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs text-stone-500 mt-1.5">
-              <span>Approx. {estimatedIncrements} automated counter-bid steps</span>
-              <span>Increment step: ₹{minIncrement.toLocaleString("en-IN")}</span>
-            </div>
-          </div>
-
-          {/* Quick preset ceiling buttons */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-stone-500">Quick Ceiling Presets:</span>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                auction.currentBid + minIncrement * 2,
-                auction.currentBid + minIncrement * 5,
-                auction.currentBid + minIncrement * 10
-              ].map((presetVal) => (
-                <button
-                  key={presetVal}
-                  type="button"
-                  onClick={() => setTargetMaxBid(presetVal)}
-                  className={`px-2 py-1.5 border rounded-lg text-xs font-mono font-bold transition-all ${
-                    targetMaxBid === presetVal
-                      ? "bg-amber-500 text-stone-950 border-amber-600 shadow-sm"
-                      : "bg-white text-stone-700 border-stone-300 hover:bg-stone-50"
-                  }`}
-                >
-                  ₹{(presetVal / 100000).toFixed(2)}L
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-2">
-            {currentAutoBidAmount && (
-              <button
-                type="button"
-                onClick={handleCancelAutoBid}
-                className="px-4 py-3 bg-stone-200 hover:bg-rose-100 hover:text-rose-700 text-stone-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+            {/* Header */}
+            <div className="p-4 sm:p-5 bg-[#0F0F10] text-white flex items-center justify-between border-b border-stone-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#D5001C] text-white flex items-center justify-center font-bold">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-serif font-extrabold uppercase tracking-tight text-white">
+                      Algorithmic Proxy Mandate
+                    </h3>
+                    <span className="px-2 py-0.5 bg-white/10 text-white border border-white/20 text-[9px] font-mono font-bold uppercase tracking-widest">
+                      AUTO-DEFENSE
+                    </span>
+                  </div>
+                  <p className="text-xs font-mono text-stone-400 truncate max-w-xs">
+                    {auction.title}
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.94 }}
+                onClick={onClose}
+                aria-label="Close auto-bid modal"
+                className="w-9 h-9 text-stone-400 hover:text-white hover:bg-[#D5001C] flex items-center justify-center transition-colors cursor-pointer"
               >
-                Disable Bot
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-xs rounded-xl transition-all cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Bot className="w-4 h-4" /> Activate Auto-Bid
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
+                <X className="w-4 h-4" />
+              </motion.button>
+            </div>
+
+            {/* Content */}
+            <form onSubmit={handleApply} className="p-5 sm:p-6 space-y-5 text-[#0F0F10]">
+              <div className="p-4 bg-white border border-[#0F0F10]/15 text-xs text-stone-700 flex gap-3">
+                <Info className="w-4 h-4 text-[#D5001C] shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-extrabold text-[#0F0F10] uppercase tracking-wider text-[11px]">
+                    Proxy Execution Protocol:
+                  </p>
+                  <p className="text-stone-600 mt-1 leading-relaxed">
+                    Specify your maximum authorized capital ceiling. The trading desk
+                    automatically executes minimum increment counter-bids (+₹
+                    {minIncrement.toLocaleString("en-IN")}) to defend your lead position
+                    up to your limit.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3.5 bg-[#0F0F10] text-white text-xs tabular-nums">
+                <div>
+                  <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 block">
+                    Current High Bid
+                  </span>
+                  <p className="font-extrabold text-white font-mono text-base mt-0.5">
+                    ₹{auction.currentBid.toLocaleString("en-IN")}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 block">
+                    Minimum Ceiling
+                  </span>
+                  <p className="font-extrabold text-emerald-400 font-mono text-base mt-0.5">
+                    ₹{minAllowed.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-stone-600 mb-2">
+                  Authorized Maximum Ceiling (₹)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-mono font-bold">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    min={minAllowed}
+                    step={minIncrement}
+                    value={targetMaxBid}
+                    onChange={(e) => setTargetMaxBid(Number(e.target.value))}
+                    className="w-full pl-8 pr-4 py-3 bg-white border-2 border-[#0F0F10] font-mono text-lg font-extrabold text-[#0F0F10] tabular-nums outline-none"
+                    placeholder={String(minAllowed)}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-mono text-stone-500 mt-1.5 tabular-nums">
+                  <span>CAPACITY: ~{estimatedIncrements} INCREMENTS</span>
+                  <span>STEP: ₹{minIncrement.toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+
+              {/* Quick preset ceiling buttons */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-stone-500 block">
+                  Quick Capital Brackets:
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    auction.currentBid + minIncrement * 2,
+                    auction.currentBid + minIncrement * 5,
+                    auction.currentBid + minIncrement * 10,
+                  ].map((presetVal) => (
+                    <motion.button
+                      key={presetVal}
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => setTargetMaxBid(presetVal)}
+                      className={`px-2 py-2 border text-xs font-mono font-bold tabular-nums transition-colors cursor-pointer ${
+                        targetMaxBid === presetVal
+                          ? "bg-[#0F0F10] text-white border-[#0F0F10]"
+                          : "bg-white text-[#0F0F10] border-[#0F0F10]/20 hover:border-[#0F0F10]"
+                      }`}
+                    >
+                      ₹{(presetVal / 100000).toFixed(2)}L
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-[#D5001C] text-[#D5001C] text-xs font-mono font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-2">
+                {currentAutoBidAmount && (
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleCancelAutoBid}
+                    className="px-4 py-3.5 bg-white border border-[#D5001C] text-[#D5001C] hover:bg-[#D5001C] hover:text-white font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Revoke
+                  </motion.button>
+                )}
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={onClose}
+                  className="flex-1 py-3.5 bg-white border border-[#0F0F10]/25 hover:border-[#0F0F10] text-[#0F0F10] font-sans font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Cancel
+                </motion.button>
+                <MagneticButton
+                  type="submit"
+                  magneticStrength={0.08}
+                  className="flex-1 py-3.5 bg-[#D5001C] hover:bg-[#b80018] text-white font-sans font-extrabold text-xs uppercase tracking-[0.16em] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Bot className="w-4 h-4" /> Arm Proxy Bid
+                </MagneticButton>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 };

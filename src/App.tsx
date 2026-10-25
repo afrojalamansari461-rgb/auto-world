@@ -1444,22 +1444,22 @@ export default function App() {
                 ease: [0.16, 1, 0.3, 1]
               }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#FAF8F5] w-full max-w-4xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] relative max-h-[92vh] flex flex-col border-2 border-stone-950 overflow-hidden"
+              className="bg-[#FAF8F5] w-full max-w-4xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.45)] relative max-h-[92vh] flex flex-col border border-stone-300/80 rounded-3xl overflow-hidden"
             >
             {/* Close trigger */}
             <button
               onClick={() => setSelectedVehicle(null)}
               aria-label="Close vehicle details overlay dialog"
               title="Close details (Esc)"
-              className="absolute top-2 right-2 sm:top-4 sm:right-4 z-50 text-[#F4F1EA] bg-stone-900 w-10 h-10 flex items-center justify-center text-xs font-mono font-bold cursor-pointer hover:bg-stone-850 focus:outline-none focus:ring-2 focus:ring-stone-950"
+              className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-4 z-50 text-[#F4F1EA] bg-stone-900 hover:bg-stone-800 w-9 h-9 rounded-xl flex items-center justify-center text-xs font-mono font-bold cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
             >
               ✕
             </button>
 
             {/* Modal Sub-navigation Bar for tab view transitions */}
             {!isAdminEditMode && (
-              <div className="bg-[#EFECE6] border-b border-stone-300 px-3 sm:px-6 pt-3 pb-2.5 flex items-center justify-between gap-2 overflow-x-auto shrink-0 select-none pr-14 z-20">
-                <div className="flex items-center gap-1 sm:gap-2 relative">
+              <div className="bg-[#EFECE6] border-b border-stone-200/90 px-3 sm:px-6 pt-3 pb-2.5 flex items-center justify-between gap-2 overflow-x-auto shrink-0 select-none pr-14 z-20">
+                <div className="flex items-center gap-1.5 sm:gap-2 relative">
                   {[
                     { id: "overview", label: "Overview", icon: Layers },
                     { id: "gallery", label: "Image Gallery", icon: ImageIcon },
@@ -1475,17 +1475,17 @@ export default function App() {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveModalSubTab(tab.id as any)}
-                        className={`relative px-3 sm:px-3.5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer border transition-colors duration-200 z-10 ${
+                        className={`relative px-3 sm:px-3.5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer border rounded-xl transition-colors duration-200 z-10 ${
                           isActive
                             ? "text-[#F4F1EA] border-stone-900 font-mono"
-                            : "bg-[#F4F1EA] text-stone-700 border-stone-300 hover:bg-stone-200"
+                            : "bg-[#FAF8F5] text-stone-700 border-stone-300/80 hover:bg-stone-200/80"
                         }`}
                       >
                         {isActive && (
                           <motion.div
                             layoutId="modalSubTabActivePill"
                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                            className="absolute inset-0 bg-stone-900 border border-stone-900 shadow-sm z-0"
+                            className="absolute inset-0 bg-stone-900 border border-stone-900 rounded-xl shadow-sm z-0"
                           />
                         )}
                         <span className="relative z-10 flex items-center gap-1.5">
@@ -1849,9 +1849,9 @@ export default function App() {
                               <button
                                 key={idx}
                                 onClick={() => setCurrentImageIndex(idx)}
-                                className={`relative w-20 aspect-video shrink-0 border transition-all cursor-pointer ${
+                                className={`relative w-20 aspect-video shrink-0 border rounded-xl overflow-hidden transition-all cursor-pointer ${
                                   isActive 
-                                    ? "border-stone-950 ring-2 ring-stone-950/20" 
+                                    ? "border-amber-500 ring-2 ring-amber-500/30" 
                                     : "border-stone-300 opacity-60 hover:opacity-100"
                                 }`}
                                 aria-label={`View photo ${idx + 1}`}
@@ -1875,16 +1875,16 @@ export default function App() {
                   );
                 })()}
 
-                <div className="p-4 bg-[#F4F1EA] border border-stone-300 flex items-start gap-2.5">
-                  <Info className="w-5 h-5 text-stone-900 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-stone-605 uppercase font-sans font-bold tracking-wider leading-relaxed">
+                <div className="p-4 bg-[#F4F1EA] border border-stone-200/90 rounded-2xl flex items-start gap-2.5">
+                  <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-stone-600 uppercase font-sans font-bold tracking-wider leading-relaxed">
                     All listed specifications have been digitally audited by Auto World mechanics. Double check conditions upon scheduling inspect callbacks.
                   </p>
                 </div>
 
                 {/* ADMIN DIRECT CONTROL PANEL IN THE OVERLAY - MOVED STICKY */}
                 {currentUser?.email === "afrojalamansari461@gmail.com" && (
-                  <div className="p-4 bg-stone-900 border-2 border-amber-500 text-[#F4F1EA] font-sans space-y-4 shadow-lg sticky top-4">
+                  <div className="p-4 bg-stone-900 border border-amber-500/50 rounded-2xl text-[#F4F1EA] font-sans space-y-4 shadow-lg sticky top-4">
                     <div className="flex items-center gap-2 pb-2 border-b border-stone-800">
                       <Wrench className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
                       <div>
@@ -2295,10 +2295,10 @@ export default function App() {
                       toggleFavorite(selectedVehicle.id);
                       showToast(favorites.includes(selectedVehicle.id) ? "Removed from bookmark brief!" : "Saved brand new bookmark briefcase!", "success");
                     }}
-                    className={`flex-1 py-3.5 border text-[10px] uppercase font-bold tracking-widest cursor-pointer flex items-center justify-center gap-2 transition ${
+                    className={`flex-1 py-3.5 border rounded-xl text-[10px] uppercase font-bold tracking-widest cursor-pointer flex items-center justify-center gap-2 transition ${
                       favorites.includes(selectedVehicle.id)
-                        ? "bg-black border-black text-white hover:bg-neutral-900"
-                        : "bg-white border-black text-black hover:bg-neutral-100"
+                        ? "bg-stone-950 border-stone-950 text-white hover:bg-stone-800"
+                        : "bg-white border-stone-300 text-stone-900 hover:bg-stone-100"
                     }`}
                   >
                     <AnimatedFavoriteHeart isFav={favorites.includes(selectedVehicle.id)} className="w-4 h-4" />
@@ -2314,14 +2314,14 @@ export default function App() {
                         showToast("Failed to copy link.", "error");
                       });
                     }}
-                    className="flex-1 py-3.5 bg-[#FAF8F5] border border-stone-300 hover:bg-stone-200 text-stone-950 text-[10px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 cursor-pointer transition"
+                    className="flex-1 py-3.5 bg-[#FAF8F5] border border-stone-300 rounded-xl hover:bg-stone-200 text-stone-950 text-[10px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 cursor-pointer transition"
                   >
                     <Share2 className="w-4 h-4 text-stone-900 shrink-0" />
                     Share Listing
                   </button>
                   <button
                     onClick={handleRequestCallback}
-                    className="flex-1 py-3.5 bg-stone-900 border border-stone-900 hover:bg-stone-850 text-white text-[10px] uppercase font-bold tracking-widest transition cursor-pointer"
+                    className="flex-1 py-3.5 bg-stone-900 border border-stone-900 rounded-xl hover:bg-stone-800 text-amber-400 text-[10px] uppercase font-bold tracking-widest transition cursor-pointer shadow-xs"
                   >
                     Request Callback
                   </button>
@@ -2884,7 +2884,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(2px)" }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-[250] flex items-center justify-between gap-4 px-5 py-4 border shadow-xl bg-stone-950 text-[#F4F1EA] border-stone-800 rounded-sm max-w-sm"
+            className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-[250] flex items-center justify-between gap-4 px-5 py-4 border shadow-xl bg-stone-950 text-[#F4F1EA] border-stone-800 rounded-2xl max-w-sm"
           >
             <div className="flex items-center gap-3">
               <motion.div
@@ -2911,7 +2911,7 @@ export default function App() {
             </div>
             <button 
               onClick={() => setToast(null)}
-              className="text-[10px] font-mono hover:text-white cursor-pointer opacity-70 hover:opacity-100 transition whitespace-nowrap pl-2"
+              className="text-[10px] font-mono hover:text-amber-400 cursor-pointer opacity-70 hover:opacity-100 transition whitespace-nowrap pl-2"
             >
               [close]
             </button>
@@ -2938,13 +2938,13 @@ export default function App() {
             isOpen={Boolean(openLegalDoc)}
             onClose={() => setOpenLegalDoc(null)}
             containerClassName="w-full max-w-3xl max-h-[85vh]"
-            overlayClassName="bg-black/80 backdrop-blur-sm"
+            overlayClassName="bg-stone-950/75 backdrop-blur-sm"
           >
-            <div className="bg-[#FAF8F5] text-stone-900 border border-stone-800 w-full max-h-[85vh] flex flex-col shadow-2xl relative font-sans">
+            <div className="bg-[#FAF8F5] text-stone-900 border border-stone-300/80 rounded-3xl overflow-hidden w-full max-h-[85vh] flex flex-col shadow-2xl relative font-sans">
             {/* Header / Newspaper Column Header banner */}
-            <div className="border-b-4 border-stone-950 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 bg-[#F4F1EA] relative">
+            <div className="border-b border-stone-200/90 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 bg-[#F4F1EA] relative">
               <div className="pr-12 sm:pr-0">
-                <span className="text-[9px] font-mono font-black uppercase tracking-[0.25em] text-[#B45309] block mb-1">
+                <span className="text-[9px] font-mono font-black uppercase tracking-[0.25em] text-amber-700 block mb-1">
                   OFFICIAL AUTO WORLD GAZETTE
                 </span>
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-black tracking-tight text-stone-950 uppercase leading-tight">
@@ -2959,9 +2959,9 @@ export default function App() {
               </div>
               <button 
                 onClick={() => setOpenLegalDoc(null)}
-                className="absolute top-4 right-4 sm:relative sm:top-0 sm:right-0 text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-stone-500 hover:text-stone-950 px-2.5 py-1 sm:px-3 sm:py-1.5 border border-stone-300 hover:border-stone-900 bg-white transition cursor-pointer shrink-0 whitespace-nowrap"
+                className="absolute top-4 right-4 sm:relative sm:top-0 sm:right-0 text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-stone-600 hover:text-stone-950 px-3 py-1.5 border border-stone-300 hover:border-stone-900 bg-white rounded-xl transition cursor-pointer shrink-0 whitespace-nowrap shadow-2xs"
               >
-                [ CLOSE ]
+                Close ✕
               </button>
             </div>
 
@@ -3132,13 +3132,13 @@ export default function App() {
             whileTap={{ scale: 0.95 }}
             onClick={scrollToTop}
             id="scroll-to-top-btn"
-            className="fixed bottom-36 sm:bottom-40 lg:bottom-20 right-4 sm:right-6 z-50 flex items-center justify-center w-11 h-11 bg-stone-950 text-white border border-purple-400/85 shadow-[0_0_12px_rgba(192,132,252,0.5)] hover:shadow-[0_0_22px_rgba(192,132,252,0.9)] cursor-pointer rounded-none group select-none hover:bg-stone-900 hover:border-purple-300 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950"
+            className="fixed bottom-36 sm:bottom-40 lg:bottom-20 right-4 sm:right-6 z-50 flex items-center justify-center w-11 h-11 bg-stone-950 text-amber-400 border border-amber-500/60 shadow-lg hover:shadow-xl cursor-pointer rounded-xl group select-none hover:bg-stone-900 hover:border-amber-400 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950"
             title="Scroll to Top"
             aria-label="Scroll back to the top of the vehicle catalog"
           >
             <div className="relative overflow-hidden w-4 h-4 flex items-center justify-center shrink-0">
-              <ArrowUp className="w-4 h-4 absolute transition-all duration-300 group-hover:-translate-y-6 text-white" />
-              <ArrowUp className="w-4 h-4 absolute translate-y-6 transition-all duration-300 group-hover:translate-y-0 text-white" />
+              <ArrowUp className="w-4 h-4 absolute transition-all duration-300 group-hover:-translate-y-6 text-amber-400" />
+              <ArrowUp className="w-4 h-4 absolute translate-y-6 transition-all duration-300 group-hover:translate-y-0 text-amber-400" />
             </div>
           </motion.button>
         )}
@@ -3151,29 +3151,29 @@ export default function App() {
             isOpen={confirmModal.isOpen}
             onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
             containerClassName="w-full max-w-md"
-            overlayClassName="bg-stone-900/60 backdrop-blur-[2px]"
+            overlayClassName="bg-stone-950/65 backdrop-blur-xs"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-md bg-[#FAF8F5] border-3 border-stone-900 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6 font-mono"
+              className="relative w-full max-w-md bg-[#FAF8F5] border border-stone-300/80 rounded-3xl p-6 shadow-2xl space-y-6 font-mono"
             >
-              <div className="flex items-center gap-2.5 pb-3 border-b-2 border-stone-900">
-                <div className={`w-3 h-3 rounded-none rotate-45 ${confirmModal.danger ? "bg-red-600" : "bg-purple-600"}`} />
+              <div className="flex items-center gap-2.5 pb-3 border-b border-stone-200">
+                <div className={`w-3 h-3 rounded-xs rotate-45 ${confirmModal.danger ? "bg-red-600" : "bg-amber-500"}`} />
                 <h3 className="text-xs font-mono font-black tracking-wider uppercase text-stone-950">
                   {confirmModal.title || "CONFIRMATION REQUIRED"}
                 </h3>
               </div>
               
-              <p className="text-xs text-stone-800 leading-relaxed uppercase font-mono">
+              <p className="text-xs text-stone-700 leading-relaxed uppercase font-mono">
                 {confirmModal.message}
               </p>
               
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                  className="px-4 py-2 bg-stone-105 hover:bg-stone-200 border border-stone-300 text-[10px] font-bold uppercase tracking-widest font-mono cursor-pointer transition"
+                  className="px-4 py-2.5 bg-[#F4F1EA] hover:bg-stone-200 border border-stone-300 rounded-xl text-[10px] font-bold uppercase tracking-widest font-mono cursor-pointer transition"
                 >
                   ABORT TRANSACTION
                 </button>
@@ -3183,10 +3183,10 @@ export default function App() {
                     confirmModal.onConfirm();
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                   }}
-                  className={`px-5 py-2 text-white text-[10px] font-black uppercase tracking-widest font-mono cursor-pointer transition ${
+                  className={`px-5 py-2.5 text-white text-[10px] font-black uppercase tracking-widest font-mono rounded-xl cursor-pointer transition shadow-sm ${
                     confirmModal.danger 
-                      ? "bg-red-600 hover:bg-red-700 shadow-[0_0_12px_rgba(220,38,38,0.3)]" 
-                      : "bg-stone-900 hover:bg-stone-800"
+                      ? "bg-red-600 hover:bg-red-700" 
+                      : "bg-stone-900 hover:bg-stone-800 text-amber-400"
                   }`}
                 >
                   {confirmModal.confirmText || "EXECUTE ACTION"}
@@ -3194,27 +3194,6 @@ export default function App() {
               </div>
             </motion.div>
           </Modal>
-        )}
-      </AnimatePresence>
-
-      {/* GLOBAL MOTORSPORT PERFORMANCE PART DOSSIER MODAL */}
-      <AnimatePresence>
-        {selectedPart && (
-          <PartDossierModal
-            part={selectedPart}
-            onClose={() => {
-              setSelectedPart(null);
-              setPartClickCoords(null);
-            }}
-            currentUser={currentUser}
-            isAdmin={userRole === "Owner" || userRole === "Co-Owner" || userRole === "Super Admin" || userRole === "Parts Specialist" || currentUser?.email === OWNER_EMAIL}
-            clickCoordinates={partClickCoords}
-            hasPaidPass={hasPaidPass}
-            onRequestPass={() => {
-              showToast("Buyer Pass required for seller direct coordinates. Upgrading...", "info");
-              setActiveTab("premium");
-            }}
-          />
         )}
       </AnimatePresence>
 
