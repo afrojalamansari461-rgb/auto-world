@@ -15,6 +15,7 @@ import { Vehicle, UserListing } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
 import AdminPartsDesk from "./AdminPartsDesk";
+import AdminTestimonialsDesk from "./AdminTestimonialsDesk";
 
 interface OfficeRoomProps {
   currentUser: User | null;
@@ -411,6 +412,20 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
             </button>
           )}
 
+          {canAccessModeration && (
+            <button
+              onClick={() => setActiveSubDesk("testimonials")}
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                activeSubDesk === "testimonials"
+                  ? "bg-amber-500 text-stone-950 font-black shadow-md"
+                  : "bg-white text-stone-600 hover:text-stone-950 border border-stone-200"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Buyer Testimonials
+            </button>
+          )}
+
           {canAccessFinance && (
             <button
               onClick={() => setActiveSubDesk("finance")}
@@ -757,6 +772,11 @@ export default function OfficeRoom({ currentUser, userRole, showToast, setActive
               ))}
             </div>
           </div>
+        )}
+
+        {/* 4.9 BUYER TESTIMONIALS DESK */}
+        {activeSubDesk === "testimonials" && canAccessModeration && (
+          <AdminTestimonialsDesk showToast={showToast} currentUser={currentUser} />
         )}
 
         {/* 5. MODERATION DESK */}

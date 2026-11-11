@@ -1,19 +1,36 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Car, Search, Shield, Trophy, Users, Star, ArrowRight, Eye, Heart, 
   DollarSign, Calendar, MapPin, Gauge, ShieldCheck, Crown, Sparkles, 
   Wrench, Cpu, Zap, Flame, Disc, MessageCircle, Layers, Sliders, Activity, 
-  Wind, Lightbulb, PlusCircle
+  Wind, Lightbulb, PlusCircle, RefreshCw, Quote, CheckCircle2, ChevronLeft,
+  ChevronRight, Pause, Play, Camera, Clock
 } from "lucide-react";
 import { 
   Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, 
   PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES, UserPartListing 
 } from "../types";
-import { motion } from "motion/react";
+import { motion, AnimatePresence, useMotionValue, useAnimationFrame } from "motion/react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
 import { AnimatedFavoriteHeart } from "./AnimatedFavoriteHeart";
+import {
+  BuyerTestimonial,
+  TestimonialsConfig,
+  DEFAULT_TESTIMONIALS_CONFIG,
+  subscribeToTestimonials,
+  getPublicDisplayTestimonials,
+} from "../lib/testimonialsService";
+import SubmitTestimonialForm from "./SubmitTestimonialForm";
+import {
+  AdminControlSystemsState,
+  DEFAULT_ADMIN_CONTROL_SYSTEMS,
+  subscribeToControlSystems,
+  getSellerTrustBadge,
+  isPromoBannerCurrentlyActive,
+  HomepageSectionId,
+} from "../lib/adminControlSystemsService";
 
 interface HomeTabProps {
   setActiveTab: (tab: string) => void;
@@ -281,6 +298,109 @@ export default function HomeTab({
   });
   const [hoveredPartId, setHoveredPartId] = useState<number | string | null>(null);
 
+  // Verified Buyer Testimonials & Auto-Scrolling Carousel State
+  const [allTestimonials, setAllTestimonials] = useState<BuyerTestimonial[]>([]);
+  const [testimonialsConfig, setTestimonialsConfig] = useState<TestimonialsConfig>(
+    DEFAULT_TESTIMONIALS_CONFIG
+  );
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
+  const [isManualPaused, setIsManualPaused] = useState(false);
+  const [showSubmitForm, setShowSubmitForm] = useState(false);
+  const [recentlySubmittedCount, setRecentlySubmittedCount] = useState(0);
+
+  const carouselX = useMotionValue(0);
+  const carouselTrackRef = useRef<HTMLDivElement>(null);
+
+  const [controlSystems, setControlSystems] = useState<AdminControlSystemsState>(
+    DEFAULT_ADMIN_CONTROL_SYSTEMS
+  );
+
+  useEffect(() => {
+    const unsubTestimonials = subscribeToTestimonials(({ items, config }) => {
+      setAllTestimonials(items);
+      setTestimonialsConfig(config);
+    });
+    const unsubControls = subscribeToControlSystems((sys) => {
+      setControlSystems(sys);
+    });
+    return () => {
+      unsubTestimonials();
+      unsubControls();
+    };
+  }, []);
+
+  const getSectionMeta = (id: HomepageSectionId, defaultOrder: number) => {
+    const found = controlSystems.homepageLayout.sections.find((s) => s.id === id);
+    return {
+      visible: found ? found.visible : true,
+      order: found ? found.order : defaultOrder,
+      customTitle: found?.customTitle,
+      customSubtitle: found?.customSubtitle,
+    };
+  };
+
+  const heroMeta = getSectionMeta("hero", 1);
+  const featuredCarsMeta = getSectionMeta("featured_cars", 2);
+  const motorsportPartsMeta = getSectionMeta("motorsport_parts", 3);
+  const howItWorksMeta = getSectionMeta("how_it_works", 4);
+  const statsMeta = getSectionMeta("stats", 5);
+  const testimonialsMeta = getSectionMeta("testimonials", 6);
+  const premiumPromoMeta = getSectionMeta("premium_promo", 7);
+  const promoBannerState = isPromoBannerCurrentlyActive(
+    controlSystems.homepageLayout.promoBanner
+  );
+
+  const publicTestimonials = getPublicDisplayTestimonials(allTestimonials, testimonialsConfig);
+  const pendingTestimonialsCount = allTestimonials.filter((t) => t.status === "pending").length;
+
+  // Duplicate list for seamless infinite loop carousel
+  const carouselItems =
+    publicTestimonials.length > 0
+      ? [...publicTestimonials, ...publicTestimonials]
+      : [];
+
+  useAnimationFrame((_, delta) => {
+    if (
+      !testimonialsConfig.isAutoScrollEnabled ||
+      isManualPaused ||
+      (testimonialsConfig.pauseOnHover && isCarouselHovered) ||
+      publicTestimonials.length === 0 ||
+      !carouselTrackRef.current
+    ) {
+      return;
+    }
+
+    const halfWidth = carouselTrackRef.current.scrollWidth / 2;
+    if (halfWidth <= 0) return;
+
+    const speedPxPerMs =
+      testimonialsConfig.scrollSpeed === "slow"
+        ? 0.032
+        : testimonialsConfig.scrollSpeed === "fast"
+        ? 0.115
+        : 0.062;
+
+    let nextX = carouselX.get() - delta * speedPxPerMs;
+    if (nextX <= -halfWidth) {
+      nextX += halfWidth;
+    }
+    carouselX.set(nextX);
+  });
+
+  const handleManualCarouselStep = (dir: "prev" | "next") => {
+    if (!carouselTrackRef.current) return;
+    const halfWidth = carouselTrackRef.current.scrollWidth / 2;
+    if (halfWidth <= 0) return;
+    const stepPx = 390;
+    let nextX = carouselX.get() + (dir === "prev" ? stepPx : -stepPx);
+    if (nextX > 0) {
+      nextX -= halfWidth;
+    } else if (nextX <= -halfWidth) {
+      nextX += halfWidth;
+    }
+    carouselX.set(nextX);
+  };
+
   // Dynamic Site Content States
   const [heroTitle, setHeroTitle] = useState(() => {
     return localStorage.getItem("autoWorld_hero_title") || "The Aesthetic of Fine Motors.";
@@ -538,18 +658,15 @@ export default function HomeTab({
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="bg-[#F4F1EA] text-[#1A1A1A] font-sans overflow-hidden animate-in fade-in duration-300"
+      className="bg-[#F4F1EA] text-[#1A1A1A] font-sans overflow-hidden animate-in fade-in duration-300 flex flex-col"
     >
-      {/* Dynamic Announcement Banner */}
-      {isAnnouncementEnabled && announcementText && (
-        <div className="bg-stone-900 text-amber-300 px-4 py-2 text-xs font-mono font-bold tracking-wider text-center border-b border-stone-800 flex items-center justify-center gap-2 shadow-inner">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-          <span className="truncate">{announcementText}</span>
-        </div>
-      )}
-
       {/* Editorial Split Hero Section */}
-      <motion.section variants={itemVariants} className="relative border-b border-[#1A1A1A]/10">
+      {heroMeta.visible && (
+      <motion.section
+        style={{ order: heroMeta.order }}
+        variants={itemVariants}
+        className="relative border-b border-[#1A1A1A]/10 w-full"
+      >
         <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12">
           
           {/* Left Column: Primary Narrative */}
@@ -753,13 +870,23 @@ export default function HomeTab({
 
         </div>
       </motion.section>
+      )}
 
       {/* Section 2: Featured vehicles Grid */}
-      <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
+      {featuredCarsMeta.visible && (
+      <motion.section
+        style={{ order: featuredCarsMeta.order }}
+        variants={itemVariants}
+        className="py-20 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10"
+      >
         <div className="flex flex-col md:flex-row justify-between items-baseline gap-4 mb-10 border-b border-stone-300 pb-6">
           <div>
-            <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">Pristine Specimens Currently Catalogued</span>
-            <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">Featured Premium Collections</h2>
+            <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-500 font-bold block mb-1">
+              {featuredCarsMeta.customSubtitle || "Pristine Specimens Currently Catalogued"}
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-900">
+              {featuredCarsMeta.customTitle || "Featured Premium Collections"}
+            </h2>
           </div>
           <button
             onClick={() => setActiveTab("buy")}
@@ -806,96 +933,30 @@ export default function HomeTab({
                       {car.badge}
                     </span>
                   )}
-
-                  {/* Dynamic Laser Scanning Line */}
-                  {isHovered && (
-                    <motion.div
-                      initial={{ top: "0%" }}
-                      animate={{ top: "100%" }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-                      className="absolute left-0 right-0 h-0.5 bg-amber-400 shadow-[0_0_12px_#F59E0B] z-20 pointer-events-none"
-                    />
-                  )}
-
-                  {/* Diagnostic Radar Metric Overlay */}
-                  <motion.div
-                    initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
-                    animate={isHovered ? { opacity: 1, backdropFilter: "blur(3px)" } : { opacity: 0, backdropFilter: "blur(0px)" }}
-                    transition={{ duration: 0.25 }}
-                    className="absolute inset-0 bg-stone-950/85 p-5 flex flex-col justify-between text-[#F4F1EA] pointer-events-none z-10"
-                  >
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-stone-800 pb-2">
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold flex items-center gap-1.5 animate-pulse">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>
-                          Chassis Scan Active
-                        </span>
-                        <span className="text-[9px] uppercase text-stone-400 font-mono">Telemetry Logs</span>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex justify-between text-[9px] font-mono mb-1">
-                            <span className="text-stone-400">ENGINE DIAGNOSTICS</span>
-                            <span className="text-amber-400 font-bold">{car.id % 2 === 0 ? "98%" : "96%"}</span>
-                          </div>
-                          <div className="h-1 bg-stone-800 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: "0%" }}
-                              animate={isHovered ? { width: car.id % 2 === 0 ? "98%" : "96%" } : { width: "0%" }}
-                              transition={{ duration: 0.6, ease: "easeOut" }}
-                              className="h-full bg-amber-400" 
-                            />
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <div className="flex justify-between text-[9px] font-mono mb-1">
-                            <span className="text-stone-400">BODYWORK INTEGRITY</span>
-                            <span className="text-amber-400 font-bold">{car.id % 3 === 0 ? "95%" : "97%"}</span>
-                          </div>
-                          <div className="h-1 bg-stone-800 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: "0%" }}
-                              animate={isHovered ? { width: car.id % 3 === 0 ? "95%" : "97%" } : { width: "0%" }}
-                              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-                              className="h-full bg-amber-400" 
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="flex justify-between text-[9px] font-mono mb-1">
-                            <span className="text-stone-400">DRIVETRAIN STATUS</span>
-                            <span className="text-amber-400 font-bold">EXCELLENT</span>
-                          </div>
-                          <div className="h-1 bg-stone-800 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: "0%" }}
-                              animate={isHovered ? { width: "94%" } : { width: "0%" }}
-                              transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-                              className="h-full bg-amber-400" 
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-[9px] font-mono text-stone-400 uppercase leading-relaxed text-center flex items-center justify-center gap-1.5 border-t border-stone-800/80 pt-2.5">
-                      <Eye className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      View service ledger logs
-                    </div>
-                  </motion.div>
                 </div>
 
                 {/* Info block */}
                 <div className="p-6 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between gap-1.5 mb-1 flex-wrap">
                       <span className="text-[9px] font-mono tracking-widest text-stone-400 block uppercase">REF #AW0{car.id}</span>
-                      {car.badge === "verified" && (
-                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-wider border border-emerald-200">Verified</span>
-                      )}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {(() => {
+                          const kycBadge = getSellerTrustBadge(car.sellerEmail, car.sellerName);
+                          if (kycBadge) {
+                            return (
+                              <span className="text-[9px] font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md uppercase tracking-wider border border-amber-300 flex items-center gap-1">
+                                <ShieldCheck className="w-2.5 h-2.5 text-amber-700" />
+                                {kycBadge.badgeTier}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                        {car.badge === "verified" && (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-wider border border-emerald-200">Verified</span>
+                        )}
+                      </div>
                     </div>
                     <h3 className="text-xl font-serif font-black text-stone-950 mb-3 group-hover:underline cursor-pointer" onClick={() => onQuickView(car)}>
                       {car.title}
@@ -952,14 +1013,23 @@ export default function HomeTab({
           })}
         </div>
       </motion.section>
+      )}
 
       {/* Section 2.5: Performance Hardware & Curated Parts Marketplace Showcase */}
-      <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
+      {motorsportPartsMeta.visible && (
+      <motion.section
+        style={{ order: motorsportPartsMeta.order }}
+        variants={itemVariants}
+        className="py-20 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10"
+      >
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-6 border-b border-[#1A1A1A]/10 gap-4">
           <div>
-            <h2 className="text-3xl sm:text-4xl font-serif font-black text-stone-950">Curated Motorsport Parts & Upgrades</h2>
+            <h2 className="text-3xl sm:text-4xl font-serif font-black text-stone-950">
+              {motorsportPartsMeta.customTitle || "Curated Motorsport Parts & Upgrades"}
+            </h2>
             <p className="text-stone-700 text-sm font-sans mt-1 max-w-2xl">
-              Factory OEM components, high-flow turbochargers, aero kits, and verified performance hardware.
+              {motorsportPartsMeta.customSubtitle ||
+                "Factory OEM components, high-flow turbochargers, aero kits, and verified performance hardware."}
             </p>
           </div>
           
@@ -1028,11 +1098,6 @@ export default function HomeTab({
                         (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800";
                       }}
                     />
-
-                    {/* Laser Scanner Effect on Hover */}
-                    {isHovered && (
-                      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-amber-500/20 to-transparent h-12 w-full animate-pulse transition-all" />
-                    )}
 
                     {/* Rarity & Verified Badges */}
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
@@ -1159,12 +1224,22 @@ export default function HomeTab({
             })}
         </div>
       </motion.section>
+      )}
 
       {/* Section 3: Process Steps */}
-      <motion.section variants={itemVariants} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10">
+      {howItWorksMeta.visible && (
+      <motion.section
+        style={{ order: howItWorksMeta.order }}
+        variants={itemVariants}
+        className="py-20 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10"
+      >
         <div className="text-center max-w-xl mx-auto mb-16">
-          <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-600 block mb-1.5 font-bold">How It Works</span>
-          <h2 className="text-3xl font-serif font-black text-stone-950">Simple Steps to Buy or Sell</h2>
+          <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-stone-600 block mb-1.5 font-bold">
+            {howItWorksMeta.customSubtitle || "How It Works"}
+          </span>
+          <h2 className="text-3xl font-serif font-black text-stone-950">
+            {howItWorksMeta.customTitle || "Simple Steps to Buy or Sell"}
+          </h2>
           <p className="text-stone-700 text-sm font-sans mt-1">A safe and easy way to connect buyers and sellers.</p>
         </div>
 
@@ -1235,37 +1310,299 @@ export default function HomeTab({
           ))}
         </div>
       </motion.section>
+      )}
 
       {/* Section 4: Statistics */}
-      <motion.section variants={itemVariants} className="bg-stone-950 text-white py-16 border-b border-[#1A1A1A]/10">
+      {statsMeta.visible && (
+      <motion.section
+        style={{ order: statsMeta.order }}
+        variants={itemVariants}
+        className="bg-stone-950 text-white py-16 border-b border-[#1A1A1A]/10 w-full"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-stone-800">
-            <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light text-white">10k+</div>
-              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Cars Listed</p>
-            </div>
-            <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light text-white">50k+</div>
-              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Successful Deals</p>
-            </div>
-            <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light text-white">100%</div>
-              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">Verified Listings</p>
-            </div>
-            <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-serif font-light text-white">4.9/5</div>
-              <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">User Rating</p>
-            </div>
+            {controlSystems.homepageLayout.stats.map((statItem) => (
+              <div key={statItem.id} className="space-y-1">
+                <div className="text-4xl sm:text-5xl font-serif font-light text-white tabular-nums">
+                  {statItem.value}
+                </div>
+                <p className="text-stone-300 text-xs md:text-[10px] uppercase tracking-widest font-sans font-bold">
+                  {statItem.label}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </motion.section>
+      )}
+
+      {/* Section 4.5: Verified Buyer & Seller Testimonials */}
+      {testimonialsConfig.isSectionVisible && testimonialsMeta.visible && (
+        <motion.section
+          style={{ order: testimonialsMeta.order }}
+          variants={itemVariants}
+          className="py-20 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#1A1A1A]/10 overflow-hidden"
+        >
+          {/* Section Header */}
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 pb-6 border-b border-stone-300">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-stone-950 text-[#F4F1EA] rounded-lg border border-stone-800 shadow-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[10px] font-sans uppercase tracking-[0.2em] font-bold">
+                    {testimonialsConfig.sectionBadge || "Authenticated Ledger Feedback"}
+                  </span>
+                </div>
+              </div>
+
+              <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-stone-950">
+                {testimonialsConfig.sectionTitle || "Verified Buyer Testimonials"}
+              </h2>
+              <p className="text-stone-700 text-sm font-sans mt-1 max-w-2xl">
+                {testimonialsConfig.sectionSubtitle ||
+                  "Unedited dispatches from collectors, enthusiasts, and motorsport builders who completed verified acquisitions through Auto World."}
+              </p>
+            </div>
+
+            {/* Carousel Controls & Submit Testimonial Trigger */}
+            <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+              <div className="inline-flex items-center gap-1 bg-[#FAF8F5] border border-stone-300 rounded-xl p-1 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => handleManualCarouselStep("prev")}
+                  className="w-8 h-8 rounded-lg hover:bg-stone-950 text-stone-800 hover:text-[#F4F1EA] flex items-center justify-center cursor-pointer transition"
+                  title="Previous Testimonial"
+                  aria-label="Previous Testimonial"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleManualCarouselStep("next")}
+                  className="w-8 h-8 rounded-lg hover:bg-stone-950 text-stone-800 hover:text-[#F4F1EA] flex items-center justify-center cursor-pointer transition"
+                  title="Next Testimonial"
+                  aria-label="Next Testimonial"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {testimonialsConfig.allowPublicSubmissions !== false && (
+                <button
+                  type="button"
+                  onClick={() => setShowSubmitForm((prev) => !prev)}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-sans font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-xs border ${
+                    showSubmitForm
+                      ? "bg-amber-500 text-stone-950 border-amber-600"
+                      : "bg-stone-950 hover:bg-stone-800 text-[#F4F1EA] border-stone-950"
+                  }`}
+                >
+                  <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{showSubmitForm ? "Close Submission Form" : "Submit Your Testimonial"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Expandable 'Submit Your Testimonial' Form for Verified Buyers & Sellers */}
+          <AnimatePresence>
+            {showSubmitForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className="mb-12 overflow-hidden"
+              >
+                <SubmitTestimonialForm
+                  onSubmitted={() => {
+                    setRecentlySubmittedCount((c) => c + 1);
+                  }}
+                  onCancel={() => setShowSubmitForm(false)}
+                  onNavigateTab={setActiveTab}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Testimonials Carousel Viewport */}
+          {publicTestimonials.length === 0 ? (
+            <div className="bg-[#FAF8F5] border border-stone-300 rounded-2xl p-12 text-center space-y-2">
+              <ShieldCheck className="w-10 h-10 text-stone-400 mx-auto" />
+              <h3 className="text-lg font-serif font-bold text-stone-900">
+                No Verified Testimonials Currently Displayed
+              </h3>
+              <p className="text-xs text-stone-600 max-w-md mx-auto">
+                Reviews from verified buyers and sellers will appear here once published.
+              </p>
+            </div>
+          ) : (
+            <div
+              onMouseEnter={() => setIsCarouselHovered(true)}
+              onMouseLeave={() => setIsCarouselHovered(false)}
+              className="relative w-full overflow-hidden py-2 select-none"
+            >
+              {/* Subtle left/right editorial gradient fade masks */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-16 bg-gradient-to-r from-[#F4F1EA] to-transparent z-20" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-16 bg-gradient-to-l from-[#F4F1EA] to-transparent z-20" />
+
+              <motion.div
+                ref={carouselTrackRef}
+                style={{ x: carouselX }}
+                className="flex items-stretch gap-6 w-max"
+              >
+                {carouselItems.map((review, index) => (
+                  <motion.div
+                    key={`${review.id}-${index}`}
+                    whileHover={{ y: -6, scale: 1.01 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                    className="w-[330px] sm:w-[380px] shrink-0 bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-sm hover:shadow-xl hover:border-stone-400 transition-colors duration-300 relative group"
+                  >
+                    <div>
+                      {/* Top Bar: Star Rating & Verified Purchase/Seller Badge */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-4 mb-4 border-b border-stone-200/90">
+                        <div className="flex items-center gap-1.5">
+                          <div
+                            className="flex items-center gap-0.5"
+                            aria-label={`Rated ${review.rating} out of 5 stars`}
+                          >
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-3.5 h-3.5 ${
+                                  star <= Math.round(review.rating)
+                                    ? "text-amber-500 fill-amber-500"
+                                    : "text-stone-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-mono font-bold text-stone-900 ml-1">
+                            {review.rating.toFixed(1)}
+                          </span>
+                        </div>
+
+                        {review.verifiedPurchase !== false && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded-lg text-[10px] font-sans font-bold uppercase tracking-wider shadow-xs">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                            {review.transactionRole || "Verified Purchase"}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Purchased Vehicle / Part Tag */}
+                      <div className="mb-4 p-3 bg-[#F4F1EA] border border-stone-200/90 rounded-xl flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          {review.itemCategory === "Vehicle Acquisition" ? (
+                            <Car className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                          ) : (
+                            <Wrench className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                          )}
+                          <div className="min-w-0">
+                            <span className="text-[9px] font-mono uppercase tracking-widest text-stone-500 block">
+                              {review.itemCategory} • {review.dossierRef}
+                            </span>
+                            <span className="text-xs font-serif font-bold text-stone-950 truncate block">
+                              {review.purchasedItem}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Buyer Review Comment */}
+                      <div className="relative mb-5">
+                        <Quote className="w-6 h-6 text-stone-200 absolute -top-1 -left-1 pointer-events-none select-none" />
+                        <p className="text-stone-700 text-xs sm:text-sm font-sans leading-relaxed pl-4 relative z-10 italic">
+                          "{review.comment}"
+                        </p>
+                      </div>
+
+                      {/* Image Verification Placeholders / Attachments */}
+                      {review.verificationImages && review.verificationImages.length > 0 && (
+                        <div className="mb-5 pt-3 border-t border-stone-200/70">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[9px] font-mono uppercase tracking-widest text-stone-500 flex items-center gap-1 font-bold">
+                              <Camera className="w-3 h-3 text-emerald-700" />
+                              Verified Proof Attachments
+                            </span>
+                            <span className="text-[9px] font-mono text-emerald-700 font-bold">
+                              ✓ Authenticated
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                            {review.verificationImages.map((vImg) => (
+                              <div
+                                key={vImg.id}
+                                className="flex items-center gap-2 p-1.5 bg-[#F4F1EA] border border-stone-200/90 rounded-lg shrink-0"
+                              >
+                                <img
+                                  src={vImg.imageUrl}
+                                  alt={vImg.label}
+                                  className="w-8 h-8 rounded object-cover border border-stone-300"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                      "https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=600&auto=format&fit=crop&q=80";
+                                  }}
+                                />
+                                <span className="text-[10px] font-sans font-semibold text-stone-800 max-w-[120px] truncate pr-1">
+                                  {vImg.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Buyer Footer Metadata */}
+                    <div className="pt-4 border-t border-stone-200/90 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-stone-950 text-amber-400 font-serif font-bold text-sm flex items-center justify-center shrink-0 border border-stone-800">
+                          {review.buyerName.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-xs font-sans font-bold text-stone-950 truncate">
+                            {review.buyerName}
+                          </h3>
+                          <p className="text-[11px] font-sans text-stone-500 truncate">
+                            {review.buyerTitle}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-sans font-semibold text-stone-700">
+                          <MapPin className="w-3 h-3 text-amber-700 shrink-0" />
+                          {review.location}
+                        </span>
+                        <span className="block text-[9px] font-mono uppercase tracking-wider text-stone-400 mt-0.5">
+                          {review.purchaseDate}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          )}
+        </motion.section>
+      )}
 
       {/* Section 5: Premium Promo */}
-      <motion.section variants={itemVariants} className="py-24 bg-[#E0DBCF] text-[#1A1A1A] relative overflow-hidden">
+      {premiumPromoMeta.visible && (
+      <motion.section
+        style={{ order: premiumPromoMeta.order }}
+        variants={itemVariants}
+        className="py-24 bg-[#E0DBCF] text-[#1A1A1A] relative overflow-hidden w-full"
+      >
         <div className="max-w-4xl mx-auto px-4 relative z-10 text-center space-y-6">
           <Crown className="w-12 h-12 text-stone-950 mx-auto" />
-          <span className="text-[10px] tracking-[0.3em] font-sans font-bold uppercase block text-stone-800">Auto World Premium</span>
-          <h2 className="text-4xl md:text-5xl font-serif font-black tracking-tight text-stone-950">Upgrade to Premium Membership</h2>
+          <span className="text-[10px] tracking-[0.3em] font-sans font-bold uppercase block text-stone-800">
+            {premiumPromoMeta.customSubtitle || "Auto World Premium"}
+          </span>
+          <h2 className="text-4xl md:text-5xl font-serif font-black tracking-tight text-stone-950">
+            {premiumPromoMeta.customTitle || "Upgrade to Premium Membership"}
+          </h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left text-xs font-sans font-semibold text-stone-900 bg-[#F4F1EA]/80 p-5 border border-stone-400 rounded-xl shadow-xs">
             <div className="flex items-center gap-2">
@@ -1296,6 +1633,7 @@ export default function HomeTab({
           </div>
         </div>
       </motion.section>
+      )}
 
     </motion.div>
   );

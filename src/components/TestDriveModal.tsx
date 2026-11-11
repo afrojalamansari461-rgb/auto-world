@@ -15,6 +15,7 @@ import { Vehicle } from "../types";
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { dispatchAdminSmsAlert } from "../lib/notificationService";
+import { logCrmInquiry } from "../lib/adminControlSystemsService";
 import { CelebrationAnimation, fireCelebrationConfetti } from "./CelebrationAnimation";
 import {
   modalBackdropVariants,
@@ -113,19 +114,20 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
       existing.unshift(bookingData);
       localStorage.setItem("autoWorld_test_drives", JSON.stringify(existing));
 
-      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
+      await logCrmInquiry({
+        refCode: bookingRef,
+        inquiryType: "Test Drive",
+        customerName: bookingData.fullName,
+        customerPhone: bookingData.phone,
+        customerEmail: currentUser?.email || "",
+        targetItemTitle: bookingData.vehicleTitle,
+        targetItemPrice: bookingData.vehiclePrice,
+        preferredSlot: `${bookingData.preferredDate} • ${bookingData.timeSlot}`,
+        locationOrAddress: `${bookingData.driveType.toUpperCase()}: ${bookingData.address}`,
+        notes: bookingData.notes,
+      }).catch(() => {});
 
-      dispatchAdminSmsAlert(
-        "buyerLead",
-        "🏎️ Test Drive Requested",
-        `Test Drive Request for ${bookingData.vehicleTitle} by ${bookingData.fullName} (${bookingData.phone}). Slot: ${bookingData.preferredDate} (${bookingData.timeSlot}). Ref: #${bookingRef}`,
-        {
-          bookingRef,
-          vehicleTitle: bookingData.vehicleTitle,
-          buyer: bookingData.fullName,
-          phone: bookingData.phone,
-        }
-      );
+      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
 
       setBookingSuccess(bookingData);
       fireCelebrationConfetti();

@@ -260,6 +260,30 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "exchangeRequestId", "targetCreatorUid", "proposerUid", "status", "createdAt"]
+    },
+    "BuyerTestimonial": {
+      "title": "BuyerTestimonial",
+      "description": "Verified buyer testimonial with moderation status (pending, approved, rejected) and display rank order for the HomeTab carousel",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "buyerTitle": { "type": "string" },
+        "location": { "type": "string" },
+        "purchasedItem": { "type": "string" },
+        "itemCategory": { "type": "string", "enum": ["Vehicle Acquisition", "Motorsport Hardware"] },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "purchaseDate": { "type": "string" },
+        "dossierRef": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "visible": { "type": "boolean" },
+        "verifiedPurchase": { "type": "boolean" },
+        "order": { "type": "integer" },
+        "rank": { "type": "integer" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "buyerName", "purchasedItem", "rating", "comment", "status", "order"]
     }
   },
   "firestore": {
@@ -314,6 +338,10 @@
     "loanLeads": {
       "schema": "LoanLead",
       "description": "Collection capturing buyer instant loan application leads for bank financing referrals"
+    },
+    "testimonials": {
+      "schema": "BuyerTestimonial",
+      "description": "Verified buyer testimonials with moderation status and carousel display rank order"
     }
   }
 }

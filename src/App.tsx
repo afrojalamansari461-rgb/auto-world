@@ -24,6 +24,7 @@ import FeedbackWidget from "./components/FeedbackWidget";
 import Modal from "./components/Modal";
 import PartDossierModal from "./components/PartDossierModal";
 import { SecureShieldCard } from "./components/SecureShieldCard";
+import PriceNegotiationAndTradeInWidget from "./components/PriceNegotiationAndTradeInWidget";
 import { Vehicle, UserListing, DEFAULT_VEHICLES, Part } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, firebaseConfig, handleFirestoreError, OperationType } from "./firebase";
@@ -183,21 +184,6 @@ export default function App() {
       behavior: "smooth"
     });
   };
-
-  // Check Firebase Database reachability on startup
-  useEffect(() => {
-    const testReachability = async () => {
-      try {
-        await getDocFromServer(doc(db, "test", "connection"));
-      } catch (err: any) {
-        console.warn("Startup connection probe:", err);
-        if (err && (err.message?.includes("offline") || err.code === "unavailable" || err.message?.includes("failed to get document"))) {
-          setFirebaseConfigError(true);
-        }
-      }
-    };
-    testReachability();
-  }, []);
 
   // Global high-contrast theme state
   const [theme, setTheme] = useState<string>(() => {
@@ -852,23 +838,8 @@ export default function App() {
     }
   };
 
-  const triggerSmsLeadAlert = async (sellerPhone: string, vehicleTitle: string, listingId: string | number, actionType: "whatsapp" | "inspection") => {
-    try {
-      await fetch("/api/send-sms-alert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sellerPhone,
-          vehicleTitle,
-          listingId,
-          buyerName: currentUser?.displayName || "A vetted buyer",
-          actionType
-        })
-      });
-      console.log(`Lead SMS alert triggered successfully.`);
-    } catch (err) {
-      console.error("Failed to trigger Lead SMS alert asynchronously:", err);
-    }
+  const triggerSmsLeadAlert = async (_sellerPhone: string, _vehicleTitle: string, _listingId: string | number, _actionType: "whatsapp" | "inspection") => {
+    // SMS alert functionality disabled per user request
   };
 
   const handleQuickView = (vehicle: Vehicle, editMode?: boolean) => {
@@ -1252,36 +1223,6 @@ export default function App() {
           userRole={userRole}
           onSignInClick={() => setActiveTab("login")}
         />
-      )}
-
-      {/* Dynamic Firebase Connectivity Check Alert noticed at the top */}
-      {firebaseConfigError && (
-        <div id="firebase-conn-alert" className="border-y-2 border-amber-605 bg-[#FAF8F5] text-stone-900 px-4 py-3 text-xs font-sans">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-semibold">
-            <div className="flex items-start md:items-center gap-2.5">
-              <span className="p-1 bg-amber-605 text-[#FAF8F5] inline-flex items-center justify-center shrink-0 rounded font-bold text-[9px]">⚠️</span>
-              <p className="leading-relaxed text-left text-[11px] sm:text-xs">
-                <strong className="text-amber-800 uppercase tracking-wide text-[10px]">Connection Warning:</strong> Could not establish a pipeline to Firestore. This web-ledger points to your custom Firebase Project (<code className="bg-amber-100 px-1 font-mono font-bold text-amber-905 rounded">{firebaseConfig.projectId}</code>). Please ensure your database is active and authentication providers are configured.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
-              <button 
-                onClick={() => {
-                  setActiveTab("login");
-                }}
-                className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-[#F4F1EA] font-mono text-[9px] font-bold uppercase tracking-wider shadow-sm cursor-pointer whitespace-nowrap"
-              >
-                View Setup Controls
-              </button>
-              <button 
-                onClick={() => setFirebaseConfigError(false)}
-                className="px-2.5 py-1.5 border border-stone-300 hover:bg-stone-100 text-stone-700 font-mono text-[9px] font-bold uppercase cursor-pointer shrink-0"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Primary tab views switcher */}
@@ -2151,6 +2092,19 @@ export default function App() {
                     }}
                   />
                 )}
+
+                {/* Live Price Negotiation & Instant Trade-In + Upgrade Calculator */}
+                <PriceNegotiationAndTradeInWidget
+                  itemType="vehicle"
+                  itemId={selectedVehicle.id}
+                  itemTitle={selectedVehicle.title}
+                  listedPrice={selectedVehicle.price}
+                  sellerName={modalSellerInfo?.name || (selectedVehicle as any).sellerName || "Auto World Certified Seller"}
+                  sellerEmail={modalSellerInfo?.email || (selectedVehicle as any).sellerEmail || "brokerage@autoworld.com"}
+                  sellerPhone={modalSellerInfo?.phone || (selectedVehicle as any).sellerPhone || "+91 98230 44556"}
+                  currentUser={currentUser}
+                  showToast={showToast}
+                />
 
                 {/* Seller direct contact info module with staggered reveal */}
                 <motion.div

@@ -135,14 +135,14 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                 <div className="flex items-center gap-2.5">
                   <MessageSquare className="w-5 h-5 text-emerald-500" />
                   <div>
-                    <h3 className="text-xs font-mono font-bold text-emerald-500 uppercase tracking-widest">Connect with our developers</h3>
-                    <h2 className="text-lg font-serif font-black tracking-tight uppercase leading-none mt-0.5">User Feedback Hub</h2>
+                    <h3 className="text-xs font-mono font-bold text-emerald-500 uppercase tracking-widest">Auto World Concierge</h3>
+                    <h2 className="text-lg font-serif font-black tracking-tight uppercase leading-none mt-0.5">Share Your Feedback</h2>
                   </div>
                 </div>
                 <button
                   id="close-feedback-widget"
                   onClick={() => setIsOpen(false)}
-                  aria-label="Close feedback widget overlay dialog"
+                  aria-label="Close feedback dialog"
                   className="w-8 h-8 flex items-center justify-center bg-stone-800 hover:bg-stone-700 cursor-pointer border border-stone-700 font-mono text-[#F4F1EA] focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
                   ✕
@@ -156,7 +156,7 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                     <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto animate-bounce" />
                     <h4 className="text-md font-serif font-black uppercase text-stone-900 tracking-tight">Feedback Submitted!</h4>
                     <p className="text-stone-600 text-xs max-w-sm mx-auto leading-relaxed">
-                      Thank you for your feedback! Your submission has been saved directly to our Cloud Firestore database and sent to our team.
+                      Thank you for your feedback! Our team has received your message.
                     </p>
                   </div>
                 ) : (
@@ -203,7 +203,7 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                         maxLength={1000}
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Describe your report, WCAG accessibility issue, feature request, or question here..."
+                        placeholder="Share your experience, suggestion, or question..."
                         className="w-full p-3 bg-stone-50 text-stone-900 text-xs border border-stone-300 focus:border-stone-900 outline-none placeholder:text-stone-400 font-sans leading-relaxed resize-none"
                       />
                       <div className="flex justify-between items-center text-[9px] text-stone-400 font-mono">
@@ -263,13 +263,13 @@ export default function FeedbackWidget({ showToast, currentUser }: FeedbackWidge
                 )}
               </div>
 
-              {/* Secure footer badge */}
-              <div className="p-5 border-t border-stone-250 bg-stone-100/60 text-[9px] text-stone-500 font-mono uppercase tracking-widest leading-relaxed flex items-center justify-between">
+              {/* Footer badge */}
+              <div className="p-4 border-t border-stone-250 bg-stone-100/60 text-[10px] text-stone-500 font-sans uppercase tracking-wider flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                  SSL Enforced Pipeline
+                  Auto World Customer Support
                 </span>
-                <span className="text-stone-400">Google Cloud Firestore v1</span>
+                <span className="text-stone-400">24/7 Concierge</span>
               </div>
             </motion.div>
           </Modal>

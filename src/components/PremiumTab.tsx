@@ -5,6 +5,13 @@ import { setDoc, doc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { subscribeToRealtimeCatalog } from "../lib/catalogSync";
+import {
+  AdminControlSystemsState,
+  DEFAULT_ADMIN_CONTROL_SYSTEMS,
+  subscribeToControlSystems,
+  validatePromoCode,
+  incrementPromoCodeUsage,
+} from "../lib/adminControlSystemsService";
 
 interface PremiumTabProps {
   subscriptionActive: boolean;
@@ -353,13 +360,38 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
     "Confirming secure subscription status update..."
   ];
 
-  // Dynamic pricing
-  const proPrice = period === "monthly" ? 1499 : 1199;
-  const businessPrice = period === "monthly" ? 4999 : 3999;
+  const [controlSystems, setControlSystems] = useState<AdminControlSystemsState>(
+    DEFAULT_ADMIN_CONTROL_SYSTEMS
+  );
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoStatusMsg, setPromoStatusMsg] = useState<{ text: string; valid: boolean } | null>(
+    null
+  );
+
+  useEffect(() => {
+    const unsubControls = subscribeToControlSystems((sys) => {
+      setControlSystems(sys);
+    });
+    return () => unsubControls();
+  }, []);
+
+  // Dynamic pricing controlled by Admin Pricing & Promo Desk
+  const proPrice =
+    period === "monthly"
+      ? controlSystems.pricingAndPromo.proMonthlyPrice
+      : Math.round(controlSystems.pricingAndPromo.proYearlyPrice / 12);
+  const businessPrice =
+    period === "monthly"
+      ? controlSystems.pricingAndPromo.businessMonthlyPrice
+      : Math.round(controlSystems.pricingAndPromo.businessYearlyPrice / 12);
 
   const handleOpenCheckout = (planName: "pro" | "business", basePrice: number) => {
     setSelectedPlan(planName);
     setSelectedPrice(basePrice);
+    setPromoCodeInput("");
+    setPromoDiscount(0);
+    setPromoStatusMsg(null);
     setShowCheckout(true);
   };
 
@@ -907,8 +939,14 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                     <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-4.5 space-y-2 shadow-sm">
                       <div className="flex justify-between items-center text-xs font-bold text-stone-500 uppercase tracking-widest font-mono">
                         <span>Upgrade term bill:</span>
-                        <span>₹{selectedPrice.toLocaleString("en-IN")}</span>
+                        <span className="tabular-nums">₹{selectedPrice.toLocaleString("en-IN")}</span>
                       </div>
+                      {promoDiscount > 0 && (
+                        <div className="flex justify-between items-center text-xs font-bold text-emerald-700 uppercase tracking-widest font-mono">
+                          <span>Promo Discount ({promoCodeInput.toUpperCase()}):</span>
+                          <span className="tabular-nums">-₹{promoDiscount.toLocaleString("en-IN")}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center text-xs font-bold text-stone-400 uppercase tracking-widest font-mono">
                         <span>Additional setup tariff:</span>
                         <span>₹0</span>
@@ -916,7 +954,52 @@ export default function PremiumTab({ subscriptionActive, setSubscriptionActive, 
                       <hr className="border-stone-200" />
                       <div className="flex justify-between items-center text-sm font-black text-stone-950 pb-1 uppercase tracking-widest leading-none font-mono">
                         <span>Total Due Today:</span>
-                        <span className="text-amber-700 font-serif font-black text-lg">₹{selectedPrice.toLocaleString("en-IN")}</span>
+                        <span className="text-amber-700 font-serif font-black text-lg tabular-nums">
+                          ₹{Math.max(0, selectedPrice - promoDiscount).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+
+                      {/* Promo Code Redemption Field */}
+                      <div className="pt-2 border-t border-stone-200 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Promo Code (e.g. FESTIVAL50, VIP250)"
+                            value={promoCodeInput}
+                            onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                            className="flex-1 px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-mono font-bold uppercase text-stone-950"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const res = validatePromoCode(
+                                promoCodeInput,
+                                selectedPrice,
+                                "premium"
+                              );
+                              if (res.valid) {
+                                setPromoDiscount(res.discountSaved);
+                                setPromoStatusMsg({ text: res.message, valid: true });
+                                incrementPromoCodeUsage(promoCodeInput);
+                              } else {
+                                setPromoDiscount(0);
+                                setPromoStatusMsg({ text: res.message, valid: false });
+                              }
+                            }}
+                            className="px-3.5 py-1.5 bg-stone-950 hover:bg-stone-800 text-amber-400 text-[10px] font-mono font-black uppercase tracking-wider rounded-lg cursor-pointer"
+                          >
+                            Apply Code
+                          </button>
+                        </div>
+                        {promoStatusMsg && (
+                          <p
+                            className={`text-[10px] font-mono font-bold ${
+                              promoStatusMsg.valid ? "text-emerald-700" : "text-red-600"
+                            }`}
+                          >
+                            {promoStatusMsg.text}
+                          </p>
+                        )}
                       </div>
                     </div>
 

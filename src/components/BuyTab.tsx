@@ -21,6 +21,15 @@ import { InlineEMICalculator } from "./InlineEMICalculator";
 import { UPIPaymentModal } from "./UPIPaymentModal";
 import AuctionTab from "./AuctionTab";
 import ExchangeTab from "./ExchangeTab";
+import PriceNegotiationAndTradeInWidget from "./PriceNegotiationAndTradeInWidget";
+import {
+  subscribeToControlSystems,
+  loadLocalControlSystems,
+  getSellerTrustBadge,
+  submitListingFraudReport,
+  logCrmInquiry,
+  AdminControlSystemsState
+} from "../lib/adminControlSystemsService";
 
 interface BuyTabProps {
   favorites: number[];
@@ -267,6 +276,39 @@ export default function BuyTab({
   const [inspectionVehicle, setInspectionVehicle] = useState<Vehicle | null>(null);
   const [isSavedSearchesOpen, setIsSavedSearchesOpen] = useState<boolean>(false);
   const [callbackVehicle, setCallbackVehicle] = useState<Vehicle | null>(null);
+  const [negotiationTarget, setNegotiationTarget] = useState<{
+    itemType: "vehicle" | "part";
+    id: string | number;
+    title: string;
+    price: number;
+    sellerName?: string;
+    sellerEmail?: string;
+    sellerPhone?: string;
+    initialMode: "offer" | "trade_in";
+  } | null>(null);
+
+  // Admin Control Systems State (Pricing, Flash Sale, Seller KYC Badges, Frozen Listings, Fraud Reports)
+  const [controlSystems, setControlSystems] = useState<AdminControlSystemsState>(() => loadLocalControlSystems());
+  const [reportingItem, setReportingItem] = useState<{
+    id: string | number;
+    listingKey: string;
+    title: string;
+    price: number;
+    type: "vehicle" | "part";
+    sellerName?: string;
+    sellerEmail?: string;
+    sellerPhone?: string;
+  } | null>(null);
+  const [reportReason, setReportReason] = useState<string>("Suspicious or Fake Price");
+  const [reportDetails, setReportDetails] = useState<string>("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = subscribeToControlSystems((state) => {
+      setControlSystems(state);
+    });
+    return () => unsub();
+  }, []);
 
   // Smart Matcher States
   const [isSmartMatcherEnabled, setIsSmartMatcherEnabled] = useState<boolean>(() => {
@@ -404,7 +446,7 @@ export default function BuyTab({
 
     if (!hasPaidPass) {
       setShowPaymentModal(true);
-      showToast("Unlock seller coordinates & WhatsApp connect with our ₹1 pass!", "info");
+      showToast(`Unlock seller coordinates & WhatsApp connect with our ₹${controlSystems.pricingAndPromo.buyerPassPrice} pass!`, "info");
       return;
     }
 
@@ -418,17 +460,18 @@ export default function BuyTab({
     const textMessage = `Hi, I saw your ${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || vehicle.title || ''} (Ref #AW-${vehicle.id || 'AW01'}) listed on Auto World. Is it still available for a test drive?`;
     const encodedText = encodeURIComponent(textMessage);
 
-    fetch("/api/send-sms-alert", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sellerPhone: vehicle.sellerPhone || '+91 98230 44556',
-        vehicleTitle: vehicle.title,
-        listingId: vehicle.id,
-        buyerName: "A vetted buyer",
-        actionType: "whatsapp"
-      })
-    }).catch(err => console.error(err));
+    logCrmInquiry({
+      type: "whatsapp",
+      buyerName: currentUser?.displayName || currentUser?.email?.split("@")[0] || "Verified Buyer Pass Holder",
+      buyerPhone: currentUser?.phoneNumber || "WhatsApp Direct",
+      buyerEmail: currentUser?.email || "",
+      itemId: vehicle.listingId || vehicle.id,
+      itemTitle: vehicle.title,
+      itemPrice: vehicle.price,
+      sellerName: vehicle.sellerName || "Verified Seller",
+      sellerPhone: vehicle.sellerPhone || "+91 98230 44556",
+      notes: "Initiated Direct WhatsApp Inquiry from Buy Catalog"
+    }).catch(() => {});
 
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
@@ -994,7 +1037,19 @@ export default function BuyTab({
   const hasLocationMatches = locationMatchesInInventory.length > 0;
 
   // Filter dynamic logic
+  const frozenKeys = controlSystems.fraudGuard.frozenListingKeys || [];
   const filteredVehicles = inventoryList.filter((vehicle) => {
+    // Exclude listings frozen by Admin Fraud Guard
+    const vKeyUser = vehicle.listingId ? `user-${vehicle.listingId}` : "";
+    const vKeyDef = `default-${vehicle.id}`;
+    if (
+      frozenKeys.includes(String(vehicle.id)) ||
+      frozenKeys.includes(vKeyDef) ||
+      (vKeyUser && frozenKeys.includes(vKeyUser)) ||
+      (vehicle.listingId && frozenKeys.includes(String(vehicle.listingId)))
+    ) {
+      return false;
+    }
     // Search query matcher
     if (searchQuery && !vehicle.title.toLowerCase().includes(searchQuery.toLowerCase()) && !vehicle.make.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
@@ -1123,6 +1178,17 @@ export default function BuyTab({
   };
 
   const filteredParts = partsList.filter((part) => {
+    // Exclude parts frozen by Admin Fraud Guard
+    const pKey = `part-${part.id}`;
+    const pListingKey = part.listingId ? `part-${part.listingId}` : "";
+    if (
+      frozenKeys.includes(String(part.id)) ||
+      frozenKeys.includes(pKey) ||
+      (pListingKey && frozenKeys.includes(pListingKey)) ||
+      (part.listingId && frozenKeys.includes(String(part.listingId)))
+    ) {
+      return false;
+    }
     // Wishlist Only filter
     if (isPartWishlistOnly && !isPartFavorited(part)) {
       return false;
@@ -1192,7 +1258,7 @@ export default function BuyTab({
 
     if (!hasPaidPass) {
       setShowPaymentModal(true);
-      showToast("Unlock seller coordinates & WhatsApp connect with our ₹1 pass!", "info");
+      showToast(`Unlock seller coordinates & WhatsApp connect with our ₹${controlSystems.pricingAndPromo.buyerPassPrice} pass!`, "info");
       return;
     }
 
@@ -1206,20 +1272,48 @@ export default function BuyTab({
     const textMessage = `Hi, I saw your ${part.brand || ''} ${part.title} (Part #${part.partNumber || part.id}) listed on Auto World. Is this currently available for shipping or pickup?`;
     const encodedText = encodeURIComponent(textMessage);
 
-    fetch("/api/send-sms-alert", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sellerPhone: part.sellerPhone || '+91 98230 44556',
-        vehicleTitle: part.title,
-        listingId: part.id,
-        buyerName: "A vetted buyer",
-        actionType: "whatsapp"
-      })
-    }).catch(err => console.error(err));
+    logCrmInquiry({
+      type: "whatsapp",
+      buyerName: currentUser?.displayName || currentUser?.email?.split("@")[0] || "Verified Buyer Pass Holder",
+      buyerPhone: currentUser?.phoneNumber || "WhatsApp Direct",
+      buyerEmail: currentUser?.email || "",
+      itemId: part.listingId || part.id,
+      itemTitle: part.title,
+      itemPrice: part.price,
+      sellerName: part.sellerName || "Verified Part Supplier",
+      sellerPhone: part.sellerPhone || "+91 98230 44556",
+      notes: "Initiated Direct WhatsApp Part Inquiry"
+    }).catch(() => {});
 
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSubmitFraudReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportingItem) return;
+    setIsSubmittingReport(true);
+    try {
+      await submitListingFraudReport({
+        listingId: reportingItem.listingKey,
+        listingTitle: reportingItem.title,
+        listingPrice: reportingItem.price,
+        itemType: reportingItem.type,
+        sellerName: reportingItem.sellerName || "Listed Seller",
+        sellerEmail: reportingItem.sellerEmail || "",
+        sellerPhone: reportingItem.sellerPhone || "",
+        reporterEmail: currentUser?.email || "guest@autoworld.in",
+        reason: reportReason,
+        details: reportDetails.trim() || "Flagged via Buy Catalog Fraud Guard"
+      });
+      showToast("Listing reported to Auto World Fraud Guard & Moderation Queue.", "success");
+      setReportingItem(null);
+      setReportDetails("");
+    } catch (err) {
+      showToast("Could not submit report. Please try again.", "error");
+    } finally {
+      setIsSubmittingReport(false);
+    }
   };
 
   const containerVariants = {
@@ -2504,13 +2598,81 @@ export default function BuyTab({
                             {car.badge}
                           </span>
                         )}
+
+                        {/* Admin Flash Sale / Festive Price Drop Badge */}
+                        {controlSystems.pricingAndPromo.flashSaleEnabled &&
+                          (controlSystems.pricingAndPromo.flashSaleCategory === "all" ||
+                            controlSystems.pricingAndPromo.flashSaleCategory === (car.category || "car").toLowerCase()) && (
+                            <span className="absolute bottom-3 left-3 z-10 px-2.5 py-1 bg-gradient-to-r from-rose-600 to-amber-500 text-white rounded-lg text-[8.5px] font-mono font-black uppercase tracking-wider shadow-md flex items-center gap-1 border border-white/20">
+                              <Flame className="w-3 h-3 fill-white shrink-0" />
+                              <span className="truncate">
+                                {controlSystems.pricingAndPromo.flashSaleBadgeText}
+                                {controlSystems.pricingAndPromo.flashSaleDiscountPercent > 0
+                                  ? ` • ${controlSystems.pricingAndPromo.flashSaleDiscountPercent}% OFF`
+                                  : ""}
+                              </span>
+                            </span>
+                          )}
+
+                        {/* Report Suspicious Listing Trigger */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReportingItem({
+                              id: car.id,
+                              listingKey: car.isUserListing && car.listingId ? `user-${car.listingId}` : `default-${car.id}`,
+                              title: car.title,
+                              price: car.price,
+                              type: "vehicle",
+                              sellerName: car.sellerName,
+                              sellerEmail: car.sellerEmail,
+                              sellerPhone: car.sellerPhone
+                            });
+                          }}
+                          className="absolute top-3 right-3 z-10 px-2 py-1 rounded-lg bg-stone-950/75 hover:bg-red-950/90 text-stone-300 hover:text-red-300 border border-white/15 text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition cursor-pointer backdrop-blur-xs"
+                          title="Report suspicious listing or fake price to Admin Fraud Guard"
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                          <span>Report</span>
+                        </button>
                       </div>
 
                       <div className="p-3.5 sm:p-5 md:p-6 flex-1 flex flex-col justify-between min-w-0 w-full">
                         <div className="min-w-0 w-full">
-                          <span className="text-[8.5px] sm:text-[9px] font-mono tracking-widest text-[#777777] block uppercase mb-1 truncate">
-                            REF #AW0{car.id}
-                          </span>
+                          <div className="flex items-center justify-between gap-1.5 mb-1 flex-wrap">
+                            <span className="text-[8.5px] sm:text-[9px] font-mono tracking-widest text-[#777777] block uppercase truncate">
+                              REF #AW0{car.id}
+                            </span>
+                            {(() => {
+                              const kycBadge = getSellerTrustBadge(car.sellerEmail, car.sellerName, controlSystems);
+                              if (kycBadge === "certified_dealership") {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-md bg-amber-100 border border-amber-300 text-amber-950 text-[8px] font-mono font-black uppercase tracking-wider flex items-center gap-1">
+                                    <Award className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                    Certified Dealership
+                                  </span>
+                                );
+                              }
+                              if (kycBadge === "gold_collector") {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-md bg-stone-900 border border-amber-400 text-amber-300 text-[8px] font-mono font-black uppercase tracking-wider flex items-center gap-1">
+                                    <Sparkles className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                                    Gold Collector
+                                  </span>
+                                );
+                              }
+                              if (kycBadge === "verified_owner") {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 border border-emerald-300 text-emerald-900 text-[8px] font-mono font-black uppercase tracking-wider flex items-center gap-1">
+                                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                    KYC Verified Owner
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                           <h3 className="text-base sm:text-lg md:text-xl font-serif font-black text-stone-950 mb-2 sm:mb-2.5 cursor-pointer break-words line-clamp-2 leading-snug sm:leading-tight">
                             {car.title}
                           </h3>
@@ -2597,6 +2759,49 @@ export default function BuyTab({
                             </div>
                           </div>
 
+                          {/* Live Price Offer / Counter-Offer Status Pill if active on this car */}
+                          {(() => {
+                            const carOffers = (controlSystems.negotiationOffers || []).filter(
+                              (o) => o.itemType === "vehicle" && String(o.itemId) === String(car.id)
+                            );
+                            if (carOffers.length === 0) return null;
+                            const latest = carOffers[0];
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNegotiationTarget({
+                                    itemType: "vehicle",
+                                    id: car.id,
+                                    title: car.title,
+                                    price: car.price,
+                                    sellerName: car.sellerName,
+                                    sellerEmail: car.sellerEmail,
+                                    sellerPhone: car.sellerPhone,
+                                    initialMode: "offer",
+                                  });
+                                }}
+                                className={`w-full px-2.5 py-1.5 rounded-lg border text-[9px] font-mono font-bold uppercase tracking-wider flex items-center justify-between gap-2 cursor-pointer transition ${
+                                  latest.status === "Countered"
+                                    ? "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100"
+                                    : latest.status === "Accepted"
+                                    ? "bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100"
+                                    : "bg-stone-100 border-stone-300 text-stone-800 hover:bg-stone-200"
+                                }`}
+                              >
+                                <span className="truncate">
+                                  {latest.status === "Countered" && latest.counterOfferPrice
+                                    ? `⚡ Seller Counter: ₹${latest.counterOfferPrice.toLocaleString("en-IN")}`
+                                    : latest.status === "Accepted"
+                                    ? `✓ Deal Agreed at ₹${(latest.counterOfferPrice || latest.buyerOfferPrice).toLocaleString("en-IN")}`
+                                    : `💬 ${carOffers.length} Live Offer${carOffers.length > 1 ? "s" : ""} (Latest: ₹${latest.buyerOfferPrice.toLocaleString("en-IN")})`}
+                                </span>
+                                <span className="underline shrink-0">View Desk →</span>
+                              </button>
+                            );
+                          })()}
+
                           {/* Row 1 (Secondary Actions): Favorite, Dossier, EMI Calc */}
                           <div className="flex items-center gap-1.5 sm:gap-2 w-full min-w-0">
                             {/* Favorite Heart Button */}
@@ -2642,6 +2847,53 @@ export default function BuyTab({
                             >
                               <Calculator className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600 shrink-0" />
                               <span className="truncate">EMI Calc</span>
+                            </button>
+                          </div>
+
+                          {/* Row 1.5 (Feature #3 & #4): Make Price Offer & Trade-In + Upgrade Net Payable Calc */}
+                          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 w-full min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNegotiationTarget({
+                                  itemType: "vehicle",
+                                  id: car.id,
+                                  title: car.title,
+                                  price: car.price,
+                                  sellerName: car.sellerName,
+                                  sellerEmail: car.sellerEmail,
+                                  sellerPhone: car.sellerPhone,
+                                  initialMode: "offer",
+                                });
+                              }}
+                              className="py-2 px-2 bg-amber-500/15 hover:bg-amber-500 text-stone-950 border border-amber-500/40 hover:border-amber-600 rounded-xl text-[9px] sm:text-[10px] font-mono uppercase font-black tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs min-w-0"
+                              title="Send a binding price offer or counter-offer to the seller"
+                            >
+                              <Tag className="w-3 h-3 text-amber-700 shrink-0" />
+                              <span className="truncate">Make Offer</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNegotiationTarget({
+                                  itemType: "vehicle",
+                                  id: car.id,
+                                  title: car.title,
+                                  price: car.price,
+                                  sellerName: car.sellerName,
+                                  sellerEmail: car.sellerEmail,
+                                  sellerPhone: car.sellerPhone,
+                                  initialMode: "trade_in",
+                                });
+                              }}
+                              className="py-2 px-2 bg-stone-900 hover:bg-stone-800 text-amber-300 border border-stone-800 rounded-xl text-[9px] sm:text-[10px] font-mono uppercase font-black tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs min-w-0"
+                              title="Calculate your old car's trade-in value and exact net-payable upgrade difference"
+                            >
+                              <Repeat className="w-3 h-3 text-amber-400 shrink-0" />
+                              <span className="truncate">Trade-In Calc</span>
                             </button>
                           </div>
 
@@ -3040,6 +3292,57 @@ export default function BuyTab({
                       {/* Card Content */}
                       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                         <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            {(() => {
+                              const kycBadge = getSellerTrustBadge(part.sellerEmail, part.sellerName, controlSystems);
+                              if (kycBadge === "certified_dealership") {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-md bg-amber-100 border border-amber-300 text-amber-950 text-[8px] font-mono font-black uppercase tracking-wider flex items-center gap-1">
+                                    <Award className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                    Certified Dealership
+                                  </span>
+                                );
+                              }
+                              if (kycBadge === "gold_collector") {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-md bg-stone-900 border border-amber-400 text-amber-300 text-[8px] font-mono font-black uppercase tracking-wider flex items-center gap-1">
+                                    <Sparkles className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                                    Gold Collector
+                                  </span>
+                                );
+                              }
+                              if (kycBadge === "verified_owner") {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 border border-emerald-300 text-emerald-900 text-[8px] font-mono font-black uppercase tracking-wider flex items-center gap-1">
+                                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                    KYC Verified Supplier
+                                  </span>
+                                );
+                              }
+                              return <span className="text-[9px] font-mono uppercase text-stone-400">Verified Hardware</span>;
+                            })()}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReportingItem({
+                                  id: part.id,
+                                  listingKey: `part-${part.listingId || part.id}`,
+                                  title: part.title,
+                                  price: part.price,
+                                  type: "part",
+                                  sellerName: part.sellerName,
+                                  sellerEmail: part.sellerEmail,
+                                  sellerPhone: part.sellerPhone
+                                });
+                              }}
+                              className="text-[9px] font-mono font-bold uppercase text-stone-400 hover:text-red-600 flex items-center gap-1 transition cursor-pointer"
+                              title="Report suspicious part listing"
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              Report
+                            </button>
+                          </div>
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <h3 className="font-serif font-black text-base text-stone-900 line-clamp-1 group-hover:text-amber-600 transition-colors">
                               {part.title}
@@ -3098,32 +3401,54 @@ export default function BuyTab({
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onQuickViewPart?.(part, { x: e.clientX, y: e.clientY });
+                                }}
+                                className="py-2.5 px-3 bg-stone-900 hover:bg-stone-800 text-amber-400 rounded-xl text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950 shadow-xs"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Dossier
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => handlePartWhatsAppClick(e, part)}
+                                className={`py-2.5 px-3 rounded-xl text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border shadow-xs ${
+                                  hasPaidPass
+                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
+                                    : "bg-stone-900 hover:bg-stone-800 text-amber-400 border-stone-950"
+                                }`}
+                                title={hasPaidPass ? "Connect directly on WhatsApp with seller" : "Unlock seller coordinates & WhatsApp"}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                <span className="truncate">{hasPaidPass ? "WhatsApp" : "Unlock & Chat"}</span>
+                                {!hasPaidPass && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
+                              </button>
+                            </div>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onQuickViewPart?.(part, { x: e.clientX, y: e.clientY });
+                                setNegotiationTarget({
+                                  itemType: "part",
+                                  id: part.id,
+                                  title: part.title,
+                                  price: part.price,
+                                  sellerName: part.sellerName,
+                                  sellerEmail: part.sellerEmail,
+                                  sellerPhone: part.sellerPhone,
+                                  initialMode: "offer",
+                                });
                               }}
-                              className="py-2.5 px-3 bg-stone-900 hover:bg-stone-800 text-amber-400 rounded-xl text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-950 shadow-xs"
+                              className="w-full py-2 px-3 bg-amber-500/15 hover:bg-amber-500 text-stone-950 border border-amber-500/40 hover:border-amber-600 rounded-xl text-[10px] font-mono uppercase font-black tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              Dossier
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => handlePartWhatsAppClick(e, part)}
-                              className={`py-2.5 px-3 rounded-xl text-[10px] font-mono uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border shadow-xs ${
-                                hasPaidPass
-                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
-                                  : "bg-stone-900 hover:bg-stone-800 text-amber-400 border-stone-950"
-                              }`}
-                              title={hasPaidPass ? "Connect directly on WhatsApp with seller" : "Unlock seller coordinates & WhatsApp"}
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                              <span className="truncate">{hasPaidPass ? "WhatsApp" : "Unlock & Chat"}</span>
-                              {!hasPaidPass && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
+                              <Tag className="w-3.5 h-3.5 text-amber-700" />
+                              Make Binding Price Offer
                             </button>
                           </div>
                         </div>
@@ -3182,12 +3507,105 @@ export default function BuyTab({
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onPaymentSuccess={handleUpiPaymentSuccess}
-        amount={1}
+        amount={controlSystems.pricingAndPromo.buyerPassPrice || 1}
         itemTitle="Auto World 24-Hour Premium Buyer Pass"
         itemDescription="Direct access to verified seller phone contacts, full mechanical checklists & complete RTO dossiers."
         defaultUpiId={getSiteFamPayConfig().upiId}
         payeeName={getSiteFamPayConfig().payeeName}
+        promoCategory="buyer_pass"
       />
+
+      {/* REPORT SUSPICIOUS LISTING / FRAUD GUARD MODAL */}
+      <Modal
+        isOpen={Boolean(reportingItem)}
+        onClose={() => setReportingItem(null)}
+        containerClassName="w-full max-w-md"
+        overlayClassName="bg-stone-950/85 backdrop-blur-md"
+      >
+        {reportingItem && (
+          <form
+            onSubmit={handleSubmitFraudReport}
+            className="bg-[#FAF8F5] border border-stone-300 rounded-2xl p-6 space-y-4 text-stone-900 shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-stone-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-red-600 block">
+                    Auto World Fraud Guard
+                  </span>
+                  <h3 className="text-base font-serif font-black text-stone-950">
+                    Report Listing to Admin
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReportingItem(null)}
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-stone-100 border border-stone-200 text-xs space-y-0.5">
+              <p className="font-bold text-stone-900 truncate">{reportingItem.title}</p>
+              <p className="text-[11px] font-mono text-stone-600">
+                Listed Price: ₹{reportingItem.price.toLocaleString("en-IN")} • Seller: {reportingItem.sellerName || "Verified Seller"}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700 block">
+                Primary Reason for Report
+              </label>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-stone-300 text-xs font-semibold text-stone-900 focus:outline-none focus:border-stone-900"
+              >
+                <option value="Suspicious or Fake Price">Suspicious or Fake Price</option>
+                <option value="Stolen / Cloned Vehicle Photos">Stolen / Cloned Vehicle Photos</option>
+                <option value="Seller Asking Advance Deposit">Seller Asking Advance Deposit / Scam</option>
+                <option value="Already Sold / Unavailable">Already Sold / Unavailable</option>
+                <option value="Incorrect Odometer or RC Details">Incorrect Odometer or RC Details</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700 block">
+                Additional Notes for Moderation Desk (Optional)
+              </label>
+              <textarea
+                rows={3}
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Share any details to help our Admin Fraud Guard team investigate..."
+                className="w-full px-3 py-2 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setReportingItem(null)}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-xs font-bold uppercase tracking-wider text-stone-700 hover:bg-stone-200 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingReport}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider transition cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingReport ? "Submitting..." : "Submit Fraud Report"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* EMI Loan Calculator Popup Modal */}
       <Modal
@@ -3258,6 +3676,33 @@ export default function BuyTab({
         currentUser={currentUser}
         showToast={showToast}
       />
+
+      {/* MAKE AN OFFER / COUNTER-OFFER & INSTANT TRADE-IN UPGRADE CALCULATOR MODAL */}
+      <Modal
+        isOpen={Boolean(negotiationTarget)}
+        onClose={() => setNegotiationTarget(null)}
+        containerClassName="w-full max-w-2xl"
+        overlayClassName="bg-stone-950/85 backdrop-blur-md"
+      >
+        {negotiationTarget && (
+          <div className="max-h-[88vh] overflow-y-auto rounded-2xl">
+            <PriceNegotiationAndTradeInWidget
+              itemType={negotiationTarget.itemType}
+              itemId={negotiationTarget.id}
+              itemTitle={negotiationTarget.title}
+              listedPrice={negotiationTarget.price}
+              sellerName={negotiationTarget.sellerName}
+              sellerEmail={negotiationTarget.sellerEmail}
+              sellerPhone={negotiationTarget.sellerPhone}
+              currentUser={currentUser}
+              initialMode={negotiationTarget.initialMode}
+              showToast={showToast}
+              isModal
+              onClose={() => setNegotiationTarget(null)}
+            />
+          </div>
+        )}
+      </Modal>
 
     </motion.div>
   );

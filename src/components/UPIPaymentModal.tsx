@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { getSiteFamPayConfig, DEFAULT_FAMPAY_UPI_ID, DEFAULT_FAMPAY_NAME } from "../lib/catalogSync";
+import { validatePromoCode, incrementPromoCodeUsage } from "../lib/adminControlSystemsService";
 
 interface UPIPaymentModalProps {
   isOpen: boolean;
@@ -69,14 +70,37 @@ export function UPIPaymentModal({
     utr: string;
   } | null>(null);
 
+  // Admin Promo Code Redemption States
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
+  const [discountSaved, setDiscountSaved] = useState<number>(0);
+  const [promoFeedback, setPromoFeedback] = useState<{ text: string; valid: boolean } | null>(null);
+
   if (!isOpen) return null;
 
+  const effectiveAmount = Math.max(0, amount - discountSaved);
+
+  const handleApplyPromo = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const context = amount <= 50 ? "buyer_pass" : "premium";
+    const res = validatePromoCode(promoInput, amount, context);
+    if (res.valid) {
+      setDiscountSaved(res.discountSaved);
+      setAppliedPromoCode(promoInput.trim().toUpperCase());
+      setPromoFeedback({ text: res.message, valid: true });
+    } else {
+      setDiscountSaved(0);
+      setAppliedPromoCode(null);
+      setPromoFeedback({ text: res.message, valid: false });
+    }
+  };
+
   // FamCoins earned calculation (min 50 coins, 2x amount)
-  const earnedFamCoins = Math.max(50, Math.round(amount * 2));
+  const earnedFamCoins = Math.max(50, Math.round(effectiveAmount * 2));
 
   // Dynamic UPI URIs
-  const upiPayUrl = `upi://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayeeName + " Auto World")}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(itemTitle)}`;
-  const fampayIntentUrl = `fampay://upi/pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayeeName + " Auto World")}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(itemTitle)}`;
+  const upiPayUrl = `upi://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayeeName + " Auto World")}&am=${effectiveAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(itemTitle)}`;
+  const fampayIntentUrl = `fampay://upi/pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayeeName + " Auto World")}&am=${effectiveAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(itemTitle)}`;
   const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiPayUrl)}&color=1c1917&bgcolor=faf8f5`;
 
   const handleCopyUpiId = () => {
@@ -320,10 +344,58 @@ export function UPIPaymentModal({
           </div>
           <div className="text-right shrink-0">
             <span className="text-[9px] font-mono uppercase tracking-widest text-stone-500 font-bold block">Payable</span>
-            <span className="text-lg sm:text-2xl font-serif font-black text-stone-950 leading-none">
-              ₹{amount.toLocaleString("en-IN")}
-            </span>
+            <div className="flex items-baseline justify-end gap-1.5">
+              {discountSaved > 0 && (
+                <span className="text-xs font-mono line-through text-stone-400 tabular-nums">
+                  ₹{amount.toLocaleString("en-IN")}
+                </span>
+              )}
+              <span className="text-lg sm:text-2xl font-serif font-black text-stone-950 leading-none tabular-nums">
+                ₹{effectiveAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
           </div>
+        </div>
+
+        {/* Promo Code Redemption Strip (Controlled from Admin Pricing & Promo Desk) */}
+        <div className="bg-[#FAF8F5] px-5 py-2.5 border-b border-stone-300 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Have a Promo Code? (e.g. FREEBUYPASS, FESTIVAL50)"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              className="flex-1 px-3 py-1.5 bg-white border border-stone-300 text-xs font-mono font-bold uppercase text-stone-950 rounded"
+            />
+            <button
+              type="button"
+              onClick={() => handleApplyPromo()}
+              className="px-3.5 py-1.5 bg-stone-950 hover:bg-stone-800 text-amber-400 text-[10px] font-mono font-black uppercase tracking-wider rounded cursor-pointer shrink-0"
+            >
+              Apply Code
+            </button>
+            {effectiveAmount === 0 && appliedPromoCode && (
+              <button
+                type="button"
+                onClick={() => {
+                  incrementPromoCodeUsage(appliedPromoCode);
+                  handleQuickSandboxPay();
+                }}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-mono font-black uppercase tracking-wider rounded cursor-pointer shrink-0"
+              >
+                Unlock Free (₹0)
+              </button>
+            )}
+          </div>
+          {promoFeedback && (
+            <p
+              className={`text-[10px] font-mono font-bold ${
+                promoFeedback.valid ? "text-emerald-700" : "text-red-600"
+              }`}
+            >
+              {promoFeedback.text}
+            </p>
+          )}
         </div>
 
         {/* FamCoins Perk Strip */}

@@ -11,6 +11,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { setDoc, doc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, storage, ref, uploadBytesResumable, getDownloadURL, handleFirestoreError, OperationType } from "../firebase";
 import { dispatchAdminSmsAlert } from "../lib/notificationService";
+import {
+  checkIsUserBlacklisted,
+  subscribeToControlSystems,
+  loadLocalControlSystems,
+  respondToNegotiationOffer,
+  AdminControlSystemsState,
+  NegotiationOfferRecord,
+} from "../lib/adminControlSystemsService";
 
 export interface TestDriveRequest {
   id?: string;
@@ -958,6 +966,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
     currentUser.email.toLowerCase() === "afrojalamansari461@gmail.com" ||
     currentUser.email.toLowerCase().includes("admin")
   ));
+  const [controlSystems, setControlSystems] = useState<AdminControlSystemsState>(() => loadLocalControlSystems());
+  useEffect(() => {
+    const unsub = subscribeToControlSystems((next) => setControlSystems(next));
+    return () => unsub();
+  }, []);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -2448,6 +2461,11 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       showToast("Authentication required. Please sign in as a Dealer.", "info");
       return;
     }
+    const blacklistCheck = checkIsUserBlacklisted(currentUser.email || sellerEmail, sellerPhone);
+    if (blacklistCheck.blocked) {
+      showToast(`Account Restricted by Admin Fraud Guard: ${blacklistCheck.reason || "Suspended from posting listings."}`, "error");
+      return;
+    }
     if (parsedDealerVehicles.length === 0) return;
 
     setIsImporting(true);
@@ -2812,6 +2830,12 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       return;
     }
 
+    const blacklistCheck = checkIsUserBlacklisted(currentUser.email || sellerEmail, sellerPhone);
+    if (blacklistCheck.blocked) {
+      showToast(`Account Restricted by Admin Fraud Guard: ${blacklistCheck.reason || "Your email or phone is suspended from posting."}`, "error");
+      return;
+    }
+
     if (!isAdmin && existingListingsCount >= 2 && !subscriptionActive) {
       showToast("Free tier limit reached. Please upgrade to a Premium plan to list more than 2 vehicles.", "error");
       return;
@@ -2953,14 +2977,6 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
       }
 
       window.dispatchEvent(new Event("autoWorld_db_update"));
-
-      // Trigger SMS Notification to Admin (+91 7666232753)
-      dispatchAdminSmsAlert(
-        "carUpload",
-        "🚗 New Vehicle Uploaded",
-        `New listing: ${newListing.title} by ${newListing.sellerName} (${newListing.sellerPhone}). Price: ₹${newListing.price?.toLocaleString("en-IN")}`,
-        { listingId: generatedId, title: newListing.title, seller: newListing.sellerName, phone: newListing.sellerPhone }
-      );
 
       setExistingListingsCount(prev => prev + 1);
       setPublishedListingId(generatedId);
@@ -4917,6 +4933,155 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     </div>
                   </div>
                 </div>
+
+                {/* Live Price Offers & Trade-In Upgrade Proposals Desk */}
+                {((controlSystems.negotiationOffers || []).length > 0) && (
+                  <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-5 sm:p-6 space-y-4 shadow-md">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
+                      <div>
+                        <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-700 block">
+                          Direct Deal &amp; Trade-In Negotiation Desk
+                        </span>
+                        <h3 className="text-base sm:text-lg font-serif font-black text-stone-950 uppercase">
+                          Live Binding Price Offers &amp; Trade-In Proposals ({(controlSystems.negotiationOffers || []).length})
+                        </h3>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-lg bg-stone-900 text-amber-400 self-start sm:self-auto">
+                        Real-Time Counter-Offer Ledger
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {(controlSystems.negotiationOffers || []).map((offer: NegotiationOfferRecord) => (
+                        <div
+                          key={offer.id}
+                          className="p-4 rounded-xl bg-[#F4F1EA] border border-stone-300/90 space-y-3 flex flex-col justify-between"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <span className="text-[9px] font-mono font-bold uppercase text-stone-500">
+                                  {offer.id} · {offer.paymentMode}
+                                </span>
+                                <h4 className="font-serif font-black text-sm text-stone-950">
+                                  {offer.itemTitle}
+                                </h4>
+                                <p className="text-[11px] font-mono text-stone-600">
+                                  Buyer: <strong>{offer.buyerName}</strong> · {offer.buyerPhone}
+                                </p>
+                              </div>
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[9px] font-mono font-black uppercase border ${
+                                  offer.status === "Accepted"
+                                    ? "bg-emerald-100 text-emerald-900 border-emerald-300"
+                                    : offer.status === "Countered"
+                                    ? "bg-amber-100 text-amber-900 border-amber-300"
+                                    : offer.status === "Rejected"
+                                    ? "bg-red-100 text-red-900 border-red-300"
+                                    : "bg-white text-stone-800 border-stone-300"
+                                }`}
+                              >
+                                {offer.status}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-white border border-stone-200 text-xs">
+                              <div>
+                                <span className="text-[8px] font-mono uppercase text-stone-400 block">Listed</span>
+                                <span className="font-mono font-bold text-stone-700">
+                                  ₹{offer.listedPrice.toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[8px] font-mono uppercase text-stone-400 block">Offered</span>
+                                <span className="font-serif font-black text-stone-950">
+                                  ₹{offer.buyerOfferPrice.toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[8px] font-mono uppercase text-stone-400 block">Counter</span>
+                                <span className="font-serif font-black text-amber-800">
+                                  {offer.counterOfferPrice
+                                    ? `₹${offer.counterOfferPrice.toLocaleString("en-IN")}`
+                                    : "—"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {offer.tradeInSummary && (
+                              <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-[10px] font-mono text-amber-950 flex flex-wrap items-center justify-between gap-1">
+                                <span>
+                                  <strong>Trade-In:</strong> {offer.tradeInSummary}
+                                </span>
+                                <span className="font-black text-emerald-800">
+                                  Credit: ₹{(offer.tradeInEstimatedValue || 0).toLocaleString("en-IN")} · Net: ₹
+                                  {(offer.netPayableAfterTradeIn || 0).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-stone-200/80 flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await respondToNegotiationOffer(
+                                  offer.id,
+                                  "Accepted",
+                                  undefined,
+                                  "Seller accepted your offer! Ready for inspection & handover."
+                                );
+                                showToast(`Accepted Offer ${offer.id}!`, "success");
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[9px] font-mono font-bold uppercase cursor-pointer"
+                            >
+                              Accept Offer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const midpoint =
+                                  Math.round((offer.listedPrice + offer.buyerOfferPrice) / 2 / 5000) * 5000;
+                                await respondToNegotiationOffer(
+                                  offer.id,
+                                  "Countered",
+                                  midpoint,
+                                  `Seller Counter-Offer at ₹${midpoint.toLocaleString("en-IN")}.`
+                                );
+                                showToast(
+                                  `Sent Counter-Offer of ₹${midpoint.toLocaleString("en-IN")}!`,
+                                  "info"
+                                );
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[9px] font-mono font-black uppercase cursor-pointer"
+                            >
+                              Counter (₹
+                              {(
+                                Math.round((offer.listedPrice + offer.buyerOfferPrice) / 2 / 5000) * 5000
+                              ).toLocaleString("en-IN")}
+                              )
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await respondToNegotiationOffer(
+                                  offer.id,
+                                  "Rejected",
+                                  undefined,
+                                  "Seller declined this offer."
+                                );
+                                showToast(`Declined Offer ${offer.id}`, "info");
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-stone-200 hover:bg-red-100 text-stone-700 hover:text-red-800 text-[9px] font-mono font-bold uppercase cursor-pointer"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Search & Filter Controls */}
                 <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-5 space-y-3.5 shadow-md">

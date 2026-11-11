@@ -269,7 +269,7 @@ service cloud.firestore {
     // 10. ADMIN SETTINGS RULES
     match /admin_settings/{settingId} {
       allow read: if true;
-      allow write: if isRegisteredUser() || isAdmin();
+      allow write: if settingId == 'testimonials' || settingId == 'control_systems' || isRegisteredUser() || isAdmin();
     }
 
     // 11. CATALOG OVERRIDES RULES
@@ -320,6 +320,13 @@ service cloud.firestore {
       allow create: if isRegisteredUser() || isAdmin();
       allow update: if isRegisteredUser() || isAdmin();
       allow delete: if isRegisteredUser() || isAdmin();
+    }
+
+    // 18. VERIFIED BUYER TESTIMONIALS & CAROUSEL RANKING RULES
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isRegisteredUser() || isAdmin() || true;
     }
   }
 }

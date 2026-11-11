@@ -5,6 +5,7 @@ import { Vehicle, Part } from "../types";
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { dispatchAdminSmsAlert } from "../lib/notificationService";
+import { logCrmInquiry } from "../lib/adminControlSystemsService";
 import { CelebrationAnimation, fireCelebrationConfetti } from "./CelebrationAnimation";
 
 interface CallbackModalProps {
@@ -104,14 +105,20 @@ export const CallbackModal: React.FC<CallbackModalProps> = ({
       existing.unshift(callbackData);
       localStorage.setItem("autoWorld_callback_requests", JSON.stringify(existing));
 
-      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
+      await logCrmInquiry({
+        refCode: callbackRef,
+        inquiryType: "Callback Request",
+        customerName: callbackData.fullName,
+        customerPhone: callbackData.phoneNumber,
+        customerEmail: currentUser?.email || "",
+        targetItemTitle: isPart ? callbackData.partTitle : callbackData.vehicleTitle,
+        targetItemPrice: isPart ? callbackData.partPrice : callbackData.vehiclePrice,
+        preferredSlot: callbackData.timeSlot,
+        locationOrAddress: callbackData.queryTopic,
+        notes: callbackData.note,
+      }).catch(() => {});
 
-      dispatchAdminSmsAlert(
-        "buyerLead",
-        isPart ? "🔧 Part Callback Requested" : "📞 Vehicle Callback Requested",
-        `Callback Request #${callbackRef} from ${callbackData.fullName} (${callbackData.phoneNumber}). Target: ${isPart ? callbackData.partTitle : callbackData.vehicleTitle}. Slot: ${callbackData.timeSlot}`,
-        { callbackRef, buyer: callbackData.fullName, phone: callbackData.phoneNumber, topic: callbackData.queryTopic }
-      );
+      window.dispatchEvent(new CustomEvent("autoworld_requests_updated"));
 
       setSubmittedData(callbackData);
       fireCelebrationConfetti();
