@@ -11,7 +11,7 @@ import {
 import { 
   Part, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES,
   COMMON_ENGINE_CODES, COMMON_CHASSIS_CODES, STOCK_STATUS_CONFIGS, 
-  PartStockStatus, DEFAULT_VEHICLES 
+  PartStockStatus, DEFAULT_VEHICLES, resolveAuthenticPartImage, isLegacyMismatchedPartUrl
 } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
@@ -33,15 +33,15 @@ interface PartDossierModalProps {
 }
 
 export const MOTORSPORT_IMAGE_PRESETS = [
-  { label: "Twin Turbocharger Unit", category: "turbo", url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80" },
-  { label: "Titanium Valved Exhaust", category: "exhaust", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80" },
-  { label: "Carbon Swan-Neck GT Wing", category: "spoiler", url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80" },
-  { label: "BBS Forged Centerlock Wheels", category: "wheels", url: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80" },
-  { label: "Cosworth Billet Race Engine", category: "engine", url: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80" },
-  { label: "NOS Nitrous Oxide Bottle", category: "nitro", url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=80" },
-  { label: "Laser Diode Matrix Headlight", category: "headlight", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80" },
-  { label: "Öhlins TTX Track Coilovers", category: "suspension", url: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=800&auto=format&fit=crop&q=80" },
-  { label: "Carbon Ceramic BBK Brakes", category: "brakes", url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80" }
+  { label: "Twin Turbocharger Unit", category: "turbo", url: "/parts/garrett-turbo.jpg" },
+  { label: "Titanium Valved Exhaust", category: "exhaust", url: "/parts/akrapovic-exhaust.jpg" },
+  { label: "Carbon Swan-Neck GT Wing", category: "spoiler", url: "/parts/carbon-gt-wing.jpg" },
+  { label: "BBS Forged Centerlock Wheels", category: "wheels", url: "/parts/bbs-forged-wheel.jpg" },
+  { label: "Twin-Scroll Turbine Housing", category: "engine", url: "/parts/garrett-turbo-2.jpg" },
+  { label: "NOS Nitrous Oxide Bottle", category: "nitro", url: "/parts/nos-nitrous-kit.jpg" },
+  { label: "Laser Diode Matrix Headlight", category: "headlight", url: "/parts/matrix-led-headlight.jpg" },
+  { label: "Öhlins TTX Track Coilovers", category: "suspension", url: "/parts/coilover-suspension.jpg" },
+  { label: "Brembo Carbon Ceramic Brakes", category: "brakes", url: "/parts/brembo-brakes.jpg" }
 ];
 
 export default function PartDossierModal({
@@ -160,13 +160,15 @@ export default function PartDossierModal({
       setEditCertNumber(part.complianceCertificate?.certNumber || "");
       setEditCertVerifiedBy(part.complianceCertificate?.verifiedBy || "Auto World Technical Bureau");
       
-      const initialPhotos: { src: string; alt?: string }[] = 
-        part.photos && part.photos.length > 0 
-          ? [...part.photos] 
-          : (part.image ? [{ src: part.image, alt: part.title }] : [{ src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800", alt: part.title }]);
+      const cleanPrimary = resolveAuthenticPartImage(part);
+      const filteredPhotos = (part.photos || []).filter((p) => !isLegacyMismatchedPartUrl(p.src));
+      const initialPhotos: { src: string; alt?: string }[] =
+        filteredPhotos.length > 0
+          ? [...filteredPhotos]
+          : [{ src: cleanPrimary, alt: part.title }];
       
       setEditPhotos(initialPhotos);
-      setEditImage(initialPhotos[0]?.src || part.image || "");
+      setEditImage(initialPhotos[0]?.src || cleanPrimary);
 
       // Check if pinned on homepage
       const partKey = `${part.isUserListing ? "user" : "default"}-${part.isUserListing ? part.listingId : part.id}`;
@@ -210,13 +212,14 @@ export default function PartDossierModal({
   // Aggregate photos
   const photosList: string[] = [];
   if (part.photos && part.photos.length > 0) {
-    part.photos.forEach(p => photosList.push(p.src));
-  }
-  if (photosList.length === 0 && part.image) {
-    photosList.push(part.image);
+    part.photos.forEach(p => {
+      if (!isLegacyMismatchedPartUrl(p.src)) {
+        photosList.push(p.src);
+      }
+    });
   }
   if (photosList.length === 0) {
-    photosList.push("https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800");
+    photosList.push(resolveAuthenticPartImage(part));
   }
 
   const categoryMeta = PART_CATEGORIES.find(c => c.id === part.category);

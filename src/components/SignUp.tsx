@@ -85,29 +85,6 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleDirectImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      if (showToast) showToast("Please select a valid image file (PNG, JPG, WEBP, etc.)", "error");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        const dataUrl = reader.result;
-        setRegisterCarImage(dataUrl);
-        try {
-          localStorage.setItem("autoWorld_register_car_image", dataUrl);
-        } catch (err) {}
-        saveAdminSettingsToFirestore({ registerCarImage: dataUrl });
-        window.dispatchEvent(new Event("autoWorld_db_update"));
-        if (showToast) showToast(`Register background updated from file "${file.name}"!`, "success");
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   // Form Failsafe & Submission Logic
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent full page reload
@@ -333,19 +310,6 @@ export default function SignUp({ onNavigate, onSuccess, showToast }: SignUpProps
               />
             </div>
           </motion.button>
-
-          {/* Quick Upload Background Image From My Files */}
-          <label className="px-3 py-1.5 bg-stone-950/80 hover:bg-black text-amber-400 border border-amber-500/60 hover:border-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer shadow-lg flex items-center gap-1.5 backdrop-blur-md transition-all hover:scale-105 active:scale-95 shrink-0">
-            <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Upload Image from File</span>
-            <span className="sm:hidden">Change Image</span>
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={handleDirectImageUpload}
-            />
-          </label>
         </div>
 
         {/* Bottom Quote - z-20 floating above overlay */}

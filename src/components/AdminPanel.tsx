@@ -33,7 +33,9 @@ import {
   PUCC_STATUS_OPTIONS, 
   HYPOTHECATION_OPTIONS, 
   STATE_NOC_OPTIONS, 
-  ROAD_TAX_OPTIONS 
+  ROAD_TAX_OPTIONS,
+  sanitizeVehicleOverride,
+  resolveAuthenticVehicleImage
 } from "../types";
 import { SkeletonLoader } from "./SkeletonLoader";
 import AdminAuditLogs, { recordAuditLog } from "./AdminAuditLogs";
@@ -2290,29 +2292,16 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
   const allDefaultsMapped: Vehicle[] = DEFAULT_VEHICLES.filter(v => !removedDefaultIds.includes(v.id)).map(v => {
     const customBadge = defaultBadges[v.id];
     const override = defaultOverrides[v.id] || {};
+    const sanitized = sanitizeVehicleOverride(v, override);
     return {
-      ...v,
-      ...override,
+      ...sanitized,
       isUserListing: false,
       badge: customBadge !== undefined ? customBadge : (override.badge !== undefined ? override.badge : v.badge)
     };
   });
 
   const userListingsMapped: Vehicle[] = listings.map((listing, index) => {
-    let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
-    if (listing.type === "car" || listing.type === "suv") {
-      image = listing.photos && listing.photos.length > 0 
-        ? listing.photos[0].src 
-        : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
-    } else if (listing.type === "truck") {
-      image = listing.photos && listing.photos.length > 0 
-        ? listing.photos[0].src 
-        : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
-    } else if (listing.type === "motorcycle") {
-      image = listing.photos && listing.photos.length > 0 
-        ? listing.photos[0].src 
-        : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
-    }
+    const image = resolveAuthenticVehicleImage(listing);
 
     return {
       id: 1000 + index,
@@ -3920,12 +3909,12 @@ export default function AdminPanel({ showToast, currentUser, userRole, onQuickVi
                           <div className="flex flex-wrap items-center gap-1.5 pt-1">
                             <span className="text-[8px] font-mono font-bold text-stone-400 uppercase tracking-wider mr-1">Quick Presets:</span>
                             {[
-                              { label: "🚗 Porsche 911", url: "https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=800&auto=format&fit=crop&q=80" },
-                              { label: "🚙 Mahindra Thar", url: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&auto=format&fit=crop&q=80" },
-                              { label: "🏍 RE Classic", url: "https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?w=800&auto=format&fit=crop&q=80" },
-                              { label: "⚡ Tesla Model Y", url: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800&auto=format&fit=crop&q=80" },
-                              { label: "⛰ Toyota Fortuner", url: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800" },
-                              { label: "🏎 Lamborghini", url: "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800&auto=format&fit=crop&q=80" }
+                              { label: "🚗 Porsche 911", url: "/vehicles/porsche-911-992.jpg" },
+                              { label: "🚙 Mahindra Thar", url: "/vehicles/mahindra-thar.jpg" },
+                              { label: "🏍 RE Classic", url: "/vehicles/royal-enfield-classic-350.jpg" },
+                              { label: "⚡ Tata Nexon EV", url: "/vehicles/tata-nexon.jpg" },
+                              { label: "⛰ Toyota Fortuner", url: "/vehicles/toyota-fortuner.jpg" },
+                              { label: "🏎 BMW 3-Series", url: "/vehicles/bmw-3-series.jpg" }
                             ].map((preset) => (
                               <button
                                 key={preset.label}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Search, MapPin, Gauge, DollarSign, Calendar, Lock, Clock, Heart, Eye, Filter, Sparkles, User, Mail, Phone, Info, RefreshCw, Star, TrendingUp, BarChart3, LineChart as LucideLineChart, CheckCircle2, ArrowUp, MessageCircle, Sliders, SlidersHorizontal, Check, Zap, Compass, Calculator, X, AlertTriangle, Bell, PhoneCall, Award, Car, Plus, ExternalLink, BookmarkPlus, Wrench, Cpu, Flame, Disc, Layers, ShieldCheck, Tag, ChevronRight, Wind, CircleDot, Box, RotateCcw, Volume2, Music, Repeat, Navigation, LocateFixed, ArrowUpDown } from "lucide-react";
-import { Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, PART_CATEGORIES, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_BRANDS, UserPartListing } from "../types";
+import { Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, PART_CATEGORIES, PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_BRANDS, UserPartListing, sanitizeVehicleOverride, resolveAuthenticVehicleImage, sanitizePartOverride, resolveAuthenticPartImage } from "../types";
 import { INDIAN_CITIES_REGISTRY, getProximityInfo, resolveLocationToCoords, calculateHaversineDistance, CityHub } from "../lib/locationUtils";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion, AnimatePresence } from "motion/react";
@@ -186,7 +186,7 @@ function getOverriddenParts(): Part[] {
       if (overridesMap && typeof overridesMap === "object") {
         list = list.map(p => {
           const override = overridesMap[p.id];
-          return override ? { ...p, ...override } : p;
+          return sanitizePartOverride(p, override);
         });
       }
     }
@@ -526,7 +526,7 @@ export default function BuyTab({
       // Apply spec overrides from Firestore catalog_overrides
       defaultData = defaultData.map(v => {
         const override = overrides[String(v.id)];
-        return override ? { ...v, ...override } : v;
+        return sanitizeVehicleOverride(v, override);
       });
 
       // Filter active user listings (automatically hides non-premium listings after 30 days)
@@ -549,24 +549,7 @@ export default function BuyTab({
       });
 
       const compiledUserVehicles: Vehicle[] = activeUserListings.map((listing, index) => {
-        let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
-        if (listing.type === "car" || listing.type === "suv") {
-          image = listing.photos && listing.photos.length > 0 
-            ? listing.photos[0].src 
-            : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
-        } else if (listing.type === "truck") {
-          image = listing.photos && listing.photos.length > 0 
-            ? listing.photos[0].src 
-            : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
-        } else if (listing.type === "motorcycle") {
-          image = listing.photos && listing.photos.length > 0 
-            ? listing.photos[0].src 
-            : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
-        } else if (listing.type === "bicycle") {
-          image = listing.photos && listing.photos.length > 0 
-            ? listing.photos[0].src 
-            : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
-        }
+        const image = resolveAuthenticVehicleImage(listing);
 
         return {
           id: 1000 + index, 
@@ -622,7 +605,7 @@ export default function BuyTab({
       if (partOverrides) {
         pDefaults = pDefaults.map(p => {
           const customOver = partOverrides[String(p.id)];
-          return customOver ? { ...p, ...customOver } : p;
+          return sanitizePartOverride(p, customOver);
         });
       }
 
@@ -636,7 +619,7 @@ export default function BuyTab({
           condition: (p.condition as any) || 5,
           brand: p.brand,
           price: p.price,
-          image: p.photos && p.photos.length > 0 ? p.photos[0].src : "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800",
+          image: resolveAuthenticPartImage(p),
           photos: p.photos,
           compatibleVehicles: p.compatibleVehicles,
           description: p.description,
@@ -3206,10 +3189,13 @@ export default function BuyTab({
                       {/* Top Image Section */}
                       <div className="relative aspect-[16/10] bg-stone-950 overflow-hidden border-b border-stone-200/80">
                         <img
-                          src={part.image}
+                          src={resolveAuthenticPartImage(part)}
                           alt={part.title}
                           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/parts/garrett-turbo.jpg";
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/30 pointer-events-none" />
 

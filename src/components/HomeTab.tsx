@@ -8,7 +8,9 @@ import {
 } from "lucide-react";
 import { 
   Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, 
-  PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES, UserPartListing 
+  PART_RARITY_TIERS, PART_CONDITION_LABELS, PART_CATEGORIES, UserPartListing,
+  sanitizeVehicleOverride, resolveAuthenticVehicleImage,
+  sanitizePartOverride, resolveAuthenticPartImage
 } from "../types";
 import { motion, AnimatePresence, useMotionValue, useAnimationFrame } from "motion/react";
 import { db } from "../firebase";
@@ -94,7 +96,7 @@ function getOverriddenVehicles(): Vehicle[] {
       if (overridesMap && typeof overridesMap === "object") {
         list = list.map(v => {
           const override = overridesMap[v.id];
-          return override ? { ...v, ...override } : v;
+          return sanitizeVehicleOverride(v, override);
         });
       }
     }
@@ -156,7 +158,7 @@ function getOverriddenParts(): Part[] {
       if (overridesMap && typeof overridesMap === "object") {
         list = list.map(p => {
           const override = overridesMap[p.id];
-          return override ? { ...p, ...override } : p;
+          return sanitizePartOverride(p, override);
         });
       }
     }
@@ -197,24 +199,7 @@ async function getHomeFeaturedVehicles(): Promise<Vehicle[]> {
   const mappedUserListings: Vehicle[] = userListings
     .filter(item => item.status === "active")
     .map((listing, index) => {
-      let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
-      if (listing.type === "car" || listing.type === "suv") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
-      } else if (listing.type === "truck") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
-      } else if (listing.type === "motorcycle") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
-      } else if (listing.type === "bicycle") {
-        image = listing.photos && listing.photos.length > 0 
-          ? listing.photos[0].src 
-          : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
-      }
+      const image = resolveAuthenticVehicleImage(listing);
 
       return {
         id: 1000 + index,
@@ -450,30 +435,13 @@ export default function HomeTab({
       }
       defaults = defaults.map(v => {
         const override = overrides[String(v.id)];
-        return override ? { ...v, ...override } : v;
+        return sanitizeVehicleOverride(v, override);
       });
 
       const mappedUserListings: Vehicle[] = userListings
         .filter(item => item.status === "active" || item.status === undefined)
         .map((listing, index) => {
-          let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
-          if (listing.type === "car" || listing.type === "suv") {
-            image = listing.photos && listing.photos.length > 0 
-              ? listing.photos[0].src 
-              : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
-          } else if (listing.type === "truck") {
-            image = listing.photos && listing.photos.length > 0 
-              ? listing.photos[0].src 
-              : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
-          } else if (listing.type === "motorcycle") {
-            image = listing.photos && listing.photos.length > 0 
-              ? listing.photos[0].src 
-              : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
-          } else if (listing.type === "bicycle") {
-            image = listing.photos && listing.photos.length > 0 
-              ? listing.photos[0].src 
-              : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
-          }
+          const image = resolveAuthenticVehicleImage(listing);
 
           return {
             id: 1000 + index,
@@ -544,7 +512,7 @@ export default function HomeTab({
       if (partOverrides) {
         pDefaults = pDefaults.map(p => {
           const customOver = partOverrides[String(p.id)];
-          return customOver ? { ...p, ...customOver } : p;
+          return sanitizePartOverride(p, customOver);
         });
       }
 
@@ -558,7 +526,7 @@ export default function HomeTab({
           condition: (p.condition as any) || 5,
           brand: p.brand,
           price: p.price,
-          image: p.photos && p.photos.length > 0 ? p.photos[0].src : "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800",
+          image: resolveAuthenticPartImage(p),
           photos: p.photos,
           compatibleVehicles: p.compatibleVehicles,
           description: p.description,
@@ -1053,7 +1021,7 @@ export default function HomeTab({
               const rarityMeta = PART_RARITY_TIERS[part.rarity] || PART_RARITY_TIERS.Common;
               const conditionMeta = PART_CONDITION_LABELS[part.condition] || PART_CONDITION_LABELS[5];
               const isHovered = hoveredPartId === part.id;
-              const displayImage = part.photos && part.photos.length > 0 ? part.photos[0].src : (part.image || "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800");
+              const displayImage = resolveAuthenticPartImage(part);
 
               // Badge styling per prompt specification
               let badgeStyle = "bg-stone-200 text-stone-800 border-stone-300";
@@ -1095,7 +1063,7 @@ export default function HomeTab({
                       alt={part.title}
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800";
+                        (e.target as HTMLImageElement).src = "/parts/garrett-turbo.jpg";
                       }}
                     />
 

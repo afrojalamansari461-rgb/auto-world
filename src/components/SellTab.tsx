@@ -4935,7 +4935,15 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                 </div>
 
                 {/* Live Price Offers & Trade-In Upgrade Proposals Desk */}
-                {((controlSystems.negotiationOffers || []).length > 0) && (
+                {(() => {
+                  const visibleOffers = (controlSystems.negotiationOffers || []).filter((offer) => {
+                    if (isAdmin && !showOnlyMyVehiclesRequests) return true;
+                    const myEmail = (currentUser?.email || "").toLowerCase();
+                    if (!myEmail) return false;
+                    return (offer.sellerEmail || "").toLowerCase() === myEmail;
+                  });
+                  if (visibleOffers.length === 0) return null;
+                  return (
                   <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-5 sm:p-6 space-y-4 shadow-md">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
                       <div>
@@ -4943,7 +4951,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                           Direct Deal &amp; Trade-In Negotiation Desk
                         </span>
                         <h3 className="text-base sm:text-lg font-serif font-black text-stone-950 uppercase">
-                          Live Binding Price Offers &amp; Trade-In Proposals ({(controlSystems.negotiationOffers || []).length})
+                          Live Binding Price Offers &amp; Trade-In Proposals ({visibleOffers.length})
                         </h3>
                       </div>
                       <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-lg bg-stone-900 text-amber-400 self-start sm:self-auto">
@@ -4952,7 +4960,7 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                      {(controlSystems.negotiationOffers || []).map((offer: NegotiationOfferRecord) => (
+                      {visibleOffers.map((offer: NegotiationOfferRecord) => (
                         <div
                           key={offer.id}
                           className="p-4 rounded-xl bg-[#F4F1EA] border border-stone-300/90 space-y-3 flex flex-col justify-between"
@@ -5081,7 +5089,8 @@ export default function SellTab({ setActiveTab, subscriptionActive, showToast, c
                       ))}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Search & Filter Controls */}
                 <div className="bg-[#FAF8F5] border border-stone-200/90 rounded-2xl p-5 space-y-3.5 shadow-md">

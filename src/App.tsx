@@ -25,7 +25,7 @@ import Modal from "./components/Modal";
 import PartDossierModal from "./components/PartDossierModal";
 import { SecureShieldCard } from "./components/SecureShieldCard";
 import PriceNegotiationAndTradeInWidget from "./components/PriceNegotiationAndTradeInWidget";
-import { Vehicle, UserListing, DEFAULT_VEHICLES, Part } from "./types";
+import { Vehicle, UserListing, DEFAULT_VEHICLES, Part, resolveAuthenticVehicleImage } from "./types";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db, firebaseConfig, handleFirestoreError, OperationType } from "./firebase";
 import { doc, getDoc, collection, getDocs, setDoc, getDocFromServer, updateDoc, deleteDoc } from "firebase/firestore";
@@ -36,11 +36,12 @@ import { SpecGrid } from "./components/SpecGrid";
 import { syncUserToFirestore, subscribeToCurrentRole, UserRole, OWNER_EMAIL } from "./lib/userRoles";
 
 const getCarouselImages = (vehicle: Vehicle): { src: string; alt: string }[] => {
+  const baseImg = resolveAuthenticVehicleImage(vehicle);
   if (vehicle.photos && vehicle.photos.length > 0) {
-    return vehicle.photos;
+    return vehicle.photos.map((p, idx) =>
+      idx === 0 ? { src: baseImg, alt: p.alt || vehicle.title } : p
+    );
   }
-  
-  const baseImg = vehicle.image;
   const title = vehicle.title;
   const category = (vehicle.category || "").toLowerCase();
   const lowerMake = (vehicle.make || "").toLowerCase();
@@ -333,24 +334,7 @@ export default function App() {
           const matchingIndex = userListings.findIndex((_, index) => (1000 + index) === vehicleId);
           if (matchingIndex !== -1) {
             const listing = userListings[matchingIndex];
-            let image = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800";
-            if (listing.type === "car" || listing.type === "suv") {
-              image = listing.photos && listing.photos.length > 0 
-                ? listing.photos[0].src 
-                : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800";
-            } else if (listing.type === "truck") {
-              image = listing.photos && listing.photos.length > 0 
-                ? listing.photos[0].src 
-                : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800";
-            } else if (listing.type === "motorcycle") {
-              image = listing.photos && listing.photos.length > 0 
-                ? listing.photos[0].src 
-                : "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800";
-            } else if (listing.type === "bicycle") {
-              image = listing.photos && listing.photos.length > 0 
-                ? listing.photos[0].src 
-                : "https://images.unsplash.com/photo-1484920274317-87885fcbc504?w=800";
-            }
+            const image = resolveAuthenticVehicleImage(listing);
 
             const mappedVehicle: Vehicle = {
               id: 1000 + matchingIndex, 

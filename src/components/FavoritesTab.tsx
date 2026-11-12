@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Heart, Eye, Car, ArrowRight, Gauge, Calendar, Fuel, Wrench, Sparkles, Star, Tag, Disc, Cpu, Zap, Flame, Layers } from "lucide-react";
-import { Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, UserPartListing, PART_RARITY_TIERS, PART_CONDITION_LABELS } from "../types";
+import { Vehicle, DEFAULT_VEHICLES, UserListing, Part, DEFAULT_PARTS, UserPartListing, PART_RARITY_TIERS, PART_CONDITION_LABELS, sanitizeVehicleOverride, resolveAuthenticVehicleImage, resolveAuthenticPartImage } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { getDocs, collection } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -44,7 +44,7 @@ export default function FavoritesTab({
           if (overridesMap && typeof overridesMap === "object") {
             defaultData = defaultData.map(v => {
               const override = overridesMap[v.id];
-              return override ? { ...v, ...override } : v;
+              return sanitizeVehicleOverride(v, override);
             });
           }
         }
@@ -183,7 +183,7 @@ export default function FavoritesTab({
               price: up.price,
               compatibleVehicles: typeof up.compatibleVehicles === "string" ? up.compatibleVehicles : (up.suitableVehicles ? up.suitableVehicles.join(", ") : "Universal"),
               description: up.description,
-              image: up.photos && up.photos.length > 0 ? up.photos[0].src : "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800",
+              image: resolveAuthenticPartImage(up),
               photos: up.photos || [],
               sellerName: up.sellerName,
               sellerPhone: up.sellerPhone,
@@ -225,7 +225,7 @@ export default function FavoritesTab({
                 price: up.price,
                 compatibleVehicles: typeof up.compatibleVehicles === "string" ? up.compatibleVehicles : (up.suitableVehicles ? up.suitableVehicles.join(", ") : "Universal"),
                 description: up.description,
-                image: up.photos && up.photos.length > 0 ? up.photos[0].src : "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800",
+                image: resolveAuthenticPartImage(up),
                 photos: up.photos || [],
                 sellerName: up.sellerName,
                 sellerPhone: up.sellerPhone,

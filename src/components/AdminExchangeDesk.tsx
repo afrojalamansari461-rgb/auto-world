@@ -15,12 +15,12 @@ interface AdminExchangeDeskProps {
 
 const DEALERSHIP_SWAP_PRESETS = [
   {
-    offeredTitle: "2023 BMW M340i xDrive",
+    offeredTitle: "2023 BMW M3 Competition xDrive",
     offeredMake: "BMW",
-    offeredModel: "M340i",
+    offeredModel: "M3 Competition",
     offeredYear: 2023,
     offeredValuation: 6200000,
-    offeredImage: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80",
+    offeredImage: "/vehicles/bmw-m3-g80.jpg",
     offeredMileage: "9,800 km",
     offeredFuel: "Petrol",
     offeredTransmission: "8-Speed Steptronic Sport",
@@ -36,7 +36,7 @@ const DEALERSHIP_SWAP_PRESETS = [
     offeredModel: "Fortuner Legender",
     offeredYear: 2022,
     offeredValuation: 4100000,
-    offeredImage: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80",
+    offeredImage: "/vehicles/toyota-fortuner.jpg",
     offeredMileage: "24,000 km",
     offeredFuel: "Diesel",
     offeredTransmission: "6-Speed Automatic",
@@ -47,12 +47,12 @@ const DEALERSHIP_SWAP_PRESETS = [
     location: "Gurugram, Haryana"
   },
   {
-    offeredTitle: "2023 Mahindra Thar Earth Edition 4x4",
+    offeredTitle: "2023 Mahindra Thar 4x4 Hardtop",
     offeredMake: "Mahindra",
-    offeredModel: "Thar Earth Edition",
+    offeredModel: "Thar 4x4",
     offeredYear: 2023,
     offeredValuation: 1650000,
-    offeredImage: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&auto=format&fit=crop&q=80",
+    offeredImage: "/vehicles/mahindra-thar.jpg",
     offeredMileage: "8,500 km",
     offeredFuel: "Diesel",
     offeredTransmission: "Manual",

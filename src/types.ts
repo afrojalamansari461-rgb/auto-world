@@ -308,12 +308,100 @@ export interface Message {
   date: string;
 }
 
+export const LEGACY_MISMATCHED_UNSPLASH_IDS = [
+  "1609521263047-f8f205293f24", // Mini Cooper (was on Mahindra Thar)
+  "1606016159991-dfe4f2746ad5", // Audi/Porsche (was on Tata Nexon)
+  "1599819811279-d5ad9cccf838", // Sportbike (was on Royal Enfield Classic 350)
+  "1549399542-7e3f8b79c341",    // BMW Coupe (was on Toyota Fortuner & Defender)
+  "1494976388531-d1058494cdd8", // Ford Mustang (was on Maruti Suzuki Swift)
+  "1555215695-3004980ad54e",    // Blue BMW M4 Coupe (was on White BMW 3-Series)
+  "1533473359331-0135ef1b58bf", // Generic placeholder
+];
+
+export function isLegacyMismatchedUrl(url?: string | null): boolean {
+  if (!url) return true;
+  return LEGACY_MISMATCHED_UNSPLASH_IDS.some((id) => url.includes(id));
+}
+
+export function resolveAuthenticVehicleImage(item: {
+  id?: number | string;
+  title?: string;
+  make?: string;
+  model?: string;
+  type?: string;
+  category?: string;
+  image?: string;
+  photos?: { src: string; alt?: string }[];
+}): string {
+  const rawImg = item.image || (item.photos && item.photos.length > 0 ? item.photos[0].src : "");
+  const haystack = `${item.title || ""} ${item.make || ""} ${item.model || ""}`.toLowerCase();
+
+  if (rawImg && !isLegacyMismatchedUrl(rawImg)) {
+    return rawImg;
+  }
+
+  if (haystack.includes("thar") || haystack.includes("mahindra")) {
+    return "/vehicles/mahindra-thar.jpg";
+  }
+  if (haystack.includes("nexon") || haystack.includes("tata")) {
+    return "/vehicles/tata-nexon.jpg";
+  }
+  if (
+    haystack.includes("royal enfield") ||
+    haystack.includes("classic 350") ||
+    haystack.includes("bullet") ||
+    (item.type || item.category || "").toLowerCase() === "motorcycle"
+  ) {
+    return "/vehicles/royal-enfield-classic-350.jpg";
+  }
+  if (haystack.includes("fortuner") || haystack.includes("toyota")) {
+    return "/vehicles/toyota-fortuner.jpg";
+  }
+  if (haystack.includes("swift") || haystack.includes("maruti")) {
+    return "/vehicles/maruti-swift.jpg";
+  }
+  if (haystack.includes("m3") || haystack.includes("m340i")) {
+    return "/vehicles/bmw-m3-g80.jpg";
+  }
+  if (haystack.includes("bmw") || haystack.includes("3-series") || haystack.includes("3 series") || haystack.includes("330i")) {
+    return "/vehicles/bmw-3-series.jpg";
+  }
+  if (haystack.includes("porsche") || haystack.includes("911")) {
+    return "/vehicles/porsche-911-992.jpg";
+  }
+  if (haystack.includes("defender") || haystack.includes("land rover")) {
+    return "/vehicles/land-rover-defender-110.jpg";
+  }
+
+  return rawImg || "/vehicles/bmw-3-series.jpg";
+}
+
+export function sanitizeVehicleOverride<T extends Vehicle>(baseVehicle: T, override?: Record<string, any> | null): T {
+  if (!override) return baseVehicle;
+  const merged = { ...baseVehicle, ...override } as T;
+  merged.image = resolveAuthenticVehicleImage({
+    ...merged,
+    image: isLegacyMismatchedUrl(override.image) ? baseVehicle.image : override.image || baseVehicle.image,
+  });
+  if (Array.isArray(merged.photos) && merged.photos.length > 0) {
+    merged.photos = merged.photos.map((p, idx) =>
+      idx === 0 && isLegacyMismatchedUrl(p.src)
+        ? { src: merged.image, alt: merged.title }
+        : p
+    );
+  }
+  return merged;
+}
+
 export const DEFAULT_VEHICLES: Vehicle[] = [
   {
     id: 1,
     title: "Mahindra Thar 4x4 LX 2023",
     price: 1450000,
-    image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/mahindra-thar.jpg",
+    photos: [
+      { src: "/vehicles/mahindra-thar.jpg", alt: "Mahindra Thar 4x4 LX 2023 - Front 3/4 View" }
+    ],
     make: "Mahindra",
     model: "Thar",
     year: 2023,
@@ -323,7 +411,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "premium",
     category: "suv",
     engine: "2.2L mHawk Diesel (130 bhp)",
-    color: "Napoli Black",
+    color: "Red Rage Metallic",
     owners: "1st Owner",
     regNumber: "MH-02-EQ-8842",
     rtoState: "Maharashtra (MH)",
@@ -348,7 +436,10 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     id: 2,
     title: "Tata Nexon EV Max 2023",
     price: 1580000,
-    image: "https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/tata-nexon.jpg",
+    photos: [
+      { src: "/vehicles/tata-nexon.jpg", alt: "Tata Nexon EV Max 2023 - Exterior View" }
+    ],
     make: "Tata",
     model: "Nexon",
     year: 2023,
@@ -358,7 +449,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "verified",
     category: "suv",
     engine: "40.5 kWh Ziptron High Voltage EV",
-    color: "Pristine White Dual-Tone",
+    color: "Daytona Grey Dual-Tone",
     owners: "1st Owner",
     regNumber: "MH-12-TX-4401",
     rtoState: "Maharashtra (MH)",
@@ -383,7 +474,10 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     id: 3,
     title: "Royal Enfield Classic 350 2022",
     price: 185000,
-    image: "https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/royal-enfield-classic-350.jpg",
+    photos: [
+      { src: "/vehicles/royal-enfield-classic-350.jpg", alt: "Royal Enfield Classic 350 2022 - Cruiser Profile" }
+    ],
     make: "Royal Enfield",
     model: "Classic 350",
     year: 2022,
@@ -393,7 +487,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "hot",
     category: "motorcycle",
     engine: "349cc J-Series Air-Oil Cooled (20.2 bhp)",
-    color: "Stealth Black",
+    color: "Redditch Red & Chrome",
     owners: "1st Owner",
     regNumber: "RJ-14-MS-7719",
     rtoState: "Rajasthan (RJ)",
@@ -418,7 +512,10 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     id: 4,
     title: "Toyota Fortuner 2.8L 4x4 2022",
     price: 3450000,
-    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/toyota-fortuner.jpg",
+    photos: [
+      { src: "/vehicles/toyota-fortuner.jpg", alt: "Toyota Fortuner 2.8L 4x4 2022 - SUV Profile" }
+    ],
     make: "Toyota",
     model: "Fortuner",
     year: 2022,
@@ -428,7 +525,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     badge: "verified",
     category: "suv",
     engine: "2.8L D-4D Turbocharged Diesel (201 bhp)",
-    color: "Super White",
+    color: "Attitude Black Metallic",
     owners: "1st Owner",
     regNumber: "HR-26-DJ-9002",
     rtoState: "Haryana (HR)",
@@ -453,7 +550,10 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     id: 5,
     title: "Maruti Suzuki Swift ZXi 2022",
     price: 680000,
-    image: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/maruti-swift.jpg",
+    photos: [
+      { src: "/vehicles/maruti-swift.jpg", alt: "Maruti Suzuki Swift ZXi 2022 - Front 3/4 View" }
+    ],
     make: "Maruti Suzuki",
     model: "Swift",
     year: 2022,
@@ -488,7 +588,10 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     id: 6,
     title: "BMW 3-Series Luxury Line 2021",
     price: 4250000,
-    image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/bmw-3-series.jpg",
+    photos: [
+      { src: "/vehicles/bmw-3-series.jpg", alt: "BMW 3-Series Luxury Line 2021 - Mineral White Exterior" }
+    ],
     make: "BMW",
     model: "3 Series",
     year: 2021,
@@ -771,6 +874,99 @@ export const STOCK_STATUS_CONFIGS: Record<PartStockStatus, { label: string; badg
   }
 };
 
+export const LEGACY_MISMATCHED_PART_UNSPLASH_IDS = [
+  ...LEGACY_MISMATCHED_UNSPLASH_IDS,
+  "1617814076367-b759c7d7e738", // Car steering wheel / interior
+  "1503376780353-7e6692767b70", // Black Porsche 911 exterior
+  "1552519507-da3b142c6e3d",    // Blue Corvette exterior
+  "1542282088-72c9c27ed0cd",    // Red sports car exterior
+  "1578632767115-351597cf2477", // Anime illustration
+  "1580273916550-e323be2ae537", // Whole car exterior
+  "1618843479313-40f8afb4b4d8", // Car exterior
+  "1511919884226-fd3cad34687c", // Car dashboard
+];
+
+export function isLegacyMismatchedPartUrl(url?: string | null): boolean {
+  if (!url) return true;
+  return LEGACY_MISMATCHED_PART_UNSPLASH_IDS.some((id) => url.includes(id));
+}
+
+export function resolveAuthenticPartImage(part: {
+  id?: number | string;
+  title?: string;
+  category?: string;
+  brand?: string;
+  image?: string;
+  photos?: { src: string; alt?: string }[];
+}): string {
+  const rawImg = part.image || (part.photos && part.photos.length > 0 ? part.photos[0].src : "");
+  if (rawImg && !isLegacyMismatchedPartUrl(rawImg)) {
+    return rawImg;
+  }
+
+  const cat = (part.category || "").toLowerCase();
+  const haystack = `${part.title || ""} ${part.brand || ""} ${cat}`.toLowerCase();
+
+  if (cat === "spoiler" || haystack.includes("spoiler") || haystack.includes("wing") || haystack.includes("aero")) {
+    return "/parts/carbon-gt-wing.jpg";
+  }
+  if (cat === "turbo" || haystack.includes("turbo") || haystack.includes("garrett") || haystack.includes("supercharger")) {
+    return "/parts/garrett-turbo.jpg";
+  }
+  if (cat === "nitro" || haystack.includes("nitro") || haystack.includes("nos")) {
+    return "/parts/nos-nitrous-kit.jpg";
+  }
+  if (cat === "headlight" || haystack.includes("headlight") || haystack.includes("headlamp") || haystack.includes("laser") || haystack.includes("matrix")) {
+    return "/parts/matrix-led-headlight.jpg";
+  }
+  if (cat === "exhaust" || haystack.includes("exhaust") || haystack.includes("akrapov") || haystack.includes("muffler") || haystack.includes("downpipe")) {
+    return "/parts/akrapovic-exhaust.jpg";
+  }
+  if (cat === "wheels" || haystack.includes("wheel") || haystack.includes("bbs") || haystack.includes("rim") || haystack.includes("forged")) {
+    return "/parts/bbs-forged-wheel.jpg";
+  }
+  if (cat === "brakes" || haystack.includes("brake") || haystack.includes("brembo") || haystack.includes("caliper") || haystack.includes("rotor")) {
+    return "/parts/brembo-brakes.jpg";
+  }
+  if (cat === "suspension" || haystack.includes("suspension") || haystack.includes("coilover") || haystack.includes("ohlins") || haystack.includes("öhlins") || haystack.includes("damper")) {
+    return "/parts/coilover-suspension.jpg";
+  }
+
+  return rawImg && !isLegacyMismatchedPartUrl(rawImg) ? rawImg : "/parts/garrett-turbo.jpg";
+}
+
+export function sanitizePartOverride<T extends Part>(basePart: T, override?: Record<string, any> | null): T {
+  const merged = (override ? { ...basePart, ...override } : { ...basePart }) as T;
+  const cleanPrimary = resolveAuthenticPartImage({
+    ...merged,
+    image: override?.image && !isLegacyMismatchedPartUrl(override.image) ? override.image : basePart.image,
+  });
+  merged.image = cleanPrimary;
+
+  if (Array.isArray(merged.photos) && merged.photos.length > 0) {
+    const cleanedPhotos = merged.photos
+      .map((p) => (isLegacyMismatchedPartUrl(p.src) ? null : p))
+      .filter(Boolean) as { src: string; alt: string }[];
+    merged.photos =
+      cleanedPhotos.length > 0
+        ? cleanedPhotos
+        : Array.isArray(basePart.photos) && basePart.photos.length > 0
+        ? basePart.photos
+        : [{ src: cleanPrimary, alt: merged.title }];
+  } else {
+    merged.photos =
+      Array.isArray(basePart.photos) && basePart.photos.length > 0
+        ? basePart.photos
+        : [{ src: cleanPrimary, alt: merged.title }];
+  }
+
+  if (isLegacyMismatchedPartUrl(merged.dynoSheetUrl)) {
+    merged.dynoSheetUrl = cleanPrimary;
+  }
+
+  return merged;
+}
+
 export const DEFAULT_PARTS: Part[] = [
   {
     id: 1,
@@ -780,11 +976,10 @@ export const DEFAULT_PARTS: Part[] = [
     condition: 5,
     brand: "Akrapovič",
     price: 85000,
-    image: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80",
+    image: "/parts/carbon-gt-wing.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Carbon GT Wing Top Profile" },
-      { src: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&auto=format&fit=crop&q=80", alt: "Billet Aluminum Mounting Feet" },
-      { src: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80", alt: "Dry Carbon Weave Close Up" }
+      { src: "/parts/carbon-gt-wing.jpg", alt: "Carbon GT Wing Top Profile" },
+      { src: "/parts/carbon-spoiler-2.jpg", alt: "Dry Carbon Weave Close Up" }
     ],
     compatibleMake: "Universal",
     compatibleModel: "Sports Coupe / Sedan / Universal Track",
@@ -817,7 +1012,7 @@ export const DEFAULT_PARTS: Part[] = [
     ],
 
     // Dyno & Certifications
-    dynoSheetUrl: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800",
+    dynoSheetUrl: "/parts/carbon-gt-wing.jpg",
     dynoHpGain: "Aerodynamic: +145 kg Linear Downforce @ 180 km/h",
     complianceCertificate: {
       type: "FIA GT Homologation Spec",
@@ -857,10 +1052,10 @@ export const DEFAULT_PARTS: Part[] = [
     condition: 5,
     brand: "Garrett Motion",
     price: 165000,
-    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
+    image: "/parts/garrett-turbo.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80", alt: "Garrett Gen II Billet Compressor" },
-      { src: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80", alt: "Twin Scroll Turbine Housing" }
+      { src: "/parts/garrett-turbo.jpg", alt: "Garrett Gen II Billet Compressor" },
+      { src: "/parts/garrett-turbo-2.jpg", alt: "Twin Scroll Turbine Housing" }
     ],
     compatibleMake: "Universal",
     compatibleModel: "2.0L - 4.5L Tuned Petrol/Diesel Engines",
@@ -893,7 +1088,7 @@ export const DEFAULT_PARTS: Part[] = [
     ],
 
     // Dyno & Certifications
-    dynoSheetUrl: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800",
+    dynoSheetUrl: "/parts/garrett-turbo.jpg",
     dynoHpGain: "+210 WHP / +280 Nm Peak Boost Gain",
     complianceCertificate: {
       type: "TÜV Rheinland Certified & ISO 9001",
@@ -932,10 +1127,9 @@ export const DEFAULT_PARTS: Part[] = [
     condition: 5,
     brand: "NOS (Holley)",
     price: 120000,
-    image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=80",
+    image: "/parts/nos-nitrous-kit.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=80", alt: "NOS 10lb Aluminum Bottle" },
-      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Solenoids and Fogger Nozzles" }
+      { src: "/parts/nos-nitrous-kit.jpg", alt: "NOS 10lb Aluminum Bottle & Pressure Gauge" }
     ],
     compatibleMake: "Universal",
     compatibleModel: "V6 / V8 / 4-Cylinder Petrol Performance Cars",
@@ -967,7 +1161,7 @@ export const DEFAULT_PARTS: Part[] = [
     ],
 
     // Dyno & Certifications
-    dynoSheetUrl: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800",
+    dynoSheetUrl: "/parts/nos-nitrous-kit.jpg",
     dynoHpGain: "+125 WHP Instantaneous Nitrous Shot Boost",
     complianceCertificate: {
       type: "DOT-3AL High Pressure Cylinder Spec",
@@ -1006,10 +1200,9 @@ export const DEFAULT_PARTS: Part[] = [
     condition: 4,
     brand: "Bosch Motorsport",
     price: 68000,
-    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
+    image: "/parts/matrix-led-headlight.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80", alt: "Matrix Laser Lens Active Beam" },
-      { src: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&auto=format&fit=crop&q=80", alt: "Thar Headlight Housing Fitment" }
+      { src: "/parts/matrix-led-headlight.jpg", alt: "Matrix Laser LED Projector Headlamp Assembly" }
     ],
     compatibleMake: "Mahindra",
     compatibleModel: "Thar (2020-2024) / Wrangler / Defender 7-Inch",
@@ -1042,7 +1235,7 @@ export const DEFAULT_PARTS: Part[] = [
     ],
 
     // Dyno & Certifications
-    dynoSheetUrl: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800",
+    dynoSheetUrl: "/parts/matrix-led-headlight.jpg",
     dynoHpGain: "16,000 Lumens / 600m High-Beam Throw Range",
     complianceCertificate: {
       type: "AIS-004 Automotive Lighting Certified (ARAI / iCAT)",
@@ -1081,10 +1274,10 @@ export const DEFAULT_PARTS: Part[] = [
     condition: 5,
     brand: "Akrapovič",
     price: 340000,
-    image: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80",
+    image: "/parts/akrapovic-exhaust.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80", alt: "Titanium Headers and Valved Mufflers" },
-      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Matte Carbon Fiber Tailpipe Sleeves" }
+      { src: "/parts/akrapovic-exhaust.jpg", alt: "Titanium Headers and Valved Mufflers" },
+      { src: "/parts/akrapovic-exhaust-2.jpg", alt: "Matte Carbon Fiber Tailpipe Sleeves" }
     ],
     compatibleMake: "BMW",
     compatibleModel: "3 Series G20 (330i / M340i)",
@@ -1117,7 +1310,7 @@ export const DEFAULT_PARTS: Part[] = [
     ],
 
     // Dyno & Certifications
-    dynoSheetUrl: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800",
+    dynoSheetUrl: "/parts/akrapovic-exhaust.jpg",
     dynoHpGain: "+14.2 WHP @ 5,400 RPM / -12.4 kg Net Weight Loss",
     complianceCertificate: {
       type: "EC/ECE Type-Approved Street Legal Acoustics",
@@ -1156,10 +1349,10 @@ export const DEFAULT_PARTS: Part[] = [
     condition: 4,
     brand: "BBS Motorsport",
     price: 290000,
-    image: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80",
+    image: "/parts/bbs-forged-wheel.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80", alt: "BBS Super RS 19 Inch Front Wheel" },
-      { src: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80", alt: "Polished Step Lip and Gold Hardware" }
+      { src: "/parts/bbs-forged-wheel.jpg", alt: "BBS Super RS 19 Inch Front Wheel" },
+      { src: "/parts/bbs-forged-wheel-2.jpg", alt: "Polished Step Lip and Cross-Spoke Detail" }
     ],
     compatibleMake: "Universal",
     compatibleModel: "5x112 & 5x120 PCD Fitment",
@@ -1192,7 +1385,7 @@ export const DEFAULT_PARTS: Part[] = [
     ],
 
     // Dyno & Certifications
-    dynoSheetUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800",
+    dynoSheetUrl: "/parts/bbs-forged-wheel.jpg",
     dynoHpGain: "Unsprung Mass Reduction: -3.8 kg Per Corner",
     complianceCertificate: {
       type: "JWL / VIA Japanese Light Alloy Wheel Standard",
@@ -1391,11 +1584,9 @@ export const DEFAULT_AUCTIONS: Auction[] = [
     make: "Porsche",
     model: "911 Carrera S",
     year: 2023,
-    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/porsche-911-992.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80", alt: "Guards Red 911 Front 3/4" },
-      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Aerokit Rear Spoiler Profile" },
-      { src: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&auto=format&fit=crop&q=80", alt: "RS Spyder Wheel Detail" }
+      { src: "/vehicles/porsche-911-992.jpg", alt: "2023 Porsche 911 Carrera S (992) Front 3/4" }
     ],
     startingBid: 12500000,
     currentBid: 14850000,
@@ -1446,10 +1637,9 @@ export const DEFAULT_AUCTIONS: Auction[] = [
     make: "BMW",
     model: "M3 Competition",
     year: 2022,
-    image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/bmw-m3-g80.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80", alt: "Isle of Man Green Exterior" },
-      { src: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80", alt: "Carbon Bucket Cockpit" }
+      { src: "/vehicles/bmw-m3-g80.jpg", alt: "2022 BMW M3 Competition xDrive Exterior" }
     ],
     startingBid: 8200000,
     currentBid: 9650000,
@@ -1498,9 +1688,9 @@ export const DEFAULT_AUCTIONS: Auction[] = [
     make: "Land Rover",
     model: "Defender 110 V8",
     year: 2023,
-    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80",
+    image: "/vehicles/land-rover-defender-110.jpg",
     photos: [
-      { src: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80", alt: "Carpathian Grey Satin Defender" }
+      { src: "/vehicles/land-rover-defender-110.jpg", alt: "2023 Land Rover Defender 110 V8" }
     ],
     startingBid: 16000000,
     currentBid: 16000000,
@@ -1557,12 +1747,12 @@ export const DEFAULT_EXCHANGES: ExchangeRequest[] = [
       mileage: "12,400 km",
       fuel: "Diesel",
       condition: 5,
-      image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&auto=format&fit=crop&q=80",
+      image: "/vehicles/mahindra-thar.jpg",
       engine: "2.2L mHawk Diesel (130 bhp)",
       transmission: "Automatic 4x4",
       location: "Pune, Maharashtra",
       rtoCode: "MH-12",
-      description: "Mint Napoli Black Thar with upgraded 7-inch Matrix LED headlamps, King shocks, and custom rear captain seats. Single owner, clean insurance.",
+      description: "Mint Red Rage Mahindra Thar with upgraded 7-inch Matrix LED headlamps, King shocks, and custom rear captain seats. Single owner, clean insurance.",
       features: ["4x4 Terrain Mode", "Apple CarPlay", "Hard Top", "Offroad Bumper", "Reverse Cam"]
     },
     desiredVehicle: {
@@ -1589,7 +1779,7 @@ export const DEFAULT_EXCHANGES: ExchangeRequest[] = [
     creatorEmail: "aman.gill@gmail.com",
     creatorPhone: "+91 98140 77233",
     offeredVehicle: {
-      title: "2021 BMW 330i M-Sport (Sunset Orange)",
+      title: "2021 BMW 330i Luxury Line (Mineral White)",
       make: "BMW",
       model: "3 Series",
       year: 2021,
@@ -1597,12 +1787,12 @@ export const DEFAULT_EXCHANGES: ExchangeRequest[] = [
       mileage: "24,000 km",
       fuel: "Petrol",
       condition: 5,
-      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80",
+      image: "/vehicles/bmw-3-series.jpg",
       engine: "2.0L TwinPower Turbo Petrol (258 bhp)",
       transmission: "8-Speed Steptronic Sport",
       location: "Chandigarh (CH)",
       rtoCode: "CH-01",
-      description: "Pristine Sunset Orange 330i M-Sport with Harman Kardon audio, sunroof, wireless CarPlay, brand new Michelin Pilot Sport 4 tyres.",
+      description: "Pristine Mineral White 330i with Harman Kardon audio, sunroof, wireless CarPlay, brand new Michelin Pilot Sport 4 tyres.",
       features: ["M-Sport Aero Kit", "Sunroof", "Head-Up Display", "Adaptive Suspension", "M Brakes"]
     },
     desiredVehicle: {
@@ -1637,7 +1827,7 @@ export const DEFAULT_EXCHANGES: ExchangeRequest[] = [
       mileage: "18,200 km",
       fuel: "Electric",
       condition: 5,
-      image: "https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=800&auto=format&fit=crop&q=80",
+      image: "/vehicles/tata-nexon.jpg",
       engine: "40.5 kWh High Voltage Ziptron EV",
       transmission: "Single-Speed Automatic",
       location: "Bengaluru, Karnataka",

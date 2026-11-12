@@ -8,7 +8,7 @@ import {
   TrendingUp, Check, Clock, Eye, Layers, Lock, LogIn, 
   Share2, MessageCircle, FileText, CheckCircle, Scale, Printer
 } from "lucide-react";
-import { ExchangeRequest, TradeOffer, DEFAULT_EXCHANGES, OfferedTradeVehicle, UserListing } from "../types";
+import { ExchangeRequest, TradeOffer, DEFAULT_EXCHANGES, OfferedTradeVehicle, UserListing, resolveAuthenticVehicleImage } from "../types";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { User as FirebaseUser } from "firebase/auth";
@@ -34,10 +34,30 @@ export default function ExchangeTab({
   onNavigateToSell,
   initialMode = "browse_matcher"
 }: ExchangeTabProps) {
+  const sanitizeExchange = (ex: ExchangeRequest): ExchangeRequest => {
+    if (!ex?.offeredVehicle) return ex;
+    const cleanImg = resolveAuthenticVehicleImage({
+      id: ex.id,
+      title: ex.offeredVehicle.title,
+      make: ex.offeredVehicle.make,
+      model: ex.offeredVehicle.model,
+      image: ex.offeredVehicle.image,
+      photos: ex.offeredVehicle.photos,
+    });
+    return {
+      ...ex,
+      offeredVehicle: {
+        ...ex.offeredVehicle,
+        image: cleanImg,
+      },
+    };
+  };
+
   const [exchanges, setExchanges] = useState<ExchangeRequest[]>(() => {
     try {
       const stored = localStorage.getItem("autoworld_exchanges_data");
-      return stored ? JSON.parse(stored) : DEFAULT_EXCHANGES;
+      const list: ExchangeRequest[] = stored ? JSON.parse(stored) : DEFAULT_EXCHANGES;
+      return list.map(sanitizeExchange);
     } catch (e) {
       return DEFAULT_EXCHANGES;
     }
@@ -76,7 +96,7 @@ export default function ExchangeTab({
   const [myCarMileage, setMyCarMileage] = useState("18,000 km");
   const [myCarFuel, setMyCarFuel] = useState("Petrol");
   const [myCarTransmission, setMyCarTransmission] = useState("Automatic");
-  const [myCarImage, setMyCarImage] = useState("https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80");
+  const [myCarImage, setMyCarImage] = useState("/vehicles/bmw-3-series.jpg");
   const [tradeNote, setTradeNote] = useState("");
   const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
 
@@ -113,7 +133,7 @@ export default function ExchangeTab({
         if (!snapshot.empty) {
           const loaded: ExchangeRequest[] = [];
           snapshot.forEach((docSnap) => {
-            loaded.push({ ...(docSnap.data() as ExchangeRequest), id: docSnap.id });
+            loaded.push(sanitizeExchange({ ...(docSnap.data() as ExchangeRequest), id: docSnap.id }));
           });
           setExchanges(loaded);
           try {

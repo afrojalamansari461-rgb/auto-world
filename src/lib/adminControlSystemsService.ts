@@ -286,8 +286,7 @@ export const DEFAULT_ADMIN_CONTROL_SYSTEMS: AdminControlSystemsState = {
       itemType: "vehicle",
       itemId: 1,
       itemTitle: "2023 Porsche 911 Carrera S (992)",
-      itemImage:
-        "https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=800&auto=format&fit=crop&q=80",
+      itemImage: "/vehicles/porsche-911-992.jpg",
       dossierRef: "AW-992-CS",
       listedPrice: 18500000,
       finalSalePrice: 18150000,
@@ -309,8 +308,7 @@ export const DEFAULT_ADMIN_CONTROL_SYSTEMS: AdminControlSystemsState = {
       itemType: "part",
       itemId: 101,
       itemTitle: "Akrapovič Evolution Line Titanium Exhaust",
-      itemImage:
-        "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80",
+      itemImage: "/parts/akrapovic-exhaust.jpg",
       dossierRef: "PART-AKR-882",
       listedPrice: 645000,
       finalSalePrice: 620000,

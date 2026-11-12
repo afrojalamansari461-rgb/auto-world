@@ -41,11 +41,11 @@ const POPULAR_FEATURES = [
 ];
 
 const SAMPLE_CAR_IMAGES = [
-  { label: "German Luxury Sedan", url: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80" },
-  { label: "Rugged 4x4 SUV", url: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&auto=format&fit=crop&q=80" },
-  { label: "Electric SUV", url: "https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=800&auto=format&fit=crop&q=80" },
-  { label: "Sport Performance GT", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80" },
-  { label: "Executive Luxury SUV", url: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80" },
+  { label: "German Luxury Sedan (BMW 3-Series)", url: "/vehicles/bmw-3-series.jpg" },
+  { label: "Rugged 4x4 SUV (Mahindra Thar)", url: "/vehicles/mahindra-thar.jpg" },
+  { label: "Electric SUV (Tata Nexon EV)", url: "/vehicles/tata-nexon.jpg" },
+  { label: "Sport Performance GT (Porsche 911)", url: "/vehicles/porsche-911-992.jpg" },
+  { label: "Executive 4x4 SUV (Toyota Fortuner)", url: "/vehicles/toyota-fortuner.jpg" },
 ];
 
 export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
@@ -93,7 +93,7 @@ export const ExchangeListingWizard: React.FC<ExchangeListingWizardProps> = ({
     "Full Authorized Service History"
   ]);
   const [image, setImage] = useState<string>(
-    initialVehicle?.image || "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&auto=format&fit=crop&q=80"
+    initialVehicle?.image || "/vehicles/bmw-3-series.jpg"
   );
   const [customPhotoUrl, setCustomPhotoUrl] = useState("");
 

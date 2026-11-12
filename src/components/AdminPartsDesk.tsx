@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { 
   Part, UserPartListing, PART_CATEGORIES, PART_BRANDS, 
-  PART_RARITY_TIERS, PART_CONDITION_LABELS, DEFAULT_PARTS 
+  PART_RARITY_TIERS, PART_CONDITION_LABELS, DEFAULT_PARTS,
+  sanitizePartOverride, resolveAuthenticPartImage
 } from "../types";
 import { 
   subscribeToRealtimeCatalog, 
@@ -122,9 +123,9 @@ export default function AdminPartsDesk({
       defaults = defaults.map(p => {
         const override = catalog.partOverrides?.[String(p.id)];
         const customBadge = badges[String(p.id)];
+        const sanitized = sanitizePartOverride(p, override);
         return {
-          ...p,
-          ...(override || {}),
+          ...sanitized,
           badge: customBadge !== undefined ? customBadge : (override?.badge || p.badge)
         };
       });
@@ -137,7 +138,7 @@ export default function AdminPartsDesk({
         condition: (p.condition as any) || 5,
         brand: p.brand,
         price: p.price,
-        image: p.photos && p.photos.length > 0 ? p.photos[0].src : (p.image || "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800"),
+        image: resolveAuthenticPartImage(p),
         photos: p.photos,
         compatibleVehicles: p.compatibleVehicles,
         description: p.description,
@@ -1220,9 +1221,7 @@ export default function AdminPartsDesk({
               featuredHomeIds.includes(`default-${part.id}`) || 
               featuredHomeIds.includes(`user-${part.listingId}`);
             
-            const displayImage = part.photos && part.photos.length > 0 
-              ? part.photos[0].src 
-              : (part.image || "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800");
+            const displayImage = resolveAuthenticPartImage(part);
 
             return (
               <div 
@@ -1243,7 +1242,7 @@ export default function AdminPartsDesk({
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800";
+                      (e.target as HTMLImageElement).src = "/parts/garrett-turbo.jpg";
                     }}
                   />
                   <div className="absolute top-2 left-2 text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 border text-white font-mono bg-stone-950">

@@ -87,29 +87,6 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoginSuccess, setIsLoginSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const handleDirectImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      if (showToast) showToast("Please select a valid image file (PNG, JPG, WEBP, etc.)", "error");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        const dataUrl = reader.result;
-        setLoginCarImage(dataUrl);
-        try {
-          localStorage.setItem("autoWorld_login_car_image", dataUrl);
-        } catch (err) {}
-        saveAdminSettingsToFirestore({ loginCarImage: dataUrl });
-        window.dispatchEvent(new Event("autoWorld_db_update"));
-        if (showToast) showToast(`Login background updated from file "${file.name}"!`, "success");
-      }
-    };
-    reader.readAsDataURL(file);
-  };
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Form Failsafe & Submission Logic
@@ -388,21 +365,6 @@ export default function Login({ onNavigate, onSuccess, showToast }: LoginProps) 
               />
             </div>
           </motion.button>
-
-          {/* Quick Upload Background Image From My Files (Owner Only) */}
-          {isOwner && (
-            <label className="px-3 py-1.5 bg-stone-950/80 hover:bg-black text-amber-400 border border-amber-500/60 hover:border-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer shadow-lg flex items-center gap-1.5 backdrop-blur-md transition-all hover:scale-105 active:scale-95 shrink-0">
-              <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Upload Image from File</span>
-              <span className="sm:hidden">Change Image</span>
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={handleDirectImageUpload}
-              />
-            </label>
-          )}
         </motion.div>
 
         {/* Bottom Quote - z-20 floating above overlay */}

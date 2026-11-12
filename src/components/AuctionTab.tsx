@@ -9,7 +9,7 @@ import {
   Play, Edit3, X, Sliders, ShieldAlert, ListOrdered,
   Timer, Hourglass, Layers, FileText, CheckCheck, Bot, Radio
 } from "lucide-react";
-import { Auction, AuctionBid, DEFAULT_AUCTIONS, Vehicle } from "../types";
+import { Auction, AuctionBid, DEFAULT_AUCTIONS, Vehicle, resolveAuthenticVehicleImage } from "../types";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc } from "firebase/firestore";
 import { User as FirebaseUser } from "firebase/auth";
@@ -105,10 +105,30 @@ export default function AuctionTab({
   onSignInClick,
   onSelectVehicle
 }: AuctionTabProps) {
+  const sanitizeAuction = (auc: Auction): Auction => {
+    const cleanImg = resolveAuthenticVehicleImage({
+      id: auc.id,
+      title: auc.title,
+      make: auc.make,
+      model: auc.model,
+      image: auc.image,
+      photos: auc.photos,
+    });
+    return {
+      ...auc,
+      image: cleanImg,
+      photos:
+        Array.isArray(auc.photos) && auc.photos.length > 0
+          ? auc.photos.map((p, i) => (i === 0 ? { src: cleanImg, alt: p.alt || auc.title } : p))
+          : [{ src: cleanImg, alt: auc.title }],
+    };
+  };
+
   const [auctions, setAuctions] = useState<Auction[]>(() => {
     try {
       const stored = localStorage.getItem("autoworld_auctions_data");
-      return stored ? JSON.parse(stored) : DEFAULT_AUCTIONS;
+      const list: Auction[] = stored ? JSON.parse(stored) : DEFAULT_AUCTIONS;
+      return list.map(sanitizeAuction);
     } catch (e) {
       return DEFAULT_AUCTIONS;
     }
@@ -307,7 +327,7 @@ export default function AuctionTab({
         if (!snapshot.empty) {
           const loaded: Auction[] = [];
           snapshot.forEach((docSnap) => {
-            loaded.push({ ...(docSnap.data() as Auction), id: docSnap.id });
+            loaded.push(sanitizeAuction({ ...(docSnap.data() as Auction), id: docSnap.id }));
           });
           setAuctions(loaded);
           try {
